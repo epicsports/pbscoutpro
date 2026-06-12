@@ -70,6 +70,11 @@ export const MATCH_STATS = 'mat-stats';         // #5 stats-kills
 export const MATCH_OFFLINE = 'mat-offline';     // #6 offline-sync
 export const MATCH_PSTATS = 'mat-pstats';       // Stage 4.1 PlayerStats landscape-hero fixture
 export const TRN_PSTATS = 'trn-pstats';         // dedicated base-layout tournament for that fixture
+// §B phase-view fixture — pt-ph1 carries timeline[] (settle+mid, quickShots),
+// pt-ph2 is keyframe-#0-only (scope-rule disable case). Isolated.
+export const TRN_PHASE = 'trn-phase';
+export const MATCH_PHASE = 'mat-phase';
+export const matchPhaseReviewUrl = `#/tournament/${TRN_PHASE}/match/${MATCH_PHASE}`;
 export const ROSTER_A_IDS = ['pa1', 'pa2', 'pa3', 'pa4', 'pa5'];   // PRO
 export const ROSTER_C_IDS = ['pc1', 'pc2', 'pc3', 'pc4', 'pc5'];   // DIV1 (the bleed)
 export const FIELD = { discoLine: 0.30, zeekerLine: 0.80, doritoSide: 'top' };

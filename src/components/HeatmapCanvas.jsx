@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { COLORS, FONT, TEAM_COLORS } from '../utils/theme';
-import { tracePathCone, vectorDirectionDeg } from '../utils/shotGeometry';
+import { tracePathCone, vectorDirectionDeg, shotDirectionDeg } from '../utils/shotGeometry';
 import BaseCanvas from './canvas/BaseCanvas';
 import { paintStroke } from './canvas/drawStrokes';
 import { drawZones } from './field/drawZones';
@@ -178,6 +178,17 @@ export default function HeatmapCanvas({
   // replay (markers only) instead of the static aggregate layers. No-op unless
   // ≥2 stage keyframes exist across `points` (driven by point.timeline[]).
   replay = false,
+  // §B phase view — fires with the stage name ('break'|'settle'|'mid') each
+  // time the replay clock crosses into a new keyframe (null when stopped), so
+  // the consumer's segment row can follow playback. No-op when not passed.
+  onReplayPhase = null,
+  // §B B4 — direction-lane arrows from per-stage band shots (quickShots /
+  // obstacleShots enums snake|center|dorito). LANE indicator only — fixed
+  // length, team colour, arrowhead; no real angle is implied (none is stored).
+  // Opt-in (default off) so legacy consumers are pixel-identical. `doritoSide`
+  // comes from the layout (top|bottom) and resolves which band is up vs down.
+  showDirections = false,
+  doritoSide = 'top',
   // § 78 — draw arbiter pass-through, isomorphic with InteractiveCanvas
   // Stage 1. HeatmapCanvas itself is read-only display; the consumer
   // (ScoutedTeam) supplies DrawingOverlay + state via `children` and the
@@ -204,11 +215,39 @@ export default function HeatmapCanvas({
   const replayRafRef = useRef(null);
   // eslint-disable-next-line no-unused-vars
   const [, setReplayTick] = useState(0);
+  // §B — ref-wrapped callback + model (PROJECT_GUIDELINES §9): the RAF effect
+  // keeps its original `[animating]` deps — re-firing on model identity would
+  // RESTART the replay clock on every parent re-render (the points prop is
+  // rebuilt per render), pinning playback to the first phase.
+  const onReplayPhaseRef = useRef(onReplayPhase);
+  onReplayPhaseRef.current = onReplayPhase;
+  const replayModelRef = useRef(replayModel);
+  replayModelRef.current = replayModel;
+  const lastReplayPhaseRef = useRef(null);
   useEffect(() => {
-    if (!animating) return undefined; // OFF = zero idle cost (no RAF scheduled)
+    if (!animating) {
+      // Stopped — clear the segment-follow signal once (null = not playing).
+      if (lastReplayPhaseRef.current !== null) {
+        lastReplayPhaseRef.current = null;
+        if (onReplayPhaseRef.current) onReplayPhaseRef.current(null);
+      }
+      return undefined; // OFF = zero idle cost (no RAF scheduled)
+    }
     replayStartRef.current = (typeof performance !== 'undefined' ? performance.now() : 0);
     const loop = () => {
       setReplayTick(t => (t + 1) % 1e9);
+      // §B — segment-follow: report the keyframe the clock currently sits on
+      // (the `from` phase) whenever it changes.
+      if (onReplayPhaseRef.current) {
+        const phases = replayModelRef.current.phases;
+        const nowTs = (typeof performance !== 'undefined' ? performance.now() : 0);
+        const clk = replayClock(nowTs - replayStartRef.current, phases.length);
+        const st = phases[clk.from];
+        if (st !== lastReplayPhaseRef.current) {
+          lastReplayPhaseRef.current = st;
+          onReplayPhaseRef.current(st);
+        }
+      }
       replayRafRef.current = requestAnimationFrame(loop);
     };
     replayRafRef.current = requestAnimationFrame(loop);
@@ -228,8 +267,16 @@ export default function HeatmapCanvas({
     // (no settle keyframe), matching the Stage-1 compat that fed pt.zoneObstacleShots.
     const stageKey = phase === 'breakout' ? 'break' : phase === 'postBreakout' ? 'settle' : (phase || 'break');
     const kfOf = (pt, st) => (Array.isArray(pt.timeline) ? pt.timeline : []).find(e => e?.stage === st) || null;
+    // §B B4 — band-shot normalizer (Firestore sparse object or 5-array) +
+    // per-slot union of quickShots/obstacleShots (Stage-2 stages write quick;
+    // legacy points split break→quickShots / obstacle≈settle→obstacleShots).
+    const qarr = (v) => Array.isArray(v) ? v : v ? [0, 1, 2, 3, 4].map(i => v[String(i)] || []) : [[], [], [], [], []];
+    const qunion = (a, b) => {
+      const aa = qarr(a), bb = qarr(b);
+      return [0, 1, 2, 3, 4].map(i => [...(aa[i] || []), ...(bb[i] || [])]);
+    };
     const stageView = (pt) => {
-      if (stageKey === 'break') return { players: pt.players || [], bumpStops: pt.bumpStops || [], elim: pt.eliminations || [], runners: pt.runners || [], assign: pt.assignments || [], tags: pt.zoneShots || [], isBreak: true };
+      if (stageKey === 'break') return { players: pt.players || [], bumpStops: pt.bumpStops || [], elim: pt.eliminations || [], runners: pt.runners || [], assign: pt.assignments || [], tags: pt.zoneShots || [], quick: qarr(pt.quickShots), isBreak: true };
       if (stageKey === 'settle') {
         const k = kfOf(pt, 'settle');
         return {
@@ -237,11 +284,16 @@ export default function HeatmapCanvas({
           bumpStops: [], elim: (k?.eliminations?.length ? k.eliminations : pt.eliminations) || [],
           runners: (k?.runners?.length ? k.runners : pt.runners) || [],
           assign: (k?.assignments?.length ? k.assignments : pt.assignments) || [],
-          tags: pt.zoneObstacleShots || [], isBreak: false,
+          tags: pt.zoneObstacleShots || [],
+          // Settle directions: the stage keyframe's band shots; legacy points
+          // (no settle kf) fall back to kf#0 obstacleShots (the old
+          // "obstacle play" ≈ settled fire) — mirrors the tags compat above.
+          quick: k ? qunion(k.quickShots, k.obstacleShots) : qarr(pt.obstacleShots),
+          isBreak: false,
         };
       }
       const k = kfOf(pt, 'mid');
-      return { players: k?.players || [], bumpStops: [], elim: k?.eliminations || [], runners: k?.runners || [], assign: k?.assignments || [], tags: k?.zoneShots || [], isBreak: false };
+      return { players: k?.players || [], bumpStops: [], elim: k?.eliminations || [], runners: k?.runners || [], assign: k?.assignments || [], tags: k?.zoneShots || [], quick: k ? qunion(k.quickShots, k.obstacleShots) : qarr(null), isBreak: false };
     };
     const phasePos = (pt, i) => {
       const v = stageView(pt);
@@ -596,6 +648,61 @@ export default function HeatmapCanvas({
     }
 
     } // end anyShots
+
+    // ── §B B4 — direction-lane arrows (band shots, per-stage) ──
+    // One short arrow per band shot, from the player's stage position toward
+    // the lane (snake/center/dorito via shotDirectionDeg — the same enum→angle
+    // mapping the scouting canvas uses). FIXED length at base scale, 2px, team
+    // colour, arrowhead; multiple band shots = multiple arrows. Gated by the
+    // per-team Shots visibility (§40 capsules) + the showDirections opt-in.
+    if (showDirections) {
+      const ARROW_GAP = 8;    // start clear of the 3.5px marker + stroke
+      const ARROW_LEN = 40;   // fixed lane-indicator length (mockup-6)
+      const ARROW_HEAD = 6;
+      points.forEach(pt => {
+        const isB = pt.side === 'B';
+        if (isB ? !visBShots : !visAShots) return;
+        const v = stageView(pt);
+        const quick = v.quick || [];
+        const teamColor = isB ? TEAM_COLORS.B : TEAM_COLORS.A;
+        // Canonical heatmap space: team A mirrored to LEFT (shoots right),
+        // team B flipped to RIGHT (shoots left). Single-side consumers render
+        // as team A on the left — same convention as the marker layer.
+        const sideFS = isB ? 'right' : 'left';
+        for (let i = 0; i < 5; i++) {
+          const zones = quick[i];
+          if (!zones || !zones.length) continue;
+          const pos = v.isBreak ? (v.bumpStops?.[i] || v.players?.[i]) : v.players?.[i];
+          if (!pos) continue;
+          const dim = selActive && (v.assign?.[i] !== selectedPlayerId);
+          const px = pos.x * w, py = pos.y * h;
+          zones.forEach(zone => {
+            const rad = shotDirectionDeg(zone, sideFS, doritoSide) * Math.PI / 180;
+            const ux = Math.cos(rad), uy = Math.sin(rad);
+            const x2 = px + ux * ARROW_LEN, y2 = py + uy * ARROW_LEN;
+            ctx.globalAlpha = dim ? 0.12 : 0.9;
+            ctx.strokeStyle = teamColor;
+            ctx.fillStyle = teamColor;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(px + ux * ARROW_GAP, py + uy * ARROW_GAP);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+            // Arrowhead — small filled triangle at the lane end.
+            const hx = -uy, hy = ux; // unit perpendicular
+            ctx.beginPath();
+            ctx.moveTo(x2 + ux * ARROW_HEAD, y2 + uy * ARROW_HEAD);
+            ctx.lineTo(x2 - hx * ARROW_HEAD * 0.6, y2 - hy * ARROW_HEAD * 0.6);
+            ctx.lineTo(x2 + hx * ARROW_HEAD * 0.6, y2 + hy * ARROW_HEAD * 0.6);
+            ctx.closePath();
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.lineCap = 'butt';
+          });
+        }
+      });
+    }
 
     // ── Callout-zone highlight layer (§ OSTRZAŁ B1) ──
     // Highlights the layout's callout-zone polygons weighted by per-zone shot

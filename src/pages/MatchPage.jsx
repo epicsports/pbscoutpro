@@ -27,7 +27,7 @@ import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { MapPin, Pencil } from 'lucide-react';
+import { MapPin, Pencil, Play, Pause, Zap, Shield, Timer } from 'lucide-react';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
@@ -53,6 +53,22 @@ const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
 const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
+
+// §B B3 — per-phase layer DEFAULTS for the review heatmap (convention, not
+// gates). The §40 per-team capsules override freely WITHIN the active phase;
+// defaults re-apply on each phase change. Flip PHASE_DEFAULTS_STICKY to true
+// to keep user overrides across phase switches instead (smoke-tunable).
+//   Break  → positions + all collected shot layers
+//   Settle → positions + the direction layer (the only per-stage shot layer)
+//   Mid    → positions only
+const PHASE_DEFAULTS_STICKY = false;
+const PHASE_LAYER_DEFAULTS = {
+  break:  { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
+  settle: { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
+  mid:    { teamA: { positions: true, shots: false }, teamB: { positions: true, shots: false } },
+};
+const PHASE_SEGMENTS = ['break', 'settle', 'mid'];
+const PHASE_ICON = { break: Zap, settle: Shield, mid: Timer };
 
 function emptyTeam() {
   // § Stage 2b — elimReasons: per-slot elimination reason code, set only for
@@ -277,10 +293,42 @@ export default function MatchPage() {
     teamA: { positions: true, shots: true },
     teamB: { positions: true, shots: true },
   });
-  // § Stage 6-lite — replay animation toggle for the review heatmap (OFF by
-  // default; global, not per-team — coexists with PerTeamHeatmapToggle).
-  const [replayOn, setReplayOn] = useState(false);
+  // §B phase view — the segment row replaces the Stage 6-lite Replay pill.
+  // phasePin = the pinned (static) stage; phasePlaying keeps the 6-lite replay
+  // animation; replayStage mirrors the replay clock so the active segment can
+  // follow playback (fed back by HeatmapCanvas onReplayPhase).
+  const [phasePin, setPhasePin] = useState('break');
+  const [phasePlaying, setPhasePlaying] = useState(false);
+  const [replayStage, setReplayStage] = useState(null);
   const [previewPointId, setPreviewPointId] = useState(null);
+  // §B B3 — pinning a phase stops playback and re-applies that phase's layer
+  // defaults (PHASE_LAYER_DEFAULTS) unless the sticky flag is flipped; the §40
+  // capsules then override freely WITHIN the phase.
+  const pinPhase = (st) => {
+    setPhasePlaying(false);
+    setReplayStage(null);
+    setPhasePin(st);
+    if (!PHASE_DEFAULTS_STICKY) {
+      setHmVisibility({
+        teamA: { ...PHASE_LAYER_DEFAULTS[st].teamA },
+        teamB: { ...PHASE_LAYER_DEFAULTS[st].teamB },
+      });
+    }
+  };
+  // §B B2 — phases operate on the CURRENT hero scope (aggregate or previewed
+  // point). When the preview changes to a scope without the pinned stage,
+  // clamp back to Break; when the scope can't animate at all, stop playback.
+  useEffect(() => {
+    const scope = previewPointId ? points.filter(p => p.id === previewPointId) : points;
+    const has = (st) => scope.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === st));
+    if ((phasePin === 'settle' && !has('settle')) || (phasePin === 'mid' && !has('mid'))) {
+      pinPhase('break');
+    } else if (!has('settle') && !has('mid')) {
+      setPhasePlaying(false);
+      setReplayStage(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewPointId, points, phasePin]);
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
@@ -1791,13 +1839,23 @@ export default function MatchPage() {
         runners: kf.runners || [],
         assignments: kf.assignments || [],
         slotIds: kf.slotIds || [],
+        // §B B4 — per-stage band shots feed the direction-arrow layer. Band
+        // enums (snake|center|dorito) are orientation-resolved at render via
+        // shotDirectionDeg(side), so no mirroring is needed here.
+        quickShots: kf.quickShots || null,
+        obstacleShots: kf.obstacleShots || null,
       };
     }).filter(Boolean);
 
-  // § Stage 6-lite — replay is playable only when ≥1 point carries Settle/Mid
-  // keyframes (Break is keyframe #0). Plain const (cheap .some); not a hook so
-  // it stays clear of the early returns above.
-  const canReplay = points.some(p => Array.isArray(p.timeline) && p.timeline.length > 0);
+  // §B B2 — phase/replay availability is computed on the CURRENT hero scope:
+  // the aggregate, or the selected preview point. Mirrors the old Stage 6-lite
+  // canReplay logic per scope. Plain consts (cheap .some); not hooks so they
+  // stay clear of the early returns above.
+  const phaseScopePoints = previewPointId ? points.filter(p => p.id === previewPointId) : points;
+  const scopeHasStage = (st) => phaseScopePoints.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === st));
+  const hasSettleStage = scopeHasStage('settle');
+  const hasMidStage = scopeHasStage('mid');
+  const canReplay = hasSettleStage || hasMidStage;
 
   const getHeatmapPoints = (side) => {
     if (side === 'all' || side === 'both') {
@@ -1808,7 +1866,7 @@ export default function MatchPage() {
         if (dataA) {
           const fs = dataA.fieldSide || pt.fieldSide || 'left';
           const mirrored = mirrorPointToLeft(dataA, fs);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: pt.outcome, side: 'A', timeline: kfTimeline(pt.timeline, true, fs, false) });
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: pt.outcome, side: 'A', ptId: pt.id, timeline: kfTimeline(pt.timeline, true, fs, false) });
         }
         if (dataB) {
           const fs = dataB.fieldSide || pt.fieldSide || 'left';
@@ -1822,7 +1880,7 @@ export default function MatchPage() {
           const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
           // Mirror shots to LEFT for team B (opposite)
           const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
-          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: pt.outcome, side: 'B', timeline: kfTimeline(pt.timeline, false, fs, true) });
+          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: pt.outcome, side: 'B', ptId: pt.id, timeline: kfTimeline(pt.timeline, false, fs, true) });
         }
         return results;
       });
@@ -1835,7 +1893,7 @@ export default function MatchPage() {
       // NOTE: no `side` here — the single-side path historically renders as
       // team A (green) regardless; adding `side` would flip a B-side view to
       // teal. Replay on this path colors as one team (A), matching that.
-      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], eliminations: d.eliminations || [], outcome: pt.outcome, timeline: kfTimeline(pt.timeline, side === 'A', sideFieldSide, false) };
+      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], eliminations: d.eliminations || [], outcome: pt.outcome, ptId: pt.id, timeline: kfTimeline(pt.timeline, side === 'A', sideFieldSide, false) };
     }).filter(Boolean);
   };
 
@@ -1885,34 +1943,42 @@ export default function MatchPage() {
               letterSpacing: '.5px',
             }}>{isLockReleased ? t('match_unlocked_badge') : isClosed ? 'FINAL' : 'LIVE'}</span>
           }
-          action={!isLocked && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
+          action={!isLocked && <MoreBtn testId="match-menu-btn" onClick={() => setMatchMenuOpen(true)} />}
         />
     );
 
-    // Scoreboard card — elevated surface with split-tap zones
-    const scoreboardEl = (
+    // Scoreboard card — elevated surface with split-tap zones. §B B5: the
+    // scoreboard is a PERMANENT rail resident (it is the live action button —
+    // scout the next point — never hidden by phase state). `compact` = the
+    // 280px-rail variant (mockup-6): names 11px/2-line, score 22px, the
+    // "Scout ›" text CTA becomes a chevron and the WHOLE team zone (≥44px)
+    // is the tap. Portrait keeps today's full variant.
+    const renderScoreboard = (compact) => (
         <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0` }}>
-          <div style={{
+          <div data-testid="review-scoreboard" style={{
             display: 'flex',
             background: COLORS.surface,
             border: `1px solid ${COLORS.surfaceLight}`,
-            borderRadius: 14,
+            borderRadius: compact ? 12 : 14,
             overflow: 'hidden',
           }}>
             {/* Left team zone */}
             <div onClick={() => goScout(match?.teamA)}
               style={{
                 flex: 1, minWidth: 0,
-                padding: '16px 14px',
+                padding: compact ? '8px 8px' : '16px 14px',
+                minHeight: compact ? 44 : undefined,
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
               <div style={{
-                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
+                fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamA?.name || 'Home'}</div>
-              {!isLocked && (
+              {!isLocked && (compact ? (
+                <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>›</div>
+              ) : (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
                     Scout ›
@@ -1924,21 +1990,21 @@ export default function MatchPage() {
                     </div>
                   )}
                 </div>
-              )}
+              ))}
             </div>
             {/* Divider */}
             <div style={{ width: 1, background: COLORS.surfaceLight }} />
             {/* Score center — recessed */}
             <div style={{
-              flex: '0 0 auto', minWidth: 110,
-              padding: '14px 12px',
+              flex: '0 0 auto', minWidth: compact ? 56 : 110,
+              padding: compact ? '8px 8px' : '14px 12px',
               background: COLORS.surfaceBar,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
-              <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: COLORS.text, lineHeight: 1 }}>
+              <div style={{ fontFamily: FONT, fontSize: compact ? 22 : 32, fontWeight: 900, color: COLORS.text, lineHeight: 1 }}>
                 {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
               </div>
-              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 4, letterSpacing: '.4px' }}>
+              <div style={{ fontFamily: FONT, fontSize: compact ? 8 : 10, fontWeight: 600, color: COLORS.textMuted, marginTop: compact ? 2 : 4, letterSpacing: '.4px' }}>
                 {points.length} POINT{points.length === 1 ? '' : 'S'}
               </div>
             </div>
@@ -1947,17 +2013,20 @@ export default function MatchPage() {
             <div onClick={() => goScout(match?.teamB)}
               style={{
                 flex: 1, minWidth: 0,
-                padding: '16px 14px',
+                padding: compact ? '8px 8px' : '16px 14px',
+                minHeight: compact ? 44 : undefined,
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
                 textAlign: 'right',
               }}>
               <div style={{
-                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
+                fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamB?.name || 'Away'}</div>
-              {!isLocked && (
+              {!isLocked && (compact ? (
+                <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>‹</div>
+              ) : (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3, justifyContent: 'flex-end' }}>
                   {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
                   {isTraining && (
@@ -1969,7 +2038,7 @@ export default function MatchPage() {
                     ‹ Scout
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
@@ -1981,41 +2050,26 @@ export default function MatchPage() {
               <HeatmapCanvas fieldImage={field.fieldImage} points={(() => {
                 const mySideKey = scoutingSide === 'away' ? 'B' : 'A';
                 const showAll = scoutingSide === 'observe' || heatmapSide === 'all';
-                const allPts = getHeatmapPoints(showAll ? 'all' : mySideKey);
                 if (previewPointId) {
-                  // Show only the previewed point
-                  const previewPt = points.find(p => p.id === previewPointId);
-                  if (previewPt) {
-                    const results = [];
-                    const dataA = previewPt.homeData || previewPt.teamA;
-                    const dataB = previewPt.awayData || previewPt.teamB;
-                    if (dataA) {
-                      const fs = dataA.fieldSide || previewPt.fieldSide || 'left';
-                      const mirrored = mirrorPointToLeft(dataA, fs);
-                      results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: previewPt.outcome, side: 'A' });
-                    }
-                    if (dataB) {
-                      const fs = dataB.fieldSide || previewPt.fieldSide || 'left';
-                      const mirroredToLeft = mirrorPointToLeft(dataB, fs);
-                      const mirroredToRight = {
-                        ...mirroredToLeft,
-                        players: (mirroredToLeft.players || []).map(p => p ? { ...p, x: 1 - p.x } : null),
-                        bumpStops: (mirroredToLeft.bumpStops || []).map(b => b ? { ...b, x: 1 - b.x } : null),
-                      };
-                      const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
-                      const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
-                      results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: previewPt.outcome, side: 'B' });
-                    }
-                    return results;
-                  }
+                  // §B B2 — the preview point goes through the SAME mapper as
+                  // the aggregate, so it keeps its `timeline[]` (phases + ▶
+                  // operate on the preview scope; previously the inline copy
+                  // here stripped timeline and the preview stuck on its first
+                  // phase). Preview always shows BOTH sides (pre-existing).
+                  const previewPts = getHeatmapPoints('all').filter(r => r.ptId === previewPointId);
+                  if (previewPts.length) return previewPts;
                 }
-                return allPts;
+                return getHeatmapPoints(showAll ? 'all' : mySideKey);
               })()}
                 rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={[]} showBunkers={false}
                 showZones={false}
                 visibility={{ A: hmVisibility.teamA, B: hmVisibility.teamB }}
-                replay={replayOn && canReplay}
+                phase={phasePin}
+                showDirections
+                doritoSide={field.layout?.doritoSide || 'top'}
+                replay={phasePlaying && canReplay}
+                onReplayPhase={setReplayStage}
                 discoLine={0} zeekerLine={0} />
     );
 
@@ -2025,25 +2079,64 @@ export default function MatchPage() {
           {!(landscape && heroAvailable) && (
             <div>{reviewHeatmapEl}</div>
           )}
-          {/* § Stage 6-lite — global Replay toggle, sibling ABOVE the per-team
-              capsule row (replay is global, not per-team). Amber only while
-              active (§ 27 color discipline); disabled with no Settle/Mid data. */}
-          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', justifyContent: 'center' }}>
+          {/* §B phase row — ▶ + [⚡Break | 🛡Settle | ⏱Mid] icon segments
+              (replaces the Stage 6-lite Replay pill; same approved §B pattern
+              as the Hitability mode switcher: inactive icon-only, active
+              icon+label). ▶ plays the replay through the scope's phases and
+              the active segment follows; tapping a segment stops playback and
+              pins. Settle/Mid disable when the CURRENT scope (aggregate or
+              previewed point) has no such keyframes (B2). Amber only on the
+              active/playing element (§27). */}
+          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', alignItems: 'stretch', gap: 6 }}>
             <div
-              role="button" aria-pressed={replayOn && canReplay}
-              onClick={canReplay ? () => setReplayOn(v => !v) : undefined}
-              title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
+              data-testid="phase-play"
+              role="button" aria-pressed={phasePlaying && canReplay} aria-label={t('phase_play')}
+              onClick={canReplay ? () => { setReplayStage(null); setPhasePlaying(v => !v); } : undefined}
+              title={canReplay ? t('phase_play') : t('phase_play_disabled_hint')}
               style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                minHeight: 44, padding: '0 18px', borderRadius: RADIUS.full,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                width: 44, minHeight: 44, flexShrink: 0, borderRadius: RADIUS.md,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: canReplay ? 'pointer' : 'default',
-                background: (replayOn && canReplay) ? `${COLORS.accent}1f` : 'transparent',
-                color: (replayOn && canReplay) ? COLORS.accent : COLORS.textMuted,
-                border: `1px solid ${(replayOn && canReplay) ? `${COLORS.accent}66` : COLORS.border}`,
+                background: (phasePlaying && canReplay) ? `${COLORS.accent}1f` : COLORS.surface,
+                color: (phasePlaying && canReplay) ? COLORS.accent : COLORS.textMuted,
+                border: `1px solid ${(phasePlaying && canReplay) ? `${COLORS.accent}66` : COLORS.border}`,
                 opacity: canReplay ? 1 : 0.4,
                 WebkitTapHighlightColor: 'transparent', userSelect: 'none',
-              }}>▶ Replay break → settle → mid</div>
+              }}>
+              {(phasePlaying && canReplay) ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 6 }} role="group" aria-label={t('phase_row_label')}>
+              {PHASE_SEGMENTS.map(st => {
+                const enabled = st === 'break' || (st === 'settle' ? hasSettleStage : hasMidStage);
+                const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
+                const active = activeSeg === st;
+                const SegIcon = PHASE_ICON[st];
+                const segLabel = t(`phase_${st}`);
+                return (
+                  <div key={st} data-testid={`phase-seg-${st}`} role="button"
+                    aria-pressed={active} aria-disabled={!enabled} aria-label={segLabel} title={segLabel}
+                    onClick={enabled ? () => pinPhase(st) : undefined}
+                    style={{
+                      flex: active ? '1 1 0' : '0 0 48px', minWidth: 48, minHeight: 44,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                      borderRadius: RADIUS.md, cursor: enabled ? 'pointer' : 'default', overflow: 'hidden',
+                      transition: 'flex-grow .22s ease, flex-basis .22s ease, background .15s ease, border-color .15s ease',
+                      WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                      background: active ? COLORS.surfaceLight : COLORS.surface,
+                      color: active ? COLORS.accent : COLORS.textDim,
+                      border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                      opacity: enabled ? 1 : 0.4,
+                    }}>
+                    <SegIcon size={18} strokeWidth={active ? 2.4 : 2} style={{ flexShrink: 0 }} aria-hidden="true" />
+                    <span data-testid={`phase-seg-label-${st}`} style={{
+                      whiteSpace: 'nowrap', overflow: 'hidden',
+                      maxWidth: active ? 120 : 0, opacity: active ? 1 : 0,
+                      transition: 'max-width .22s ease, opacity .18s ease',
+                    }}>{segLabel}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {/* Per-team layer toggles (§ 40) — independent positions/shots for each team */}
           <PerTeamHeatmapToggle
@@ -2054,7 +2147,14 @@ export default function MatchPage() {
           />
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
-            <SectionLabel>Points ({points.length})</SectionLabel>
+            {/* §B B6 — preview discoverability: the section label carries the
+                tap-score hint (muted, non-uppercase — informational only). */}
+            <SectionLabel>
+              Points ({points.length})
+              <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 600, color: COLORS.textMuted }}>
+                {' '}· {t('review_preview_hint')}
+              </span>
+            </SectionLabel>
             {/* Inline Breaks/Shots 2-bar mini-summary removed — superseded
                 by CompletenessCard above (5 metrics + composite, role-gated
                 to scout/coach/admin). § 27 — one canonical surface, not
@@ -2127,6 +2227,7 @@ export default function MatchPage() {
                     </div>
                     {/* Score center — tap to toggle preview */}
                     <div
+                      data-testid={`point-preview-${pt.id}`}
                       onClick={(e) => { e.stopPropagation(); setPreviewPointId(isPreviewing ? null : pt.id); }}
                       style={{
                         flex: '0 0 auto', minWidth: 68,
@@ -2142,8 +2243,12 @@ export default function MatchPage() {
                         fontFamily: FONT, fontSize: 15, fontWeight: 700,
                         color: isPreviewing ? COLORS.accent : COLORS.textSubtle,
                         lineHeight: 1,
+                        display: 'flex', alignItems: 'center', gap: 3,
                       }}>
-                        {prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}
+                        {/* §B B6 — 👁 marks the ACTIVE preview (amber = active
+                            state, §27); inherits the previewing colour. */}
+                        {isPreviewing && <span aria-hidden="true" style={{ fontSize: 11 }}>👁</span>}
+                        <span>{prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}</span>
                       </div>
                       {totalElim > 0 && (
                         <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 3 }}>
@@ -2208,14 +2313,19 @@ export default function MatchPage() {
         </div>
     );
 
-    const stickyActionsEl = (!isViewer && (!isClosed || isLocked || isLockReleased)) && (
+    // §B B6 — in the LANDSCAPE rail "End match" moves to the ⋮ ActionSheet
+    // (destructive + rare — it doesn't earn permanent 280px-rail residency;
+    // the matchMenu entry already exists). Portrait keeps the inline button.
+    // Unlock/relock stay inline in both (they gate the whole edit mode).
+    const renderStickyActions = (inRail) => (!isViewer && (!isClosed || isLocked || isLockReleased)) && (
           <div style={{
             position: 'sticky', bottom: 0, zIndex: 20,
             padding: `${SPACE.md}px ${R.layout.padding}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
             background: `linear-gradient(to bottom, transparent, ${COLORS.bg} 30%)`,
           }}>
-            {!isClosed && (
+            {!isClosed && !inRail && (
               <div
+                data-testid="end-match-inline"
                 onClick={() => closeMatchConfirm.ask(true)}
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#ef444418'; e.currentTarget.style.borderColor = '#ef444450'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = '#ef444408'; e.currentTarget.style.borderColor = '#ef444425'; }}
@@ -2387,7 +2497,7 @@ export default function MatchPage() {
             railMin={200}
             header={reviewHeaderEl}
             artifact={reviewHeatmapEl}
-            rail={<>{scoreboardEl}{reviewColumnEl}{stickyActionsEl}</>}
+            rail={<>{renderScoreboard(true)}{reviewColumnEl}{renderStickyActions(true)}</>}
             collapsed={{ tabs: [], count: null, onBack: () => navigate(backToParent) }}
           />
           {reviewModalsEl}
@@ -2399,9 +2509,9 @@ export default function MatchPage() {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {reviewHeaderEl}
-        {scoreboardEl}
+        {renderScoreboard(false)}
         {reviewColumnEl}
-        {stickyActionsEl}
+        {renderStickyActions(false)}
         {reviewModalsEl}
       </div>
     );

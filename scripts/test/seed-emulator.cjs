@@ -111,6 +111,8 @@ const MATCH_STATS = 'mat-stats';
 const MATCH_OFFLINE = 'mat-offline';
 const MATCH_PSTATS = 'mat-pstats';   // PlayerStats landscape-hero e2e (Stage 4.1)
 const TRN_PSTATS = 'trn-pstats';     // dedicated tournament on the base layout (with fieldImage)
+const TRN_PHASE = 'trn-phase';       // §B phase-view fixture (timeline-bearing points)
+const MATCH_PHASE = 'mat-phase';
 // A 160×100 (16:10) SVG field image — non-degenerate aspect so BaseCanvas's
 // fit-sizing renders a real <canvas> (the PlayerStats breakout-heatmap HERO).
 const DEMO_FIELD_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='100'%3E%3Crect width='160' height='100' fill='%230a1410'/%3E%3C/svg%3E";
@@ -320,6 +322,84 @@ async function main() {
       eliminations: [false, false, false, false, false],
       runners: [false, false, false, false, false],
       fieldSide: 'left',
+    },
+  });
+
+  // Phase-view fixture (§B 2026-06-12) — DEDICATED tournament on the base
+  // layout (fieldImage → landscape hero renders) with TWO points:
+  //   pt-ph1 — full point.timeline[] (settle + mid keyframes, moved positions,
+  //            per-stage quickShots) → phases playable, direction arrows render.
+  //   pt-ph2 — keyframe #0 only (no timeline) → previewing it must DISABLE the
+  //            Settle/Mid segments + play (scope rule B2).
+  // Isolated: no other spec reads TRN_PHASE.
+  const PH_SLOTS_H = ['ph-h1', 'ph-h2', 'ph-h3', 'ph-h4', 'ph-h5'];
+  const PH_SLOTS_A = ['ph-a1', 'ph-a2', 'ph-a3', 'ph-a4', 'ph-a5'];
+  const E5F = [false, false, false, false, false];
+  const E5N = [null, null, null, null, null];
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PHASE}`), {
+    name: 'Phase Cup', eventType: 'tournament', league: 'NXL', year: 2026,
+    division: 'PRO', status: 'active', layoutId: BASE_LAYOUT, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PHASE}/scouted/${TEAM_A}`), {
+    teamId: TEAM_A, name: 'Team Alpha', league: 'NXL', division: 'PRO',
+    roster: rosterA.map(p => p.id), createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PHASE}/matches/${MATCH_PHASE}`), {
+    teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PHASE}/matches/${MATCH_PHASE}/points/pt-ph1`), {
+    order: now, createdAt: now, fieldSide: 'left', outcome: 'win_a', status: 'scouted',
+    homeData: {
+      players: [{ x: 0.25, y: 0.3 }, { x: 0.2, y: 0.7 }, null, null, null],
+      assignments: [rosterA[0].id, rosterA[1].id, null, null, null],
+      quickShots: { 0: ['snake'] },
+      bumpStops: E5N, eliminations: E5F, runners: E5F,
+      slotIds: PH_SLOTS_H, fieldSide: 'left',
+    },
+    awayData: {
+      players: [{ x: 0.75, y: 0.4 }, null, null, null, null],
+      assignments: E5N,
+      quickShots: { 0: ['dorito'] },
+      bumpStops: E5N, eliminations: E5F, runners: E5F,
+      slotIds: PH_SLOTS_A, fieldSide: 'right',
+    },
+    timeline: [
+      {
+        seq: 1, stage: 'settle', annotations: {},
+        home: {
+          players: [{ x: 0.4, y: 0.35 }, { x: 0.3, y: 0.65 }, null, null, null],
+          assignments: [rosterA[0].id, rosterA[1].id, null, null, null],
+          quickShots: { 0: ['center'], 1: ['snake'] },
+          bumpStops: E5N, eliminations: E5F, runners: E5F,
+          slotIds: PH_SLOTS_H,
+        },
+        away: {
+          players: [{ x: 0.6, y: 0.45 }, null, null, null, null],
+          assignments: E5N,
+          quickShots: { 0: ['snake'] },
+          bumpStops: E5N, eliminations: E5F, runners: E5F,
+          slotIds: PH_SLOTS_A,
+        },
+      },
+      {
+        seq: 2, stage: 'mid', annotations: {},
+        home: {
+          players: [{ x: 0.5, y: 0.5 }, { x: 0.35, y: 0.6 }, null, null, null],
+          assignments: [rosterA[0].id, rosterA[1].id, null, null, null],
+          quickShots: {},
+          bumpStops: E5N, eliminations: [false, true, false, false, false], runners: E5F,
+          slotIds: PH_SLOTS_H,
+        },
+        away: null,
+      },
+    ],
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PHASE}/matches/${MATCH_PHASE}/points/pt-ph2`), {
+    order: now + 1, createdAt: now, fieldSide: 'left', outcome: 'win_b', status: 'scouted',
+    homeData: {
+      players: [{ x: 0.3, y: 0.5 }, null, null, null, null],
+      assignments: [rosterA[0].id, null, null, null, null],
+      bumpStops: E5N, eliminations: E5F, runners: E5F, fieldSide: 'left',
     },
   });
 
