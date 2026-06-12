@@ -9,6 +9,7 @@ import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
+import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
@@ -1828,9 +1829,15 @@ export default function MatchPage() {
       if (!scoutedTeamId) return;
       navigate(`${reviewUrl}?scout=${scoutedTeamId}&point=${pointId}`);
     };
-    return (
-      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        {/* Match header — centered muted title per design spec §21 */}
+    // §116 Stage 4.3 — in LANDSCAPE the review heatmap is promoted to the HERO
+    // (CanvasRailLayout) and the scoreboard + points column move to the rail BY
+    // REFERENCE; portrait is unchanged. The scout EDITOR view is untouched (A4
+    // verified: review is its own return — no shared layout code disturbed).
+    const landscape = device.isLandscape;
+    const heroAvailable = !!field?.fieldImage;
+
+    // Match header — centered muted title per design spec §21
+    const reviewHeaderEl = (
         <PageHeader
           back={{ to: () => navigate(backToParent) }}
           title={`${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
@@ -1846,7 +1853,10 @@ export default function MatchPage() {
           }
           action={!isLocked && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
         />
-        {/* Scoreboard card — elevated surface with split-tap zones */}
+    );
+
+    // Scoreboard card — elevated surface with split-tap zones
+    const scoreboardEl = (
         <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0` }}>
           <div style={{
             display: 'flex',
@@ -1929,9 +1939,11 @@ export default function MatchPage() {
             </div>
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {/* Heatmap — BOTH teams in review mode (observe); scout's team otherwise */}
-          <div>
+    );
+
+    // Review heatmap — BOTH teams (observe); scout's team otherwise. Defined
+    // ONCE: rendered inline in portrait, promoted to the landscape HERO (§116).
+    const reviewHeatmapEl = (
               <HeatmapCanvas fieldImage={field.fieldImage} points={(() => {
                 const mySideKey = scoutingSide === 'away' ? 'B' : 'A';
                 const showAll = scoutingSide === 'observe' || heatmapSide === 'all';
@@ -1971,7 +1983,14 @@ export default function MatchPage() {
                 visibility={{ A: hmVisibility.teamA, B: hmVisibility.teamB }}
                 replay={replayOn && canReplay}
                 discoLine={0} zeekerLine={0} />
-          </div>
+    );
+
+    const reviewColumnEl = (
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {/* Heatmap inline in portrait only — in landscape it's the HERO. */}
+          {!(landscape && heroAvailable) && (
+            <div>{reviewHeatmapEl}</div>
+          )}
           {/* § Stage 6-lite — global Replay toggle, sibling ABOVE the per-team
               capsule row (replay is global, not per-team). Amber only while
               active (§ 27 color discipline); disabled with no Settle/Mid data. */}
@@ -2153,7 +2172,9 @@ export default function MatchPage() {
             return <CompletenessCard points={points} />;
           })()}
         </div>
-        {!isViewer && (!isClosed || isLocked || isLockReleased) && (
+    );
+
+    const stickyActionsEl = (!isViewer && (!isClosed || isLocked || isLockReleased)) && (
           <div style={{
             position: 'sticky', bottom: 0, zIndex: 20,
             padding: `${SPACE.md}px ${R.layout.padding}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
@@ -2215,8 +2236,10 @@ export default function MatchPage() {
               </div>
             )}
           </div>
-        )}
+    );
 
+    const reviewModalsEl = (
+      <>
       <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
         { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
@@ -2315,6 +2338,37 @@ export default function MatchPage() {
       ]} />
       {notesModalEl}
       {selfLogFabEl}
+      </>
+    );
+
+    // §116 Stage 4.3 — LANDSCAPE (field image available): the review heatmap is
+    // the HERO; scoreboard + points column + sticky actions are the rail BY
+    // REFERENCE. Collapses to the §116 strip on cramped tablet-landscape.
+    if (landscape && heroAvailable) {
+      return (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
+          <CanvasRailLayout
+            isLandscape
+            aspect={16 / 10}
+            railMin={200}
+            header={reviewHeaderEl}
+            artifact={reviewHeatmapEl}
+            rail={<>{scoreboardEl}{reviewColumnEl}{stickyActionsEl}</>}
+            collapsed={{ tabs: [], count: null, onBack: () => navigate(backToParent) }}
+          />
+          {reviewModalsEl}
+        </div>
+      );
+    }
+
+    // PORTRAIT (and landscape without a field image) — the original stacked layout.
+    return (
+      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+        {reviewHeaderEl}
+        {scoreboardEl}
+        {reviewColumnEl}
+        {stickyActionsEl}
+        {reviewModalsEl}
       </div>
     );
   }
