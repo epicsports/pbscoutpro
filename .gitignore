@@ -16,7 +16,7 @@ outputs/
 # Playwright
 tests/results/
 tests/report/
-tests/results-e2e/
+tests/results-*/
 tests/report-e2e/
 tests/screenshots/
 test-results/

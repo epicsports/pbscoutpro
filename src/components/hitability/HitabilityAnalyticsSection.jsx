@@ -41,8 +41,9 @@ export default function HitabilityAnalyticsSection({ layoutId, layout }) {
   }, [hits]);
 
   const pColor = (pid) => config?.players.find(p => p.id === pid)?.color;
-  const pLabel = (pid) => config?.players.find(p => p.id === pid)?.label || '?';
-  const tLabel = (tid) => config?.targets.find(x => x.id === tid)?.label || '?';
+  // STEP 2 alias-aware: a marker's optional `name` wins over its default label.
+  const pLabel = (pid) => { const p = config?.players.find(x => x.id === pid); return p?.name || p?.label || '?'; };
+  const tLabel = (tid) => { const x = config?.targets.find(y => y.id === tid); return x?.name || x?.label || '?'; };
 
   const hasData = !!(config && ((config.links || []).length || hits.length));
 

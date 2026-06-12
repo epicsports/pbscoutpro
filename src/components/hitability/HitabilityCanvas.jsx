@@ -44,6 +44,7 @@ export default function HitabilityCanvas({
   hitsByTarget = {},   // { targetId: count } — tracking badge (STAGE 2+)
   weightTargets = false, // STAGE 3 analytics — scale target size by cumulative count
   onTap,               // (normX, normY, { players:[ids], targets:[ids], conns:[{t,p}] })
+  onLongPress,         // (hits) — config only; fires on a ≥500ms hold over a MARKER
   onDragMarker,        // (kind 'p'|'t', id, normX, normY)
   onDragEnd,           // ()
   maxHeight = 520,
@@ -55,6 +56,8 @@ export default function HitabilityCanvas({
   const [aspect, setAspect] = useState(16 / 10);
   const [size, setSize] = useState({ w: 0, h: 0 }); // CSS px
   const down = useRef(null);
+  const lpTimer = useRef(null);
+  const clearLp = () => { if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; } };
 
   const ownersOf = useCallback(
     (tid) => links.filter(l => l.targetId === tid).map(l => l.playerId),
@@ -180,6 +183,7 @@ export default function HitabilityCanvas({
         ctx.fillStyle = '#ffffff'; ctx.font = `bold 9px ${getFont()}`;
         ctx.fillText(String(cnt), tx + tr + 1, ty - tr + 0.5);
       }
+      if (t.name) drawAlias(ctx, t.name, tx, ty + tr + 4); // STEP 2 alias (render-everywhere)
     }
 
     // Position markers (anonymous shooting spots — NOT players)
@@ -194,6 +198,7 @@ export default function HitabilityCanvas({
       ctx.fillStyle = '#fff'; ctx.font = `bold 9px ${getFont()}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText(p.label, px, py + 0.5);
+      if (p.name) drawAlias(ctx, p.name, px, py + 14); // STEP 2 alias (render-everywhere)
     }
 
     // § 115 — Summary intensity legend (1 → max gradient of the ACTIVE ramp),
@@ -236,7 +241,7 @@ export default function HitabilityCanvas({
 
   const handleDown = (e) => {
     const v = relPos(e);
-    down.current = { ...v, moved: false, drag: null };
+    down.current = { ...v, moved: false, drag: null, longFired: false };
     if (mode !== 'config') return;
     const px = v.nx * v.w, py = v.ny * v.h;
     const ps = players.filter(p => dist(px, py, p.x * v.w, p.y * v.h) <= DRAG_R);
@@ -244,22 +249,41 @@ export default function HitabilityCanvas({
     if (ps.length === 1 && ts.length === 0) down.current.drag = { k: 'p', id: ps[0].id };
     else if (ts.length === 1 && ps.length === 0) down.current.drag = { k: 't', id: ts[0].id };
     if (down.current.drag) { try { canvasRef.current.setPointerCapture(e.pointerId); } catch { /* noop */ } }
+    // Long-press → marker editor (STEP 2, decision (b)-extended): armed only over
+    // a MARKER; movement (drag) or lift cancels. Plain tap keeps the linking flow.
+    if (onLongPress) {
+      const hh = collectHits(v.nx, v.ny, v.w, v.h);
+      if (hh.players.length || hh.targets.length) {
+        clearLp();
+        lpTimer.current = setTimeout(() => {
+          lpTimer.current = null;
+          const d = down.current;
+          if (!d || d.moved) return;
+          d.longFired = true;
+          onLongPress(hh);
+        }, 500);
+      }
+    }
   };
   const handleMove = (e) => {
     const d = down.current; if (!d) return;
     const v = relPos(e);
-    if (Math.hypot(v.cx - d.cx, v.cy - d.cy) > 5) d.moved = true;
+    if (Math.hypot(v.cx - d.cx, v.cy - d.cy) > 5) { d.moved = true; clearLp(); }
+    if (d.longFired) return; // editor opened from this gesture — no drag
     if (d.moved && d.drag && mode === 'config') {
       onDragMarker?.(d.drag.k, d.drag.id, v.nx, v.ny);
     }
   };
   const handleUp = (e) => {
+    clearLp();
     const d = down.current; down.current = null; if (!d) return;
+    if (d.longFired) return; // long-press consumed the gesture
     const v = relPos(e);
     const hh = collectHits(v.nx, v.ny, v.w, v.h);
     if (d.moved) { if (d.drag) onDragEnd?.(); return; }
     onTap?.(v.nx, v.ny, hh);
   };
+  const handleCancel = () => { clearLp(); down.current = null; };
 
   return (
     <div ref={wrapRef} style={{
@@ -270,6 +294,7 @@ export default function HitabilityCanvas({
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
+        onPointerCancel={handleCancel}
         style={{
           width: size.w ? `${size.w}px` : '100%',
           height: size.h ? `${size.h}px` : 'auto',
@@ -284,4 +309,15 @@ export default function HitabilityCanvas({
 
 function getFont() {
   return "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+}
+
+// Alias label under a marker — 9px/600 (§27 micro floor) with a dark halo so it
+// stays legible over the field photo.
+function drawAlias(ctx, text, x, y) {
+  ctx.font = `600 9px ${getFont()}`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(10,14,23,0.85)';
+  ctx.strokeText(text, x, y);
+  ctx.fillStyle = '#cbd5e1';
+  ctx.fillText(text, x, y);
 }

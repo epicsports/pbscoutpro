@@ -8,7 +8,7 @@ import * as ds from '../services/dataService';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
 import HitBreakdownList from '../components/hitability/HitBreakdownList';
-import { ActionSheet, ConfirmModal } from '../components/ui';
+import { ActionSheet, ConfirmModal, Modal, Btn, Input, FormField } from '../components/ui';
 import { Settings, Crosshair, BarChart3 } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
@@ -56,6 +56,7 @@ export default function HitabilityPage() {
   const [hits, setHits] = useState([]);
   const [saveError, setSaveError] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // { kind:'p'|'t', id, label, count } | null
+  const [editor, setEditor] = useState(null); // { kind:'p'|'t', id } | null — STEP 2 marker popup
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
@@ -185,12 +186,19 @@ export default function HitabilityPage() {
   const pColor = (pid) => configRef.current?.players.find(p => p.id === pid)?.color;
   const pLabel = (pid) => configRef.current?.players.find(p => p.id === pid)?.label || '?';
   const tLabel = (tid) => configRef.current?.targets.find(x => x.id === tid)?.label || '?';
-  const playerNode = (pid) => rowLabel(<>{dot(pColor(pid))}{t('hitability_player_n', pLabel(pid))}</>);
+  // STEP 2 alias model: optional `name` on a marker wins over the templated
+  // default everywhere a marker is displayed (rail rows, choosers, hit list,
+  // confirm copy, canvas — render-everywhere).
+  const pAlias = (pid) => configRef.current?.players.find(p => p.id === pid)?.name || '';
+  const tAlias = (tid) => configRef.current?.targets.find(x => x.id === tid)?.name || '';
+  const pName = (pid) => pAlias(pid) || t('hitability_player_n', pLabel(pid));
+  const tName = (tid) => tAlias(tid) || t('hitability_target_n', tLabel(tid));
+  const playerNode = (pid) => rowLabel(<>{dot(pColor(pid))}{pName(pid)}</>);
   const targetNode = (tid) => {
     const owner = ownersOf(tid)[0];
-    return rowLabel(<>{dot(owner ? pColor(owner) : COLORS.textMuted)}{t('hitability_target_n', tLabel(tid))}</>);
+    return rowLabel(<>{dot(owner ? pColor(owner) : COLORS.textMuted)}{tName(tid)}</>);
   };
-  const connNode = (c) => rowLabel(<>{dot(pColor(c.p))}{`${t('hitability_player_n', pLabel(c.p))} → ${t('hitability_target_n', tLabel(c.t))}`}</>);
+  const connNode = (c) => rowLabel(<>{dot(pColor(c.p))}{`${pName(c.p)} → ${tName(c.t)}`}</>);
 
   // ── Marker delete (positions + targets) — §C, Jacek 2026-06-11. Cascade:
   // removing a marker ALWAYS drops its connections; if recorded hits reference it,
@@ -212,17 +220,50 @@ export default function HitabilityPage() {
   const requestDelPlayer = (pid) => {
     const count = hitsForPlayer(pid).length;
     if (count === 0) { doDelPlayer(pid); return; }
-    setConfirmDel({ kind: 'p', id: pid, label: pLabel(pid), count });
+    setConfirmDel({ kind: 'p', id: pid, label: pName(pid), count });
   };
   const requestDelTarget = (tid) => {
     const count = hitsForTarget(tid).length;
     if (count === 0) { doDelTarget(tid); return; }
-    setConfirmDel({ kind: 't', id: tid, label: tLabel(tid), count });
+    setConfirmDel({ kind: 't', id: tid, label: tName(tid), count });
   };
   const runConfirmDel = () => {
     if (!confirmDel) return;
     if (confirmDel.kind === 'p') doDelPlayer(confirmDel.id); else doDelTarget(confirmDel.id);
     setConfirmDel(null);
+  };
+
+  // ── Marker editor popup (STEP 2, Jacek decision (b)-extended 2026-06-12):
+  // opens from a LONG-PRESS on a canvas marker OR a tap on its rail list row.
+  // A plain canvas tap keeps the linking flow untouched. Editor = alias name
+  // (+ pair colour on positions, ratified semantics) + delete (existing cascade).
+  const openEditor = (kind, id) => { setLinking(null); setEditor({ kind, id }); };
+  const configLongPress = useCallback((h) => {
+    if (h.players.length === 1) openEditor('p', h.players[0]);
+    else if (h.players.length > 1) setChooser({ title: t('hitability_choose_player'), options: h.players.map(pid => ({ label: playerNode(pid), onPick: () => openEditor('p', pid) })) });
+    else if (h.targets.length === 1) openEditor('t', h.targets[0]);
+    else if (h.targets.length > 1) setChooser({ title: t('hitability_choose_target'), options: h.targets.map(tid => ({ label: targetNode(tid), onPick: () => openEditor('t', tid) })) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
+  const saveEditor = ({ name, color }) => {
+    if (!editor) return;
+    const cfg = configRef.current;
+    const nm = (name || '').trim();
+    // Empty alias = revert to the default label → drop the key (whole-array
+    // write; never put `undefined` inside a Firestore array).
+    const withAlias = (obj) => { const { name: _drop, ...rest } = obj; return nm ? { ...rest, name: nm } : rest; };
+    if (editor.kind === 'p') {
+      applyConfig({ ...cfg, players: cfg.players.map(p => (p.id === editor.id ? { ...withAlias(p), ...(color ? { color } : {}) } : p)) });
+    } else {
+      applyConfig({ ...cfg, targets: cfg.targets.map(x => (x.id === editor.id ? withAlias(x) : x)) });
+    }
+    setEditor(null);
+  };
+  const deleteFromEditor = () => {
+    if (!editor) return;
+    const { kind, id } = editor;
+    setEditor(null);
+    if (kind === 'p') requestDelPlayer(id); else requestDelTarget(id);
   };
 
   const configTap = useCallback((nx, ny, h) => {
@@ -291,6 +332,7 @@ export default function HitabilityPage() {
       hitsByTarget={mode === 'config' ? {} : hitsByTarget}
       weightTargets={mode === 'sum'}
       onTap={onTap}
+      onLongPress={mode === 'config' ? configLongPress : undefined}
       onDragMarker={moveMarker}
       onDragEnd={persistNow}
       maxHeight={maxH}
@@ -320,7 +362,9 @@ export default function HitabilityPage() {
   const hintEl = (
     <div style={{ padding: '8px 14px calc(10px + env(safe-area-inset-bottom, 0px))', flexShrink: 0, fontFamily: FONT, fontSize: 12, color: COLORS.textDim, lineHeight: 1.5 }}>
       {mode === 'config'
-        ? (linking ? t('hitability_hint_linking', t('hitability_player_n', config.players.find(p => p.id === linking)?.label || '')) : t('hitability_hint_config'))
+        ? (linking
+          ? t('hitability_hint_linking', pName(linking))
+          : <>{t('hitability_hint_config')}<br />{t('hitability_hint_edit')}</>)
         : mode === 'track' ? t('hitability_hint_track') : ''}
     </div>
   );
@@ -375,12 +419,13 @@ export default function HitabilityPage() {
               })}
             </div>
             {mode === 'config' && (
-              <ConfigRail config={config} pColor={pColor} pLabel={pLabel} tLabel={tLabel}
+              <ConfigRail config={config} pColor={pColor} pName={pName} tName={tName}
                 onDelConn={(l) => doDelConn({ p: l.playerId, t: l.targetId })}
-                onDelPlayer={requestDelPlayer} onDelTarget={requestDelTarget} t={t} />
+                onDelPlayer={requestDelPlayer} onDelTarget={requestDelTarget}
+                onEditPlayer={(pid) => openEditor('p', pid)} onEditTarget={(tid) => openEditor('t', tid)} t={t} />
             )}
             {mode === 'track' && (
-              <HitList hits={sortedHits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} onDelete={delHit} t={t} />
+              <HitList hits={sortedHits} pColor={pColor} pName={pName} tName={tName} onDelete={delHit} t={t} />
             )}
             {mode === 'sum' && (
               <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
@@ -388,7 +433,7 @@ export default function HitabilityPage() {
                   {t('hitability_sum_pairs')}
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-                  <HitBreakdownList hits={hits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} t={t} emptyText={t('hitability_sum_empty')} />
+                  <HitBreakdownList hits={hits} pColor={pColor} pLabel={(pid) => pAlias(pid) || pLabel(pid)} tLabel={(tid) => tAlias(tid) || tLabel(tid)} t={t} emptyText={t('hitability_sum_empty')} />
                 </div>
                 <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textDim, paddingTop: 8 }}>
                   {t('hitability_sum_total', hits.length)}
@@ -418,6 +463,20 @@ export default function HitabilityPage() {
 
       <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
 
+      {editor && (
+        <MarkerEditor
+          key={editor.id}
+          kind={editor.kind}
+          alias={editor.kind === 'p' ? pAlias(editor.id) : tAlias(editor.id)}
+          color={editor.kind === 'p' ? pColor(editor.id) : null}
+          defaultName={editor.kind === 'p' ? t('hitability_player_n', pLabel(editor.id)) : t('hitability_target_n', tLabel(editor.id))}
+          onSave={saveEditor}
+          onDelete={deleteFromEditor}
+          onClose={() => setEditor(null)}
+          t={t}
+        />
+      )}
+
       <ConfirmModal
         open={!!confirmDel}
         onClose={() => setConfirmDel(null)}
@@ -433,7 +492,46 @@ export default function HitabilityPage() {
   );
 }
 
-function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
+// Marker editor popup (STEP 2) — alias name (positions + targets), pair colour
+// (positions only — the ratified semantics: the position's colour paints the
+// whole pair, targets inherit via their owner's ring), delete (routes to the
+// existing cascade + confirm). One accent CTA (Save); Delete is danger.
+function MarkerEditor({ kind, alias, color, defaultName, onSave, onDelete, onClose, t }) {
+  const [name, setName] = useState(alias);
+  const [c, setC] = useState(color);
+  return (
+    <Modal open onClose={onClose} title={alias || defaultName}
+      footer={<>
+        <Btn variant="danger" onClick={onDelete}>{t('delete')}</Btn>
+        <Btn variant="accent" onClick={() => onSave({ name, color: c })}>{t('save')}</Btn>
+      </>}>
+      <div data-testid="hit-editor">
+        <FormField label={t('hitability_name_label')}>
+          <Input value={name} onChange={setName} placeholder={defaultName} />
+        </FormField>
+        {kind === 'p' && (
+          <FormField label={t('hitability_color_label')}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+              {COLORS_ZONE_PALETTE.map(col => (
+                <div key={col} onClick={() => setC(col)} role="button" aria-label={col} data-testid={`hit-color-${col.replace('#', '')}`} style={{
+                  width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                }}>
+                  <span style={{
+                    width: 28, height: 28, borderRadius: '50%', background: col, boxSizing: 'border-box',
+                    border: c === col ? '3px solid #fff' : '3px solid transparent',
+                  }} />
+                </div>
+              ))}
+            </div>
+          </FormField>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+function HitList({ hits, pColor, pName, tName, onDelete, t }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 4 }}>
       <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
@@ -447,7 +545,7 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
           <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
             <span style={{ width: 10, height: 10, borderRadius: '50%', background: (h.playerId ? pColor(h.playerId) : null) || COLORS.textMuted, flexShrink: 0 }} />
             <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {(h.playerId ? t('hitability_player_n', pLabel(h.playerId)) : '—')} → {t('hitability_target_n', tLabel(h.targetId))}
+              {(h.playerId ? pName(h.playerId) : '—')} → {tName(h.targetId)}
             </span>
             <div onClick={() => onDelete(h.id)} role="button" aria-label="delete" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
@@ -459,8 +557,10 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
 
 
 // Config rail — connections (deletable) + a legend of positions & targets. The
-// spatial editing still happens on the canvas; the rail mirrors + manages the links.
-function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, onDelPlayer, onDelTarget, t }) {
+// spatial editing still happens on the canvas; the rail mirrors + manages the
+// links. Marker rows are TAPPABLE → editor popup (STEP 2 discoverable path);
+// the × keeps the §C delete idiom (stopPropagation so it doesn't open the editor).
+function ConfigRail({ config, pColor, pName, tName, onDelConn, onDelPlayer, onDelTarget, onEditPlayer, onEditTarget, t }) {
   const links = config.links || [];
   const dot = (c, sz = 10) => <span style={{ width: sz, height: sz, borderRadius: '50%', background: c, flexShrink: 0, display: 'inline-block' }} />;
   const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 };
@@ -480,31 +580,31 @@ function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, onDelPlayer, on
           <div key={`${l.playerId}_${l.targetId}_${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 }}>
             {dot(pColor(l.playerId) || COLORS.textMuted)}
             <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {t('hitability_player_n', pLabel(l.playerId))} → {t('hitability_target_n', tLabel(l.targetId))}
+              {pName(l.playerId)} → {tName(l.targetId)}
             </span>
             <div onClick={() => onDelConn(l)} role="button" aria-label="delete" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
         ))}
-        {/* Positions — deletable rows (§C). Same × idiom as the connection rows;
-            delete cascades through the parent (drops links, confirms if hits). */}
+        {/* Positions — tappable rows → editor popup (STEP 2); × deletes (§C idiom,
+            cascades through the parent: drops links, confirms if hits). */}
         <div style={subhead}>{t('hitability_legend_positions')}</div>
         {(config.players || []).length === 0 && (
           <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: 6 }}>{t('hitability_hint_config')}</div>
         )}
         {(config.players || []).map(p => (
-          <div key={p.id} style={ROW}>
+          <div key={p.id} style={{ ...ROW, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }} role="button" data-testid={`hit-row-pos-${p.id}`} onClick={() => onEditPlayer && onEditPlayer(p.id)}>
             {dot(p.color || COLORS.textMuted)}
-            <span style={ROW_LABEL}>{t('hitability_player_n', p.label)}</span>
-            <div onClick={() => onDelPlayer && onDelPlayer(p.id)} role="button" data-testid={`hit-del-pos-${p.id}`} aria-label={t('hitability_del_pos', p.label)} style={DEL_BTN}>×</div>
+            <span style={ROW_LABEL}>{pName(p.id)}</span>
+            <div onClick={(e) => { e.stopPropagation(); onDelPlayer && onDelPlayer(p.id); }} role="button" data-testid={`hit-del-pos-${p.id}`} aria-label={t('hitability_del_pos', p.label)} style={DEL_BTN}>×</div>
           </div>
         ))}
-        {/* Targets — deletable rows (§C). */}
+        {/* Targets — tappable rows → editor popup (STEP 2); × deletes (§C). */}
         <div style={subhead}>{t('hitability_legend_targets')}</div>
         {(config.targets || []).map(tg => (
-          <div key={tg.id} style={ROW}>
+          <div key={tg.id} style={{ ...ROW, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }} role="button" data-testid={`hit-row-target-${tg.id}`} onClick={() => onEditTarget && onEditTarget(tg.id)}>
             {dot(COLORS.textMuted)}
-            <span style={ROW_LABEL}>{t('hitability_target_n', tg.label)}</span>
-            <div onClick={() => onDelTarget && onDelTarget(tg.id)} role="button" data-testid={`hit-del-target-${tg.id}`} aria-label={t('hitability_del_target', tg.label)} style={DEL_BTN}>×</div>
+            <span style={ROW_LABEL}>{tName(tg.id)}</span>
+            <div onClick={(e) => { e.stopPropagation(); onDelTarget && onDelTarget(tg.id); }} role="button" data-testid={`hit-del-target-${tg.id}`} aria-label={t('hitability_del_target', tg.label)} style={DEL_BTN}>×</div>
           </div>
         ))}
       </div>
