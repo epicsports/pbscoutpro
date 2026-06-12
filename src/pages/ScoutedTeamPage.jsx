@@ -63,7 +63,7 @@ const InsightCard = ({ type, text, detail }) => {
     <div style={{
       margin: '0 16px 8px',
       background: COLORS.surfaceDark,
-      border: '1px solid #1a2234',
+      border: `1px solid ${COLORS.surfaceLight}`,
       borderRadius: 12,
       padding: '12px 14px',
       display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -1127,7 +1127,7 @@ export default function ScoutedTeamPage() {
         {!heatmapLoading && heatmapPoints.length === 0 && teamMatches.length > 0 && (
           <div style={{
             margin: '24px 16px', padding: '24px 16px', textAlign: 'center',
-            background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12,
+            background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12,
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
             <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No scouted data yet</div>
@@ -1140,7 +1140,7 @@ export default function ScoutedTeamPage() {
         {!heatmapLoading && heatmapPoints.length === 0 && teamMatches.length === 0 && (
           <div style={{
             margin: '24px 16px', padding: '24px 16px', textAlign: 'center',
-            background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12,
+            background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12,
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🏟</div>
             <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No matches yet</div>
@@ -1246,12 +1246,12 @@ export default function ScoutedTeamPage() {
           return (
             <>
               <SectionHeader icon={Footprints}>{t('section_breakouts')}</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers — § 60.4 added Played + In pts */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '8px 14px', background: COLORS.surface,
-                  borderBottom: '1px solid #1a2234',
+                  borderBottom: `1px solid ${COLORS.surfaceLight}`,
                 }}>
                   <div style={{ flex: 1 }} />
                   <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
@@ -1266,7 +1266,7 @@ export default function ScoutedTeamPage() {
                     <div key={b.name} style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '10px 14px',
-                      borderBottom: i < rows.length - 1 ? '1px solid #111827' : 'none',
+                      borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
                     }}>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <SideTag side={b.side || 'center'} />
@@ -1340,12 +1340,12 @@ export default function ScoutedTeamPage() {
                   </span>
                 </div>
               )}
-              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers */}
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '8px 14px', background: COLORS.surface,
-                  borderBottom: '1px solid #1a2234',
+                  borderBottom: `1px solid ${COLORS.surfaceLight}`,
                 }}>
                   <div style={{ flex: 1 }} />
                   <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_strzela')}</div>
@@ -1358,7 +1358,7 @@ export default function ScoutedTeamPage() {
                     <div key={r.key} style={{
                       display: 'flex', alignItems: 'center', gap: 12,
                       padding: '10px 14px',
-                      borderBottom: i < rows.length - 1 ? '1px solid #111827' : 'none',
+                      borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
                     }}>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <SideTag side={r.side} />
@@ -1440,7 +1440,7 @@ export default function ScoutedTeamPage() {
             <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
           );
           const headerRow = (phaseLabel) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: COLORS.surface, borderBottom: '1px solid #1a2234' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.surfaceLight}` }}>
               <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{phaseLabel}</div>
               {colHeader(t('col_strzela'))}
               {colHeader(t('col_callout_players'))}
@@ -1448,7 +1448,7 @@ export default function ScoutedTeamPage() {
             </div>
           );
           const zoneRow = (r, chips, isLast) => (
-            <div key={r.zone.id} style={{ padding: '10px 14px', borderBottom: isLast ? 'none' : '1px solid #111827' }}>
+            <div key={r.zone.id} style={{ padding: '10px 14px', borderBottom: isLast ? 'none' : `1px solid ${COLORS.surface}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: chips.length ? 6 : 0 }}>
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: 3, background: r.zone.color, flexShrink: 0 }} />
@@ -1463,7 +1463,7 @@ export default function ScoutedTeamPage() {
           );
 
           const phaseTable = (phaseLabel, rows) => rows.length > 0 ? (
-            <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
               {headerRow(phaseLabel)}
               {rows.map((r, i) => zoneRow(r, r.chipPairs.map(p => playerChip(p.player, p.count)), i === rows.length - 1))}
             </div>
@@ -1514,7 +1514,7 @@ export default function ScoutedTeamPage() {
                   {t('key_players_weak_data')}
                 </div>
               )}
-              <div style={{ margin: '0 16px 6px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ margin: '0 16px 6px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
                 {topHeroes.map((h, i) => {
                   const dc = diffColor(h.diff);
                   const wc = wrColor(h.winRate);
@@ -1525,7 +1525,7 @@ export default function ScoutedTeamPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12,
                         padding: '12px 14px', cursor: 'pointer',
-                        borderBottom: i < topHeroes.length - 1 ? '1px solid #111827' : 'none',
+                        borderBottom: i < topHeroes.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
                         minHeight: TOUCH.minTarget,
                       }}
                     >
@@ -1565,11 +1565,11 @@ export default function ScoutedTeamPage() {
         {bigMoves.hasZone && bigMoves.bunkers.length > 0 && (
           <>
             <SectionHeader icon={Zap}>{t('section_big_moves')}</SectionHeader>
-            <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '8px 14px', background: COLORS.surface,
-                borderBottom: '1px solid #1a2234',
+                borderBottom: `1px solid ${COLORS.surfaceLight}`,
               }}>
                 <div style={{ flex: 1 }} />
                 <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('big_moves_col_count')}</div>
@@ -1581,7 +1581,7 @@ export default function ScoutedTeamPage() {
                   <div key={b.name} style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '10px 14px',
-                    borderBottom: i < bigMoves.bunkers.length - 1 ? '1px solid #111827' : 'none',
+                    borderBottom: i < bigMoves.bunkers.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
                   }}>
                     <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</div>
                     <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{b.count}×</div>
@@ -1678,7 +1678,7 @@ export default function ScoutedTeamPage() {
           if (!hasContent) return null;
 
           const Row = ({ label, children }) => (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderBottom: '1px solid #111827' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderBottom: `1px solid ${COLORS.surface}` }}>
               <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.borderLight, textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 2, minWidth: 90, flexShrink: 0 }}>{label}</div>
               <div style={{ flex: 1 }}>{children}</div>
             </div>
@@ -1687,7 +1687,7 @@ export default function ScoutedTeamPage() {
           return (
             <>
               <SectionHeader>{t('section_signals')}</SectionHeader>
-              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 12, overflow: 'hidden' }}>
+              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
 
                 {/* Most eliminated player */}
                 {mostEliminated && (
@@ -1845,7 +1845,7 @@ export default function ScoutedTeamPage() {
           }
 
           const SideCard = ({ label, side, data }) => (
-            <div style={{ flex: 1, minWidth: 0, padding: 12, background: COLORS.surfaceDark, border: '1px solid #1a2234', borderRadius: 10 }}>
+            <div style={{ flex: 1, minWidth: 0, padding: 12, background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <SideTag side={side} />
                 <div style={{ fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textDim, letterSpacing: 0.6, textTransform: 'uppercase' }}>
@@ -1854,7 +1854,7 @@ export default function ScoutedTeamPage() {
               </div>
               <div style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>{data.pct}%</div>
               <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2 }}>{t('pts_label')}</div>
-              <div style={{ paddingTop: 8, marginTop: 8, borderTop: '1px solid #1a2234', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ paddingTop: 8, marginTop: 8, borderTop: `1px solid ${COLORS.surfaceLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: 700 }}>{t('col_wr')}</span>
                 <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: wrColor(data.winRate) }}>
                   {data.winRate != null ? `${data.winRate}%` : '—'}
