@@ -461,22 +461,32 @@ koncept → prototyp → design → klikalny prototyp → kod
 - **Responsive audit screenshots:** 5 viewports
 - Tymek tests on iPhone and reports bugs directly
 
-### 7.6 Merge / deploy authorization (set 2026-06-11)
+### 7.6 Merge / deploy authorization — TWO-TIER v2 (LAW, Jacek GO 2026-06-12)
 
-Two classes, by whether the change alters what users **see**:
+Supersedes the 2026-06-11 UI-vs-logic split. The axis is no longer "does it render"
+but "is the design/pattern ALREADY APPROVED and is identity PROVABLE".
 
-1. **UI / visual** (rendered output, layout, styling, copy, component structure) →
-   **merge + deploy ONLY after Jacek's explicit GO** on a READY report. Any brief
-   `[GO GATE]` applies **without exception**. CC commits + pushes the feature
-   branch, reports READY, and WAITS.
-2. **Logic-only, ZERO UI surface, full emulator e2e green** (pure data / hooks /
-   services / query / build-tooling / docs, no rendered-output change) → CC may
-   **merge `--no-ff` + deploy autonomously**, **with a post-factum annotation** in
-   the report (what merged, HEAD, deploy, e2e count). No pre-GO wait for this class.
+**Tier 1 — autonomous merge `--no-ff` + deploy** (then Jacek smokes on prod
+immediately after; every Tier-1 DEPLOY_LOG entry MUST carry a revert pointer):
+- **Approved-pattern batches** — applying a pattern Jacek already GO'd (e.g. the
+  §113/§116 responsive-canvas rail, the §C delete+ConfirmModal cascade) to further
+  pages, by reference, no new visual invention.
+- **Propagation of gated designs** — rolling out a mockup-approved/already-live
+  design to the next surface.
+- **Pixel-identical refactors with MACHINE PROOF** — i18n extraction, hex→token
+  sweeps, component extraction: merge allowed ONLY with a pixel-diff = 0 report
+  (H0 harness) + full e2e green, per batch.
+- **Logic-only** — data / hooks / services / query / build-tooling / docs, full
+  emulator e2e green.
 
-When ambiguous, treat as **UI** (needs GO). Always STOP regardless of class on any
-failing build/precommit/e2e (never merge red), the brief's hard `[ESCALATE]`
-conditions, tenant-isolation rules, or gated-spec contradictions. Firebase-side
+**Tier 2 — branch + explicit pre-merge GO, no exceptions:**
+- Any **NEW visual pattern or element**, or the **first instance of any design**.
+- Anything where identity to an approved design is NOT machine-proven.
+- Any brief `[GO GATE]`.
+
+When ambiguous, treat as **Tier 2**. Always STOP regardless of tier on any failing
+build/precommit/e2e (never merge red), hard `[ESCALATE]` conditions (e.g. A4 scout
+entanglement), tenant-isolation rules, or gated-spec contradictions. Firebase-side
 autonomy (admin-SDK reads / `--dry` / indexes) is governed separately by the
 CLAUDE.md Firebase-autonomy policy and is unchanged.
 
