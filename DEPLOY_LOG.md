@@ -1,5 +1,18 @@
 # Deploy Log
 
+## 2026-06-12 — [FULL-DAY STEP 8] B4 role-aware home — coach checklist + scout/player empty states
+**HEAD `715cf30f`** (merge of `feat/b4-home` `88cd5794`). **App-only — no rules/index.** §7.6 v2 **Tier 1** (design gate passed by Jacek 2026-06-10 on `mockup-4-b4-home.html`; CC_BRIEF_DAY2_PART3). Full emulator e2e **35/35 green**. **REVERT:** `git revert -m 1 715cf30f` → rebuild → deploy.
+
+**Coach/admin fresh-workspace checklist** (`FreshWorkspaceChecklist.jsx`, mounted in MainPage): hero + progress + derived-from-data steps (NO onboarding-progress collection) — hasEvent (existing subs) · hasLayout (**workspace overlays**, not the global library) · hasMembers (>1); admin gets the 5th names/zones nudge row (done = any overlay carries zones/lines; does NOT gate disappearance). Amber ONLY on the next step; done = dimmed+green ✓; "Zrobię to później" = session-scoped → empty dashboard. Deep-links: Dodaj→NewTournamentModal · Katalog→/layouts · Zaproś→/settings/members · Konfiguruj→/layouts. Checklist disappears when all three signals are true (ranger1996 unaffected; **pbfit will show it to Jacek if its signals are incomplete — by design, FIT onboarding**).
+
+**Scout empty state** (no active event): B4 waiting state replaces the coach-flavoured NoTournamentEmptyState for scout-only roles. **DEVIATION (documented):** mockup-4's "Dołącz do sesji kodem" CTA assumed an existing kiosk join-by-code flow — **it does not exist** (kiosk = overlay inside training scouting; no self-join route). CTA omitted rather than shipped dead; follow-up registered in NEXT_TASKS (needs the join-by-code feature first).
+
+**Player claim card** (unclaimed): rendered ABOVE the PPT picker (the §110.1 unlinked pendingSelfReports path stays fully usable); CTA deep-links to the existing `/profile` LinkProfileModal flow (A4).
+
+**A1–A4 verified** (STEP 0.5): built on the `0c4852a2` partial; roles client-side; signals zero-new-expensive-reads; claim flow exists. e2e `b4-home.spec.js` on fresh fixture workspaces (`b4-ws`/`b4-roles-ws`): checklist 1/5 → bridge tournament → 2/5 live+reload → later → empty dashboard; scout waiting; player claim → /profile.
+
+**Owed: Jacek prod smoke** — pbfit cold open (checklist? steps correct? Dodaj/Katalog/Zaproś deep-links), "Zrobię to później", ranger1996 unchanged; scout/player states need fresh accounts (or pbfit invitees).
+
 ## 2026-06-12 — [FULL-DAY 4.2 + 4.3] §113/§116 rollout COMPLETE — ScoutedTeam + MatchPage-review landscape rails
 **HEADs `21779596` (4.2, merge of `feat/scoutedteam-rail` `5f1b6a16`) + `c9a8005e` (4.3, merge of `feat/matchreview-rail` `34fb4a1e`)** — two deploys. **App-only — no rules/index.** §7.6 v2 **Tier 1** (approved-pattern propagation — the §116 archetype was gated on the 4.1 PlayerStats mockup and "applies as-is to ScoutedTeam + MatchPage(review) without separate design gates"). **The §113 rollout ×3 is COMPLETE** (4.1 PlayerStats `c2503183` · 4.2 ScoutedTeam · 4.3 MatchPage-review) — the cross-device audit's match-review P0 surface now has the rail. **REVERT:** `git revert -m 1 c9a8005e` and/or `git revert -m 1 21779596` → rebuild → deploy.
 
