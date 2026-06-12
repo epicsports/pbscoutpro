@@ -76,6 +76,10 @@ export default function CoachTabContent({ tournamentId }) {
   // Auto-dismiss after 5s (longer than save toast's 2.5s so the summary
   // numbers are readable). Idempotent-aware wording set on completion.
   const [repairToast, setRepairToast] = useState(null);
+  // D7 — the box is state-aware: once a repair has run, the tournament carries
+  // `rostersRepairedAt` and the box collapses to "OK · last repair: X" (expand
+  // to re-run). No persisted stamp yet → the full call-to-action box.
+  const [repairOpen, setRepairOpen] = useState(false);
   useEffect(() => {
     if (!repairToast) return;
     const tm = setTimeout(() => setRepairToast(null), 5000);
@@ -275,7 +279,16 @@ export default function CoachTabContent({ tournamentId }) {
             client-detectable symptom (over-broad rosters render fine — they
             just include too many players); kept role-gated so regular users
             never see it. Idempotent — safe re-runs. */}
-        {isSuperAdmin && !loading && scouted.length > 0 && (
+        {isSuperAdmin && !loading && scouted.length > 0 && (() => {
+          const lastTs = tournament?.rostersRepairedAt?.ts;
+          const lastMs = lastTs?.toMillis ? lastTs.toMillis() : (lastTs?.seconds ? lastTs.seconds * 1000 : null);
+          const lastWhen = lastMs
+            ? (() => { const d = new Date(lastMs); return `${d.toLocaleDateString()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })()
+            : null;
+          // Healthy + idle (a repair has run, not expanded, nothing in-flight or
+          // just-finished) → collapse to a single "OK · last repair" row.
+          const collapsedHealthy = !!lastMs && !repairOpen && !repairingRosters && !rostersRepairResult;
+          return (
           <div style={{
             marginTop: SPACE.sm, padding: SPACE.md,
             background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
@@ -284,9 +297,22 @@ export default function CoachTabContent({ tournamentId }) {
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: SPACE.sm, letterSpacing: 0.5 }}>
               ADMIN · B3 ROSTER REPAIR
             </div>
+            {collapsedHealthy ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.success }}>✓ OK</span>
+                <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>Last repair: {lastWhen}</span>
+                <Btn variant="ghost" size="sm" onClick={() => setRepairOpen(true)}>Repair again</Btn>
+              </div>
+            ) : (
+            <>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginBottom: SPACE.sm }}>
               Narrows scouted rosters to the team&apos;s division. Preserves any player already assigned in existing points so the picker keeps resolving names.
             </div>
+            {lastWhen && (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: SPACE.sm }}>
+                Last repair: {lastWhen}
+              </div>
+            )}
             <Btn variant="default" onClick={runRepairRosters} disabled={repairingRosters} style={{ width: '100%' }}>
               {repairingRosters ? 'Repairing…' : 'Repair scouted rosters'}
             </Btn>
@@ -316,8 +342,11 @@ export default function CoachTabContent({ tournamentId }) {
                 Error: {rostersRepairResult.error}
               </div>
             )}
+            </>
+            )}
           </div>
-        )}
+          );
+        })()}
         {!loading && divisionScouted.length > 0 && visibleScouted.length === 0 && (
           <div style={{ padding: SPACE.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>
             No teams match “{teamSearch}”.

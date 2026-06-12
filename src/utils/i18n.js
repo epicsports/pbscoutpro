@@ -627,7 +627,7 @@ const T = {
     leave_workspace_last_admin: 'Jesteś jedynym administratorem. Przekaż administrację innemu członkowi przed wyjściem.',
     super_admin_cannot_leave:   'Super admin nie może opuścić workspace.',
     workspace_admin_cannot_leave: 'Admin workspace nie może wyjść. Najpierw przekaż rolę admina.',
-    view_as_placeholder:        'Podgląd jako',
+    view_as_placeholder:        'Podgląd jako — wkrótce',
     view_as_coming_soon:        'Funkcja wkrótce',
     members_label:              'Członkowie',
     /* User detail (Członkowie) */
@@ -1795,7 +1795,7 @@ const T = {
     leave_workspace_last_admin: 'You are the only admin. Transfer admin to another member before leaving.',
     super_admin_cannot_leave:   'Super admin cannot leave the workspace.',
     workspace_admin_cannot_leave: 'Workspace admin cannot leave. Transfer the admin role first.',
-    view_as_placeholder:        'View as',
+    view_as_placeholder:        'View as — coming soon',
     view_as_coming_soon:        'Coming soon',
     members_label:              'Members',
     /* User detail (Members) */

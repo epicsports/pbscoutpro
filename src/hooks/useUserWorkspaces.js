@@ -3,6 +3,12 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useWorkspace } from './useWorkspace';
 
+// Role of the current user in a workspace doc (userRoles map → string[]).
+const roleOf = (data, uid) => {
+  const r = data?.userRoles?.[uid];
+  return Array.isArray(r) ? r : (r ? [r] : []);
+};
+
 // Phase 1.1 of multi-tenant migration (DESIGN_DECISIONS § 63.3 Option α +
 // MULTI_TENANT_MIGRATION_PLAN.md Phase 1.1).
 //
@@ -35,22 +41,26 @@ export function useUserWorkspaces() {
     setError(null);
     (async () => {
       try {
+        // D1 — query by the rules-PROVABLE membership predicate (`members`
+        // array-contains), then CLIENT-filter to role-bearing memberships
+        // (consistent with the scouted-team precedent; logic-only §7.6). The
+        // prior `where('userRoles.<uid>','!=',null)` was both an unsupported
+        // null-operand (the "Null value" console error) AND mis-aligned with
+        // the read rule, which gates on `members`, not `userRoles`.
         const q = query(
           collection(db, 'workspaces'),
-          where(`userRoles.${user.uid}`, '!=', null),
+          where('members', 'array-contains', user.uid),
         );
         const snap = await getDocs(q);
         if (cancelled) return;
-        const list = snap.docs.map(d => {
-          const data = d.data() || {};
-          return {
-            id: d.id,
-            slug: d.id,
-            name: data.name,
-            role: data.userRoles?.[user.uid] || [],
-            ...data,
-          };
-        });
+        const list = snap.docs
+          .map(d => {
+            const data = d.data() || {};
+            return { id: d.id, slug: d.id, name: data.name, role: roleOf(data, user.uid), ...data };
+          })
+          // Keep only memberships with an actual role (matches §92 "own approved
+          // memberships only" + the prior `!= null` intent).
+          .filter(w => roleOf(w, user.uid).length > 0);
         setWorkspaces(list);
       } catch (e) {
         if (cancelled) return;

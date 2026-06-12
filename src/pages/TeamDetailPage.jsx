@@ -197,7 +197,7 @@ export default function TeamDetailPage() {
         }}>
           <TeamBadge team={{ ...team, color: effColor }} size={52} />
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800, color: COLORS.text, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{team.name}</div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{(team.leagues || []).join(' · ') || 'No league'}</div>
           </div>
         </div>
@@ -268,7 +268,7 @@ export default function TeamDetailPage() {
                     const cur = (team.divisions || {})[l];
                     return <Btn key={d.id} variant="default" size="sm" active={cur === d.name}
                       onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d.name ? null : d.name } })}
-                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 6px', minHeight: 44 }}>{d.name}</Btn>;
+                      style={{ fontSize: FONT_SIZE.xxs, padding: '2px 10px', minHeight: 44, minWidth: 44 }}>{d.name}</Btn>;
                   })}
                 </div>
               ))}
