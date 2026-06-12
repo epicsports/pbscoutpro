@@ -36,7 +36,11 @@ Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Jacek GO "I need all of i
 - **Logo on phone still fallback (Jacek):** same **SW-cache caveat** — E3 (cross-origin image rule) shipped overnight; needs the new SW to activate. Revisit within the rebrand/nav arc after a clean SW cycle.
 - **E5** team↔league import = BY-DESIGN; **row OPEN pending Jacek UI re-check.**
 - **F2** §116 manual-collapse ("focus mode") paragraph + toggle e2e — still TODO (not built today).
-**Not built today (priority/scope/session-limit):** STEP 2 (Hitability marker popup — discovery agent hit session limit; build pending) · STEP 8 (B4 role-aware home) · STEP 4 (`<Screen>` pilot) · STEP 5 (H0/H1/H2 sweeps) · STEP 3 (READS splash — Tier 2) · STEP 6 (wave-3 seed) · STEP 10 (motion dark) · STEP 11–14. Resume by revised priority: 2 → 8 → 4 → 5 → 3 → 10 → 6 → 11–14.
+**STEP 2 (Hitability marker popup) — PARKED, gesture conflict escalated (top of DECISION QUEUE).** In Config, tapping a position IS the link-creation gesture (`configTap`: tap position → `setLinking` → tap target → link). A "tap marker → popup" overrides that → breaks linking. Color semantics ratified (pair colour), but the tap-model wasn't. Rec: popup gains a 4th action **Połącz** (so tap-position → popup → Połącz starts linking; target-tap-while-linking still links; nothing lost) — OR popup on long-press, tap still links. Awaiting Jacek. Alias `name` model + render-everywhere is additive but only settable via the popup, so it rides with the decision.
+
+**Resume order (Jacek correction 2026-06-12):** STEP 2 (once unblocked) → **4.2 ScoutedTeam rail → 4.3 MatchPage-review rail (A4 escalation binding) → 2 extractions for Opus (MatchPage-on-rail post-4.3; main-home per role)** → 8 (B4) → 4 (`<Screen>`) → 5 (H0/H1/H2) → 3 (splash, Tier 2) → 10 → 6 → 11–14.
+
+**Not built today (session-limit):** STEP 8 · STEP 4 · STEP 5 · STEP 3 · STEP 6 · STEP 10 · STEP 11–14.
 
 ---
 
