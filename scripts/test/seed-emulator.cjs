@@ -55,6 +55,10 @@ const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge (isolated)
 const TRN_HIT = 'trn-hit';
 const HIT_POS = 'pos-1';
 const HIT_TGT = 'tgt-A';
+// Isolated marker-delete fixture (own layout so the destructive delete spec never
+// mutates TRN_HIT's shared, layout-keyed hitability config — §C, shared-state rule).
+const TRN_HIT_DEL = 'trn-hit-del';
+const LAYOUT_HIT_DEL = 'lay-hit-del';
 const TEAM_A = 'team-a';
 const TEAM_B = 'team-b';
 // Invite-isolation guards (Stage 4): two OUTSIDERS (not members of demo-ws) +
@@ -330,6 +334,21 @@ async function main() {
     status: 'open', attendees: [], squads: {}, createdAt: now, updatedAt: now,
   });
   batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${LAYOUT}/hitability/config`), {
+    players: [{ id: HIT_POS, x: 0.3, y: 0.5, color: '#22d3ee', label: '1' }],
+    targets: [{ id: HIT_TGT, x: 0.7, y: 0.5, label: 'A' }],
+    links: [{ playerId: HIT_POS, targetId: HIT_TGT }],
+    updatedAt: now,
+  });
+
+  // § C Hitability marker-delete — ISOLATED fixture on its OWN layout so the
+  // destructive spec (record hit → delete target ⇒ confirm ⇒ cascade) never
+  // touches TRN_HIT's shared config (config is keyed by LAYOUT). Same one
+  // target + one position + link so a track tap auto-attributes (count == taps).
+  batch.set(db.doc(`workspaces/${WS}/trainings/${TRN_HIT_DEL}`), {
+    type: 'training', name: 'Hitability Delete', layoutId: LAYOUT_HIT_DEL,
+    status: 'open', attendees: [], squads: {}, createdAt: now, updatedAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${LAYOUT_HIT_DEL}/hitability/config`), {
     players: [{ id: HIT_POS, x: 0.3, y: 0.5, color: '#22d3ee', label: '1' }],
     targets: [{ id: HIT_TGT, x: 0.7, y: 0.5, label: 'A' }],
     links: [{ playerId: HIT_POS, targetId: HIT_TGT }],

@@ -1865,16 +1865,20 @@ export default function MatchPage() {
               }}>
               <div style={{
                 fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamA?.name || 'Home'}</div>
               {!isLocked && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
                     Scout ›
                   </div>
-                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
-                    Quick ›
-                  </div>
+                  {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
+                  {isTraining && (
+                    <div onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
+                      Quick ›
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1906,13 +1910,17 @@ export default function MatchPage() {
               }}>
               <div style={{
                 fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamB?.name || 'Away'}</div>
               {!isLocked && (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3, justifyContent: 'flex-end' }}>
-                  <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
-                    ‹ Quick
-                  </div>
+                  {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
+                  {isTraining && (
+                    <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
+                      ‹ Quick
+                    </div>
+                  )}
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamB); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
                     ‹ Scout
                   </div>

@@ -223,14 +223,19 @@ function Row({ row, active, teamName, onClick }) {
         )}
       </div>
 
-      {/* Status badge */}
-      {isClosed ? (
-        <Badge label="CLOSED" bg={`${COLORS.textMuted}20`} color={COLORS.textMuted} />
-      ) : isTraining ? (
-        <Badge label="Training" bg="#22d3ee18" color="#22d3ee" />
-      ) : row.league ? (
-        <Badge label={leagueDisplayName(row.league)} bg={`${COLORS.accent}15`} color={COLORS.accent} />
-      ) : null}
+      {/* Status badges — CLOSED is ADDITIVE to the event-type chip (D6a, Jacek
+          2026-06-12): a closed row shows BOTH "CLOSED" and its event-type
+          (Training / league), side by side on the same surface. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+        {isClosed && (
+          <Badge label="CLOSED" bg={`${COLORS.textMuted}20`} color={COLORS.textMuted} />
+        )}
+        {isTraining ? (
+          <Badge label="Training" bg="#22d3ee18" color="#22d3ee" />
+        ) : row.league ? (
+          <Badge label={leagueDisplayName(row.league)} bg={`${COLORS.accent}15`} color={COLORS.accent} />
+        ) : null}
+      </div>
     </div>
   );
 }

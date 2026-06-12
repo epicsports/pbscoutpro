@@ -1,5 +1,22 @@
 # Deploy Log
 
+## 2026-06-12 — [CC_BRIEF_OVERNIGHT] icon-segment tabs + hitability deletes + cluster batch + escalation resolutions + E3 logo cache
+**HEAD `14755d22`** (merge train `--no-ff`: `feat/rail-icon-segment-tabs` → `feat/hitability-marker-deletes` → `fix/audit-v2-clusters` → `fix/logo-pwa-image-cache` → `docs/overnight-sync`). **App-only — no rules/index.** Jacek GO "I need all of it on prod to test it" (2026-06-12). Full emulator e2e **28/28 green** pre-deploy.
+
+**§B icon-segment rail tabs** (`HitabilityPage`): the rail/overlay tab row now shows INACTIVE tabs icon-only, the ACTIVE tab icon+label (width animates via flex-basis + label max-width/opacity); one Lucide icon language (config=Settings, track=Crosshair, sum=BarChart3) shared with the §116 collapsed strip (replaced the emoji glyphs). e2e `hitability-tabs.spec.js`.
+
+**§C Hitability delete positions+targets** (config mode): rail `×` delete (existing connection-delete idiom). Cascade — always drops connections; if recorded hits reference the marker a `ConfirmModal` surfaces the count (`hitability_del_*` PL+EN), and confirm deletes those hits too; zero-hit deletes skip the modal. ISOLATED seed fixture `TRN_HIT_DEL`/`lay-hit-del` (never mutates the shared `TRN_HIT` config). e2e `hitability-delete.spec.js`.
+
+**§D cluster batch:** D2 team-detail hero name 2-line clamp; D3 players row delete icon → title+aria-label + 44px; D4 division chips ≥44px; D6b team names 2-line clamp (match list + scoreboard); **D6c Quick Log entry hidden in tournament context** (training-only, gate on `isTraining`); D8 view-as label → "Podgląd jako — wkrótce".
+
+**Escalation resolutions (Jacek 2026-06-12):** **D1** `useUserWorkspaces` — replaced the unsupported `where('userRoles.<uid>','!=',null)` (the "Null value" console error + rule-misaligned) with the rules-provable `members array-contains` query + client-filter to role-bearing memberships. **D6a** `TournamentPicker` — CLOSED badge is now ADDITIVE to the event-type chip (closed rows show both). **D7** state-aware B26 box — `repairScoutedRostersForTournament` stamps the tournament `rostersRepairedAt {ts, byUid}` after a run; the box collapses to "✓ OK · Last repair: X" when stamped (expand to re-run). **E3** PWA — dedicated `destination=image` runtimeCaching rule (CacheFirst, `images-external`, maxEntries 50, 30d) so an external workspace/team `logoUrl` is cached on a phone PWA (sameOrigin rule kept).
+
+**Read-only discovery verdicts (recorded, NEXT_TASKS):** E1 three shot modes all captured (direction = band enum, angle derived — phase-view is a DISPLAY feature); E4 only 3 prod members lack `defaultWorkspace` (low FIT); E5 team↔league import = BY-DESIGN. **E5 awaits Jacek UI re-check before the row closes.**
+
+**Deferred (not coded):** D6a alt-surface if the dual-badge wasn't `TournamentPicker` (re-confirm); §A 4.2/4.3 rollout (post-merge per Jacek: 4.2/4.3 → READS splash brief → F2 → G → H0–H2); §F2/§G/§H sweeps.
+
+**Owed: Jacek prod smoke** — hitability tabs (icon-segment, per device) + deletes (cascade/confirm/zero-hit); tournament-picker closed-row dual badge; B26 OK-state; logo on phone PWA; Quick-Log gone in tournament match.
+
 ## 2026-06-11 — [part-2 Stages 1–3] rail-collapse shell + intensity ramp + Hitability Summary redesign
 **HEAD `ec2bbff6`** (merge train `--no-ff`: `feat/rail-collapse` → `feat/intensity-ramp`). **App-only — no rules/index.** Sprint Day-2 part-2; Jacek GO (merge train; `feat/rail-rollout` left open for Stage 4.1 wrap).
 

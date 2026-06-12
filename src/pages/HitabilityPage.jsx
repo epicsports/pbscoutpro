@@ -8,10 +8,14 @@ import * as ds from '../services/dataService';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
 import HitBreakdownList from '../components/hitability/HitBreakdownList';
-import { ActionSheet } from '../components/ui';
+import { ActionSheet, ConfirmModal } from '../components/ui';
+import { Settings, Crosshair, BarChart3 } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
+// One icon language across the rail tab row AND the §116 collapsed strip (Lucide,
+// currentColor so they inherit the active/inactive colour from their container).
+const MODE_ICON = { config: Settings, track: Crosshair, sum: BarChart3 };
 const clamp = (v) => Math.max(0.03, Math.min(0.97, v));
 const genId = (p) => `${p}_${Math.random().toString(36).slice(2, 9)}`;
 const letter = (i) => String.fromCharCode(65 + (i % 26));
@@ -51,6 +55,7 @@ export default function HitabilityPage() {
   const [chooser, setChooser] = useState(null);
   const [hits, setHits] = useState([]);
   const [saveError, setSaveError] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null); // { kind:'p'|'t', id, label, count } | null
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
@@ -187,6 +192,39 @@ export default function HitabilityPage() {
   };
   const connNode = (c) => rowLabel(<>{dot(pColor(c.p))}{`${t('hitability_player_n', pLabel(c.p))} → ${t('hitability_target_n', tLabel(c.t))}`}</>);
 
+  // ── Marker delete (positions + targets) — §C, Jacek 2026-06-11. Cascade:
+  // removing a marker ALWAYS drops its connections; if recorded hits reference it,
+  // confirm first and the confirm deletes those hits too. Zero-hit deletes skip
+  // the modal. Delete lives in the rail (the existing connection-delete × idiom);
+  // no new canvas gesture is invented.
+  const hitsForPlayer = (pid) => hits.filter(h => h.playerId === pid);
+  const hitsForTarget = (tid) => hits.filter(h => h.targetId === tid);
+  const doDelPlayer = (pid) => {
+    hitsForPlayer(pid).forEach(h => delHit(h.id));
+    const cfg = configRef.current;
+    applyConfig({ ...cfg, players: cfg.players.filter(p => p.id !== pid), links: cfg.links.filter(l => l.playerId !== pid) });
+  };
+  const doDelTarget = (tid) => {
+    hitsForTarget(tid).forEach(h => delHit(h.id));
+    const cfg = configRef.current;
+    applyConfig({ ...cfg, targets: cfg.targets.filter(x => x.id !== tid), links: cfg.links.filter(l => l.targetId !== tid) });
+  };
+  const requestDelPlayer = (pid) => {
+    const count = hitsForPlayer(pid).length;
+    if (count === 0) { doDelPlayer(pid); return; }
+    setConfirmDel({ kind: 'p', id: pid, label: pLabel(pid), count });
+  };
+  const requestDelTarget = (tid) => {
+    const count = hitsForTarget(tid).length;
+    if (count === 0) { doDelTarget(tid); return; }
+    setConfirmDel({ kind: 't', id: tid, label: tLabel(tid), count });
+  };
+  const runConfirmDel = () => {
+    if (!confirmDel) return;
+    if (confirmDel.kind === 'p') doDelPlayer(confirmDel.id); else doDelTarget(confirmDel.id);
+    setConfirmDel(null);
+  };
+
   const configTap = useCallback((nx, ny, h) => {
     if (linking) {
       if (h.targets.length === 1) doLink(linking, h.targets[0]);
@@ -304,25 +342,42 @@ export default function HitabilityPage() {
         artifact={canvasEl(mode === 'config' ? configTap : mode === 'track' ? trackTap : undefined)}
         rail={(
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 6 }}>
-            {/* Mode switcher — lives in the rail (top of the rail in landscape, above
-                the per-mode content in portrait). */}
-            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginBottom: 8 }}>
+            {/* Mode switcher — icon-segment pattern (Jacek 2026-06-11): INACTIVE tabs
+                are icon-only (compact, ≥44px), the ACTIVE tab grows to icon + label.
+                Width animates via flex-basis + the label's max-width/opacity (one
+                accent on the active tab only — §27 amber-is-interactive). Lives at the
+                rail top in landscape / above the per-mode content in portrait, and
+                renders identically inside the §116 overlay panel (same `rail`). */}
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginBottom: 8 }} role="group" aria-label={t('hitability_card_title')}>
               {MODES.map(m => {
                 const active = mode === m;
+                const Icon = MODE_ICON[m];
+                const label = t(`hitability_mode_${m}`);
                 return (
-                  <div key={m} data-testid={`hit-mode-${m}`} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} style={{
-                    flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, cursor: 'pointer',
-                    WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                  <div key={m} data-testid={`hit-mode-${m}`} onClick={() => { setMode(m); setLinking(null); setChooser(null); }} role="button" aria-pressed={active} aria-label={label} title={label} style={{
+                    flex: active ? '1 1 0' : '0 0 48px', minWidth: 48, minHeight: 44,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                    borderRadius: 12, cursor: 'pointer', overflow: 'hidden',
+                    transition: 'flex-grow .22s ease, flex-basis .22s ease, background .15s ease, border-color .15s ease',
+                    WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 700,
                     background: active ? COLORS.surfaceLight || COLORS.surface : COLORS.surface,
                     color: active ? COLORS.accent : COLORS.textDim,
                     border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-                  }}>{t(`hitability_mode_${m}`)}</div>
+                  }}>
+                    <Icon size={18} strokeWidth={active ? 2.4 : 2} style={{ flexShrink: 0 }} aria-hidden="true" />
+                    <span data-testid={`hit-mode-label-${m}`} style={{
+                      whiteSpace: 'nowrap', overflow: 'hidden',
+                      maxWidth: active ? 120 : 0, opacity: active ? 1 : 0,
+                      transition: 'max-width .22s ease, opacity .18s ease',
+                    }}>{label}</span>
+                  </div>
                 );
               })}
             </div>
             {mode === 'config' && (
               <ConfigRail config={config} pColor={pColor} pLabel={pLabel} tLabel={tLabel}
-                onDelConn={(l) => doDelConn({ p: l.playerId, t: l.targetId })} t={t} />
+                onDelConn={(l) => doDelConn({ p: l.playerId, t: l.targetId })}
+                onDelPlayer={requestDelPlayer} onDelTarget={requestDelTarget} t={t} />
             )}
             {mode === 'track' && (
               <HitList hits={sortedHits} pColor={pColor} pLabel={pLabel} tLabel={tLabel} onDelete={delHit} t={t} />
@@ -346,18 +401,34 @@ export default function HitabilityPage() {
           // §116: declarative strip data only — the shell owns all collapse logic.
           // Strip icons mirror the rail's mode switcher (config/track/sum); tapping
           // one switches the mode AND opens the transient overlay (the full rail).
-          tabs: MODES.map(m => ({
-            key: m,
-            icon: m === 'config' ? '⚙' : m === 'track' ? '◎' : '▤',
-            active: mode === m,
-            onSelect: () => { setMode(m); setLinking(null); setChooser(null); },
-          })),
+          tabs: MODES.map(m => {
+            const Icon = MODE_ICON[m];
+            return {
+              key: m,
+              icon: <Icon size={20} aria-hidden="true" />, // same Lucide set as the rail tab row
+              label: t(`hitability_mode_${m}`),
+              active: mode === m,
+              onSelect: () => { setMode(m); setLinking(null); setChooser(null); },
+            };
+          }),
           count: { value: hits.length, label: t('hitability_hits_short') },
           onBack: back,
         }}
       />
 
       <ActionSheet open={!!chooser} title={chooser?.title} onClose={() => setChooser(null)} actions={(chooser?.options || []).map(o => ({ label: o.label, onPress: o.onPick }))} />
+
+      <ConfirmModal
+        open={!!confirmDel}
+        onClose={() => setConfirmDel(null)}
+        title={t('hitability_del_title')}
+        message={confirmDel && (confirmDel.kind === 'p'
+          ? t('hitability_del_pos_msg', confirmDel.label, confirmDel.count)
+          : t('hitability_del_target_msg', confirmDel.label, confirmDel.count))}
+        onConfirm={runConfirmDel}
+        confirmLabel={t('hitability_del_confirm')}
+        danger
+      />
     </div>
   );
 }
@@ -389,9 +460,13 @@ function HitList({ hits, pColor, pLabel, tLabel, onDelete, t }) {
 
 // Config rail — connections (deletable) + a legend of positions & targets. The
 // spatial editing still happens on the canvas; the rail mirrors + manages the links.
-function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, t }) {
+function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, onDelPlayer, onDelTarget, t }) {
   const links = config.links || [];
   const dot = (c, sz = 10) => <span style={{ width: sz, height: sz, borderRadius: '50%', background: c, flexShrink: 0, display: 'inline-block' }} />;
+  const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 10 };
+  const ROW_LABEL = { flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+  const DEL_BTN = { minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' };
+  const subhead = { fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, margin: '12px 0 6px' };
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
@@ -410,21 +485,28 @@ function ConfigRail({ config, pColor, pLabel, tLabel, onDelConn, t }) {
             <div onClick={() => onDelConn(l)} role="button" aria-label="delete" style={{ minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' }}>×</div>
           </div>
         ))}
-        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, margin: '12px 0 6px' }}>
-          {t('hitability_legend_title')}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {(config.players || []).map(p => (
-            <span key={p.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontFamily: FONT, fontSize: 12, color: COLORS.text }}>
-              {dot(p.color || COLORS.textMuted, 8)}{t('hitability_player_n', p.label)}
-            </span>
-          ))}
-          {(config.targets || []).map(tg => (
-            <span key={tg.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 8, fontFamily: FONT, fontSize: 12, color: COLORS.textDim }}>
-              {t('hitability_target_n', tg.label)}
-            </span>
-          ))}
-        </div>
+        {/* Positions — deletable rows (§C). Same × idiom as the connection rows;
+            delete cascades through the parent (drops links, confirms if hits). */}
+        <div style={subhead}>{t('hitability_legend_positions')}</div>
+        {(config.players || []).length === 0 && (
+          <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', marginBottom: 6 }}>{t('hitability_hint_config')}</div>
+        )}
+        {(config.players || []).map(p => (
+          <div key={p.id} style={ROW}>
+            {dot(p.color || COLORS.textMuted)}
+            <span style={ROW_LABEL}>{t('hitability_player_n', p.label)}</span>
+            <div onClick={() => onDelPlayer && onDelPlayer(p.id)} role="button" data-testid={`hit-del-pos-${p.id}`} aria-label={t('hitability_del_pos', p.label)} style={DEL_BTN}>×</div>
+          </div>
+        ))}
+        {/* Targets — deletable rows (§C). */}
+        <div style={subhead}>{t('hitability_legend_targets')}</div>
+        {(config.targets || []).map(tg => (
+          <div key={tg.id} style={ROW}>
+            {dot(COLORS.textMuted)}
+            <span style={ROW_LABEL}>{t('hitability_target_n', tg.label)}</span>
+            <div onClick={() => onDelTarget && onDelTarget(tg.id)} role="button" data-testid={`hit-del-target-${tg.id}`} aria-label={t('hitability_del_target', tg.label)} style={DEL_BTN}>×</div>
+          </div>
+        ))}
       </div>
     </div>
   );

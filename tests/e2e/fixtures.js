@@ -39,7 +39,13 @@ export const LAYOUT = 'lay-demo';
 // normalized position, so a track-mode tap auto-attributes (count == taps).
 export const TRN_HIT = 'trn-hit';
 export const HIT_TGT_POS = { x: 0.7, y: 0.5 };
+export const HIT_TGT_ID = 'tgt-A';   // seeded target id (scripts/test/seed-emulator.cjs HIT_TGT)
+export const HIT_POS_ID = 'pos-1';   // seeded position id (HIT_POS)
 export const hitabilityUrl = `#/training/${TRN_HIT}/hitability`;
+// Isolated marker-delete fixture (own layout — never mutates TRN_HIT's config).
+export const TRN_HIT_DEL = 'trn-hit-del';
+export const LAYOUT_HIT_DEL = 'lay-hit-del';
+export const hitabilityDelUrl = `#/training/${TRN_HIT_DEL}/hitability`;
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point
 export const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge
 export const TEAM_A = 'team-a';

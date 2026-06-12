@@ -927,6 +927,15 @@ export async function repairScoutedRostersForTournament(tid, league, preloaded =
     }
   }
 
+  // §C/D7 — stamp the tournament so the coach B3 box can show a state-aware
+  // "OK · last repair: X" without walking points (the over-broad-roster shape
+  // has no cheap client-side health signal). Non-fatal: the repair already ran.
+  try {
+    await updateDoc(tournamentRef, {
+      rostersRepairedAt: { ts: serverTimestamp(), byUid: auth.currentUser?.uid || null },
+    });
+  } catch (_) { /* stamp is best-effort; the roster narrowing already committed */ }
+
   return {
     scanned: scoutedSnap.size,
     updated,
