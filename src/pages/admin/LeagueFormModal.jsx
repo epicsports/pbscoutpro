@@ -3,6 +3,7 @@ import { Btn, Input, Modal } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { createLeague, updateLeague, generateDivisionId } from '../../services/dataService';
 import { useAllLeagues, refreshLeagues } from '../../hooks/useLeagues';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.1c — create/edit modal for /leagues/{leagueId}.
 // Props:
@@ -10,6 +11,7 @@ import { useAllLeagues, refreshLeagues } from '../../hooks/useLeagues';
 //   onClose   — close handler
 //   league    — null = create mode, object = edit mode
 export default function LeagueFormModal({ open, onClose, league }) {
+  const { t } = useLanguage();
   const isEdit = !!league;
   const allLeagues = useAllLeagues();
   const [shortName, setShortName] = useState('');
@@ -117,10 +119,10 @@ export default function LeagueFormModal({ open, onClose, league }) {
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? `Edit ${league?.shortName || 'league'}` : 'New league'}
+      title={isEdit ? t('league_form_title_edit', league?.shortName || 'league') : t('league_form_title_new')}
       footer={<>
-        <Btn variant="default" onClick={onClose} disabled={saving}>Cancel</Btn>
-        <Btn variant="accent" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+        <Btn variant="default" onClick={onClose} disabled={saving}>{t('cancel')}</Btn>
+        <Btn variant="accent" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('save')}</Btn>
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
@@ -128,10 +130,10 @@ export default function LeagueFormModal({ open, onClose, league }) {
         {/* § 71 — shortName is the immutable KEY: id=l_${shortName} is derived
             at create, and every layout/tournament/team ref stores this string.
             Editable only at CREATE; frozen (read-only) in edit. */}
-        <FieldRow label="Short name (code)" error={errors.shortName}
+        <FieldRow label={t('league_form_short_name_label')} error={errors.shortName}
           hint={isEdit
-            ? 'Permanent — the key stored in every layout / tournament / team reference. Rename the Display name instead.'
-            : (previewLeagueId ? `id will be: ${previewLeagueId}` : 'e.g. NXL, PXL, DPL')}>
+            ? t('league_form_short_name_frozen_hint')
+            : (previewLeagueId ? t('league_form_id_preview', previewLeagueId) : t('league_form_short_name_ph'))}>
           {isEdit ? (
             <div style={{
               width: '100%', padding: '10px 14px', borderRadius: 8,
@@ -144,29 +146,29 @@ export default function LeagueFormModal({ open, onClose, league }) {
           )}
         </FieldRow>
 
-        <FieldRow label="Display name" error={errors.name}
-          hint="Shown across the app — safe to rename anytime (resolved from the short name).">
-          <Input value={name} onChange={setName} placeholder="National X Ball League" />
+        <FieldRow label={t('league_form_display_name_label')} error={errors.name}
+          hint={t('league_form_display_name_hint')}>
+          <Input value={name} onChange={setName} placeholder={t('league_form_display_name_ph')} />
         </FieldRow>
 
-        <FieldRow label="Region (optional)" hint="e.g. US, EU — leave blank if single-region">
+        <FieldRow label={t('league_form_region_label')} hint={t('league_form_region_hint')}>
           <Input value={region} onChange={setRegion} placeholder="" />
         </FieldRow>
 
-        <FieldRow label="Parent league family (optional)" hint="UI grouping across regions, e.g. 'nxl' for NXL US + NXL EU">
+        <FieldRow label={t('league_form_parent_family_label')} hint={t('league_form_parent_family_hint')}>
           <Input value={parentLeagueFamily} onChange={setParentLeagueFamily} placeholder="" />
         </FieldRow>
 
         <div>
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textDim, marginBottom: SPACE.xs }}>
-            Divisions
+            {t('divisions_label')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {divisions.map((d, i) => (
               <div key={i} style={{ display: 'flex', gap: SPACE.xs, alignItems: 'center' }}>
                 <span style={{ width: 24, textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>{i + 1}.</span>
                 <div style={{ flex: 1 }}>
-                  <Input value={d.name} onChange={v => updateDivision(i, v)} placeholder="Division name" />
+                  <Input value={d.name} onChange={v => updateDivision(i, v)} placeholder={t('league_form_division_name_ph')} />
                 </div>
                 <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, minWidth: 60 }}>
                   {d.name.trim() ? `id: ${generateDivisionId(d.name)}` : ''}
@@ -176,7 +178,7 @@ export default function LeagueFormModal({ open, onClose, league }) {
               </div>
             ))}
           </div>
-          <Btn variant="default" size="sm" onClick={addDivision} style={{ marginTop: SPACE.xs }}>+ Add division</Btn>
+          <Btn variant="default" size="sm" onClick={addDivision} style={{ marginTop: SPACE.xs }}>{t('league_form_add_division')}</Btn>
           {errors.divisions && (
             <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.danger, marginTop: SPACE.xs }}>
               {errors.divisions}
@@ -184,7 +186,7 @@ export default function LeagueFormModal({ open, onClose, league }) {
           )}
           {renamedExisting && (
             <div style={{ marginTop: SPACE.xs, padding: SPACE.xs, borderRadius: RADIUS.sm, backgroundColor: `${COLORS.accent}18`, fontFamily: FONT, fontSize: 11, color: COLORS.accent }}>
-              ⚠ Renaming a division regenerates its id. Existing tournaments + teams store division as name string — they keep working. Future id-based references would shift.
+              {t('league_form_rename_warn')}
             </div>
           )}
         </div>

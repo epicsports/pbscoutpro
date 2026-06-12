@@ -4,6 +4,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, BUNKER_TYPES } from '../../util
 import { addPlayer, updatePlayer } from '../../services/dataService';
 import { normalizePbliInput } from '../../utils/pbliMatching';
 import { NATIONALITIES } from '../../components/PlayerEditModal';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.2.c — create/edit modal for global /players/{playerId}.
 // Distinct from src/components/PlayerEditModal (workspace context with
@@ -19,6 +20,7 @@ import { NATIONALITIES } from '../../components/PlayerEditModal';
 //                      (parent owns the delete confirmation flow because the
 //                      aliasIds-aware warning needs Modal-level rich content)
 export default function PlayerFormModal({ open, onClose, player, onRequestDelete }) {
+  const { t } = useLanguage();
   const isEdit = !!player;
 
   // Identity
@@ -151,63 +153,63 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? `Edit ${player?.nickname || player?.name || 'player'}` : 'New player'}
+      title={isEdit ? t('player_form_title_edit', player?.nickname || player?.name || 'player') : t('player_form_title_new')}
       footer={<>
         {isEdit && onRequestDelete && (
           <Btn variant="danger" onClick={() => onRequestDelete(player)} disabled={saving} style={{ marginRight: 'auto' }}>
-            Delete
+            {t('delete')}
           </Btn>
         )}
-        <Btn variant="default" onClick={onClose} disabled={saving}>Cancel</Btn>
-        <Btn variant="accent" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Btn>
+        <Btn variant="default" onClick={onClose} disabled={saving}>{t('cancel')}</Btn>
+        <Btn variant="accent" onClick={handleSave} disabled={saving}>{saving ? t('saving') : t('save')}</Btn>
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
 
         {/* Identity */}
-        <SectionHeader>Identity</SectionHeader>
-        <FieldRow label="Full name" error={errors.name}>
-          <Input value={fName} onChange={setFName} placeholder="Full name" autoFocus />
+        <SectionHeader>{t('player_form_section_identity')}</SectionHeader>
+        <FieldRow label={t('player_form_full_name_label')} error={errors.name}>
+          <Input value={fName} onChange={setFName} placeholder={t('player_form_full_name_ph')} autoFocus />
         </FieldRow>
         <div style={{ display: 'flex', gap: SPACE.xs }}>
           <div style={{ flex: 2 }}>
-            <FieldRow label="Nickname"><Input value={fNickname} onChange={setFNickname} placeholder="Optional" /></FieldRow>
+            <FieldRow label={t('player_form_nickname_label')}><Input value={fNickname} onChange={setFNickname} placeholder={t('player_form_nickname_ph')} /></FieldRow>
           </div>
           <div style={{ flex: 1 }}>
-            <FieldRow label="Jersey #"><Input value={fNumber} onChange={setFNumber} placeholder="—" /></FieldRow>
+            <FieldRow label={t('player_form_jersey_label')}><Input value={fNumber} onChange={setFNumber} placeholder="—" /></FieldRow>
           </div>
         </div>
 
         {/* PBLI link */}
-        <SectionHeader>PBLeagues link</SectionHeader>
+        <SectionHeader>{t('player_form_section_pbli')}</SectionHeader>
         <div style={{ display: 'flex', gap: SPACE.xs }}>
           <div style={{ flex: 1 }}>
-            <FieldRow label="PBLI ID" hint="First segment, e.g. 61114">
+            <FieldRow label={t('player_form_pbli_id_label')} hint={t('player_form_pbli_id_hint')}>
               <Input value={fPbliId} onChange={setFPbliId} placeholder="61114" />
             </FieldRow>
           </div>
           <div style={{ flex: 1 }}>
-            <FieldRow label="PBLI ID (full)" hint="e.g. 61114-8236">
+            <FieldRow label={t('player_form_pbli_id_full_label')} hint={t('player_form_pbli_id_full_hint')}>
               <Input value={fPbliIdFull} onChange={setFPbliIdFull} placeholder="61114-8236" />
             </FieldRow>
           </div>
         </div>
 
         {/* Attributes */}
-        <SectionHeader>Attributes</SectionHeader>
+        <SectionHeader>{t('player_form_section_attributes')}</SectionHeader>
         <div style={{ padding: SPACE.xs }}>
-          <Checkbox label="HERO (global rank)" checked={fHero} onChange={setFHero} />
+          <Checkbox label={t('player_form_hero_label')} checked={fHero} onChange={setFHero} />
         </div>
         <div style={{ display: 'flex', gap: SPACE.xs }}>
           <div style={{ flex: 1 }}>
-            <FieldRow label="Age" error={errors.age}>
+            <FieldRow label={t('player_form_age_label')} error={errors.age}>
               <Input value={fAge} onChange={setFAge} placeholder="—" type="number" />
             </FieldRow>
           </div>
           <div style={{ flex: 2 }}>
-            <FieldRow label="Nationality">
+            <FieldRow label={t('player_form_nationality_label')}>
               <Select value={fNationality} onChange={setFNationality} style={{ width: '100%' }}>
-                <option value="">— none —</option>
+                <option value="">{t('player_form_none_option')}</option>
                 {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
               </Select>
             </FieldRow>
@@ -215,18 +217,18 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
         </div>
         <div style={{ display: 'flex', gap: SPACE.xs }}>
           <div style={{ flex: 1 }}>
-            <FieldRow label="Role">
+            <FieldRow label={t('role_label')}>
               <Select value={fRole} onChange={setFRole} style={{ width: '100%' }}>
-                <option value="player">Player</option>
-                <option value="coach">Coach</option>
-                <option value="staff">Staff</option>
+                <option value="player">{t('role_player')}</option>
+                <option value="coach">{t('role_coach')}</option>
+                <option value="staff">{t('player_form_staff_role')}</option>
               </Select>
             </FieldRow>
           </div>
           <div style={{ flex: 1 }}>
-            <FieldRow label="Class">
+            <FieldRow label={t('player_form_class_label')}>
               <Select value={fPlayerClass} onChange={setFPlayerClass} style={{ width: '100%' }}>
-                <option value="">— none —</option>
+                <option value="">{t('player_form_none_option')}</option>
                 <option value="Pro">Pro</option>
                 <option value="Semi-Pro">Semi-Pro</option>
                 <option value="D1">D1</option>
@@ -238,17 +240,17 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
             </FieldRow>
           </div>
         </div>
-        <FieldRow label="Favorite bunker">
+        <FieldRow label={t('player_form_fav_bunker_label')}>
           <Select value={fFavBunker} onChange={setFFavBunker} style={{ width: '100%' }}>
-            <option value="">— none —</option>
+            <option value="">{t('player_form_none_option')}</option>
             {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
           </Select>
         </FieldRow>
-        <FieldRow label="Photo URL" error={errors.photoURL} hint="https://...">
+        <FieldRow label={t('player_form_photo_url_label')} error={errors.photoURL} hint="https://...">
           <Input value={fPhotoURL} onChange={setFPhotoURL} placeholder="https://..." />
         </FieldRow>
-        <FieldRow label="Notes">
-          <TextArea value={fComment} onChange={setFComment} placeholder="Notes about player..." rows={2} />
+        <FieldRow label={t('player_form_notes_label')}>
+          <TextArea value={fComment} onChange={setFComment} placeholder={t('player_form_notes_ph')} rows={2} />
         </FieldRow>
 
         {/* Audit (collapsed by default in edit mode; hidden in create mode) */}
@@ -260,19 +262,19 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
               fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textDim,
               minHeight: 32,
             }}>
-              {showAudit ? '▾' : '▸'} Audit / read-only
+              {showAudit ? '▾' : '▸'} {t('player_form_audit_toggle')}
             </button>
             {showAudit && (
               <div style={{ padding: SPACE.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <AuditRow label="ID" value={<code style={{ color: COLORS.text }}>{player.id}</code>} />
-                <AuditRow label="Origin workspace" value={player.originWorkspace || '—'} />
-                <AuditRow label="Created" value={formatTs(player.createdAt)} />
-                <AuditRow label="Updated" value={formatTs(player.updatedAt)} />
-                <AuditRow label="Migrated" value={formatTs(player.migratedAt)} />
-                <AuditRow label="Linked uid" value={player.linkedUid || '—'} />
-                <AuditRow label="Linked at" value={formatTs(player.linkedAt)} />
-                <AuditRow label="Unlinked at" value={formatTs(player.unlinkedAt)} />
-                <AuditRow label="Aliases" value={
+                <AuditRow label={t('player_form_audit_origin')} value={player.originWorkspace || '—'} />
+                <AuditRow label={t('player_form_audit_created')} value={formatTs(player.createdAt)} />
+                <AuditRow label={t('player_form_audit_updated')} value={formatTs(player.updatedAt)} />
+                <AuditRow label={t('player_form_audit_migrated')} value={formatTs(player.migratedAt)} />
+                <AuditRow label={t('player_form_audit_linked_uid')} value={player.linkedUid || '—'} />
+                <AuditRow label={t('player_form_audit_linked_at')} value={formatTs(player.linkedAt)} />
+                <AuditRow label={t('player_form_audit_unlinked_at')} value={formatTs(player.unlinkedAt)} />
+                <AuditRow label={t('player_form_audit_aliases')} value={
                   aliasIds.length === 0 ? '—' : (
                     <span>
                       <strong style={{ color: COLORS.text }}>{aliasIds.length}</strong>
