@@ -26,6 +26,7 @@ import { squadName, squadColor, getSquadName } from '../utils/squads';
 import { resolveFieldFull } from '../utils/helpers';
 import { resolveZones } from '../utils/layoutZones';
 import HeatmapCanvas from '../components/HeatmapCanvas';
+import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import { usePlayers, useActiveTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, ZONE_COLORS, responsive } from '../utils/theme';
@@ -871,14 +872,34 @@ export default function PlayerStatsPage() {
     );
   }
 
-  return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader
-        back={{ to: backTo }}
-        title={player.name || 'Player'}
-        subtitle={t('player_stats').toUpperCase()}
-      />
+  // § 116 Stage 4.1 — in LANDSCAPE the breakout heatmap is promoted to the HERO
+  // (CanvasRailLayout) and the report column moves to the rail BY REFERENCE
+  // (`columnEl`); portrait is unchanged. `heatmapHeroEl` is the SAME canvas shown
+  // inline in the portrait section (defined once, used in whichever branch renders).
+  const landscape = device.isLandscape;
+  const heatmapHeroEl = (outgoingZones.hasAny || breakoutPoints.length > 0) && statsField?.fieldImage ? (
+    <HeatmapCanvas
+      fieldImage={statsField.fieldImage}
+      points={breakoutPoints}
+      selectedPlayerId={playerId}
+      phase="breakout"
+      showPositions
+      showShots={false}
+      calloutZones={outgoingCalloutZones}
+      calloutZoneWeights={outgoingZones.freq}
+      calloutZoneKills={outgoingZones.kill}
+    />
+  ) : null;
 
+  const pageHeaderEl = (
+    <PageHeader
+      back={{ to: backTo }}
+      title={player.name || 'Player'}
+      subtitle={t('player_stats').toUpperCase()}
+    />
+  );
+
+  const columnEl = (
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* ─── Cold-review entry (claim flow 1b, W4) — own player only;
@@ -1124,20 +1145,12 @@ export default function PlayerStatsPage() {
                 ∝ frequency); kill-zones emphasized (stronger fill + red outline).
                 OUTGOING only — kept distinct from any future INCOMING (B3) layer.
                 Reuses HeatmapCanvas (no new canvas); points=[] → choropleth only. */}
-            {(outgoingZones.hasAny || breakoutPoints.length > 0) && statsField?.fieldImage && (
+            {/* Portrait: heatmap inline here. Landscape: it's the HERO instead
+                (heatmapHeroEl), so this section is suppressed (§116 Stage 4.1). */}
+            {!landscape && (outgoingZones.hasAny || breakoutPoints.length > 0) && statsField?.fieldImage && (
               <div>
                 <SectionHeader t={t} source="scout+self" title="Strefy ostrzału + przeszkody startowe" />
-                <HeatmapCanvas
-                  fieldImage={statsField.fieldImage}
-                  points={breakoutPoints}
-                  selectedPlayerId={playerId}
-                  phase="breakout"
-                  showPositions
-                  showShots={false}
-                  calloutZones={outgoingCalloutZones}
-                  calloutZoneWeights={outgoingZones.freq}
-                  calloutZoneKills={outgoingZones.kill}
-                />
+                {heatmapHeroEl}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
                     <span style={{ width: 9, height: 9, borderRadius: '50%', background: COLORS.success }} />
@@ -1393,39 +1406,66 @@ export default function PlayerStatsPage() {
           );
         })()}
       </div>
+  );
 
-      {/* Photo lightbox — tap-to-enlarge for the profile avatar.
-          PBLeagues photos are usually head-to-toe shots tightly cropped by the
-          64px circle, so tapping opens the full image. Click anywhere closes. */}
-      {photoLightbox && (
-        <div
-          onClick={() => setPhotoLightbox(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,.92)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 16, cursor: 'pointer',
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-          <img src={photoLightbox} alt=""
-            onClick={e => e.stopPropagation()}
-            style={{
-              maxWidth: '100%', maxHeight: '90dvh',
-              borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,.6)',
-              objectFit: 'contain', cursor: 'default',
-            }} />
-          <div
-            onClick={() => setPhotoLightbox(null)}
-            style={{
-              position: 'absolute', top: 16, right: 16,
-              width: 44, height: 44, borderRadius: '50%',
-              background: 'rgba(0,0,0,.5)', color: '#fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22, fontFamily: FONT, fontWeight: 700,
-              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-            }}>×</div>
-        </div>
-      )}
+  // Photo lightbox — tap-to-enlarge for the profile avatar. PBLeagues photos are
+  // usually head-to-toe shots tightly cropped by the 64px circle, so tapping opens
+  // the full image. Click anywhere closes. (Valid in both orientations.)
+  const photoLightboxEl = photoLightbox ? (
+    <div
+      onClick={() => setPhotoLightbox(null)}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 1000,
+        background: 'rgba(0,0,0,.92)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 16, cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+      }}>
+      <img src={photoLightbox} alt=""
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxWidth: '100%', maxHeight: '90dvh',
+          borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,.6)',
+          objectFit: 'contain', cursor: 'default',
+        }} />
+      <div
+        onClick={() => setPhotoLightbox(null)}
+        style={{
+          position: 'absolute', top: 16, right: 16,
+          width: 44, height: 44, borderRadius: '50%',
+          background: 'rgba(0,0,0,.5)', color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 22, fontFamily: FONT, fontWeight: 700,
+          cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        }}>×</div>
+    </div>
+  ) : null;
+
+  // LANDSCAPE (with a heatmap to promote): field is the HERO, report column is the
+  // rail (by reference). Collapses to the §116 strip on cramped tablet-landscape.
+  if (landscape && heatmapHeroEl) {
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
+        <CanvasRailLayout
+          isLandscape
+          aspect={16 / 10}
+          railMin={200}
+          header={pageHeaderEl}
+          artifact={heatmapHeroEl}
+          rail={columnEl}
+          collapsed={{ tabs: [], count: null, onBack: backTo }}
+        />
+        {photoLightboxEl}
+      </div>
+    );
+  }
+
+  // PORTRAIT (and landscape without a heatmap) — the original stacked layout.
+  return (
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      {pageHeaderEl}
+      {columnEl}
+      {photoLightboxEl}
     </div>
   );
 }

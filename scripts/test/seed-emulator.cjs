@@ -94,6 +94,11 @@ const TEAM_C = 'team-c';
 const SCT_BLEED = 'sct-bleed';
 const MATCH_STATS = 'mat-stats';
 const MATCH_OFFLINE = 'mat-offline';
+const MATCH_PSTATS = 'mat-pstats';   // PlayerStats landscape-hero e2e (Stage 4.1)
+const TRN_PSTATS = 'trn-pstats';     // dedicated tournament on the base layout (with fieldImage)
+// A 160×100 (16:10) SVG field image — non-degenerate aspect so BaseCanvas's
+// fit-sizing renders a real <canvas> (the PlayerStats breakout-heatmap HERO).
+const DEMO_FIELD_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='100'%3E%3Crect width='160' height='100' fill='%230a1410'/%3E%3C/svg%3E";
 
 const playersFor = (team, prefix, teamId) =>
   Array.from({ length: 5 }, (_, i) => ({
@@ -197,7 +202,10 @@ async function main() {
   batch.set(db.doc(`layouts/${BASE_LAYOUT}`), {
     name: 'Library Field', league: 'NXL', year: 2026,
     bunkers: [{ id: 'b1', x: 0.5, y: 0.5, positionName: 'Center', type: 'can' }],
-    fieldImage: null, discoLine: 0.30, zeekerLine: 0.80,
+    // fieldImage set so a base-layout tournament (trn-pstats) renders the
+    // PlayerStats breakout-heatmap HERO. useLayouts reads /layouts (base) + overlays,
+    // NOT workspace /layouts — so the hero field must live on the BASE layout.
+    fieldImage: DEMO_FIELD_IMG, discoLine: 0.30, zeekerLine: 0.80,
     mirrorMode: 'y', doritoSide: 'top', fieldCalibration: null, createdAt: now,
   });
   batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${BASE_LAYOUT}`), {
@@ -237,6 +245,33 @@ async function main() {
   });
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_OFFLINE}`), {
     teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now + 3, createdAt: now,
+  });
+  // PlayerStats HERO fixture (Stage 4.1) — a DEDICATED tournament on the BASE
+  // layout (base-demo carries the fieldImage; useLayouts only resolves base+overlay
+  // layouts) with a scouted Team Alpha + one heatmap-bearing point, so pa1's
+  // PlayerStats renders the breakout heatmap. Isolated → no other spec affected.
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PSTATS}`), {
+    name: 'Stats Cup', eventType: 'tournament', league: 'NXL', year: 2026,
+    division: 'PRO', status: 'active', layoutId: BASE_LAYOUT, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PSTATS}/scouted/${TEAM_A}`), {
+    teamId: TEAM_A, name: 'Team Alpha', league: 'NXL', division: 'PRO',
+    roster: rosterA.map(p => p.id), createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PSTATS}/matches/${MATCH_PSTATS}`), {
+    teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now, createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN_PSTATS}/matches/${MATCH_PSTATS}/points/pt-ps`), {
+    order: now, createdAt: now, fieldSide: 'left', outcome: 'win_a',
+    homeData: {
+      players: [{ x: 0.4, y: 0.5 }, null, null, null, null],
+      assignments: [rosterA[0].id, null, null, null, null],
+      zoneShots: { 0: ['z1'] },
+      bumpStops: [null, null, null, null, null],
+      eliminations: [false, false, false, false, false],
+      runners: [false, false, false, false, false],
+      fieldSide: 'left',
+    },
   });
 
   // 7. Invite tokens (Stage 4) — admin-issued (createdBy = demo-ws admin UID).
