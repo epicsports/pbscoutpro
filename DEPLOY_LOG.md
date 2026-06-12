@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-12 — [FULL-DAY STEP 1+9] §113 Stage 4.1 PlayerStats rail + single-membership auto-enter
+**HEAD `1efeb026`** (`c2503183` = 4.1 merge of `feat/rail-rollout`; `1efeb026` = STEP 9). **App-only — no rules/index.** §7.6 v2 **Tier 1** (4.1 = approved rail-pattern propagation; STEP 9 = logic-only). Full emulator e2e **29/29 green**. **REVERT:** `git revert --no-commit c2503183^..1efeb026` (or reset to `796858b1`) → rebuild → deploy.
+
+**STEP 1 / Stage 4.1 (PlayerStats landscape rail):** PlayerStatsPage wraps its breakout-heatmap hero + report column in `CanvasRailLayout` in landscape (portrait stack unchanged) — same §113/§116 pattern now live on Hitability. e2e `playerstats-rail.spec.js` (phone-landscape hero ≥95% + rail-left; tablet collapses; portrait <70%).
+
+**STEP 9 (single-membership auto-enter):** `autoEnterDefaultWorkspace` membership fallback now queries the rules-provable `members array-contains` (replacing the unsupported `userRoles.<uid> != null`, same class as D1); EXACTLY ONE membership → enter + fire-and-forget stamp `users/<uid>.defaultWorkspace` (closes the FIT fresh-invitee wall — E4's 3 members no longer dead-end on NoWorkspaceScreen); >1 → enter first (re-pick via WorkspaceSwitcher); 0 → NoWorkspaceScreen. Makes the 5f69dc04 coach3 regression test deterministic (was a flake).
+
+**Owed: Jacek prod smoke** — PlayerStats landscape (hero + rail, tablet strip, portrait unchanged); a no-defaultWorkspace member entering straight into their workspace.
+
 ## 2026-06-12 — [CC_BRIEF_OVERNIGHT] icon-segment tabs + hitability deletes + cluster batch + escalation resolutions + E3 logo cache
 **HEAD `14755d22`** (merge train `--no-ff`: `feat/rail-icon-segment-tabs` → `feat/hitability-marker-deletes` → `fix/audit-v2-clusters` → `fix/logo-pwa-image-cache` → `docs/overnight-sync`). **App-only — no rules/index.** Jacek GO "I need all of it on prod to test it" (2026-06-12). Full emulator e2e **28/28 green** pre-deploy.
 
