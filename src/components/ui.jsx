@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
 import { useLeagueName } from '../hooks/useLeagues';
+import { useLanguage } from '../hooks/useLanguage';
 
 // ─── Button ───
 export function Btn({
@@ -195,6 +196,7 @@ export function MoreBtn({ onClick }) {
 
 // ─── Swipe-to-Delete Wrapper ───
 export function SwipeDelete({ onDelete, children }) {
+  const { t } = useLanguage();
   const ref = useRef(null);
   const startX = useRef(0);
   const [offset, setOffset] = useState(0);
@@ -226,7 +228,7 @@ export function SwipeDelete({ onDelete, children }) {
       }}>
         <span onClick={() => { reset(); onDelete(); }}
           style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
-          Delete
+          {t('delete')}
         </span>
       </div>
       {/* Sliding content */}
@@ -467,7 +469,9 @@ export function Modal({ open, onClose, title, children, footer, maxWidth: maxWid
 }
 
 // ─── Loading ───
-export function Loading({ text = 'Loading...' }) {
+export function Loading({ text }) {
+  const { t } = useLanguage();
+  const label = text ?? t('loading_default');
   return (
     <div style={{
       background: COLORS.bg, minHeight: '100vh', display: 'flex',
@@ -477,7 +481,7 @@ export function Loading({ text = 'Loading...' }) {
         fontFamily: FONT, color: COLORS.accent, fontSize: TOUCH.fontLg,
         animation: 'pulse 1.5s ease-in-out infinite',
         display: 'flex', alignItems: 'center', gap: 10,
-      }}>🎯 {text}</div>
+      }}>🎯 {label}</div>
     </div>
   );
 }
@@ -544,13 +548,14 @@ export function YearBadge({ year }) {
 export function ConfirmModal({ open, onClose, title, message, onConfirm, confirmLabel = 'Confirm', danger = false,
   requirePassword, passwordLabel = 'Enter workspace password to confirm...',
   password, onPasswordChange }) {
+  const { t } = useLanguage();
   const passwordMatch = requirePassword
     ? requirePassword === password?.toLowerCase().trim().replace(/^##/, '').replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').slice(0, 40)
     : true;
   return (
     <Modal open={open} onClose={onClose} title={title}
       footer={<>
-        <Btn variant="default" onClick={onClose}>Cancel</Btn>
+        <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
         <Btn variant={danger ? 'danger' : 'accent'}
           disabled={!passwordMatch}
           onClick={onConfirm}>

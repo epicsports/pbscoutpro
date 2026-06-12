@@ -1317,6 +1317,21 @@ const T = {
     bunker_editor_type_ph:            'Wybierz typ...',
     bunker_editor_save_next:          'Zapisz i dalej →',
     bunker_editor_delete_bunker:      'Usuń bunker',
+    /* ─── §H1 Batch 6 — modal & action strings ─────────── */
+    /* NewTournamentModal field labels + placeholders */
+    ntm_field_name:           'Nazwa',
+    ntm_optional:             '(opcjonalnie)',
+    ntm_field_team:           'Drużyna',
+    ntm_select_team:          '— wybierz drużynę —',
+    ntm_field_date:           'Data',
+    ntm_sparing_name_ph:      'Nazwa sparingu…',
+    ntm_eligible_classes:     'Uprawnione klasy graczy',
+    ntm_eligible_count:       (n, total) => `${n} z ${total}`,
+    ntm_tournament_name_ph:   'NXL Tampa 2026…',
+    /* EntityPickerModal defaults */
+    entity_picker_select:     'Wybierz',
+    /* ui.jsx shared controls */
+    loading_default:          'Ładowanie…',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2587,6 +2602,21 @@ const T = {
     bunker_editor_type_ph:            'Select type...',
     bunker_editor_save_next:          'Save & next →',
     bunker_editor_delete_bunker:      'Delete bunker',
+    /* ─── §H1 Batch 6 — modal & action strings ─────────── */
+    /* NewTournamentModal field labels + placeholders */
+    ntm_field_name:           'Name',
+    ntm_optional:             '(optional)',
+    ntm_field_team:           'Team',
+    ntm_select_team:          '— select team —',
+    ntm_field_date:           'Date',
+    ntm_sparing_name_ph:      'Sparing name…',
+    ntm_eligible_classes:     'Eligible player classes',
+    ntm_eligible_count:       (n, total) => `${n} of ${total}`,
+    ntm_tournament_name_ph:   'NXL Tampa 2026…',
+    /* EntityPickerModal defaults */
+    entity_picker_select:     'Select',
+    /* ui.jsx shared controls */
+    loading_default:          'Loading…',
   },
 };
 

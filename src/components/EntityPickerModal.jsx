@@ -4,6 +4,7 @@ import PlayerAvatar from './PlayerAvatar';
 import SearchFilterPanel from './SearchFilterPanel';
 import { matchEntity } from '../utils/entityFilters';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * EntityPickerModal — the shared add-to-event picker. SearchFilterPanel
@@ -19,12 +20,15 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
  * (optional caption under the panel — e.g. "descendants + retired excluded").
  */
 export default function EntityPickerModal({
-  open, onClose, title = 'Select',
+  open, onClose, title,
   items = [], fields = ['name', 'nickname', 'number'],
   filters = [], predicate,
   excludeIds = [], multi = false, selectedIds = [],
-  onPick, onToggle, renderItem, emptyText = 'No matches', note,
+  onPick, onToggle, renderItem, emptyText, note,
 }) {
+  const { t } = useLanguage();
+  const resolvedTitle = title ?? t('entity_picker_select');
+  const resolvedEmptyText = emptyText ?? t('picker_no_matches');
   const [search, setSearch] = useState('');
   const exclude = useMemo(() => new Set(excludeIds), [excludeIds]);
   const sel = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -44,7 +48,7 @@ export default function EntityPickerModal({
   );
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
+    <Modal open={open} onClose={onClose} title={resolvedTitle}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm }}>
         <SearchFilterPanel search={search} onSearchChange={setSearch} filters={filters} />
         {note ? (
@@ -52,7 +56,7 @@ export default function EntityPickerModal({
         ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: '50vh', overflowY: 'auto' }}>
           {filtered.length === 0 ? (
-            <div style={{ padding: SPACE.lg, textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>{emptyText}</div>
+            <div style={{ padding: SPACE.lg, textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>{resolvedEmptyText}</div>
           ) : filtered.map(it => {
             const selected = sel.has(it.id);
             return (
