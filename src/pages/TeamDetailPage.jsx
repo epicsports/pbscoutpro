@@ -348,8 +348,8 @@ export default function TeamDetailPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4,
                   padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer',
-                  background: p.hero ? '#f59e0b12' : 'transparent',
-                  border: `1px solid ${p.hero ? '#f59e0b25' : COLORS.surfaceLight}`,
+                  background: p.hero ? COLORS.accentA12 : 'transparent',
+                  border: `1px solid ${p.hero ? COLORS.accentA25 : COLORS.surfaceLight}`,
                   minHeight: 44,
                 }}>
                 <span style={{ fontSize: 12, color: p.hero ? COLORS.accent : COLORS.textMuted }}>★</span>

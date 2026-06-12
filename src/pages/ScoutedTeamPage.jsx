@@ -968,7 +968,7 @@ export default function ScoutedTeamPage() {
             title={title}
             style={{
               padding: '6px 12px', borderRadius: 8,
-              background: active ? '#f59e0b08' : 'transparent',
+              background: active ? COLORS.accentA08 : 'transparent',
               border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
               color: active ? COLORS.accent : (disabled ? COLORS.borderLight : COLORS.textDim),
               fontFamily: FONT, fontSize: 12, fontWeight: 600,
@@ -1087,7 +1087,7 @@ export default function ScoutedTeamPage() {
             return (
               <div style={{
                 margin: '8px 16px', padding: '10px 14px',
-                background: '#f59e0b06', border: '1px solid #f59e0b15', borderRadius: 10,
+                background: COLORS.accentA06, border: `1px solid ${COLORS.accentA15}`, borderRadius: 10,
               }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <span style={{ fontFamily: FONT, fontSize: 13, flexShrink: 0, marginTop: 1 }}>⚠</span>
@@ -1189,7 +1189,7 @@ export default function ScoutedTeamPage() {
                     position: 'absolute', left: 0, right: 0, bottom: 0,
                     padding: '4px 10px',
                     fontFamily: FONT, fontSize: 10, fontWeight: 600,
-                    color: '#8b95a5', textAlign: 'center',
+                    color: COLORS.textSubtle, textAlign: 'center',
                     background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
                   }}>Tap to expand heatmap</div>
                 </div>
@@ -1322,8 +1322,8 @@ export default function ScoutedTeamPage() {
                 <div style={{
                   margin: '0 16px 8px',
                   padding: '8px 12px',
-                  background: reliabilityLow ? '#f59e0b0c' : COLORS.surfaceDark,
-                  border: `1px solid ${reliabilityLow ? '#f59e0b40' : COLORS.border}`,
+                  background: reliabilityLow ? COLORS.accentA0c : COLORS.surfaceDark,
+                  border: `1px solid ${reliabilityLow ? COLORS.accentA40 : COLORS.border}`,
                   borderRadius: RADIUS.md,
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
@@ -1715,7 +1715,7 @@ export default function ScoutedTeamPage() {
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: h.unusual ? COLORS.accent : COLORS.textMuted, minWidth: 32, textAlign: 'right' }}>{h.pct}%</span>
                           {h.unusual && (
-                            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, background: '#f59e0b18', border: '1px solid #f59e0b30', borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
+                            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, background: COLORS.accentA18, border: `1px solid ${COLORS.accentA30}`, borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
                           )}
                         </div>
                       ))}
@@ -1951,8 +1951,8 @@ export default function ScoutedTeamPage() {
                       style={{
                         display: 'flex', alignItems: 'center', gap: 3,
                         padding: '4px 6px', borderRadius: RADIUS.sm, cursor: 'pointer',
-                        background: isTHero ? '#f59e0b12' : 'transparent',
-                        border: `1px solid ${isTHero ? '#f59e0b25' : COLORS.surfaceLight}`,
+                        background: isTHero ? COLORS.accentA12 : 'transparent',
+                        border: `1px solid ${isTHero ? COLORS.accentA25 : COLORS.surfaceLight}`,
                       }}>
                       <span style={{ fontSize: 11, color: isTHero ? COLORS.accent : COLORS.textMuted }}>★</span>
                       <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.3px', color: isTHero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
@@ -2084,7 +2084,7 @@ export default function ScoutedTeamPage() {
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '12px 14px',
-                  background: isSelected ? '#f59e0b10' : COLORS.surfaceDark,
+                  background: isSelected ? COLORS.accentA10 : COLORS.surfaceDark,
                   border: `1px solid ${isSelected ? COLORS.accent : COLORS.border}`,
                   borderRadius: RADIUS.md,
                   cursor: 'pointer',

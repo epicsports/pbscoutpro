@@ -22,6 +22,7 @@ export const COLORS = {
   surfaceLight: '#1a2234',
   surfaceHover: '#1f2b3d',
   surfaceDark: P.gray900,   // #0f172a — deepest surface
+  surfaceBar: '#0d1117',    // header/tab-bar/score-center chrome — REVIEW_CHECKLIST §6 header bg
   // Borders
   border: '#2a3548',
   borderLight: P.gray700,   // #334155
@@ -41,6 +42,7 @@ export const COLORS = {
   // Text
   text: P.gray200,
   textDim: P.gray400,    // #94a3b8 — 7:1 on bg, WCAG AAA
+  textSubtle: '#8b95a5', // muted score/secondary text — between textDim and textMuted; minted 2026-06-12 epsilon ruling
   textMuted: P.gray500,  // #64748b — 4.5:1 on bg, WCAG AA
   white: P.white,
   black: P.black,
@@ -60,6 +62,11 @@ export const COLORS = {
   // Premium effects
   accentGradient: `linear-gradient(135deg, ${P.amber500}, #ef8b00)`,
   accentGlow: `0 4px 24px ${P.amber500}25`,
+  // Amber-alpha tints — minted 2026-06-12 epsilon ruling; exact-value literals from page/component code
+  accentA06: '#f59e0b06', accentA08: '#f59e0b08', accentA0c: '#f59e0b0c',
+  accentA10: '#f59e0b10', accentA12: '#f59e0b12', accentA15: '#f59e0b15',
+  accentA18: '#f59e0b18', accentA20: '#f59e0b20', accentA25: '#f59e0b25',
+  accentA30: '#f59e0b30', accentA40: '#f59e0b40',
   successRadial: 'radial-gradient(ellipse at bottom center, rgba(34,197,94,0.12) 0%, transparent 70%)',
   dangerRadial: 'radial-gradient(ellipse at bottom center, rgba(239,68,68,0.12) 0%, transparent 70%)',
 };

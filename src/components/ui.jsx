@@ -98,7 +98,7 @@ export function LeagueBadge({ league }) {
 const DATA_SOURCE_VARIANTS = {
   'scout':      { bg: 'transparent', color: COLORS.textDim, labelKey: 'data_source_scout' },
   'scout+self': { bg: '#22d3ee15',   color: '#22d3ee',      labelKey: 'data_source_scout_self' },
-  'scout-only': { bg: '#f59e0b15',   color: '#f59e0b',      labelKey: 'data_source_scout_only' },
+  'scout-only': { bg: COLORS.accentA15, color: '#f59e0b',      labelKey: 'data_source_scout_only' },
 };
 export function DataSourcePill({ source, t }) {
   const cfg = DATA_SOURCE_VARIANTS[source];

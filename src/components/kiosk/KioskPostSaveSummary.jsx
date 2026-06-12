@@ -336,7 +336,7 @@ function Shell({ onBack, title, subtitle, saved, children }) {
       display: 'flex', flexDirection: 'column',
     }}>
       <div style={{
-        background: '#0d1117',
+        background: COLORS.surfaceBar,
         borderBottom: `1px solid ${COLORS.border}`,
         padding: '14px 18px',
         display: 'flex', alignItems: 'center', gap: 14,

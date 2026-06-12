@@ -416,7 +416,7 @@ export default function QuickLogView({
       {!freePlay && (
       <div style={{
         display: 'flex', alignItems: 'center', padding: '10px 16px',
-        background: '#0d1117', borderBottom: `1px solid ${COLORS.surfaceLight}`, gap: 4,
+        background: COLORS.surfaceBar, borderBottom: `1px solid ${COLORS.surfaceLight}`, gap: 4,
       }}>
         <div style={{ flex: 1, textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{teamA?.name}</div>
         <div style={{ fontFamily: FONT, fontSize: 36, fontWeight: 800, color: COLORS.text, minWidth: 40, textAlign: 'center' }}>{scoreA}</div>
@@ -594,7 +594,7 @@ export default function QuickLogView({
             {/* Mobile-only legend pill — first-time hint mapping emoji → name */}
             {!isTablet && (
               <div style={{
-                background: '#0d1117', border: `1px solid ${COLORS.surfaceLight}`,
+                background: COLORS.surfaceBar, border: `1px solid ${COLORS.surfaceLight}`,
                 borderRadius: 8, padding: '8px 12px',
                 display: 'flex', justifyContent: 'center', gap: 14,
                 marginTop: 10,
@@ -801,7 +801,7 @@ export default function QuickLogView({
                   border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 8,
                 }}>
                   <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.borderLight, minWidth: 24 }}>#{h.num}</span>
-                  <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, fontWeight: 500, color: '#8b95a5', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{h.names}</span>
+                  <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, fontWeight: 500, color: COLORS.textSubtle, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{h.names}</span>
                   <span style={{
                     fontFamily: FONT, fontSize: 12, fontWeight: 700, minWidth: 20, textAlign: 'center',
                     color: h.isWin ? COLORS.success : h.isLoss ? COLORS.danger : COLORS.textMuted,

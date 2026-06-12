@@ -585,7 +585,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
                     return (
                       <div key={key} style={{
                         padding: '8px 10px', borderRadius: 8,
-                        background: COLORS.surfaceDark, border: `1px solid ${u.action ? COLORS.border : '#f59e0b40'}`,
+                        background: COLORS.surfaceDark, border: `1px solid ${u.action ? COLORS.border : COLORS.accentA40}`,
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                           <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

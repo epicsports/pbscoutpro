@@ -466,7 +466,7 @@ export default function LayoutAnalyticsPage() {
             const Pill = ({ active, label, onClick, hasClear, onClear }) => (
               <div onClick={onClick} style={{
                 padding: '6px 12px', borderRadius: 8,
-                background: active ? '#f59e0b08' : 'transparent',
+                background: active ? COLORS.accentA08 : 'transparent',
                 border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
                 color: active ? COLORS.accent : COLORS.textDim,
                 fontFamily: FONT, fontSize: 12, fontWeight: 600,
