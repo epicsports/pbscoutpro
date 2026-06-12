@@ -46,6 +46,11 @@ export const hitabilityUrl = `#/training/${TRN_HIT}/hitability`;
 export const TRN_HIT_DEL = 'trn-hit-del';
 export const LAYOUT_HIT_DEL = 'lay-hit-del';
 export const hitabilityDelUrl = `#/training/${TRN_HIT_DEL}/hitability`;
+// Isolated marker-popup fixture (STEP 2 — the spec renames + links, own layout).
+export const TRN_HIT_POP = 'trn-hit-pop';
+export const LAYOUT_HIT_POP = 'lay-hit-pop';
+export const HIT_POS_XY = { x: 0.3, y: 0.5 }; // seeded position coords (HIT_POS)
+export const hitabilityPopUrl = `#/training/${TRN_HIT_POP}/hitability`;
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point
 export const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge
 export const TEAM_A = 'team-a';

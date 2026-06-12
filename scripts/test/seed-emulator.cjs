@@ -59,6 +59,10 @@ const HIT_TGT = 'tgt-A';
 // mutates TRN_HIT's shared, layout-keyed hitability config — §C, shared-state rule).
 const TRN_HIT_DEL = 'trn-hit-del';
 const LAYOUT_HIT_DEL = 'lay-hit-del';
+// Isolated marker-popup fixture (STEP 2 — the popup spec renames/recolors the
+// config + creates the link itself, so it gets its own layout; NO seeded link).
+const TRN_HIT_POP = 'trn-hit-pop';
+const LAYOUT_HIT_POP = 'lay-hit-pop';
 const TEAM_A = 'team-a';
 const TEAM_B = 'team-b';
 // Invite-isolation guards (Stage 4): two OUTSIDERS (not members of demo-ws) +
@@ -352,6 +356,20 @@ async function main() {
     players: [{ id: HIT_POS, x: 0.3, y: 0.5, color: '#22d3ee', label: '1' }],
     targets: [{ id: HIT_TGT, x: 0.7, y: 0.5, label: 'A' }],
     links: [{ playerId: HIT_POS, targetId: HIT_TGT }],
+    updatedAt: now,
+  });
+
+  // STEP 2 marker-popup fixture — own layout (the spec renames a marker AND
+  // creates the first link via plain taps, so it must never touch the shared
+  // TRN_HIT config). NO seeded link: the plain-tap regression test creates it.
+  batch.set(db.doc(`workspaces/${WS}/trainings/${TRN_HIT_POP}`), {
+    type: 'training', name: 'Hitability Popup', layoutId: LAYOUT_HIT_POP,
+    status: 'open', attendees: [], squads: {}, createdAt: now, updatedAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${LAYOUT_HIT_POP}/hitability/config`), {
+    players: [{ id: HIT_POS, x: 0.3, y: 0.5, color: '#22d3ee', label: '1' }],
+    targets: [{ id: HIT_TGT, x: 0.7, y: 0.5, label: 'A' }],
+    links: [],
     updatedAt: now,
   });
 
