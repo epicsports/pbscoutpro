@@ -237,7 +237,7 @@ export default function KioskWizardHost({
     }}>
       {/* Header — back chevron + step counter + close X */}
       <div style={{
-        background: '#0d1117',
+        background: COLORS.surfaceBar,
         borderBottom: `1px solid ${COLORS.border}`,
         padding: `12px 16px`,
         display: 'flex', alignItems: 'center', gap: 12,

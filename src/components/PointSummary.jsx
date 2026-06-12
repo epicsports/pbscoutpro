@@ -1,4 +1,4 @@
-import { FONT } from '../utils/theme';
+import { COLORS, FONT } from '../utils/theme';
 
 /**
  * PointSummary — live scout verification bar during point scouting.
@@ -37,7 +37,7 @@ export default function PointSummary({ pointNumber, draft }) {
       display: 'inline-flex', alignItems: 'center', gap: 5,
       padding: '4px 9px', borderRadius: 8,
       background: '#0f172a', border: '1px solid #1a2234',
-      fontFamily: FONT, fontSize: 10, fontWeight: 500, color: '#8b95a5',
+      fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textSubtle,
       whiteSpace: 'nowrap',
     }}>
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
@@ -48,15 +48,15 @@ export default function PointSummary({ pointNumber, draft }) {
   const chips = [];
   chips.push(chip('#e2e8f0', `${placed}/5 placed`));
   if (zoneCounts.dorito > 0) chips.push(chip('#f59e0b', `${zoneCounts.dorito} dorito`));
-  if (zoneCounts.center > 0) chips.push(chip('#8b95a5', `${zoneCounts.center} center`));
+  if (zoneCounts.center > 0) chips.push(chip(COLORS.textSubtle, `${zoneCounts.center} center`));
   if (zoneCounts.snake > 0) chips.push(chip('#06b6d4', `${zoneCounts.snake} snake`));
   if (preciseShots > 0) chips.push(chip('#ef4444', `${preciseShots} shots`));
   if (eliminated > 0) chips.push(chip('#ef4444', `${eliminated} elim`));
-  if (bumped > 0) chips.push(chip('#8b95a5', `${bumped} bump`));
+  if (bumped > 0) chips.push(chip(COLORS.textSubtle, `${bumped} bump`));
 
   return (
     <div style={{
-      background: '#0d1117',
+      background: COLORS.surfaceBar,
       borderTop: '1px solid #1a2234',
       padding: '10px 14px',
     }}>

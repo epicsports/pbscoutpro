@@ -226,7 +226,7 @@ function ScopePill({ label, active, hasMenu, onClick }) {
   return (
     <div onClick={onClick} style={{
       padding: '8px 14px', borderRadius: 8,
-      background: active ? '#f59e0b08' : 'transparent',
+      background: active ? COLORS.accentA08 : 'transparent',
       border: `1px solid ${active ? COLORS.accent : COLORS.surfaceLight}`,
       color: active ? COLORS.accent : COLORS.textDim,
       fontFamily: FONT, fontSize: 12, fontWeight: 600,
@@ -949,7 +949,7 @@ export default function PlayerStatsPage() {
               <div style={{
                 display: 'inline-flex', alignItems: 'center', gap: 3,
                 marginTop: 6, padding: '3px 8px', borderRadius: 6,
-                background: '#f59e0b12', border: '1px solid #f59e0b20',
+                background: COLORS.accentA12, border: `1px solid ${COLORS.accentA20}`,
                 fontFamily: FONT, fontSize: 10, fontWeight: 700,
                 color: COLORS.accent, letterSpacing: '0.3px',
               }}>★ HERO</div>

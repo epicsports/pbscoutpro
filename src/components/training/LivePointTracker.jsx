@@ -218,7 +218,7 @@ export default function LivePointTracker({
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
         padding: '12px 14px', borderBottom: `1px solid ${COLORS.border}`,
-        background: '#0d1117', flexShrink: 0,
+        background: COLORS.surfaceBar, flexShrink: 0,
       }}>
         <div onClick={() => !saving && onCancel?.()}
           style={{ color: COLORS.accent, fontSize: 20, lineHeight: 1, cursor: 'pointer', padding: '4px 6px', WebkitTapHighlightColor: 'transparent' }}>
@@ -289,7 +289,7 @@ export default function LivePointTracker({
           not here. This stage owns observations only. */}
       <div style={{
         padding: 14, borderTop: `1px solid ${COLORS.border}`,
-        background: '#0d1117', flexShrink: 0,
+        background: COLORS.surfaceBar, flexShrink: 0,
       }}>
         <div onClick={() => !saving && handleSave()}
           style={{
@@ -424,7 +424,7 @@ function PickerPanel({
   inaczejText = null, onChangeInaczejText, onSaveInaczej,
 }) {
   return (
-    <div style={{ borderTop: `1px solid ${COLORS.border}80`, padding: '8px 10px 10px', background: '#0d1117' }}>
+    <div style={{ borderTop: `1px solid ${COLORS.border}80`, padding: '8px 10px 10px', background: COLORS.surfaceBar }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, minHeight: 24 }}>
         {onBack && (
           <div onClick={(e) => { e.stopPropagation(); onBack(); }}

@@ -90,7 +90,7 @@ export default function AppShell({
             display: 'flex',
             alignItems: 'center',
             padding: '10px 16px',
-            background: '#0d1117',
+            background: COLORS.surfaceBar,
             borderBottom: '1px solid #1a2234',
             gap: 10,
             flexShrink: 0,

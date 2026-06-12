@@ -221,7 +221,7 @@ function ProgressRow({ label, pct }) {
       display: 'flex', alignItems: 'center', gap: 10,
     }}>
       <span style={{
-        fontFamily: FONT, fontSize: 11, fontWeight: 500, color: '#8b95a5',
+        fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textSubtle,
         flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{label}</span>
       <div style={{
@@ -247,7 +247,7 @@ function MicroBar({ label, pct }) {
       display: 'flex', alignItems: 'center', gap: 10,
     }}>
       <span style={{
-        fontFamily: FONT, fontSize: 13, fontWeight: 500, color: '#8b95a5', flex: 1,
+        fontFamily: FONT, fontSize: 13, fontWeight: 500, color: COLORS.textSubtle, flex: 1,
       }}>{label}</span>
       <div style={{ width: 80, height: 4, borderRadius: 2, background: COLORS.surface, overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 2 }} />

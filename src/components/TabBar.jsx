@@ -38,7 +38,7 @@ export default function TabBar({ activeTab, onTabChange }) {
   return (
     <div style={{
       display: 'flex',
-      background: '#0d1117',
+      background: COLORS.surfaceBar,
       borderTop: '1px solid #1a2234',
       flexShrink: 0,
       paddingBottom: 'env(safe-area-inset-bottom, 0px)',

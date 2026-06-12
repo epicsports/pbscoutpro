@@ -1879,9 +1879,9 @@ export default function MatchPage() {
           badges={
             <span style={{
               fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
-              background: isLockReleased ? '#f59e0b18' : isClosed ? '#64748b18' : '#f59e0b18',
+              background: isLockReleased ? COLORS.accentA18 : isClosed ? '#64748b18' : COLORS.accentA18,
               color: isLockReleased ? COLORS.accent : isClosed ? COLORS.textMuted : COLORS.accent,
-              border: `1px solid ${isLockReleased ? '#f59e0b30' : isClosed ? '#64748b30' : '#f59e0b30'}`,
+              border: `1px solid ${isLockReleased ? COLORS.accentA30 : isClosed ? '#64748b30' : COLORS.accentA30}`,
               letterSpacing: '.5px',
             }}>{isLockReleased ? t('match_unlocked_badge') : isClosed ? 'FINAL' : 'LIVE'}</span>
           }
@@ -1932,7 +1932,7 @@ export default function MatchPage() {
             <div style={{
               flex: '0 0 auto', minWidth: 110,
               padding: '14px 12px',
-              background: '#0d1117',
+              background: COLORS.surfaceBar,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
               <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: COLORS.text, lineHeight: 1 }}>
@@ -2086,8 +2086,8 @@ export default function MatchPage() {
                 return (
                   <div key={pt.id} className="fade-in" style={{
                     display: 'flex', alignItems: 'stretch',
-                    background: isPreviewing ? '#f59e0b08' : COLORS.surfaceDark,
-                    border: `1px solid ${isPreviewing ? '#f59e0b40' : isOpen ? COLORS.accent + '60' : COLORS.surfaceLight}`,
+                    background: isPreviewing ? COLORS.accentA08 : COLORS.surfaceDark,
+                    border: `1px solid ${isPreviewing ? COLORS.accentA40 : isOpen ? COLORS.accent + '60' : COLORS.surfaceLight}`,
                     borderRadius: 12,
                     marginBottom: 6,
                     overflow: 'hidden',
@@ -2131,7 +2131,7 @@ export default function MatchPage() {
                       style={{
                         flex: '0 0 auto', minWidth: 68,
                         padding: '8px 10px',
-                        background: '#0d1117',
+                        background: COLORS.surfaceBar,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer',
                         borderLeft: `1px solid ${COLORS.surfaceLight}`,
@@ -2140,7 +2140,7 @@ export default function MatchPage() {
                     >
                       <div style={{
                         fontFamily: FONT, fontSize: 15, fontWeight: 700,
-                        color: isPreviewing ? COLORS.accent : '#8b95a5',
+                        color: isPreviewing ? COLORS.accent : COLORS.textSubtle,
                         lineHeight: 1,
                       }}>
                         {prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}
