@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-12 — [FULL-DAY H2 batch 2 + B4 scout CTA] token mints per epsilon ruling + honest "wkrótce" control
+**HEADs `7fb7997e` (scout CTA + rulings docs) + H2 batch 2 merge.** **App-only.** §7.6 v2 **Tier 1**. Full emulator e2e **38/38 green**. Batch executed on a **Sonnet subagent** (model-split per token-economy).
+
+**H2 batch 2 (Jacek epsilon ruling, two commits by design):** `48099cb0` pixel-identical — minted `surfaceBar:'#0d1117'` (13 sweeps/9 plików — chrome barów, REVIEW_CHECKLIST §6), `textSubtle:'#8b95a5'` (8 sweeps/5 plików), `accentA06…A40` exact-value amber-alpha tokens (19 sweeps; template-composed `${COLORS.accent}XX` forms untouched; re-bucketing = out of scope, would need a register row). `85c6b0a4` — **registered visible change:** phantom `#080c14` → `COLORS.bg` (2 call sites; `docs/EXPECTED_DIFF_REGISTER.md` row flipped to shipped).
+
+**B4 scout CTA (kiosk ruling):** join-by-code nie istnieje (discovery) → CTA "Dołącz do sesji kodem" renderuje się jako uczciwie DISABLED z plakietką "wkrótce" (`b4-scout-join-disabled`); feature = NEXT_TASKS [arc E, etap 2]. Enum + epsilon + batch-hygiene rulings zapisane (`I18N_EXTRACTION_WORKLIST.md`, `EXPECTED_DIFF_REGISTER.md`).
+
+**Owed: Jacek prod smoke** — chrome barów/score-centers bez zmian wizualnych (mints), 2 punkty `#080c14`→bg (percepcyjnie zero), scout empty-state z disabled CTA.
+
 ## 2026-06-12 — [FULL-DAY H1 batch 1] i18n extraction — navigation & core UI
 **HEAD `bead743f`** (merge of agent branch `364ab4be` + language-agnostic spec fix). **App-only.** §7.6 v2 **Tier 1** (mechanical extraction, no rewording). Full emulator e2e **38/38 green**. **REVERT:** `git revert bead743f 364ab4be` → rebuild → deploy.
 
