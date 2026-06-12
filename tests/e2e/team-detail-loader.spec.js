@@ -10,7 +10,7 @@
 // with no resolved-but-absent branch → test 2 RED until the guard lands.
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, TEAM_A } from './fixtures.js';
+import { TEST_ACCOUNT, TEAM_A, TRN } from './fixtures.js';
 
 test.describe('team-detail loader', () => {
   test('renders a valid team', async ({ page }) => {
@@ -24,6 +24,13 @@ test.describe('team-detail loader', () => {
     await login(page, TEST_ACCOUNT);
     await page.evaluate(h => { window.location.hash = h; }, '#/team/does-not-exist');
     await expect(page.getByText(/Couldn't load this team/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Retry/i })).toBeVisible();
+  });
+
+  test('an invalid match URL shows an error state, not an eternal spinner', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    await page.evaluate(h => { window.location.hash = h; }, `#/tournament/${TRN}/match/does-not-exist`);
+    await expect(page.getByText(/Couldn't load this match/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: /Retry/i })).toBeVisible();
   });
 });
