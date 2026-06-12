@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Main home per role — cold-open landing matrix — faithful snapshot</title>
+<!--
+  SOURCE: src/pages/MainPage.jsx (tab persistence :21-24,:105-110; NoTournament-
+          EmptyState :299) + src/components/AppShell.jsx (B4 cold guard :68-75,
+          context bar :87-157) + src/components/TabBar.jsx (tab defs :15-20,
+          visibility :26-31) + src/components/TournamentPicker.jsx + role chain
+          src/hooks/useWorkspace.jsx:515-575 / src/utils/roleUtils.js:69-77.
+  ROUTE : #/ (home)  — cold open, per role
+  DATE  : 2026-06-12 (HEAD c9a8005e; post B4-partial 0c4852a2 + STEP 9 auto-enter)
+
+  EXTRACTION FOR OPUS — "main-home per role". Input for the role-aware home
+  design (STEP 8 / B4, NEXT_TASKS "awaiting-mockup"; §31/§73 direction). This is
+  the CURRENT state, not a proposal.
+
+  COLD-OPEN LANDING MATRIX (B4 guarantee: no content role lands on Settings):
+    role          visible tabs              default tab       content / empty state
+    ─────────────────────────────────────────────────────────────────────────────
+    scout         Scout · More              Scout             ScoutTabContent → matches
+                                                              of active event; empty =
+                                                              "⚔️ No matches yet"
+    coach         Coach · More              Coach (fallback   CoachTabContent → scouted
+                                            from persisted    teams; empty = "🏴 No teams
+                                            'scout')          yet" / "⚔️ No matches yet"
+    player        Gracz · More              Gracz → redirect  PlayerPerformanceTracker-
+                                            /player/log       Page (picker/wizard/list)
+    workspace_    Scout · Coach · Gracz ·   persisted content CoachTab/ScoutTab per pick;
+    admin         More (all)                tab, never 'more' admin extras in More
+    viewer-only   More (only)               More (correct     MoreTabContent (Settings) —
+                                            terminal state)   the ONLY role that stays
+    super_admin   all + /admin surfaces     as admin          same + Workspaces admin
+
+  KEY MECHANICS:
+    - Tab persistence: TAB_KEY 'pbscoutpro_activeTab'; 'more' is NEVER persisted
+      (MainPage:105-110); AppShell once-per-mount guard redirects a stale 'more'
+      to the first content tab (AppShell:68-75). Viewer-only excepted.
+    - Role authority: workspace.userRoles[uid] → users/{uid}.roles fallback → [].
+      Admin = 'admin' role ∨ adminUid ∨ ADMIN_EMAILS ∨ globalRole super_admin.
+    - Event context: TOURN_KEY/LAST_KIND/LAST_TRAINING localStorage; the
+      TournamentPicker lists non-closed tournaments+trainings by lastAccess;
+      zero events ⇒ picker copy "No tournaments or trainings yet" and the tab
+      content falls to NoTournamentEmptyState "🏆 Select a tournament or create
+      a new one" — THE §73/B4 problem surface: a workspace with all events
+      closed shows a barren home with no role-aware guidance.
+    - STEP 9 (2026-06-12): single-membership accounts auto-enter their workspace
+      (defaultWorkspace stamped) — the pre-home dead-end is gone; the home
+      content itself is what remains to design.
+
+  EXISTING EMPTY-STATE COPY (verbatim):
+    MainPage NoTournamentEmptyState  🏆 "Select a tournament or create a new one"
+    ScoutTabContent                  ⚔️ "No matches yet"
+    CoachTabContent                  🏴 "No teams yet" · ⚔️ "No matches yet"
+    TournamentPicker (blank)         "No tournaments or trainings yet"
+    TournamentPicker (no active)     "No active tournaments or trainings."
+    NoWorkspaceScreen                (pre-home; terminal for non-invited accounts)
+
+  REAL TOKENS: bg #0a0e17 · surface #111827 · surfaceDark #0f172a · surfaceLight
+  #1a2234 · border #2a3548 · text #e2e8f0 · textDim #94a3b8 · textMuted #64748b
+  · accent #f59e0b · success #22c55e · danger #ef4444 · context/tab bar bg
+  #0d1117 (borderTop/Bottom #1a2234; active tab icon accent, inactive opacity
+  .4 textMuted) · FONT 'Inter'.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  .wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding:24px;}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .label{color:#64748b;font-size:12px;}
+  .frame{width:320px;height:600px;background:#0a0e17;border:1px solid #222;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;}
+  .ctx{background:#0d1117;border-bottom:1px solid #1a2234;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .ctxt{font-size:13px;font-weight:700;color:#e2e8f0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ctxs{font-size:10px;color:#64748b;}
+  .live{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;}
+  .body{flex:1;min-height:0;overflow-y:auto;padding:10px;}
+  .tabbar{background:#0d1117;border-top:1px solid #1a2234;display:flex;flex-shrink:0;padding:6px 0 10px;}
+  .tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;font-weight:600;}
+  .tb .ic{font-size:18px;}
+  .tb.on{color:#f59e0b;}
+  .tb.off{color:#64748b;opacity:.4;}
+  .card{background:#0f172a;border:1px solid #1a2234;border-radius:12px;padding:12px;margin-bottom:8px;}
+  .cardt{font-size:13px;font-weight:700;color:#e2e8f0;}
+  .cards{font-size:10px;color:#64748b;margin-top:2px;}
+  .empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:40px 16px;text-align:center;}
+  .eico{font-size:30px;}
+  .etxt{font-size:13px;font-weight:600;color:#94a3b8;}
+  .esub{font-size:11px;color:#64748b;line-height:1.5;}
+  .row{display:flex;align-items:center;gap:8px;background:#0f172a;border:1px solid #1a2234;border-radius:10px;padding:10px 12px;margin-bottom:6px;min-height:44px;}
+  .rt{flex:1;font-size:12px;color:#e2e8f0;font-weight:600;}
+  .rs{font-size:10px;color:#64748b;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- COACH — active event present -->
+  <div class="col">
+    <div class="label">COACH — cold open (active event) → Coach tab</div>
+    <div class="frame">
+      <div class="ctx"><div class="live"></div><div class="ctxt">NXL EUROPE #2 — UK</div><div class="ctxs">PRO · NXL</div></div>
+      <div class="body">
+        <div class="card"><div class="cardt">Red Storm</div><div class="cards">12 points scouted · 3 matches</div></div>
+        <div class="card"><div class="cardt">Vipers Kids</div><div class="cards">7 points scouted · 2 matches</div></div>
+        <div class="card"><div class="cardt">Lions U19</div><div class="cards">no data yet</div></div>
+      </div>
+      <div class="tabbar"><div class="tb off"><span class="ic">🎯</span>Scout</div><div class="tb on"><span class="ic">📋</span>Coach</div><div class="tb off"><span class="ic">🧍</span>Gracz</div><div class="tb off"><span class="ic">⚙️</span>More</div></div>
+    </div>
+  </div>
+
+  <!-- COACH — the §73/B4 problem state: zero active events -->
+  <div class="col">
+    <div class="label">COACH — all events closed (THE B4/§73 problem surface)</div>
+    <div class="frame">
+      <div class="ctx"><div class="ctxt" style="color:#64748b">No active event</div></div>
+      <div class="body">
+        <div class="empty">
+          <div class="eico">🏆</div>
+          <div class="etxt">Select a tournament or create a new one</div>
+          <div class="esub">TournamentPicker: "No active tournaments or trainings." — no role-aware guidance, no checklist, no next-step CTA. This is what STEP 8 (B4 per mockup-4) replaces.</div>
+        </div>
+      </div>
+      <div class="tabbar"><div class="tb off"><span class="ic">🎯</span>Scout</div><div class="tb on"><span class="ic">📋</span>Coach</div><div class="tb off"><span class="ic">⚙️</span>More</div></div>
+    </div>
+  </div>
+
+  <!-- SCOUT -->
+  <div class="col">
+    <div class="label">SCOUT — cold open → Scout tab (matches of active event)</div>
+    <div class="frame">
+      <div class="ctx"><div class="live"></div><div class="ctxt">NXL EUROPE #2 — UK</div><div class="ctxs">PRO · NXL</div></div>
+      <div class="body">
+        <div class="row"><div class="rt">Red Storm vs Vipers Kids</div><div class="rs">LIVE · 3:2</div></div>
+        <div class="row"><div class="rt">Lions U19 vs Red Storm</div><div class="rs">— : —</div></div>
+        <div class="empty" style="padding:18px 16px"><div class="eico">⚔️</div><div class="etxt">No matches yet</div><div class="esub">(empty-state variant when the event has no matches)</div></div>
+      </div>
+      <div class="tabbar"><div class="tb on"><span class="ic">🎯</span>Scout</div><div class="tb off"><span class="ic">⚙️</span>More</div></div>
+    </div>
+  </div>
+
+  <!-- PLAYER -->
+  <div class="col">
+    <div class="label">PLAYER — cold open → Gracz tab redirects to /player/log (PPT)</div>
+    <div class="frame">
+      <div class="ctx"><div class="ctxt">Mój trening</div><div class="ctxs">PPT</div></div>
+      <div class="body">
+        <div class="card"><div class="cardt">🧍 Dzisiejsze logi</div><div class="cards">PlayerPerformanceTrackerPage — picker (multi-LIVE) / wizard / TodaysLogsList</div></div>
+        <div class="card"><div class="cardt">＋ Nowy punkt</div><div class="cards">sticky wizard entry (§110 pill = sole picker path)</div></div>
+      </div>
+      <div class="tabbar"><div class="tb on"><span class="ic">🧍</span>Gracz</div><div class="tb off"><span class="ic">⚙️</span>More</div></div>
+    </div>
+  </div>
+
+  <!-- VIEWER -->
+  <div class="col">
+    <div class="label">VIEWER-ONLY — stays on More (correct terminal state)</div>
+    <div class="frame">
+      <div class="ctx"><div class="ctxt">Ustawienia</div></div>
+      <div class="body">
+        <div class="row"><div class="rt">Mój workspace</div><div class="rs">ranger1996</div></div>
+        <div class="row"><div class="rt">Język / Language</div><div class="rs">PL</div></div>
+        <div class="row"><div class="rt">Wyloguj</div></div>
+      </div>
+      <div class="tabbar"><div class="tb on"><span class="ic">⚙️</span>More</div></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

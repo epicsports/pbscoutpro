@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MatchPage → REVIEW on the rail (post-4.3) — faithful snapshot</title>
+<!--
+  SOURCE: src/pages/MatchPage.jsx (isReviewView branch, §116 Stage 4.3 wrap)
+          + components/canvas/CanvasRailLayout.jsx (shell) + HeatmapCanvas.
+  ROUTE : #/tournament/:tid/match/:mid  (NO ?scout param = Match Review)
+  DATE  : 2026-06-12 (captured right after Stage 4.3 shipped, HEAD c9a8005e)
+
+  EXTRACTION FOR OPUS — "MatchPage-on-rail post-4.3". The §116 archetype is now
+  LIVE on review: landscape promotes the review heatmap to the HERO (100% height,
+  aspect 16/10) and moves the ENTIRE portrait column into the residual rail BY
+  REFERENCE, in original order:
+
+    rail (railMin 200, typically 200–320px wide):
+      1. PageHeader  — back ‹ · "TeamA vs TeamB" · tournament subtitle · LIVE/FINAL badge · ⋮
+      2. Scoreboard card — SPLIT-TAP (teamA zone | recessed score 32px/900 | teamB zone),
+         "Scout ›" CTAs (amber 11px) in each zone; Quick › only in training context (D6c)
+      3. ▶ Replay toggle (amber only while active; disabled w/o Settle/Mid)
+      4. PerTeamHeatmapToggle — per-team Positions/Shots capsule row (§40)
+      5. Points list — split-tap rows (#N · teamA | progression a:b ("tap = preview
+         on the hero") | teamB · ⋮ menu); preview row = amber tint
+      6. CompletenessCard (collapsed; scout/coach/admin only)
+      7. STICKY bottom: "End match" (danger ghost 52px) / unlock / relock
+
+    hero: HeatmapCanvas — both teams (observe), preview-point override when a
+      points-list score-center is tapped. NO chrome on the hero (no draw tools on
+      review — drawing lives on ScoutedTeamPage).
+
+    tablet-landscape (residual < railMin per the 0.90 rule): rail collapses to the
+    56px strip (back + ☰ generic expand) → transient overlay panel = the EXACT
+    rail content. Portrait: 100% unchanged (stacked: header / scoreboard /
+    heatmap / replay / toggles / points / completeness / sticky).
+
+  DESIGN QUESTIONS THIS CAPTURE FEEDS (for the Opus brief — observations, not
+  decisions):
+    a. The scoreboard SPLIT-TAP card was designed for 640px — at rail width
+       (200–320) the two team zones + 110px score center compress hard; team
+       names clamp to 2 lines and the Scout ›/‹ Scout CTAs crowd.
+    b. Points-list split-tap rows likewise: 3 tap zones + ⋮ in ~280px.
+    c. The score-center "tap = preview on hero" interaction becomes the PRIMARY
+       coaching loop in landscape (tap point → hero shows that point) — currently
+       undiscoverable (no affordance text).
+    d. Sticky "End match" inside the rail competes with the points scroll.
+    e. The ⋮ match menu (ActionSheet) and point ⋮ menus open as bottom sheets
+       over the WHOLE viewport (incl. the hero) — fine, but worth a pass.
+
+  REAL TOKENS: bg #0a0e17 · surface #111827 · surfaceDark #0f172a · surfaceLight
+  #1a2234 · border #2a3548 · text #e2e8f0 · textDim #94a3b8 · textMuted #64748b
+  · accent #f59e0b · success #22c55e · danger #ef4444 · score-center bg #0d1117
+  · FONT 'Inter'. Team colours (TEAM_COLORS): A #22d3ee · B #f97316.
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  .wrap{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;padding:24px;}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .label{color:#64748b;font-size:12px;}
+  .lframe{width:840px;height:388px;background:#0a0e17;border:1px solid #222;border-radius:18px;overflow:hidden;display:flex;flex-direction:row;gap:8px;}
+  .pframe{width:390px;height:720px;background:#0a0e17;border:1px solid #222;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;}
+  .hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #2a3548;flex-shrink:0;}
+  .back{min-width:40px;min-height:40px;display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:20px;}
+  .ttl{font-size:13px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sub{font-size:10px;color:#64748b;}
+  .badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:5px;background:#f59e0b18;color:#f59e0b;border:1px solid #f59e0b30;letter-spacing:.5px;flex-shrink:0;}
+  .sb{display:flex;background:#111827;border:1px solid #1a2234;border-radius:12px;overflow:hidden;margin:8px;}
+  .sbz{flex:1;min-width:0;padding:10px 8px;display:flex;flex-direction:column;justify-content:center;}
+  .sbn{font-size:13px;font-weight:700;color:#e2e8f0;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .cta{font-size:10px;font-weight:600;color:#f59e0b;margin-top:2px;}
+  .sbs{flex:0 0 auto;min-width:64px;background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 6px;border-left:1px solid #1a2234;border-right:1px solid #1a2234;}
+  .scor{font-size:22px;font-weight:900;color:#e2e8f0;line-height:1;}
+  .pts{font-size:8px;font-weight:600;color:#64748b;margin-top:3px;letter-spacing:.4px;}
+  .pill{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 12px;border-radius:99px;font-size:11px;font-weight:700;color:#64748b;border:1px solid #2a3548;margin:0 auto;}
+  .seclbl{font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin:8px 10px 4px;}
+  .prow{display:flex;align-items:stretch;background:#0f172a;border:1px solid #1a2234;border-radius:10px;margin:0 8px 6px;min-height:48px;overflow:hidden;}
+  .prow.preview{background:#f59e0b08;border-color:#f59e0b40;}
+  .pz{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:6px 8px;}
+  .bar{width:3px;align-self:stretch;border-radius:2px;flex-shrink:0;}
+  .pn{font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pn.won{color:#e2e8f0;font-weight:600;}
+  .psc{flex:0 0 auto;min-width:44px;background:#0d1117;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#8b95a5;border-left:1px solid #1a2234;border-right:1px solid #1a2234;}
+  .pmenu{width:24px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:15px;}
+  .endm{margin:8px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:12px;border:1.5px solid #ef444425;background:#ef444408;color:#ef4444;font-size:12px;font-weight:600;}
+  .hero{flex:1;background:#0a1410;border:1px solid #2a3548;border-radius:12px;margin:6px 6px 6px 0;position:relative;overflow:hidden;}
+  .dot{position:absolute;width:14px;height:14px;border-radius:50%;transform:translate(-50%,-50%);}
+  .strip{width:56px;border-right:1px solid #2a3548;display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:4px;}
+  .sbtn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:10px;color:#94a3b8;font-size:17px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- LANDSCAPE — the post-4.3 rail (phone-landscape ~840×388) -->
+  <div class="col">
+    <div class="label">REVIEW — LANDSCAPE post-4.3 (rail 280 + hero 100% h, aspect 16/10)</div>
+    <div class="lframe">
+      <div style="flex:0 0 280px;display:flex;flex-direction:column;min-height:0;">
+        <div class="hdr"><div class="back">‹</div><div style="flex:1;min-width:0"><div class="ttl">Red Storm vs Vipers Kids</div><div class="sub">NXL EUROPE #2 — UK</div></div><div class="badge">LIVE</div></div>
+        <div style="flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;">
+          <div class="sb">
+            <div class="sbz"><div class="sbn">Red Storm</div><div class="cta">Scout ›</div></div>
+            <div class="sbs"><div class="scor">3<span style="color:#64748b">:</span>2</div><div class="pts">5 POINTS</div></div>
+            <div class="sbz" style="text-align:right"><div class="sbn">Vipers Kids</div><div class="cta">‹ Scout</div></div>
+          </div>
+          <div style="display:flex;justify-content:center;padding:2px 8px 6px"><div class="pill">▶ Replay break → settle → mid</div></div>
+          <div class="seclbl">Points (5)</div>
+          <div class="prow preview">
+            <div class="pz"><div class="bar" style="background:#22c55e"></div><div class="pn won">#5 Red Storm</div></div>
+            <div class="psc" style="color:#f59e0b">3:2</div>
+            <div class="pz" style="justify-content:flex-end"><div class="pn">Vipers Kids</div><div class="bar" style="background:#ef4444"></div></div>
+            <div class="pmenu">⋮</div>
+          </div>
+          <div class="prow">
+            <div class="pz"><div class="bar" style="background:#ef4444"></div><div class="pn">#4 Red Storm</div></div>
+            <div class="psc">2:2</div>
+            <div class="pz" style="justify-content:flex-end"><div class="pn won">Vipers Kids</div><div class="bar" style="background:#22c55e"></div></div>
+            <div class="pmenu">⋮</div>
+          </div>
+          <div class="prow">
+            <div class="pz"><div class="bar" style="background:#22c55e"></div><div class="pn won">#3 Red Storm</div></div>
+            <div class="psc">2:1</div>
+            <div class="pz" style="justify-content:flex-end"><div class="pn">Vipers Kids</div><div class="bar" style="background:#ef4444"></div></div>
+            <div class="pmenu">⋮</div>
+          </div>
+          <div class="endm">End match</div>
+        </div>
+      </div>
+      <!-- HERO: review heatmap, preview point #5 highlighted -->
+      <div class="hero">
+        <div style="position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed rgba(148,163,184,.18)"></div>
+        <div class="dot" style="left:22%;top:30%;background:#22d3ee"></div>
+        <div class="dot" style="left:30%;top:55%;background:#22d3ee"></div>
+        <div class="dot" style="left:18%;top:75%;background:#22d3ee"></div>
+        <div class="dot" style="left:78%;top:40%;background:#f97316"></div>
+        <div class="dot" style="left:70%;top:62%;background:#f97316"></div>
+        <div style="position:absolute;right:8px;bottom:6px;font-size:9px;color:#64748b">preview: Point #5 (tap score-center in rail)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLET-LANDSCAPE — collapsed strip -->
+  <div class="col">
+    <div class="label">REVIEW — TABLET-LANDSCAPE (residual &lt; railMin → 56px strip + overlay on ☰)</div>
+    <div class="lframe" style="width:640px;height:300px;">
+      <div class="strip"><div class="sbtn" style="color:#f59e0b;font-size:20px">‹</div><div style="width:24px;border-top:1px solid #2a3548;margin:3px 0"></div><div class="sbtn">☰</div></div>
+      <div class="hero" style="margin:6px;">
+        <div class="dot" style="left:25%;top:35%;background:#22d3ee"></div>
+        <div class="dot" style="left:75%;top:50%;background:#f97316"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PORTRAIT — unchanged stack (reference) -->
+  <div class="col">
+    <div class="label">REVIEW — PORTRAIT (unchanged; reference)</div>
+    <div class="pframe">
+      <div class="hdr"><div class="back">‹</div><div style="flex:1;min-width:0"><div class="ttl">Red Storm vs Vipers Kids</div><div class="sub">NXL EUROPE #2 — UK</div></div><div class="badge">LIVE</div></div>
+      <div class="sb">
+        <div class="sbz"><div class="sbn">Red Storm</div><div class="cta">Scout ›</div></div>
+        <div class="sbs" style="min-width:96px"><div class="scor" style="font-size:30px">3<span style="color:#64748b">:</span>2</div><div class="pts">5 POINTS</div></div>
+        <div class="sbz" style="text-align:right"><div class="sbn">Vipers Kids</div><div class="cta">‹ Scout</div></div>
+      </div>
+      <div class="hero" style="flex:0 0 220px;margin:0 8px;">
+        <div class="dot" style="left:22%;top:30%;background:#22d3ee"></div>
+        <div class="dot" style="left:78%;top:40%;background:#f97316"></div>
+      </div>
+      <div style="display:flex;justify-content:center;padding:8px"><div class="pill">▶ Replay break → settle → mid</div></div>
+      <div class="seclbl">Points (5)</div>
+      <div style="flex:1;min-height:0;overflow-y:auto;">
+        <div class="prow"><div class="pz"><div class="bar" style="background:#22c55e"></div><div class="pn won">#5 Red Storm</div></div><div class="psc">3:2</div><div class="pz" style="justify-content:flex-end"><div class="pn">Vipers Kids</div><div class="bar" style="background:#ef4444"></div></div><div class="pmenu">⋮</div></div>
+        <div class="prow"><div class="pz"><div class="bar" style="background:#ef4444"></div><div class="pn">#4 Red Storm</div></div><div class="psc">2:2</div><div class="pz" style="justify-content:flex-end"><div class="pn won">Vipers Kids</div><div class="bar" style="background:#22c55e"></div></div><div class="pmenu">⋮</div></div>
+      </div>
+      <div class="endm">End match</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

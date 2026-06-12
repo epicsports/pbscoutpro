@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-12 — [FULL-DAY 4.2 + 4.3] §113/§116 rollout COMPLETE — ScoutedTeam + MatchPage-review landscape rails
+**HEADs `21779596` (4.2, merge of `feat/scoutedteam-rail` `5f1b6a16`) + `c9a8005e` (4.3, merge of `feat/matchreview-rail` `34fb4a1e`)** — two deploys. **App-only — no rules/index.** §7.6 v2 **Tier 1** (approved-pattern propagation — the §116 archetype was gated on the 4.1 PlayerStats mockup and "applies as-is to ScoutedTeam + MatchPage(review) without separate design gates"). **The §113 rollout ×3 is COMPLETE** (4.1 PlayerStats `c2503183` · 4.2 ScoutedTeam · 4.3 MatchPage-review) — the cross-device audit's match-review P0 surface now has the rail. **REVERT:** `git revert -m 1 c9a8005e` and/or `git revert -m 1 21779596` → rebuild → deploy.
+
+**4.2 ScoutedTeamPage:** landscape promotes the expanded team heatmap to the HERO (canvas + Rysuj/DrawToolbar chrome ride it); the report column — scope pills + ALL sections in original order — moves to the rail BY REFERENCE; the heatmap section keeps its Stage/Layers/Isolate controls at their original rail position; the Collapse pill + §81 FullscreenToggle are landscape-suppressed (hero already maximized). Portrait untouched (same JSX, recomposed from shared consts). e2e `scoutedteam-rail.spec.js` (31/31).
+
+**4.3 MatchPage REVIEW mode:** landscape promotes the review heatmap to the HERO; scoreboard split-tap card + Replay toggle + per-team layer toggles + Points list + CompletenessCard + sticky End-match move to the rail BY REFERENCE. **A4 escalation verified CLEAR** — review is its own return inside MatchPage; the scout EDITOR view (§81 immersive) shares no layout code and is untouched (log-point + concurrent-merge e2e green). Portrait untouched. e2e `matchreview-rail.spec.js` (32/32).
+
+**2 extractions for Opus (committed, `docs/mockups/`):** `matchreview-rail-current-snapshot.html` (post-4.3 review-on-rail state + the design questions the rail raises: scoreboard/points split-taps compressed at rail width, preview-tap-→-hero is the primary landscape loop but undiscoverable, sticky End-match in the rail) + `main-home-roles-current-snapshot.html` (cold-open landing matrix per role + B4/§73 problem surface + verbatim empty-state copy + role-resolution chain — input for the STEP 8 role-aware home).
+
+**Owed: Jacek prod smoke** — ScoutedTeam landscape (hero + pills/sections in rail; Rysuj on hero; tablet strip; portrait unchanged) · Match review landscape (hero + scoreboard/points rail; point-preview tap shows on hero; tablet strip; portrait unchanged; scouting flow untouched).
+
 ## 2026-06-12 — [FULL-DAY STEP 2] Hitability marker popup — alias/colour/delete (decision (b)-extended)
 **HEAD `1fe1ac1b`** (merge `--no-ff` of `feat/hitability-marker-popup`, `67addb66`). **App-only — no rules/index.** §7.6 v2 **Tier 1** under the GO'd full-day brief — the gesture-conflict escalation resolved by Jacek's decision **(b)-extended** (2026-06-12), which IS the design spec. Full emulator e2e **30/30 green**. **REVERT:** `git revert -m 1 1fe1ac1b` → rebuild → deploy.
 
