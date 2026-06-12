@@ -42,6 +42,8 @@ Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Jacek GO "I need all of i
 
 **⏳ DECISION QUEUE (new, 2026-06-12 afternoon):** mockup-4's scout CTA "Dołącz do sesji kodem" assumed an existing kiosk join-by-code flow — **none exists** (kiosk = overlay inside training scouting; no self-join route/code). B4 shipped the scout waiting state WITHOUT the CTA (honest UI > dead control). If the join-by-code path is wanted, it's a new small feature (code on the kiosk lobby + a join route) → own Opus brief.
 
+**Evening run 2026-06-12 (continued):** ~~H2 batch 1~~ ✅ SHIPPED (`2760f05b` — 52 hex→token swaps, pixel-identical; STOP-list in DEPLOY_LOG; **Opus ruling wanted: new tokens for `#0d1117`/`#8b95a5`/`#080c14`/amber-alpha family?**) · ~~H3 no-eternal-loading rollout~~ ✅ SHIPPED (TeamDetail + Tactic + MatchPage — **detail-page eternal-spinner class CLOSED**; e2e `team-detail-loader.spec.js`; arc-B follow-up from the scouted-team fix is DONE) · **H1 phase 1 inventory** ✅ → `docs/I18N_EXTRACTION_WORKLIST.md` (coverage ≈45%, 6-batch plan; 2 decisions flagged for the batch briefs). **H1 extraction batches + H2 batch 2 = next mechanical track.** STEP 4 (`<Screen>`) skipped — spec lived only in chat; needs re-delivery or an Opus brief.
+
 **Not built today (session-limit):** STEP 8 · STEP 4 · STEP 5 · STEP 3 · STEP 6 · STEP 10 · STEP 11–14.
 
 ---

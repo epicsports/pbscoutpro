@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-12 — [FULL-DAY H2+H3] hex→token batch 1 + no-eternal-loading rollout (arc B) + H1 inventory
+**HEADs `2760f05b` (H3 TeamDetail/Tactic + H2 batch 1, deployed) → MatchPage-loader follow-up in the same evening deploy.** **App-only — no rules/index.** §7.6 v2 **Tier 1** (H2 = pixel-identical mechanical sweep; H3 = rollout of the shipped ScoutedTeamPage pattern). Full emulator e2e **38/38 green**.
+
+**§H2 batch 1 (hex→token, pixel-identical):** 52 page-level literals → same-value theme tokens across ScoutedTeamPage (21) / PlayerStatsPage (8) / MatchPage (11) / QuickLogView (12); canvas-draw excluded. **STOP-LIST recorded** (no token invented): derived hex+alpha families (`#f59e0b08…40`, `#ef4444…`), `#0d1117`, `#8b95a5`, `#080c14`, avatar hash palette, PlayerStats `CAUSE_META` map (its own comment declares the colours categorical, NOT semantic per §27 — left untouched deliberately). **For Opus:** recurring stop-list values that may deserve NEW tokens: `#0d1117`, `#8b95a5`, `#080c14`, the amber-alpha family.
+
+**§H3 no-eternal-loading rollout (arc B):** the ScoutedTeamPage bounded-wait pattern (12s ceiling → error EmptyState + Retry) applied to ALL remaining URL-id detail pages: **TeamDetailPage** (`!team`), **TacticPage** (`!tactic`), **MatchPage** (`!tournament || !match`, training + tournament modes). Inventory: PlayerStats already had an absent branch; Coach/ScoutTab gates transient. e2e `team-detail-loader.spec.js` (valid team renders · invalid team → error+Retry · invalid match → error+Retry). **The detail-page eternal-spinner class is now CLOSED.**
+
+**§H1 phase 1 (inventory, read-only):** i18n coverage ≈ **45%**; extraction worklist + 6-batch plan committed to `docs/I18N_EXTRACTION_WORKLIST.md` (decisions flagged for the batch briefs: enum-option translation ruling; LayoutDetail state-init defaults display-only).
+
+**Owed: Jacek prod smoke** — quick visual spot-check of the 4 swept pages (should be pixel-identical); invalid team/match/tactic URL → error state + Retry (not eternal spinner).
+
 ## 2026-06-12 — [FULL-DAY STEP 8] B4 role-aware home — coach checklist + scout/player empty states
 **HEAD `715cf30f`** (merge of `feat/b4-home` `88cd5794`). **App-only — no rules/index.** §7.6 v2 **Tier 1** (design gate passed by Jacek 2026-06-10 on `mockup-4-b4-home.html`; CC_BRIEF_DAY2_PART3). Full emulator e2e **35/35 green**. **REVERT:** `git revert -m 1 715cf30f` → rebuild → deploy.
 
