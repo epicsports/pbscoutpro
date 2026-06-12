@@ -1184,6 +1184,25 @@ const T = {
     offline_download_btn:'📥 Pobierz do trybu offline',
     offline_download_failed: 'Pobieranie nie powiodło się — sprawdź połączenie i spróbuj ponownie.',
     offline_last_downloaded: (when) => `Ostatnio pobrano ${when}`,
+
+    /* ─── §H1 Batch 5 — Training pages (TrainingResultsPage / TrainingSetupPage / TrainingSquadsPage) ── */
+    training_not_found:       'Training not found',
+    training_practice_fallback: 'Practice',
+    results_info_line:        (pts, ptLabel, matchups, mLabel) => `${pts} scouted ${ptLabel} · ${matchups} ${mLabel}`,
+    results_no_scouted_data:  'No scouted data yet',
+    results_needs_review:     (n) => `Needs review (${n})`,
+    results_break_bunkers:    'Break bunkers',
+    results_proposed_point:   (n) => ` · proposed point #${n}`,
+    results_accept:           (n) => `Accept #${n}`,
+    results_dismiss:          'Dismiss',
+    results_reassign_to:      'Reassign to:',
+    results_bunker_stats:     (count, shots) => `${count}× this training · ${shots} shot${shots === 1 ? '' : 's'}`,
+    results_hit_label:        'hit',
+    setup_whos_at_practice:   "Who's at practice?",
+    no_attendees:             'Select players to continue',
+    form_squads:              'Form squads',
+    squads_players_subtitle:  (n) => `${n} players`,
+    start_training:           'Start training',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2321,6 +2340,25 @@ const T = {
     offline_download_btn:'📥 Download for offline',
     offline_download_failed: 'Download failed — check your connection and try again.',
     offline_last_downloaded: (when) => `Last downloaded ${when}`,
+
+    /* ─── §H1 Batch 5 — Training pages (TrainingResultsPage / TrainingSetupPage / TrainingSquadsPage) ── */
+    training_not_found:       'Training not found',
+    training_practice_fallback: 'Practice',
+    results_info_line:        (pts, ptLabel, matchups, mLabel) => `${pts} scouted ${ptLabel} · ${matchups} ${mLabel}`,
+    results_no_scouted_data:  'No scouted data yet',
+    results_needs_review:     (n) => `Needs review (${n})`,
+    results_break_bunkers:    'Break bunkers',
+    results_proposed_point:   (n) => ` · proposed point #${n}`,
+    results_accept:           (n) => `Accept #${n}`,
+    results_dismiss:          'Dismiss',
+    results_reassign_to:      'Reassign to:',
+    results_bunker_stats:     (count, shots) => `${count}× this training · ${shots} shot${shots === 1 ? '' : 's'}`,
+    results_hit_label:        'hit',
+    setup_whos_at_practice:   "Who's at practice?",
+    no_attendees:             'Select players to continue',
+    form_squads:              'Form squads',
+    squads_players_subtitle:  (n) => `${n} players`,
+    start_training:           'Start training',
   },
 };
 

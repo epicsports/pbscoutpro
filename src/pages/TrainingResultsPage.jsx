@@ -16,6 +16,7 @@ import { getRolesForUser, hasAnyRole } from '../utils/roleUtils';
 import { locatePlayerInPoint, alignSequence } from '../utils/selfReportMatcher';
 import { LogRow } from '../components/ppt/TodaysLogsList';
 import { Check, X } from 'lucide-react';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * TrainingResultsPage — player leaderboard for a training session (§ 32 step 4).
@@ -25,11 +26,12 @@ import { Check, X } from 'lucide-react';
 
 // § 70.8 D1 — map a slot's _meta.source to a filter-pill group.
 const SOURCE_GROUP = { scout: 'scout', coach: 'coach', self: 'player', kiosk: 'player' };
-const SOURCE_PILLS = [
-  { key: 'all', label: 'All' },
-  { key: 'scout', label: 'Scout' },
-  { key: 'coach', label: 'Coach' },
-  { key: 'player', label: 'Player' },
+// Labels resolved at render time via t() — keys map to i18n role/tab keys.
+const SOURCE_PILL_KEYS = [
+  { key: 'all', i18nKey: 'all_label' },
+  { key: 'scout', i18nKey: 'tab_scout' },
+  { key: 'coach', i18nKey: 'tab_coach' },
+  { key: 'player', i18nKey: 'tab_player' },
 ];
 
 // § 70.10 — D1 player self-log dot placement. A player slot's stored coord is
@@ -61,6 +63,7 @@ function resolveSelfLogDot(synth, bunkers) {
 export default function TrainingResultsPage() {
   const { trainingId } = useParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { trainings, loading: tLoading } = useTrainings();
   const { matchups, loading: mLoading } = useMatchups(trainingId);
   const { players, playersById } = usePlayers();
@@ -283,7 +286,7 @@ export default function TrainingResultsPage() {
   if (tLoading || mLoading || allPoints === null) {
     return <div style={{ padding: SPACE.lg }}><SkeletonList count={5} /></div>;
   }
-  if (!training) return <EmptyState icon="⏳" text="Training not found" />;
+  if (!training) return <EmptyState icon="⏳" text={t('training_not_found')} />;
 
   const totalPoints = allPoints.length;
   const attendees = (training.attendees || []).map(pid => playersById[pid]).filter(Boolean);
@@ -294,8 +297,8 @@ export default function TrainingResultsPage() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: () => navigate(`/training/${trainingId}`) }}
-        title="Results"
-        subtitle={training.date || 'Practice'}
+        title={t('results')}
+        subtitle={training.date || t('training_practice_fallback')}
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 80 }}>
@@ -311,13 +314,13 @@ export default function TrainingResultsPage() {
           borderRadius: RADIUS.md,
           display: 'inline-block',
         }}>
-          {totalPoints} scouted {totalPoints === 1 ? 'point' : 'points'} · {matchupCount} matchup{matchupCount === 1 ? '' : 's'}
+          {t('results_info_line', totalPoints, totalPoints === 1 ? 'point' : 'points', matchupCount, matchupCount === 1 ? 'matchup' : 'matchups')}
         </div>
 
         {/* Player leaderboard */}
-        <SectionTitle>Players</SectionTitle>
+        <SectionTitle>{t('players_title')}</SectionTitle>
         {leaderboard.length === 0 ? (
-          <EmptyState icon="🏴" text="No scouted data yet" />
+          <EmptyState icon="🏴" text={t('results_no_scouted_data')} />
         ) : (
           leaderboard.map((row, i) => (
             <PlayerRow key={row.playerId} row={row} rank={i + 1}
@@ -329,7 +332,7 @@ export default function TrainingResultsPage() {
         {/* § 70.11 Stage 4 — manual-override review queue (coach / admin only) */}
         {canReview && reviewQueue.length > 0 && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>Needs review ({reviewQueue.length})</SectionLabel>
+            <SectionLabel>{t('results_needs_review', reviewQueue.length)}</SectionLabel>
             {reviewQueue.map((item, i) => (
               <ReviewItem key={item.selfReport.id} item={item} ordinal={i + 1}
                 playersById={playersById}
@@ -344,7 +347,7 @@ export default function TrainingResultsPage() {
         {/* Break-bunker breakdown — § 70.8 D2 (event-scoped self-log aggregation) */}
         {bunkerStats && bunkerStats.length > 0 && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>Break bunkers</SectionLabel>
+            <SectionLabel>{t('results_break_bunkers')}</SectionLabel>
             {bunkerStats.map(b => <BunkerRow key={b.bunker} b={b} />)}
           </div>
         )}
@@ -352,9 +355,9 @@ export default function TrainingResultsPage() {
         {/* Source-filtered training heatmap — § 70.8 D1 */}
         {heatmapPoints.length > 0 && field?.fieldImage && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>Heatmap</SectionLabel>
+            <SectionLabel>{t('section_heatmap')}</SectionLabel>
             <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.sm, flexWrap: 'wrap' }}>
-              {SOURCE_PILLS.map(p => {
+              {SOURCE_PILL_KEYS.map(p => {
                 const active = sourceFilter === p.key;
                 return (
                   <div key={p.key} role="button" onClick={() => setSourceFilter(p.key)}
@@ -367,7 +370,7 @@ export default function TrainingResultsPage() {
                       background: active ? `${COLORS.accent}1f` : COLORS.surfaceDark,
                       color: active ? COLORS.accent : COLORS.textDim,
                     }}>
-                    {p.label}
+                    {t(p.i18nKey)}
                   </div>
                 );
               })}
@@ -391,7 +394,7 @@ export default function TrainingResultsPage() {
         {/* Matchup history */}
         {matchups.length > 0 && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>Matchups</SectionLabel>
+            <SectionLabel>{t('matches_title')}</SectionLabel>
             {matchups.map(m => {
               // § 53: name via getSquadName (training-aware), color from SQUAD_META.
               const home = { name: getSquadName(training, m.homeSquad), color: SQUAD_META[m.homeSquad]?.color || COLORS.textMuted };
@@ -485,6 +488,7 @@ function PlayerRow({ row, rank, onClick }) {
 // § 70.11 Stage 4 — one flagged self-report in the manual-override queue.
 function ReviewItem({ item, ordinal, playersById, onAccept, onReassign, onDismiss }) {
   const [busy, setBusy] = useState(false);
+  const { t } = useLanguage();
   const player = playersById[item.playerId];
   const name = player ? (player.nickname || player.name || '?') : '?';
   const candOrder = (item.candidate.point.order ?? 0) + 1;
@@ -506,22 +510,22 @@ function ReviewItem({ item, ordinal, playersById, onAccept, onReassign, onDismis
       }}>
         {name}
         <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>
-          {' '}· proposed point #{candOrder}
+          {t('results_proposed_point', candOrder)}
         </span>
       </div>
       <LogRow row={item.selfReport} ordinal={ordinal} isPending={false} />
       <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap', marginTop: 6 }}>
         <Btn variant="accent" size="sm" disabled={busy} onClick={run(onAccept)}>
-          <Check size={14} strokeWidth={2.5} /> Accept #{candOrder}
+          <Check size={14} strokeWidth={2.5} /> {t('results_accept', candOrder)}
         </Btn>
         <Btn variant="default" size="sm" disabled={busy} onClick={run(onDismiss)}>
-          <X size={14} strokeWidth={2.5} /> Dismiss
+          <X size={14} strokeWidth={2.5} /> {t('results_dismiss')}
         </Btn>
       </div>
       {item.reassignOptions.length > 0 && (
         <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap', marginTop: 6, alignItems: 'center' }}>
           <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>
-            Reassign to:
+            {t('results_reassign_to')}
           </span>
           {item.reassignOptions.map(opt => (
             <Btn key={opt.point.id} variant="default" size="sm" disabled={busy}
@@ -537,6 +541,7 @@ function ReviewItem({ item, ordinal, playersById, onAccept, onReassign, onDismis
 
 // § 70.8 D2 — one break-bunker's event-scoped self-log stats.
 function BunkerRow({ b }) {
+  const { t } = useLanguage();
   // Higher hit rate = more dangerous bunker → red (mirrors PlayerRow wrColor).
   const hitColor = b.hitRate == null ? COLORS.textMuted
     : b.hitRate >= 50 ? COLORS.danger : b.hitRate >= 25 ? COLORS.accent : COLORS.success;
@@ -560,7 +565,7 @@ function BunkerRow({ b }) {
         <div style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
         }}>
-          {b.count}× this training · {b.shots} shot{b.shots === 1 ? '' : 's'}
+          {t('results_bunker_stats', b.count, b.shots)}
         </div>
       </div>
       <div style={{ textAlign: 'right', minWidth: 48 }}>
@@ -570,7 +575,7 @@ function BunkerRow({ b }) {
         <div style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '.3px',
         }}>
-          hit
+          {t('results_hit_label')}
         </div>
       </div>
     </div>
