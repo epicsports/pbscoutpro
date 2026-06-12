@@ -9,6 +9,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
+import { useLanguage } from '../hooks/useLanguage';
 import PageHeader from '../components/PageHeader';
 import { Btn, Input, Select } from '../components/ui';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
@@ -36,6 +37,7 @@ function ProgressBar({ step, total }) {
 
 // ── Step 1: Basic Info ──
 function WizardStep1({ data, setData, onNext }) {
+  const { t } = useLanguage();
   const fileRef = useRef(null);
   const leagues = useLeagues();
   const leagueOptions = useMemo(() => [...leagues.map(l => l.shortName), 'Other'], [leagues]);
@@ -56,17 +58,17 @@ function WizardStep1({ data, setData, onNext }) {
     <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
       {/* Section label */}
       <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 }}>
-        Basic info
+        {t('layout_wizard_basic_info')}
       </div>
 
       {/* Name */}
       <Input value={data.name} onChange={v => setData(prev => ({ ...prev, name: v }))}
-        placeholder="Layout name, e.g. NXL 2026 Event 1" autoFocus />
+        placeholder={t('layout_wizard_name_ph')} autoFocus />
 
       {/* League + Year */}
       <div style={{ display: 'flex', gap: SPACE.md }}>
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>League</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('league_label')}</div>
           <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap' }}>
             {leagueOptions.map(lg => (
               <Btn key={lg} variant="default" size="sm"
@@ -80,7 +82,7 @@ function WizardStep1({ data, setData, onNext }) {
           </div>
         </div>
         <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Year</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('year_label')}</div>
           <Select value={data.year} onChange={v => setData(prev => ({ ...prev, year: Number(v) }))}>
             {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
           </Select>
@@ -90,7 +92,7 @@ function WizardStep1({ data, setData, onNext }) {
       {/* Custom league input */}
       {data.league === 'Other' && (
         <Input value={data.customLeague} onChange={v => setData(prev => ({ ...prev, customLeague: v }))}
-          placeholder="Custom league name" />
+          placeholder={t('layout_wizard_custom_league_ph')} />
       )}
 
       {/* Image upload */}
@@ -104,10 +106,10 @@ function WizardStep1({ data, setData, onNext }) {
           }}>
             <div style={{ fontSize: 32, marginBottom: SPACE.sm }}>📷</div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim }}>
-              Upload field image
+              {t('layout_wizard_upload_image')}
             </div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: SPACE.xs }}>
-              Tap to select
+              {t('layout_wizard_tap_to_select')}
             </div>
           </div>
         ) : (
@@ -115,7 +117,7 @@ function WizardStep1({ data, setData, onNext }) {
             <img src={data.image} alt="Field preview" style={{ width: '100%', display: 'block', objectFit: 'contain', maxHeight: 200 }} />
             <Btn variant="ghost" size="sm" onClick={() => fileRef.current?.click()}
               style={{ position: 'absolute', bottom: SPACE.xs, right: SPACE.xs, background: COLORS.surface + 'cc' }}>
-              Change
+              {t('layout_wizard_change_btn')}
             </Btn>
           </div>
         )}
@@ -127,7 +129,7 @@ function WizardStep1({ data, setData, onNext }) {
       {/* Next button */}
       <Btn variant="accent" onClick={onNext} disabled={!canNext}
         style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
-        Next →
+        {t('layout_wizard_next_btn')}
       </Btn>
     </div>
   );
@@ -135,6 +137,7 @@ function WizardStep1({ data, setData, onNext }) {
 
 // ── Main page ──
 export default function LayoutWizardPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const device = useDevice();
   const R = responsive(device.type);
@@ -182,8 +185,8 @@ export default function LayoutWizardPage() {
   const visionEnabled = STATIC_FLAGS.ENABLE_VISION_API;
   const totalSteps = visionEnabled ? 3 : 2;
   const stepLabels = visionEnabled
-    ? ['BASIC INFO', 'CALIBRATE', 'SCAN BUNKERS']
-    : ['BASIC INFO', 'CALIBRATE'];
+    ? [t('layout_wizard_basic_info'), t('layout_wizard_calibrate_field'), t('layout_wizard_scan_bunkers')]
+    : [t('layout_wizard_basic_info'), t('layout_wizard_calibrate_field')];
 
   // § 96 — new layouts are shared global bases, authored by the platform admin
   // only. Coaches add an existing base to their workspace from the library
@@ -191,10 +194,10 @@ export default function LayoutWizardPage() {
   if (!isSuper) {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-        <PageHeader back={{ to: () => navigate('/layouts') }} title="New layout" />
+        <PageHeader back={{ to: () => navigate('/layouts') }} title={t('layout_wizard_title')} />
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: SPACE.lg, textAlign: 'center' }}>
           <div style={{ color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.base, lineHeight: 1.5, maxWidth: 320 }}>
-            New field layouts are added to the shared library by the platform admin. Browse the library to add an existing field to your workspace.
+            {t('layout_wizard_not_super_body')}
           </div>
         </div>
       </div>
@@ -205,8 +208,8 @@ export default function LayoutWizardPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
         back={{ to: handleBack }}
-        title="New layout"
-        subtitle={`STEP ${step} OF ${totalSteps} · ${stepLabels[step - 1] || ''}`}
+        title={t('layout_wizard_title')}
+        subtitle={t('layout_wizard_step_subtitle', step, totalSteps, stepLabels[step - 1] || '')}
       />
       <ProgressBar step={step} total={totalSteps} />
       {step === 1 && <WizardStep1 data={data} setData={setData} onNext={() => setStep(2)} />}
@@ -214,7 +217,7 @@ export default function LayoutWizardPage() {
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingTop: SPACE.md, paddingBottom: SPACE.lg }}>
           {/* Section label */}
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 1.2, padding: `0 ${SPACE.lg}px`, marginBottom: SPACE.sm }}>
-            Calibrate field
+            {t('layout_wizard_calibrate_field')}
           </div>
           <CalibrationView
             image={data.image}
@@ -227,7 +230,7 @@ export default function LayoutWizardPage() {
           <div style={{ padding: `${SPACE.lg}px` }}>
             <Btn variant="accent" onClick={handleFinish}
               style={{ width: '100%', justifyContent: 'center', minHeight: 52, fontSize: FONT_SIZE.lg, fontWeight: 800 }}>
-              Finish →
+              {t('layout_wizard_finish_btn')}
             </Btn>
           </div>
         </div>

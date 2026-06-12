@@ -389,7 +389,7 @@ export default function LayoutDetailPage() {
       <PageHeader
         back={{ to: location.state?.from || '/layouts' }}
         title={name}
-        subtitle="FIELD LAYOUT"
+        subtitle={t('layout_detail_subtitle')}
         badges={<><LeagueBadge league={league} /> <YearBadge year={year} /></>}
         action={<MoreBtn onClick={() => setMenuOpen(true)} />}
       />
@@ -401,7 +401,7 @@ export default function LayoutDetailPage() {
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" onClick={() => navigate('/layouts')}
             style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
-            ‹ Back
+            ‹ {t('back')}
           </Btn>
           <Btn variant="default" size="sm" onClick={() => setMenuOpen(true)}
             style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
@@ -412,32 +412,32 @@ export default function LayoutDetailPage() {
         <div style={{ position: 'fixed', left: 0, top: 52, bottom: 12,
           zIndex: 50, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
           {[
-            { label: 'LABELS', color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
-            { label: 'LINES', color: COLORS.bump, active: showLines, onClick: () => setShowLines(v => !v) },
-            { label: 'ZONES', color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
-            { label: 'DEATHS', icon: '💀', color: COLORS.danger, onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
-            { label: 'POSITIONS', icon: '🎯', color: COLORS.success, onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+            { label: t('layout_detail_tab_labels'), color: COLORS.accent, active: showLabels, onClick: () => setShowLabels(v => !v) },
+            { label: t('layout_detail_tab_lines'), color: COLORS.bump, active: showLines, onClick: () => setShowLines(v => !v) },
+            { label: t('layout_detail_tab_zones'), color: COLORS.info, active: showZones, onClick: () => setShowZones(v => !v) },
+            { label: t('layout_detail_tab_deaths'), icon: '💀', color: COLORS.danger, onClick: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+            { label: t('layout_detail_tab_positions'), icon: '🎯', color: COLORS.success, onClick: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
             // § 112 STAGE 3 — Hitability cumulative section (also the future
             // "akwizycja killi" tab seed; not a separate tab yet).
-            { label: 'HITS', icon: '💥', color: COLORS.accent, onClick: () => navigate(`/layout/${layoutId}/analytics/trafialnosc`) },
-          ].map(t => (
-            <div key={t.label} onClick={t.onClick} style={{
-              background: t.active ? (t.color + '25') : COLORS.surface + 'ee',
+            { label: t('layout_detail_tab_hits'), icon: '💥', color: COLORS.accent, onClick: () => navigate(`/layout/${layoutId}/analytics/trafialnosc`) },
+          ].map(tab => (
+            <div key={tab.label} onClick={tab.onClick} style={{
+              background: tab.active ? (tab.color + '25') : COLORS.surface + 'ee',
               backdropFilter: 'blur(8px)',
               borderRadius: '0 8px 8px 0',
-              border: `1px solid ${t.active ? t.color + '60' : COLORS.border}`, borderLeft: 'none',
+              border: `1px solid ${tab.active ? tab.color + '60' : COLORS.border}`, borderLeft: 'none',
               padding: '8px 6px',
               cursor: 'pointer',
               boxShadow: '2px 0 8px rgba(0,0,0,0.3)',
               display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
             }}>
-              {t.icon && <span style={{ fontSize: 14, lineHeight: 1 }}>{t.icon}</span>}
+              {tab.icon && <span style={{ fontSize: 14, lineHeight: 1 }}>{tab.icon}</span>}
               <div style={{
                 writingMode: 'vertical-lr', transform: 'rotate(180deg)',
                 fontFamily: FONT, fontSize: 10, fontWeight: 700,
-                color: t.active ? t.color : COLORS.textMuted,
+                color: tab.active ? tab.color : COLORS.textMuted,
                 letterSpacing: '1px', whiteSpace: 'nowrap',
-              }}>{t.label}</div>
+              }}>{tab.label}</div>
             </div>
           ))}
         </div>
@@ -457,7 +457,7 @@ export default function LayoutDetailPage() {
               writingMode: 'vertical-lr', transform: 'rotate(180deg)',
               fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.accent,
               letterSpacing: '2px',
-            }}>TACTICS</div>
+            }}>{t('layout_detail_tab_tactics')}</div>
             <div style={{
               width: 26, height: 26, borderRadius: '50%',
               background: COLORS.accent, color: '#000',
@@ -712,7 +712,7 @@ export default function LayoutDetailPage() {
           }}>
             <Tag size={16} color={COLORS.accent} />
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent }}>
-              Tap a bunker to rename it — per-team, visible only in your workspace
+              {t('layout_detail_names_hint')}
             </div>
           </div>
         )}
@@ -727,7 +727,7 @@ export default function LayoutDetailPage() {
           }}>
             <span style={{ fontSize: 20 }}>👆</span>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.accent }}>
-              Tap the field to place bunkers
+              {t('layout_detail_place_bunkers_hint')}
             </div>
           </div>
         )}
@@ -739,15 +739,15 @@ export default function LayoutDetailPage() {
             { label: '½', active: showHalf, toggle: () => setShowHalf(v => !v) },
             { label: '═', active: showLines, toggle: () => setShowLines(v => !v) },
             { label: '◇', active: showZones, toggle: () => setShowZones(v => !v) },
-          ].map(t => (
-            <div key={t.label} onClick={t.toggle} style={{
+          ].map(btn => (
+            <div key={btn.label} onClick={btn.toggle} style={{
               fontFamily: FONT, fontSize: 13, fontWeight: 700,
               padding: '5px 12px', borderRadius: RADIUS.full, cursor: 'pointer',
-              background: t.active ? COLORS.accent + '20' : COLORS.surfaceDark,
-              color: t.active ? COLORS.accent : COLORS.textMuted,
-              border: `1px solid ${t.active ? COLORS.accent + '40' : COLORS.border}`,
+              background: btn.active ? COLORS.accent + '20' : COLORS.surfaceDark,
+              color: btn.active ? COLORS.accent : COLORS.textMuted,
+              border: `1px solid ${btn.active ? COLORS.accent + '40' : COLORS.border}`,
               transition: 'all .15s',
-            }}>{t.label}</div>
+            }}>{btn.label}</div>
           ))}
           <div style={{ flex: 1 }} />
           {/* § 88 — the 3 hardcoded zone shortcut buttons (DANGER/SAJGON/
@@ -780,7 +780,7 @@ export default function LayoutDetailPage() {
                 background: COLORS.surfaceDark, color: COLORS.textMuted,
                 border: `1px dashed ${COLORS.border}`,
               }}>
-                🔑 Enter squad code
+                🔑 {t('layout_detail_enter_squad_code')}
               </div>
             )}
             <div style={{ flex: 1 }} />
@@ -788,21 +788,21 @@ export default function LayoutDetailPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 0 8px' }}>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
-              Tactics <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>({(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length})</span>
+              {t('layout_detail_tactics_heading')} <span style={{ fontWeight: 400, color: COLORS.textMuted, fontSize: FONT_SIZE.sm }}>({(squadCode ? tactics.filter(tc => tc.squadCode === squadCode) : tactics.filter(tc => !tc.squadCode)).length})</span>
             </div>
             <Btn variant="accent" size="sm" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}
               style={{ padding: '6px 14px', borderRadius: RADIUS.full, fontSize: FONT_SIZE.xs, fontWeight: 700 }}>
-              <Icons.Plus /> New
+              <Icons.Plus /> {t('layout_detail_new_btn')}
             </Btn>
           </div>
 
           {tacticsLoading && <SkeletonList count={2} />}
-          {!tacticsLoading && (squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length === 0 && (
-            <EmptyState icon="---" text={squadCode ? `No tactics for "${squadCode}" yet` : 'No tactics yet'} />
+          {!tacticsLoading && (squadCode ? tactics.filter(tc => tc.squadCode === squadCode) : tactics.filter(tc => !tc.squadCode)).length === 0 && (
+            <EmptyState icon="---" text={squadCode ? t('layout_detail_no_tactics_squad', squadCode) : t('layout_detail_no_tactics')} />
           )}
 
-          {(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).map(t => {
-            const players = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
+          {(squadCode ? tactics.filter(tc => tc.squadCode === squadCode) : tactics.filter(tc => !tc.squadCode)).map(tactic => {
+            const players = (tactic.players || tactic.steps?.[0]?.players || []).filter(Boolean);
             const discoPct = layout?.discoLine || 0.30;
             const zeekerPct = layout?.zeekerLine || 0.80;
             const inDorito = players.filter(p => p.y < discoPct).length;
@@ -812,24 +812,24 @@ export default function LayoutDetailPage() {
             if (inDorito) toneParts.push(`${inDorito} dorito`);
             if (inMid) toneParts.push(`${inMid} mid`);
             if (inSnake) toneParts.push(`${inSnake} snake`);
-            const tone = toneParts.length ? toneParts.join(' · ') : `${players.length}/5 placed`;
-            const isPreviewing = previewTacticId === t.id;
+            const tone = toneParts.length ? toneParts.join(' · ') : t('layout_detail_players_placed', players.length);
+            const isPreviewing = previewTacticId === tactic.id;
 
             return (
-              <div key={t.id} style={{
+              <div key={tactic.id} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '12px 14px', borderRadius: 12,
                 background: COLORS.surfaceDark, border: `1px solid ${isPreviewing ? COLORS.accent + '60' : COLORS.border}`,
                 marginBottom: 6, cursor: 'pointer',
               }}
-                onClick={() => navigate(`/layout/${layoutId}/tactic/${t.id}`)}
+                onClick={() => navigate(`/layout/${layoutId}/tactic/${tactic.id}`)}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: FONT_SIZE.sm, color: COLORS.text,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tactic.name}</div>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 2 }}>{tone}</div>
                 </div>
-                <div onClick={(e) => { e.stopPropagation(); setPreviewTacticId(isPreviewing ? null : t.id); }}
+                <div onClick={(e) => { e.stopPropagation(); setPreviewTacticId(isPreviewing ? null : tactic.id); }}
                   style={{
                     width: 32, height: 32, borderRadius: RADIUS.md,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -839,7 +839,7 @@ export default function LayoutDetailPage() {
                   }}>
                   👁
                 </div>
-                <MoreBtn onClick={() => setTacticMenu(t)} />
+                <MoreBtn onClick={() => setTacticMenu(tactic)} />
               </div>
             );
           })}
@@ -863,7 +863,7 @@ export default function LayoutDetailPage() {
       }}>
         <Btn variant="accent" onClick={() => { setNewTacticName(''); setNewTacticModal(true); }}
           style={{ width: '100%', justifyContent: 'center' }}>
-          <Icons.Plus /> New tactic
+          <Icons.Plus /> {t('layout_detail_new_tactic_btn')}
         </Btn>
       </div>
       )}
@@ -906,13 +906,13 @@ export default function LayoutDetailPage() {
 
       {/* ═══ ACTION SHEET — page menu ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
-        { label: '+ New tactic', onPress: () => { setNewTacticName(''); setNewTacticModal(true); } },
-        { label: `Tactics (${tactics.length})`, onPress: () => setTacticsDrawer(true) },
+        { label: `+ ${t('layout_detail_new_tactic_btn')}`, onPress: () => { setNewTacticName(''); setNewTacticModal(true); } },
+        { label: t('layout_detail_tactics_count', tactics.length), onPress: () => setTacticsDrawer(true) },
         { separator: true },
         // § 98 6 — layout config is local-admin-only; coaches/members get a
         // view-only surface (no edit-info / bunker-base / calibrate / delete).
         ...(isAdmin ? [
-          { label: 'Edit layout info', onPress: () => setInfoModal(true) },
+          { label: t('layout_detail_edit_info'), onPress: () => setInfoModal(true) },
         ] : []),
         // § b1 — the BunkerEditorPage writes the shared GLOBAL base (geometry +
         // default names/types), so it's super-admin only. Workspace admins rename
@@ -920,28 +920,28 @@ export default function LayoutDetailPage() {
         // Previously this was isAdmin-gated → workspace admins hit a locked screen
         // and could mistake it for the per-team rename path.
         ...(isSuper ? [
-          { label: 'Global base — names & types (all workspaces)', onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
+          { label: t('layout_detail_global_base_menu'), onPress: () => navigate(`/layout/${layoutId}/bunkers`) },
         ] : []),
         // § 98 7 — Ballistics hidden/dormant (built + wired, usage unproven). Code
         // + route (/layout/:id/ballistics) retained; entry removed until justified.
-        { label: '💀 Deaths heatmap', onPress: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
-        { label: '🎯 Break positions', onPress: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
+        { label: t('layout_detail_deaths_heatmap'), onPress: () => navigate(`/layout/${layoutId}/analytics/deaths`) },
+        { label: t('layout_detail_break_positions'), onPress: () => navigate(`/layout/${layoutId}/analytics/breaks`) },
         // § 112 — Hitability cumulative section (TODO: future "akwizycja killi" tab seeds here).
-        { label: '💥 Hitability', onPress: () => navigate(`/layout/${layoutId}/analytics/trafialnosc`) },
+        { label: t('layout_detail_hitability'), onPress: () => navigate(`/layout/${layoutId}/analytics/trafialnosc`) },
         ...(isAdmin ? [
-          { label: 'Re-calibrate field', onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
+          { label: t('layout_detail_recalibrate'), onPress: () => { setCalibData(calibration); setCalibDoritoSide(layout?.doritoSide || 'top'); setCalibModal(true); } },
           { separator: true },
-          { label: 'Delete layout', onPress: () => setDeleteModal(true), danger: true },
+          { label: t('delete_layout'), onPress: () => setDeleteModal(true), danger: true },
         ] : []),
       ]} />
 
       {/* ═══ ACTION SHEET — tactic menu ═══ */}
       <ActionSheet open={!!tacticMenu} onClose={() => setTacticMenu(null)} actions={[
-        { label: 'Edit', onPress: () => navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}`) },
-        { label: 'Duplicate', onPress: () => duplicateTactic(tacticMenu) },
-        { label: 'Print', onPress: () => { setTacticMenu(null); navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}?print=1`); } },
+        { label: t('edit'), onPress: () => navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}`) },
+        { label: t('layout_detail_tactic_duplicate'), onPress: () => duplicateTactic(tacticMenu) },
+        { label: t('layout_detail_tactic_print'), onPress: () => { setTacticMenu(null); navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}?print=1`); } },
         { separator: true },
-        { label: 'Delete tactic', onPress: () => setDeleteTacticModal(tacticMenu), danger: true },
+        { label: t('delete_tactic'), onPress: () => setDeleteTacticModal(tacticMenu), danger: true },
       ]} />
 
       {/* ═══ BUNKER CARD ═══ */}
@@ -957,18 +957,18 @@ export default function LayoutDetailPage() {
       )}
 
       {/* ═══ INFO MODAL ═══ */}
-      <Modal open={infoModal} onClose={() => setInfoModal(false)} title="Edit layout"
+      <Modal open={infoModal} onClose={() => setInfoModal(false)} title={t('layout_detail_modal_title')}
         footer={<>
           <Btn variant="default" onClick={() => setInfoModal(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" disabled={!name.trim() || saving} onClick={handleSaveInfo}>
-            <Icons.Check /> Save
+            <Icons.Check /> {t('save')}
           </Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Input value={name} onChange={setName} placeholder="Layout name *" />
+          <Input value={name} onChange={setName} placeholder={t('layout_detail_layout_name_ph')} />
           <div style={{ display: 'flex', gap: SPACE.md }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>League</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('league_label')}</div>
               <div style={{ display: 'flex', gap: SPACE.xs }}>
                 {leaguesList.map(L => {
                   const lg = L.shortName;
@@ -981,7 +981,7 @@ export default function LayoutDetailPage() {
               </div>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Year</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('year_label')}</div>
               <Select value={year} onChange={v => setYear(Number(v))}>
                 {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
               </Select>
@@ -990,7 +990,7 @@ export default function LayoutDetailPage() {
           <div>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ width: '100%', justifyContent: 'center' }}>
-              <Icons.Image /> {image ? 'Change image' : 'Upload field image'}
+              <Icons.Image /> {image ? t('layout_detail_change_image') : t('layout_detail_upload_image')}
             </Btn>
           </div>
         </div>
@@ -998,28 +998,28 @@ export default function LayoutDetailPage() {
 
       {/* ═══ DELETE LAYOUT ═══ */}
       <ConfirmModal open={deleteModal} onClose={() => { setDeleteModal(false); setDeletePassword(''); }}
-        title="Delete layout?" danger confirmLabel="Delete"
-        message={`Delete "${name}"? All tactics for this layout will be permanently lost.`}
+        title={t('delete_layout')} danger confirmLabel={t('delete')}
+        message={t('layout_detail_delete_msg', name)}
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={setDeletePassword}
         onConfirm={handleDeleteLayout} />
 
       {/* ═══ DELETE TACTIC ═══ */}
       <ConfirmModal open={!!deleteTacticModal} onClose={() => setDeleteTacticModal(null)}
-        title="Delete tactic?" danger confirmLabel="Delete"
-        message={`Delete "${deleteTacticModal?.name}"?`}
+        title={t('delete_tactic')} danger confirmLabel={t('delete')}
+        message={t('layout_detail_delete_tactic_msg', deleteTacticModal?.name || '')}
         onConfirm={() => { ds.deleteLayoutTactic(layoutId, deleteTacticModal.id); setDeleteTacticModal(null); }} />
 
       {/* ═══ NEW TACTIC MODAL ═══ */}
-      <Modal open={newTacticModal} onClose={() => setNewTacticModal(false)} title="New tactic"
+      <Modal open={newTacticModal} onClose={() => setNewTacticModal(false)} title={t('layout_detail_new_tactic_btn')}
         footer={<>
           <Btn variant="default" onClick={() => setNewTacticModal(false)}>{t('cancel')}</Btn>
-          <Btn variant="accent" disabled={!newTacticName.trim()} onClick={handleAddTactic}><Icons.Check /> Create</Btn>
+          <Btn variant="accent" disabled={!newTacticName.trim()} onClick={handleAddTactic}><Icons.Check /> {t('create')}</Btn>
         </>}>
-        <Input value={newTacticName} onChange={setNewTacticName} placeholder="Tactic name, e.g. Snake Attack"
+        <Input value={newTacticName} onChange={setNewTacticName} placeholder={t('layout_detail_tactic_name_ph')}
           autoFocus onKeyDown={e => e.key === 'Enter' && handleAddTactic()} />
         {squadCode && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim, marginTop: 8 }}>
-          Squad: <strong style={{ color: COLORS.accent }}>{squadCode}</strong>
+          {t('layout_detail_squad_code_label')} <strong style={{ color: COLORS.accent }}>{squadCode}</strong>
         </div>}
       </Modal>
 
@@ -1037,7 +1037,7 @@ export default function LayoutDetailPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '12px 16px', borderBottom: `1px solid ${COLORS.border}` }}>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>
-                Tactics ({(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length})
+                {t('layout_detail_tactics_count', (squadCode ? tactics.filter(tc => tc.squadCode === squadCode) : tactics.filter(tc => !tc.squadCode)).length)}
               </div>
               <div onClick={() => setTacticsDrawer(false)}
                 style={{ fontFamily: FONT, fontSize: 18, color: COLORS.textMuted, cursor: 'pointer', padding: 4 }}>✕</div>
@@ -1061,16 +1061,16 @@ export default function LayoutDetailPage() {
                   background: COLORS.surfaceDark, color: COLORS.textMuted,
                   border: `1px dashed ${COLORS.border}`, flex: 1, textAlign: 'center',
                 }}>
-                  🔑 Enter squad code
+                  🔑 {t('layout_detail_enter_squad_code')}
                 </div>
               )}
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
-              {(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).map(t => {
-                const tPlayers = (t.players || t.steps?.[0]?.players || []).filter(Boolean);
-                const isPrev = previewTacticId === t.id;
+              {(squadCode ? tactics.filter(tc => tc.squadCode === squadCode) : tactics.filter(tc => !tc.squadCode)).map(tactic => {
+                const tPlayers = (tactic.players || tactic.steps?.[0]?.players || []).filter(Boolean);
+                const isPrev = previewTacticId === tactic.id;
                 return (
-                  <div key={t.id} onClick={() => { navigate(`/layout/${layoutId}/tactic/${t.id}`); setTacticsDrawer(false); }}
+                  <div key={tactic.id} onClick={() => { navigate(`/layout/${layoutId}/tactic/${tactic.id}`); setTacticsDrawer(false); }}
                     style={{
                       padding: '10px 12px', borderRadius: RADIUS.md, marginBottom: 4, cursor: 'pointer',
                       background: isPrev ? COLORS.accent + '15' : COLORS.surfaceDark,
@@ -1079,10 +1079,10 @@ export default function LayoutDetailPage() {
                     }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</div>
-                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>{tPlayers.length}/5 players</div>
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tactic.name}</div>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textDim }}>{t('layout_detail_players_of_5', tPlayers.length)}</div>
                     </div>
-                    <div onClick={(e) => { e.stopPropagation(); setPreviewTacticId(isPrev ? null : t.id); }}
+                    <div onClick={(e) => { e.stopPropagation(); setPreviewTacticId(isPrev ? null : tactic.id); }}
                       style={{ fontSize: 16, opacity: isPrev ? 1 : 0.3, color: isPrev ? COLORS.accent : COLORS.textMuted }}>👁</div>
                   </div>
                 );
@@ -1091,7 +1091,7 @@ export default function LayoutDetailPage() {
             <div style={{ padding: 12, borderTop: `1px solid ${COLORS.border}` }}>
               <Btn variant="accent" onClick={() => { setNewTacticName(''); setNewTacticModal(true); setTacticsDrawer(false); }}
                 style={{ width: '100%', justifyContent: 'center' }}>
-                <Icons.Plus /> New tactic
+                <Icons.Plus /> {t('layout_detail_new_tactic_btn')}
               </Btn>
             </div>
           </div>
@@ -1099,15 +1099,15 @@ export default function LayoutDetailPage() {
       )}
 
       {/* ═══ SQUAD CODE INPUT ═══ */}
-      <Modal open={squadInput} onClose={() => setSquadInput(false)} title="Squad code"
+      <Modal open={squadInput} onClose={() => setSquadInput(false)} title={t('layout_detail_squad_modal_title')}
         footer={<>
           <Btn variant="default" onClick={() => setSquadInput(false)}>{t('cancel')}</Btn>
-          <Btn variant="accent" onClick={() => setSquadInput(false)}><Icons.Check /> Done</Btn>
+          <Btn variant="accent" onClick={() => setSquadInput(false)}><Icons.Check /> {t('done')}</Btn>
         </>}>
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 8 }}>
-          Enter your squad code to see only your team's tactics. Same code = same library.
+          {t('layout_detail_squad_hint')}
         </div>
-        <Input value={squadCode} onChange={updateSquadCode} placeholder="e.g. ring, rage, rush"
+        <Input value={squadCode} onChange={updateSquadCode} placeholder={t('layout_detail_squad_placeholder')}
           autoFocus onKeyDown={e => e.key === 'Enter' && setSquadInput(false)} />
       </Modal>
 
@@ -1128,7 +1128,7 @@ export default function LayoutDetailPage() {
       )}
 
       {/* ═══ RE-CALIBRATE MODAL ═══ */}
-      <Modal open={calibModal} onClose={() => setCalibModal(false)} title="Re-calibrate field"
+      <Modal open={calibModal} onClose={() => setCalibModal(false)} title={t('layout_detail_recalib_modal_title')}
         maxWidth={640}
         footer={<>
           <Btn variant="default" onClick={() => setCalibModal(false)}>{t('cancel')}</Btn>
@@ -1139,7 +1139,7 @@ export default function LayoutDetailPage() {
               if (isSuper) await tracked(() => ds.updateBaseLayout(layoutId, { fieldCalibration: calibData, doritoSide: calibDoritoSide }));
             }
             setCalibModal(false);
-          }}><Icons.Check /> Save</Btn>
+          }}><Icons.Check /> {t('save')}</Btn>
         </>}>
         {calibData && (
           <CalibrationView
@@ -1177,8 +1177,8 @@ export default function LayoutDetailPage() {
           {/* § 98 STAGE 4 — "Podział pola": the 2 division lines (name + Y + color).
               Writes overlay.lineDivision; the merge feeds stats transparently. */}
           {[
-            { key: 'disco', val: disco, setVal: setDisco, min: 5, max: 50, hint: 'Players above this line are on dorito side' },
-            { key: 'zeeker', val: zeeker, setVal: setZeeker, min: 50, max: 95, hint: 'Players below this line are on snake side' },
+            { key: 'disco', val: disco, setVal: setDisco, min: 5, max: 50, hint: t('layout_detail_disco_hint') },
+            { key: 'zeeker', val: zeeker, setVal: setZeeker, min: 50, max: 95, hint: t('layout_detail_zeeker_hint') },
           ].map(ln => (
             <div key={ln.key} style={{
               background: COLORS.surface, border: '1px solid #1f2937',
@@ -1505,7 +1505,7 @@ export default function LayoutDetailPage() {
         }}
       />
       {/* § 98 5 — per-team bunker rename (positions/types are super_admin base) */}
-      <Modal open={!!renameBunker} onClose={() => setRenameBunker(null)} title="Rename bunker"
+      <Modal open={!!renameBunker} onClose={() => setRenameBunker(null)} title={t('layout_detail_rename_bunker_title')}
         footer={<>
           <Btn variant="default" onClick={() => setRenameBunker(null)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={() => {
@@ -1528,10 +1528,10 @@ export default function LayoutDetailPage() {
             setRenameBunker(null);
           }}><Icons.Check /> {t('save')}</Btn>
         </>}>
-        <Input value={renameValue} onChange={setRenameValue} placeholder="Bunker callout, e.g. ORANGE" autoFocus
+        <Input value={renameValue} onChange={setRenameValue} placeholder={t('layout_detail_bunker_callout_ph')} autoFocus
           onKeyDown={e => e.key === 'Enter' && e.target.blur()} />
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: 8 }}>
-          Per-team name. Position + type are set by the platform admin.
+          {t('layout_detail_bunker_name_hint')}
         </div>
       </Modal>
     </div>
