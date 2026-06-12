@@ -27,7 +27,7 @@ import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { MapPin, Pencil } from 'lucide-react';
+import { MapPin, Pencil, Play, Pause, Zap, Shield, Timer } from 'lucide-react';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
@@ -53,6 +53,22 @@ const E5 = () => [null, null, null, null, null];
 const E5A = () => [[], [], [], [], []];
 const E5B = () => [false, false, false, false, false];
 const PENALTIES = ['', '141', '241', '341'];
+
+// §B B3 — per-phase layer DEFAULTS for the review heatmap (convention, not
+// gates). The §40 per-team capsules override freely WITHIN the active phase;
+// defaults re-apply on each phase change. Flip PHASE_DEFAULTS_STICKY to true
+// to keep user overrides across phase switches instead (smoke-tunable).
+//   Break  → positions + all collected shot layers
+//   Settle → positions + the direction layer (the only per-stage shot layer)
+//   Mid    → positions only
+const PHASE_DEFAULTS_STICKY = false;
+const PHASE_LAYER_DEFAULTS = {
+  break:  { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
+  settle: { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
+  mid:    { teamA: { positions: true, shots: false }, teamB: { positions: true, shots: false } },
+};
+const PHASE_SEGMENTS = ['break', 'settle', 'mid'];
+const PHASE_ICON = { break: Zap, settle: Shield, mid: Timer };
 
 function emptyTeam() {
   // § Stage 2b — elimReasons: per-slot elimination reason code, set only for
@@ -277,10 +293,42 @@ export default function MatchPage() {
     teamA: { positions: true, shots: true },
     teamB: { positions: true, shots: true },
   });
-  // § Stage 6-lite — replay animation toggle for the review heatmap (OFF by
-  // default; global, not per-team — coexists with PerTeamHeatmapToggle).
-  const [replayOn, setReplayOn] = useState(false);
+  // §B phase view — the segment row replaces the Stage 6-lite Replay pill.
+  // phasePin = the pinned (static) stage; phasePlaying keeps the 6-lite replay
+  // animation; replayStage mirrors the replay clock so the active segment can
+  // follow playback (fed back by HeatmapCanvas onReplayPhase).
+  const [phasePin, setPhasePin] = useState('break');
+  const [phasePlaying, setPhasePlaying] = useState(false);
+  const [replayStage, setReplayStage] = useState(null);
   const [previewPointId, setPreviewPointId] = useState(null);
+  // §B B3 — pinning a phase stops playback and re-applies that phase's layer
+  // defaults (PHASE_LAYER_DEFAULTS) unless the sticky flag is flipped; the §40
+  // capsules then override freely WITHIN the phase.
+  const pinPhase = (st) => {
+    setPhasePlaying(false);
+    setReplayStage(null);
+    setPhasePin(st);
+    if (!PHASE_DEFAULTS_STICKY) {
+      setHmVisibility({
+        teamA: { ...PHASE_LAYER_DEFAULTS[st].teamA },
+        teamB: { ...PHASE_LAYER_DEFAULTS[st].teamB },
+      });
+    }
+  };
+  // §B B2 — phases operate on the CURRENT hero scope (aggregate or previewed
+  // point). When the preview changes to a scope without the pinned stage,
+  // clamp back to Break; when the scope can't animate at all, stop playback.
+  useEffect(() => {
+    const scope = previewPointId ? points.filter(p => p.id === previewPointId) : points;
+    const has = (st) => scope.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === st));
+    if ((phasePin === 'settle' && !has('settle')) || (phasePin === 'mid' && !has('mid'))) {
+      pinPhase('break');
+    } else if (!has('settle') && !has('mid')) {
+      setPhasePlaying(false);
+      setReplayStage(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewPointId, points, phasePin]);
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
   const undoStack = useUndo(10);
   const [toolbarPlayer, setToolbarPlayer] = useState(null);
@@ -1791,13 +1839,23 @@ export default function MatchPage() {
         runners: kf.runners || [],
         assignments: kf.assignments || [],
         slotIds: kf.slotIds || [],
+        // §B B4 — per-stage band shots feed the direction-arrow layer. Band
+        // enums (snake|center|dorito) are orientation-resolved at render via
+        // shotDirectionDeg(side), so no mirroring is needed here.
+        quickShots: kf.quickShots || null,
+        obstacleShots: kf.obstacleShots || null,
       };
     }).filter(Boolean);
 
-  // § Stage 6-lite — replay is playable only when ≥1 point carries Settle/Mid
-  // keyframes (Break is keyframe #0). Plain const (cheap .some); not a hook so
-  // it stays clear of the early returns above.
-  const canReplay = points.some(p => Array.isArray(p.timeline) && p.timeline.length > 0);
+  // §B B2 — phase/replay availability is computed on the CURRENT hero scope:
+  // the aggregate, or the selected preview point. Mirrors the old Stage 6-lite
+  // canReplay logic per scope. Plain consts (cheap .some); not hooks so they
+  // stay clear of the early returns above.
+  const phaseScopePoints = previewPointId ? points.filter(p => p.id === previewPointId) : points;
+  const scopeHasStage = (st) => phaseScopePoints.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === st));
+  const hasSettleStage = scopeHasStage('settle');
+  const hasMidStage = scopeHasStage('mid');
+  const canReplay = hasSettleStage || hasMidStage;
 
   const getHeatmapPoints = (side) => {
     if (side === 'all' || side === 'both') {
@@ -1996,7 +2054,11 @@ export default function MatchPage() {
                 bunkers={[]} showBunkers={false}
                 showZones={false}
                 visibility={{ A: hmVisibility.teamA, B: hmVisibility.teamB }}
-                replay={replayOn && canReplay}
+                phase={phasePin}
+                showDirections
+                doritoSide={field.layout?.doritoSide || 'top'}
+                replay={phasePlaying && canReplay}
+                onReplayPhase={setReplayStage}
                 discoLine={0} zeekerLine={0} />
     );
 
@@ -2006,26 +2068,64 @@ export default function MatchPage() {
           {!(landscape && heroAvailable) && (
             <div>{reviewHeatmapEl}</div>
           )}
-          {/* § Stage 6-lite — global Replay toggle, sibling ABOVE the per-team
-              capsule row (replay is global, not per-team). Amber only while
-              active (§ 27 color discipline); disabled with no Settle/Mid data. */}
-          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', justifyContent: 'center' }}>
+          {/* §B phase row — ▶ + [⚡Break | 🛡Settle | ⏱Mid] icon segments
+              (replaces the Stage 6-lite Replay pill; same approved §B pattern
+              as the Hitability mode switcher: inactive icon-only, active
+              icon+label). ▶ plays the replay through the scope's phases and
+              the active segment follows; tapping a segment stops playback and
+              pins. Settle/Mid disable when the CURRENT scope (aggregate or
+              previewed point) has no such keyframes (B2). Amber only on the
+              active/playing element (§27). */}
+          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', alignItems: 'stretch', gap: 6 }}>
             <div
               data-testid="phase-play"
-              role="button" aria-pressed={replayOn && canReplay}
-              onClick={canReplay ? () => setReplayOn(v => !v) : undefined}
-              title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
+              role="button" aria-pressed={phasePlaying && canReplay} aria-label={t('phase_play')}
+              onClick={canReplay ? () => { setReplayStage(null); setPhasePlaying(v => !v); } : undefined}
+              title={canReplay ? t('phase_play') : t('phase_play_disabled_hint')}
               style={{
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                minHeight: 44, padding: '0 18px', borderRadius: RADIUS.full,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+                width: 44, minHeight: 44, flexShrink: 0, borderRadius: RADIUS.md,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: canReplay ? 'pointer' : 'default',
-                background: (replayOn && canReplay) ? `${COLORS.accent}1f` : 'transparent',
-                color: (replayOn && canReplay) ? COLORS.accent : COLORS.textMuted,
-                border: `1px solid ${(replayOn && canReplay) ? `${COLORS.accent}66` : COLORS.border}`,
+                background: (phasePlaying && canReplay) ? `${COLORS.accent}1f` : COLORS.surface,
+                color: (phasePlaying && canReplay) ? COLORS.accent : COLORS.textMuted,
+                border: `1px solid ${(phasePlaying && canReplay) ? `${COLORS.accent}66` : COLORS.border}`,
                 opacity: canReplay ? 1 : 0.4,
                 WebkitTapHighlightColor: 'transparent', userSelect: 'none',
-              }}>▶ Replay break → settle → mid</div>
+              }}>
+              {(phasePlaying && canReplay) ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 6 }} role="group" aria-label={t('phase_row_label')}>
+              {PHASE_SEGMENTS.map(st => {
+                const enabled = st === 'break' || (st === 'settle' ? hasSettleStage : hasMidStage);
+                const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
+                const active = activeSeg === st;
+                const SegIcon = PHASE_ICON[st];
+                const segLabel = t(`phase_${st}`);
+                return (
+                  <div key={st} data-testid={`phase-seg-${st}`} role="button"
+                    aria-pressed={active} aria-disabled={!enabled} aria-label={segLabel} title={segLabel}
+                    onClick={enabled ? () => pinPhase(st) : undefined}
+                    style={{
+                      flex: active ? '1 1 0' : '0 0 48px', minWidth: 48, minHeight: 44,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                      borderRadius: RADIUS.md, cursor: enabled ? 'pointer' : 'default', overflow: 'hidden',
+                      transition: 'flex-grow .22s ease, flex-basis .22s ease, background .15s ease, border-color .15s ease',
+                      WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 700,
+                      background: active ? COLORS.surfaceLight : COLORS.surface,
+                      color: active ? COLORS.accent : COLORS.textDim,
+                      border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                      opacity: enabled ? 1 : 0.4,
+                    }}>
+                    <SegIcon size={18} strokeWidth={active ? 2.4 : 2} style={{ flexShrink: 0 }} aria-hidden="true" />
+                    <span data-testid={`phase-seg-label-${st}`} style={{
+                      whiteSpace: 'nowrap', overflow: 'hidden',
+                      maxWidth: active ? 120 : 0, opacity: active ? 1 : 0,
+                      transition: 'max-width .22s ease, opacity .18s ease',
+                    }}>{segLabel}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {/* Per-team layer toggles (§ 40) — independent positions/shots for each team */}
           <PerTeamHeatmapToggle

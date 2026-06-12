@@ -445,6 +445,17 @@ const T = {
     match_relock_confirm_msg:    'Wyniki zostaną przeliczone z aktualnych punktów. Po zamknięciu mecz wróci do trybu tylko-do-odczytu.',
     match_relock_confirm_label:  'Zamknij ponownie',
 
+    /* ─── §B phase view (match review, 2026-06-12) ───────── */
+    /* Break/Settle/Mid = domain vocabulary (loanwords in the PL scene,
+       same ruling as divisions/roles 2026-06-12) — identical in both langs. */
+    phase_break:              'Break',
+    phase_settle:             'Settle',
+    phase_mid:                'Mid',
+    phase_play:               'Odtwórz fazy',
+    phase_row_label:          'Fazy punktu',
+    phase_play_disabled_hint: 'Brak zarejestrowanych faz Settle/Mid',
+    review_preview_hint:      'tap wynik = podgląd na polu',
+
     /* ─── Confirm modals ────────────────────────────────── */
     delete_match:       'Usunąć mecz?',
     delete_matchup:     'Usunąć matchup?',
@@ -1718,6 +1729,15 @@ const T = {
     match_relock_confirm_title:  'Close match again?',
     match_relock_confirm_msg:    'Scores will be recomputed from current points. The match returns to read-only after closing.',
     match_relock_confirm_label:  'Close again',
+
+    /* §B phase view (match review, 2026-06-12) */
+    phase_break:              'Break',
+    phase_settle:             'Settle',
+    phase_mid:                'Mid',
+    phase_play:               'Play phases',
+    phase_row_label:          'Point phases',
+    phase_play_disabled_hint: 'No Settle/Mid stages captured yet',
+    review_preview_hint:      'tap score = preview on field',
 
     delete_match:       'Delete match?',
     delete_matchup:     'Delete matchup?',
