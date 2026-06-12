@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-12 — [FULL-DAY H1 batch 1] i18n extraction — navigation & core UI
+**HEAD `bead743f`** (merge of agent branch `364ab4be` + language-agnostic spec fix). **App-only.** §7.6 v2 **Tier 1** (mechanical extraction, no rewording). Full emulator e2e **38/38 green**. **REVERT:** `git revert bead743f 364ab4be` → rebuild → deploy.
+
+**Scope:** 93 hardcoded user-visible strings → i18n across TeamsPage (25) / PlayersPage (26) / MainPage (29, incl. EditTournamentModal + NoTournamentEmptyState + context-bar subtitles) / LayoutsPage (10) / ProfilePage (3). 63 new keys (PL+EN, dedicated §H1 Batch 1 section) + 16 reused; shared labels minted once (`league_label`, `division_label`, `all_label`…). Skipped per open rulings: enum-like class/role options (Pro/Semi-Pro/D1–D5, Player/Coach/Staff), aria-labels, `— no layout —` near-dup (needs a one-line copy ruling).
+
+**⚠ VISIBLE CONSEQUENCE (by design, flag for smoke):** strings that were hardcoded ENGLISH now render **POLISH for PL-language users** on the swept pages (e.g. "Select a tournament…" → "Wybierz turniej albo utwórz nowy"). No wording changed — the PL translations are new coverage; this is i18n doing its job. Two e2e asserts updated to language-agnostic regexes (`login.spec`, `b4-home.spec`). **If any PL translation reads wrong, it's a one-line i18n.js fix — list them during smoke.**
+
+**Owed: Jacek prod smoke** — Teams/Players/Layouts/Profile/Main przejrzeć po polsku (tłumaczenia w tonie aplikacji?), language toggle EN → stare angielskie copy bez zmian.
+
 ## 2026-06-12 — [FULL-DAY H2+H3] hex→token batch 1 + no-eternal-loading rollout (arc B) + H1 inventory
 **HEADs `2760f05b` (H3 TeamDetail/Tactic + H2 batch 1, deployed) → MatchPage-loader follow-up in the same evening deploy.** **App-only — no rules/index.** §7.6 v2 **Tier 1** (H2 = pixel-identical mechanical sweep; H3 = rollout of the shipped ScoutedTeamPage pattern). Full emulator e2e **38/38 green**.
 
