@@ -1947,30 +1947,38 @@ export default function MatchPage() {
         />
     );
 
-    // Scoreboard card — elevated surface with split-tap zones
-    const scoreboardEl = (
+    // Scoreboard card — elevated surface with split-tap zones. §B B5: the
+    // scoreboard is a PERMANENT rail resident (it is the live action button —
+    // scout the next point — never hidden by phase state). `compact` = the
+    // 280px-rail variant (mockup-6): names 11px/2-line, score 22px, the
+    // "Scout ›" text CTA becomes a chevron and the WHOLE team zone (≥44px)
+    // is the tap. Portrait keeps today's full variant.
+    const renderScoreboard = (compact) => (
         <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0` }}>
-          <div style={{
+          <div data-testid="review-scoreboard" style={{
             display: 'flex',
             background: COLORS.surface,
             border: `1px solid ${COLORS.surfaceLight}`,
-            borderRadius: 14,
+            borderRadius: compact ? 12 : 14,
             overflow: 'hidden',
           }}>
             {/* Left team zone */}
             <div onClick={() => goScout(match?.teamA)}
               style={{
                 flex: 1, minWidth: 0,
-                padding: '16px 14px',
+                padding: compact ? '8px 8px' : '16px 14px',
+                minHeight: compact ? 44 : undefined,
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
               <div style={{
-                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
+                fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamA?.name || 'Home'}</div>
-              {!isLocked && (
+              {!isLocked && (compact ? (
+                <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>›</div>
+              ) : (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
                     Scout ›
@@ -1982,21 +1990,21 @@ export default function MatchPage() {
                     </div>
                   )}
                 </div>
-              )}
+              ))}
             </div>
             {/* Divider */}
             <div style={{ width: 1, background: COLORS.surfaceLight }} />
             {/* Score center — recessed */}
             <div style={{
-              flex: '0 0 auto', minWidth: 110,
-              padding: '14px 12px',
+              flex: '0 0 auto', minWidth: compact ? 56 : 110,
+              padding: compact ? '8px 8px' : '14px 12px',
               background: COLORS.surfaceBar,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
-              <div style={{ fontFamily: FONT, fontSize: 32, fontWeight: 900, color: COLORS.text, lineHeight: 1 }}>
+              <div style={{ fontFamily: FONT, fontSize: compact ? 22 : 32, fontWeight: 900, color: COLORS.text, lineHeight: 1 }}>
                 {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
               </div>
-              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 4, letterSpacing: '.4px' }}>
+              <div style={{ fontFamily: FONT, fontSize: compact ? 8 : 10, fontWeight: 600, color: COLORS.textMuted, marginTop: compact ? 2 : 4, letterSpacing: '.4px' }}>
                 {points.length} POINT{points.length === 1 ? '' : 'S'}
               </div>
             </div>
@@ -2005,17 +2013,20 @@ export default function MatchPage() {
             <div onClick={() => goScout(match?.teamB)}
               style={{
                 flex: 1, minWidth: 0,
-                padding: '16px 14px',
+                padding: compact ? '8px 8px' : '16px 14px',
+                minHeight: compact ? 44 : undefined,
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
                 textAlign: 'right',
               }}>
               <div style={{
-                fontFamily: FONT, fontSize: 18, fontWeight: 700, color: COLORS.text,
+                fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamB?.name || 'Away'}</div>
-              {!isLocked && (
+              {!isLocked && (compact ? (
+                <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>‹</div>
+              ) : (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3, justifyContent: 'flex-end' }}>
                   {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
                   {isTraining && (
@@ -2027,7 +2038,7 @@ export default function MatchPage() {
                     ‹ Scout
                   </div>
                 </div>
-              )}
+              ))}
             </div>
           </div>
         </div>
@@ -2136,7 +2147,14 @@ export default function MatchPage() {
           />
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
-            <SectionLabel>Points ({points.length})</SectionLabel>
+            {/* §B B6 — preview discoverability: the section label carries the
+                tap-score hint (muted, non-uppercase — informational only). */}
+            <SectionLabel>
+              Points ({points.length})
+              <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 600, color: COLORS.textMuted }}>
+                {' '}· {t('review_preview_hint')}
+              </span>
+            </SectionLabel>
             {/* Inline Breaks/Shots 2-bar mini-summary removed — superseded
                 by CompletenessCard above (5 metrics + composite, role-gated
                 to scout/coach/admin). § 27 — one canonical surface, not
@@ -2225,8 +2243,12 @@ export default function MatchPage() {
                         fontFamily: FONT, fontSize: 15, fontWeight: 700,
                         color: isPreviewing ? COLORS.accent : COLORS.textSubtle,
                         lineHeight: 1,
+                        display: 'flex', alignItems: 'center', gap: 3,
                       }}>
-                        {prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}
+                        {/* §B B6 — 👁 marks the ACTIVE preview (amber = active
+                            state, §27); inherits the previewing colour. */}
+                        {isPreviewing && <span aria-hidden="true" style={{ fontSize: 11 }}>👁</span>}
+                        <span>{prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}</span>
                       </div>
                       {totalElim > 0 && (
                         <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 3 }}>
@@ -2291,14 +2313,19 @@ export default function MatchPage() {
         </div>
     );
 
-    const stickyActionsEl = (!isViewer && (!isClosed || isLocked || isLockReleased)) && (
+    // §B B6 — in the LANDSCAPE rail "End match" moves to the ⋮ ActionSheet
+    // (destructive + rare — it doesn't earn permanent 280px-rail residency;
+    // the matchMenu entry already exists). Portrait keeps the inline button.
+    // Unlock/relock stay inline in both (they gate the whole edit mode).
+    const renderStickyActions = (inRail) => (!isViewer && (!isClosed || isLocked || isLockReleased)) && (
           <div style={{
             position: 'sticky', bottom: 0, zIndex: 20,
             padding: `${SPACE.md}px ${R.layout.padding}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
             background: `linear-gradient(to bottom, transparent, ${COLORS.bg} 30%)`,
           }}>
-            {!isClosed && (
+            {!isClosed && !inRail && (
               <div
+                data-testid="end-match-inline"
                 onClick={() => closeMatchConfirm.ask(true)}
                 onMouseEnter={(e) => { e.currentTarget.style.background = '#ef444418'; e.currentTarget.style.borderColor = '#ef444450'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = '#ef444408'; e.currentTarget.style.borderColor = '#ef444425'; }}
@@ -2470,7 +2497,7 @@ export default function MatchPage() {
             railMin={200}
             header={reviewHeaderEl}
             artifact={reviewHeatmapEl}
-            rail={<>{scoreboardEl}{reviewColumnEl}{stickyActionsEl}</>}
+            rail={<>{renderScoreboard(true)}{reviewColumnEl}{renderStickyActions(true)}</>}
             collapsed={{ tabs: [], count: null, onBack: () => navigate(backToParent) }}
           />
           {reviewModalsEl}
@@ -2482,9 +2509,9 @@ export default function MatchPage() {
     return (
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
         {reviewHeaderEl}
-        {scoreboardEl}
+        {renderScoreboard(false)}
         {reviewColumnEl}
-        {stickyActionsEl}
+        {renderStickyActions(false)}
         {reviewModalsEl}
       </div>
     );
