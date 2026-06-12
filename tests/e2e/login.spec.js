@@ -70,7 +70,8 @@ test.describe('B4 regression: Settings is never a cold-open landing', () => {
     // empty-state, NOT Settings — the AppShell cold-open guard redirects
     // 'more' → first content tab. Without the fix, MoreTabContent would render
     // and this empty-state text would be absent.
-    await expect(page.getByText(/Select a tournament or create a new one/i)).toBeVisible();
+    // Language-agnostic: this copy went through the H1 i18n extraction (PL+EN).
+    await expect(page.getByText(/Select a tournament or create a new one|Wybierz turniej albo utwórz nowy/i)).toBeVisible();
   });
 });
 

@@ -55,7 +55,8 @@ test.describe('B4 — role-aware home', () => {
     // "Zrobię to później" → the normal empty dashboard, not the checklist.
     await page.getByTestId('b4-later').click();
     await expect(page.getByTestId('b4-checklist')).toHaveCount(0);
-    await expect(page.getByText('Select a tournament or create a new one')).toBeVisible();
+    // Language-agnostic: this copy went through the H1 i18n extraction (PL+EN).
+    await expect(page.getByText(/Select a tournament or create a new one|Wybierz turniej albo utwórz nowy/i)).toBeVisible();
   });
 
   test('scout with no active event sees the B4 waiting state', async ({ page }) => {
