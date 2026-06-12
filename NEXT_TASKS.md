@@ -28,7 +28,15 @@ Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Jacek GO "I need all of i
 
 **Lane-3 product items recorded (no implementation):** view-as revival (§38.5, currently by-design placeholder-toast); phase-view mockup (E1 datasets); barrel-angle CAPTURE (only if derived direction insufficient).
 
-**Not started (priority/scope/time):** §A 4.2/4.3 (gated on 4.1 GO — not arrived), §D cluster-fix implementation (root-cause discovery ran), §F doc merges, §G wave-3 seed, §H i18n/hex sweeps. Honest status in the morning report.
+### FULL-DAY run 2026-06-12 (CC_BRIEF_FULL_DAY + ADDENDUM)
+**Shipped to prod (Tier 1):** STEP 0 (§7.6 v2 two-tier law) · STEP 1 / Stage 4.1 (PlayerStats landscape rail, `c2503183`) · STEP 9 (single-membership auto-enter + defaultWorkspace stamp, `1efeb026`; coach3 e2e now deterministic; closes FIT fresh-invitee wall). e2e 29/29.
+**STEP 7 registrations:**
+- **events-list redesign** [arc D] — "przebudować ten ekran docelowo" (Jacek); dual badges OK for now (D6a shipped). Awaiting Opus design brief.
+- **B26 box "still loops" post-fix (Jacek report):** VERDICT = almost certainly **pre-deploy SW cache** — D7 shipped in the overnight bundle; the running PWA served the OLD SW until a double cold-launch activates the new one. Super-admin-only surface, parked either way. Re-verify after one SW update cycle.
+- **Logo on phone still fallback (Jacek):** same **SW-cache caveat** — E3 (cross-origin image rule) shipped overnight; needs the new SW to activate. Revisit within the rebrand/nav arc after a clean SW cycle.
+- **E5** team↔league import = BY-DESIGN; **row OPEN pending Jacek UI re-check.**
+- **F2** §116 manual-collapse ("focus mode") paragraph + toggle e2e — still TODO (not built today).
+**Not built today (priority/scope/session-limit):** STEP 2 (Hitability marker popup — discovery agent hit session limit; build pending) · STEP 8 (B4 role-aware home) · STEP 4 (`<Screen>` pilot) · STEP 5 (H0/H1/H2 sweeps) · STEP 3 (READS splash — Tier 2) · STEP 6 (wave-3 seed) · STEP 10 (motion dark) · STEP 11–14. Resume by revised priority: 2 → 8 → 4 → 5 → 3 → 10 → 6 → 11–14.
 
 ---
 
