@@ -1,8 +1,16 @@
+import { readFileSync } from 'fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// §C nav drawer — app version for the drawer footer brand line. Single source
+// of truth = package.json `version` (theme.js APP_VERSION was stale at '0.4').
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   plugins: [
     react(),
     // PWA cold-boot (§ PWA_COLDBOOT). Replaces the hand-written public/sw.js.

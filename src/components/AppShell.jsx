@@ -1,29 +1,31 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import WorkspaceLogo from './settings/WorkspaceLogo';
 import { useViewAs } from '../hooks/useViewAs';
 import TabBar, { computeVisibleTabs } from './TabBar';
+import { ReadsBallButton } from './NavDrawer';
 import { useQuickLogActive } from '../contexts/QuickLogContext';
 import { leagueDisplayName } from '../hooks/useLeagues';
 
 /**
- * AppShell — bottom-tab navigation wrapper (DESIGN_DECISIONS § 31, § 49).
+ * AppShell — top-bar + bottom-tab navigation wrapper (DESIGN_DECISIONS § 31,
+ * § 49; §C nav drawer restructure, mockup-7).
  *
- * Layout: [context bar] [content (scroll)] [tab bar]
- * Tabs: Scout | Coach | Gracz | More — each has a `requiredAny` role gate.
- *   null = always visible; otherwise at least one role must match.
- *   Admin (effective) always sees every tab regardless of requiredAny.
+ * Layout: [top bar: reads ball (drawer trigger) + event context] [content] [tab bar]
  *
- * § 49 strict matrix (replaces Brief E Option 1 permissive one):
- *   Pure-player → Gracz + More
- *   Pure-scout  → Scout + More
- *   Pure-coach  → Coach + More  (coach does NOT see Scout tab anymore)
- *   Admin       → all tabs
- *   Multi-role (e.g. ['scout','coach']) → union of allowed tabs
- *   Viewer role retired from tab matrix — viewer users fall through to
- *     More-only visibility. No migration.
+ * §C1 top bar: the reads ball (ReadsBallButton) opens the nav drawer (owned by
+ * MainPage via `onOpenDrawer`); the event context beside it stays SEPARATELY
+ * tappable → TournamentPicker (event switching ≠ settings — two affordances,
+ * two frequencies). The bar renders even with no event selected — the ball is
+ * the only path to settings/sign-out, so it must always be reachable.
+ *
+ * §C3 tab bar: content role tabs ONLY (Scout | Coach | Gracz, `requiredAny`
+ * role gates; admin sees all). The 'more' tab is REMOVED — settings live in
+ * the drawer. TabBar renders only at ≥2 content tabs (single-role users get
+ * full-bleed content). A stale persisted 'more' (or any hidden tab) resolves
+ * to the role's first content tab via the fallback effect below.
  *
  * Gracz tab navigates to the PPT route (/player/log) rather than swapping
  * MainPage content — PPT has its own layout/chrome and nesting it inside
@@ -37,6 +39,7 @@ export default function AppShell({
   tournament,
   tournamentSubtitle,
   onChangeTournament,
+  onOpenDrawer,
 }) {
   const { t } = useLanguage();
   const { workspace } = useWorkspace();
@@ -48,31 +51,20 @@ export default function AppShell({
   // so URL has no flag — context lifts the state. AppShell consumes here.
   const quickLogActive = useQuickLogActive();
 
-  // If the persisted activeTab is hidden for this role (e.g. pure-player
-  // whose localStorage still has 'scout' from a multi-role session, or an
-  // admin impersonating a lower role), fall back to the first visible tab.
+  // §C3 migration + role fallback (subsumes the former B4 cold-open 'more'
+  // guard): with 'more' gone from TAB_DEFS, a stale persisted 'more' — and any
+  // tab hidden for this role (pure-player with 'scout' persisted, admin
+  // impersonating a lower role) — is simply "not visible" and maps to the
+  // role's FIRST content tab. Waits for roles to resolve: visibleTabs is empty
+  // both while loading AND for viewer-only users (no content tabs at all —
+  // MainPage renders their terminal summary card regardless of activeTab), so
+  // an empty list never triggers a redirect.
   useEffect(() => {
+    if (visibleTabs.length === 0) return; // roles unresolved, or viewer-only
     if (!visibleTabs.some(t => t.key === activeTab)) {
-      onTabChange(visibleTabs[0]?.key || 'more');
+      onTabChange(visibleTabs[0].key);
     }
   }, [activeTab, visibleTabs, onTabChange]);
-
-  // B4 STEP 2/3: Settings ('more') must never be the auto-resolved cold-open
-  // landing. If the resolved tab is 'more' on first mount (a stale persisted
-  // value from before STEP 1, or a fallback), redirect ONCE to the role's first
-  // CONTENT tab. Fires only when a non-'more' tab exists — viewer-only (More the
-  // only visible tab) has no content view, so it correctly stays on Settings
-  // (STEP 3). Once-only (ref-guarded) so tapping INTO Settings mid-session is
-  // never bounced back out. Waits for visibleTabs to resolve (roles may load
-  // async → first render can be More-only before content tabs appear).
-  const coldOpenGuardDone = useRef(false);
-  useEffect(() => {
-    if (coldOpenGuardDone.current) return;
-    const firstContent = visibleTabs.find(t => t.key !== 'more');
-    if (!firstContent) return; // roles not resolved yet, or viewer-only
-    coldOpenGuardDone.current = true;
-    if (activeTab === 'more') onTabChange(firstContent.key);
-  }, [visibleTabs, activeTab, onTabChange]);
   return (
     <div style={{
       height: '100dvh',
@@ -80,23 +72,35 @@ export default function AppShell({
       flexDirection: 'column',
       background: COLORS.bg,
     }}>
-      {/* Context bar — visible only when a tournament is selected AND
-          QuickLog is not active (§ 58.7). Hidden during QuickLog because
-          the bar duplicates the QuickLog PageHeader and pushes Stage 1
-          CTA off-screen on desktop landscape. */}
-      {tournament && !quickLogActive && (
-        <div onClick={onChangeTournament}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '10px 16px',
-            background: COLORS.surfaceBar,
-            borderBottom: '1px solid #1a2234',
-            gap: 10,
-            flexShrink: 0,
-            cursor: 'pointer',
-            WebkitTapHighlightColor: 'transparent',
-          }}>
+      {/* Top bar (§C1) — reads ball (drawer trigger) + event context. Always
+          rendered (the ball is the sole settings entry) EXCEPT during QuickLog
+          (§ 58.7): the bar duplicates the QuickLog PageHeader and pushes the
+          Stage 1 CTA off-screen on desktop landscape. The event context is its
+          OWN tap target → TournamentPicker, untouched by the ball. */}
+      {!quickLogActive && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          minHeight: 48,
+          padding: '2px 16px 2px 6px',
+          background: COLORS.surfaceBar,
+          borderBottom: `1px solid ${COLORS.surfaceLight}`,
+          gap: 6,
+          flexShrink: 0,
+        }}>
+          <ReadsBallButton onClick={onOpenDrawer} />
+          {tournament ? (
+          <div onClick={onChangeTournament}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: 'flex',
+              alignItems: 'center',
+              minHeight: 44,
+              gap: 10,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
           {workspace?.logoUrl && <WorkspaceLogo url={workspace.logoUrl} size={20} />}
           <div style={{
             width: 8, height: 8, borderRadius: '50%',
@@ -154,6 +158,10 @@ export default function AppShell({
             fontFamily: FONT, fontSize: 16, color: COLORS.textMuted,
             flexShrink: 0, opacity: 0.6,
           }}>›</span>
+          </div>
+          ) : (
+            <div style={{ flex: 1 }} />
+          )}
         </div>
       )}
 

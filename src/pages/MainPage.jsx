@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
+import NavDrawer from '../components/NavDrawer';
+import { computeVisibleTabs } from '../components/TabBar';
 import TournamentPicker from '../components/TournamentPicker';
 import NewTournamentModal from '../components/NewTournamentModal';
 import ScoutTabContent from '../components/tabs/ScoutTabContent';
@@ -9,13 +11,15 @@ import MoreTabContent from '../components/tabs/MoreTabContent';
 import TrainingScoutTab from '../components/tabs/TrainingScoutTab';
 import TrainingCoachTab from '../components/tabs/TrainingCoachTab';
 import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
+import WorkspaceLogo from '../components/settings/WorkspaceLogo';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
+import { useViewAs } from '../hooks/useViewAs';
 import { hasAnyRole } from '../utils/roleUtils';
 import { FreshWorkspaceChecklist, ScoutWaitingEmptyState } from '../components/home/FreshWorkspaceChecklist';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUE_COLORS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS } from '../utils/theme';
 import { useLeagues, leagueDisplayName } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { useLanguage } from '../hooks/useLanguage';
@@ -58,6 +62,9 @@ export default function MainPage({ onSignOut, workspaceName }) {
     catch { return null; }
   });
   const [pickerOpen, setPickerOpen] = useState(false);
+  // §C2 nav drawer — transient overlay (mockup-7). NEVER auto-opens: false on
+  // every mount; only the reads ball (AppShell top bar) opens it.
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [newModalKind, setNewModalKind] = useState('tournament');
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -108,12 +115,11 @@ export default function MainPage({ onSignOut, workspaceName }) {
       return;
     }
     setActiveTab(tab);
-    // B4 STEP 1: Settings ('more') is a leaf you tap into, not a landing you
-    // resume to. Never persist it as the resume tab — leave the last CONTENT
-    // tab in localStorage so reopening restores that, not Settings. (AppShell's
-    // cold-open guard additionally redirects any stale 'more' persisted before
-    // this fix.)
-    try { if (tab !== 'more') localStorage.setItem(TAB_KEY, tab); } catch {}
+    // §C3: only content tabs exist now ('more' is retired — settings live in
+    // the drawer), so every switched-to tab is a valid resume target. A stale
+    // persisted 'more' from older sessions is migrated by AppShell's fallback
+    // effect (hidden tab → first content tab).
+    try { localStorage.setItem(TAB_KEY, tab); } catch {}
   };
 
   const handleSelectTournament = (id) => {
@@ -203,11 +209,46 @@ export default function MainPage({ onSignOut, workspaceName }) {
   const checklistVisible = signalsReady && isCoachish && !checklistLater
     && !(signals.hasEvent && signals.hasLayout && signals.hasMembers);
 
+  // §C4 viewer-only terminal state — a user with ZERO content tabs (viewer
+  // role matches no tab gate) gets a workspace summary card as their home;
+  // the drawer is their whole surface (replaces the old "lands on More").
+  // Effective roles (useViewAs) so an admin impersonating viewer previews it.
+  // Gated on the loaded workspace doc — empty roles while loading must not
+  // flash the card for content-role users.
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const isViewerOnly = !!workspace
+    && computeVisibleTabs(effectiveRoles, effectiveIsAdmin).length === 0;
+
+  // §C2 drawer content — today's settings surface BY REFERENCE (chrome
+  // restructure, not content redesign): TrainingMoreTab in an active training
+  // context, MoreTabContent otherwise. Same props the 'more' tab used to get.
+  const drawerContent = (isTrainingMode && training) ? (
+    <TrainingMoreTab
+      trainingId={trainingId}
+      training={training}
+      workspaceName={workspaceName}
+      onEndTraining={() => setEndTrainingConfirm(true)}
+      onDeleteTraining={() => setDeleteTrainingConfirm(true)}
+      onSignOut={onSignOut}
+    />
+  ) : (
+    <MoreTabContent
+      tournamentId={tournamentId} tournament={tournament} workspaceName={workspaceName}
+      onEditTournament={() => setEditModalOpen(true)}
+      onCloseTournament={() => setCloseConfirmOpen(true)}
+      onDeleteTournament={() => setDeleteTournamentConfirm(true)}
+      onSignOut={onSignOut}
+    />
+  );
+
   const renderContent = () => {
+    if (isViewerOnly) {
+      return <ViewerHomeCard workspace={workspace} workspaceName={workspaceName} />;
+    }
     // B4 — coach/admin fresh-workspace checklist replaces the home content
     // until all signals are true or the user defers it for this session.
-    // Settings ('more') and an explicitly-entered training stay reachable.
-    if (!isTrainingMode && activeTab !== 'more' && checklistVisible) {
+    // An explicitly-entered training stays reachable.
+    if (!isTrainingMode && checklistVisible) {
       return (
         <FreshWorkspaceChecklist
           isAdmin={isAdmin}
@@ -220,34 +261,10 @@ export default function MainPage({ onSignOut, workspaceName }) {
       );
     }
     if (isTrainingMode && training) {
-      if (activeTab === 'more') {
-        return (
-          <TrainingMoreTab
-            trainingId={trainingId}
-            training={training}
-            workspaceName={workspaceName}
-            onEndTraining={() => setEndTrainingConfirm(true)}
-            onDeleteTraining={() => setDeleteTrainingConfirm(true)}
-            onSignOut={onSignOut}
-          />
-        );
-      }
       if (activeTab === 'coach') {
         return <TrainingCoachTab trainingId={trainingId} training={training} layoutId={training.layoutId || null} />;
       }
       return <TrainingScoutTab trainingId={trainingId} training={training} />;
-    }
-
-    if (activeTab === 'more') {
-      return (
-        <MoreTabContent
-          tournamentId={tournamentId} tournament={tournament} workspaceName={workspaceName}
-          onEditTournament={() => setEditModalOpen(true)}
-          onCloseTournament={() => setCloseConfirmOpen(true)}
-          onDeleteTournament={() => setDeleteTournamentConfirm(true)}
-          onSignOut={onSignOut}
-        />
-      );
     }
 
     if (tournament) {
@@ -270,8 +287,14 @@ export default function MainPage({ onSignOut, workspaceName }) {
       tournament={contextObj}
       tournamentSubtitle={contextSubtitle}
       onChangeTournament={() => setPickerOpen(true)}
+      onOpenDrawer={() => setDrawerOpen(true)}
     >
       {renderContent()}
+
+      {/* §C2 nav drawer — settings surface by reference (mockup-7). */}
+      <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        {drawerContent}
+      </NavDrawer>
 
       <TournamentPicker
         open={pickerOpen}
@@ -346,6 +369,45 @@ export default function MainPage({ onSignOut, workspaceName }) {
         }}
       />
     </AppShell>
+  );
+}
+
+/**
+ * ViewerHomeCard — §C4 viewer-only terminal state (mockup-7). A read-only user
+ * with no content tabs gets a workspace summary card (logo + name + role) as
+ * their whole home; settings/sign-out live in the drawer behind the reads
+ * ball. Non-interactive card: no chevron, no CTA, ≤3 data points (§27).
+ */
+function ViewerHomeCard({ workspace, workspaceName }) {
+  const { t } = useLanguage();
+  return (
+    <div data-testid="viewer-home" style={{
+      padding: SPACE.lg, maxWidth: 480, margin: '0 auto', width: '100%',
+      boxSizing: 'border-box',
+    }}>
+      <div style={{
+        background: COLORS.surfaceDark,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: RADIUS.lg,
+        padding: SPACE.xxl,
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        gap: SPACE.sm, textAlign: 'center', marginTop: SPACE.xl,
+      }}>
+        <WorkspaceLogo url={workspace?.logoUrl} size={48} radius={RADIUS.md} />
+        <div style={{
+          fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700,
+          color: COLORS.text, letterSpacing: '-.2px',
+        }}>{workspace?.name || workspaceName || t('workspace_label')}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 11, fontWeight: 600,
+          color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: '.5px',
+        }}>{t('role_viewer') || 'Viewer'}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
+          color: COLORS.textDim, lineHeight: 1.5, maxWidth: 280, marginTop: SPACE.xs,
+        }}>{t('viewer_home_hint')}</div>
+      </div>
+    </div>
   );
 }
 

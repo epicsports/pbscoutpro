@@ -1361,6 +1361,10 @@ const T = {
     form_squads:              'Utwórz składy',
     squads_players_subtitle:  (n) => `${n} zawodników`,
     start_training:           'Rozpocznij trening',
+    /* ─── §C nav drawer (mockup-7) ─────────────────────── */
+    nav_menu_label:     'Menu',
+    drawer_available:   (n) => `${n} dostępne`,
+    viewer_home_hint:   'Menu i ustawienia znajdziesz pod kulką reads w lewym górnym rogu.',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2673,6 +2677,10 @@ const T = {
     form_squads:              'Form squads',
     squads_players_subtitle:  (n) => `${n} players`,
     start_training:           'Start training',
+    /* ─── §C nav drawer (mockup-7) ─────────────────────── */
+    nav_menu_label:     'Menu',
+    drawer_available:   (n) => `${n} available`,
+    viewer_home_hint:   'Find the menu and settings under the reads ball in the top-left corner.',
   },
 };
 

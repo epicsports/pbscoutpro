@@ -228,7 +228,25 @@ service cloud.firestore {
       // / pendingApprovals / passwordHash were readable by ANY authed user. The
       // old "authed probe" is no longer needed: invite redemption carries the
       // slug and reads the INVITE doc (not the workspace doc) as a non-member.
-      allow read: if isMember(slug) || isSuperAdmin();
+      //
+      // §C nav drawer gate fix (2026-06-12): membership checked on
+      // resource.data DIRECTLY (not the get()-based isMember(slug)) so the
+      // rule is LIST-PROVABLE for the `members array-contains uid` queries
+      // (useUserWorkspaces D1 + auto-enter STEP 9). The get()-based form
+      // raised "Null value error" on every list → those queries were silently
+      // permission-denied (switcher never showed >1 workspace for non-super-
+      // admins; defaultWorkspace-less members dead-ended on NoWorkspaceScreen
+      // — the 5f69dc04 regression test was red on main). For single-doc gets
+      // resource.data IS the same doc isMember(slug) fetched — predicate
+      // semantics unchanged, one get() cheaper. isMember's `members is list`
+      // guard is dropped: it BREAKS list provability (verified vs emulator),
+      // and on a missing/non-list members the `in` errors → rule false →
+      // deny, the exact same outcome the guard produced.
+      // ⚠ TENANT-ISOLATION PREDICATE — prod `firebase deploy --only
+      // firestore:rules` requires Jacek's explicit CONFIRM (CLAUDE.md policy).
+      allow read: if (request.auth != null
+                      && request.auth.uid in resource.data.members)
+                  || isSuperAdmin();
 
       // Create: authenticated user bootstraps a new workspace and must
       // include themselves in members.
