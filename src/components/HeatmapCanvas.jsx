@@ -215,10 +215,14 @@ export default function HeatmapCanvas({
   const replayRafRef = useRef(null);
   // eslint-disable-next-line no-unused-vars
   const [, setReplayTick] = useState(0);
-  // §B — ref-wrapped callback (PROJECT_GUIDELINES §9) so the RAF effect does
-  // not re-subscribe when the consumer passes a fresh closure each render.
+  // §B — ref-wrapped callback + model (PROJECT_GUIDELINES §9): the RAF effect
+  // keeps its original `[animating]` deps — re-firing on model identity would
+  // RESTART the replay clock on every parent re-render (the points prop is
+  // rebuilt per render), pinning playback to the first phase.
   const onReplayPhaseRef = useRef(onReplayPhase);
   onReplayPhaseRef.current = onReplayPhase;
+  const replayModelRef = useRef(replayModel);
+  replayModelRef.current = replayModel;
   const lastReplayPhaseRef = useRef(null);
   useEffect(() => {
     if (!animating) {
@@ -235,9 +239,10 @@ export default function HeatmapCanvas({
       // §B — segment-follow: report the keyframe the clock currently sits on
       // (the `from` phase) whenever it changes.
       if (onReplayPhaseRef.current) {
+        const phases = replayModelRef.current.phases;
         const nowTs = (typeof performance !== 'undefined' ? performance.now() : 0);
-        const clk = replayClock(nowTs - replayStartRef.current, replayModel.phases.length);
-        const st = replayModel.phases[clk.from];
+        const clk = replayClock(nowTs - replayStartRef.current, phases.length);
+        const st = phases[clk.from];
         if (st !== lastReplayPhaseRef.current) {
           lastReplayPhaseRef.current = st;
           onReplayPhaseRef.current(st);
@@ -247,7 +252,7 @@ export default function HeatmapCanvas({
     };
     replayRafRef.current = requestAnimationFrame(loop);
     return () => { if (replayRafRef.current) cancelAnimationFrame(replayRafRef.current); };
-  }, [animating, replayModel]);
+  }, [animating]);
 
   const drawHeatmap = (ctx, w, h, state) => {
     const { imgObj } = state;

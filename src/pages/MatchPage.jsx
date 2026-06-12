@@ -1943,7 +1943,7 @@ export default function MatchPage() {
               letterSpacing: '.5px',
             }}>{isLockReleased ? t('match_unlocked_badge') : isClosed ? 'FINAL' : 'LIVE'}</span>
           }
-          action={!isLocked && <MoreBtn onClick={() => setMatchMenuOpen(true)} />}
+          action={!isLocked && <MoreBtn testId="match-menu-btn" onClick={() => setMatchMenuOpen(true)} />}
         />
     );
 
