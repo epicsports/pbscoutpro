@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
-import TabBar from '../components/TabBar';
+import TabBar, { useTabBarVisible } from '../components/TabBar';
+import NavDrawer, { ReadsBallButton } from '../components/NavDrawer';
+import MoreTabContent from '../components/tabs/MoreTabContent';
+import { useWorkspace } from '../hooks/useWorkspace';
 import TrainingPickerView from '../components/ppt/TrainingPickerView';
 import WizardShell from '../components/ppt/WizardShell';
 import TodaysLogsList from '../components/ppt/TodaysLogsList';
@@ -45,11 +48,23 @@ const ENDED_LIMIT = 10;
 
 // PPT lives OUTSIDE AppShell (own chrome), so the Gracz tab loses the global
 // bottom menu. Wrap the page with the shared TabBar (fixed bottom) so the menu
-// is always visible. Hidden in the focused wizard flow. Tapping another tab
-// persists it (MainPage's TAB_KEY) + returns to MainPage.
+// is always visible for MULTI-role users (§C3: the bar renders only at ≥2
+// content tabs — pure players get full-bleed content). Hidden in the focused
+// wizard flow. Tapping another tab persists it (MainPage's TAB_KEY) + returns
+// to MainPage.
+//
+// §C1/§C2 on the player surface (mockup-7 frame 3): PPT gets its own slim top
+// bar with the reads ball — for a pure player this page IS the app, and after
+// the 'more' tab removal the drawer is their only path to settings/sign-out.
+// Settings content = MoreTabContent BY REFERENCE with no tournament context
+// (the session section self-hides).
 export default function PlayerPerformanceTrackerPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { workspace, signOutUser } = useWorkspace();
+  const tabBarVisible = useTabBarVisible();
+  // §C2 — transient drawer; NEVER auto-opens (false on every mount).
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const isWizard = location.pathname.endsWith('/wizard');
   const onTab = (tab) => {
     if (tab === 'ppt') { navigate('/player/log'); return; }
@@ -58,11 +73,36 @@ export default function PlayerPerformanceTrackerPage() {
   };
   return (
     <>
-      <PPTInner />
       {!isWizard && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          minHeight: 48, padding: '2px 16px 2px 6px',
+          background: COLORS.surfaceBar,
+          borderBottom: `1px solid ${COLORS.surfaceLight}`,
+        }}>
+          <ReadsBallButton onClick={() => setDrawerOpen(true)} />
+          <div style={{
+            fontFamily: FONT, fontSize: 13, fontWeight: 600,
+            color: COLORS.textMuted, flex: 1, minWidth: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{workspace?.name || ''}</div>
+        </div>
+      )}
+      <PPTInner />
+      {!isWizard && tabBarVisible && (
         <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 40 }}>
           <TabBar activeTab="ppt" onTabChange={onTab} />
         </div>
+      )}
+      {!isWizard && (
+        <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+          <MoreTabContent
+            tournamentId={null}
+            tournament={null}
+            workspaceName={workspace?.name}
+            onSignOut={signOutUser}
+          />
+        </NavDrawer>
       )}
     </>
   );

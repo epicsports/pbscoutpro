@@ -13,6 +13,7 @@ import {
   deletePendingSelfReport,
 } from '../../services/playerPerformanceTrackerService';
 import { getPending } from '../../services/pptPendingQueue';
+import { useTabBarVisible } from '../TabBar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 
 /**
@@ -224,6 +225,10 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
+  // §C3 — the shared TabBar only renders at ≥2 content tabs; pure players get
+  // full-bleed content, so the sticky CTA hugs the bottom instead of floating
+  // above a bar that isn't there.
+  const tabBarVisible = useTabBarVisible();
   // PPT 2026-04-24 unlinked-mode: when no playerId, fall back to uid path.
   const scopeId = playerId || uid;
   const isLinked = !!playerId;
@@ -432,8 +437,11 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
       <div style={{
         position: 'fixed',
         left: 0, right: 0,
-        // § Gracz fix — sits ABOVE the shared TabBar (height 56 + safe-area).
-        bottom: 'calc(56px + env(safe-area-inset-bottom, 0px))',
+        // § Gracz fix — sits ABOVE the shared TabBar (height 56 + safe-area)
+        // when it renders; §C3 single-role users have no bar → hug the bottom.
+        bottom: tabBarVisible
+          ? 'calc(56px + env(safe-area-inset-bottom, 0px))'
+          : 'env(safe-area-inset-bottom, 0px)',
         padding: `${SPACE.md}px ${SPACE.lg}px`,
         background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
       }}>
