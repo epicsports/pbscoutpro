@@ -25,6 +25,13 @@ export const BASE_LAYOUT = 'base-demo';
 export const LEAVER_ACCOUNT = { email: 'leaver@test.local', password: 'test1234' };
 export const UID_LEAVER = 'test-leaver';
 
+// B4 role-aware home — fresh workspaces + per-role accounts (zero events).
+export const B4_ADMIN_ACCOUNT = { email: 'b4admin@test.local', password: 'test1234' };
+export const B4_SCOUT_ACCOUNT = { email: 'b4scout@test.local', password: 'test1234' };
+export const B4_PLAYER_ACCOUNT = { email: 'b4player@test.local', password: 'test1234' };
+export const B4_WS = 'b4-ws';
+export const B4_ROLES_WS = 'b4-roles-ws';
+
 // § read-volume C 2 — second tenant + its sole member (CG isolation matrix).
 export const OTHER_ACCOUNT = { email: 'other@test.local', password: 'test1234' };
 export const UID_OTHER = 'test-other';

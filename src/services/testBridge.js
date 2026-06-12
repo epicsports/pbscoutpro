@@ -46,6 +46,10 @@ export function installTestBridge() {
     endMatchAndMerge: (tid, mid) => ds.endMatchAndMerge(tid, mid),
     getPoints: (tid, mid) => ds.getMatchPointsOnce(tid, mid),
 
+    // B4 — checklist-progression probe: create a minimal tournament in the
+    // CURRENT workspace (setWorkspace first) so the hasEvent signal flips.
+    addTournament: (data) => ds.addTournament(data),
+
     // ── Invite-isolation probes (Stage 4) — exercise the rules directly ──
     createInvite: (slug, role) => ds.createInvite(slug, role),
     redeem: (token) => ds.redeemInvite(token, auth.currentUser.uid),
