@@ -331,13 +331,23 @@ export function WorkspaceProvider({ children }) {
     // blanket DEFAULT_WORKSPACE_SLUG fallback (a brand-new non-member resolves
     // to nothing → NoWorkspaceScreen, so the FIT isolation behavior is intact).
     let slug = userProfile?.defaultWorkspace || null;
+    let stampSingle = false;
     if (!slug) {
       try {
+        // STEP 9 (2026-06-12) — rules-PROVABLE membership query (`members`
+        // array-contains; same fix as D1 useUserWorkspaces, replacing the
+        // unsupported `userRoles.<uid> != null` that read-rule-mismatched on
+        // `members`). EXACTLY ONE membership → enter it AND stamp
+        // defaultWorkspace so the member never dead-ends on NoWorkspaceScreen
+        // again (closes the FIT fresh-invitee wall). >1 → enter the first; the
+        // user re-picks via the existing WorkspaceSwitcher (own memberships).
+        // 0 → NoWorkspaceScreen below (FIT isolation for true non-members intact).
         const memberSnap = await getDocs(query(
           collection(db, 'workspaces'),
-          where(`userRoles.${user.uid}`, '!=', null),
+          where('members', 'array-contains', user.uid),
         ));
-        if (!memberSnap.empty) slug = memberSnap.docs[0].id;
+        if (memberSnap.size === 1) { slug = memberSnap.docs[0].id; stampSingle = true; }
+        else if (memberSnap.size > 1) { slug = memberSnap.docs[0].id; }
       } catch (e) { console.warn('Membership resolve failed:', e?.code || e?.message); }
     }
     if (!slug) { setNoWorkspace(true); return false; }
@@ -411,6 +421,13 @@ export function WorkspaceProvider({ children }) {
         }
       }
 
+      // STEP 9 — persist the resolved SINGLE membership as defaultWorkspace so
+      // future cold loads are instant (no membership fallback). Fire-and-forget:
+      // entry already succeeded; the stamp must never block or fail it.
+      if (stampSingle) {
+        setDoc(doc(db, 'users', user.uid), { defaultWorkspace: slug }, { merge: true })
+          .catch(e => console.warn('defaultWorkspace stamp skipped:', e?.code));
+      }
       setWorkspace(ws);
       const d = JSON.stringify({ slug: ws.slug, name: ws.name });
       localStorage.setItem(STORAGE_KEY, d);
