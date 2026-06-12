@@ -10,19 +10,21 @@
 
 ---
 
-## 🌙 Overnight 2026-06-11→12 — `CC_BRIEF_OVERNIGHT` status (built, NOT merged)
+## 🌙 Overnight 2026-06-11→12 — `CC_BRIEF_OVERNIGHT` ✅ SHIPPED to prod (HEAD `14755d22`, 2026-06-12)
 
-Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Authorization §7.6: UI built on branches (await Jacek morning smoke + GO); read-only/doc autonomous.
+Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Jacek GO "I need all of it on prod to test it" → merge train + deploy; full emulator e2e **28/28 green**. **Owed: Jacek prod smoke** (DEPLOY_LOG 2026-06-12).
 
-**Built + emulator-GREEN (await smoke + GO, unmerged):**
-- **§B icon-segment rail tabs** — branch `feat/rail-icon-segment-tabs` (`8e43cac1`+`3502ecd0`). HitabilityPage mode switcher: inactive tabs icon-only, active = icon+label (width animates); one Lucide icon language shared with the §116 collapsed strip. e2e `hitability-tabs.spec.js` green; `hitability-responsive` regression green.
-- **§C Hitability delete positions+targets** — branch `feat/hitability-marker-deletes` (`6e1dea83`, **stacked on §B**). Config-mode rail `×` delete with cascade (always drops connections; ConfirmModal w/ hit-count if hits reference it; zero-hit skips modal). Isolated seed fixture `TRN_HIT_DEL`/`lay-hit-del` so it never mutates `TRN_HIT`. e2e `hitability-delete.spec.js` green. **Merge order: §B → §C.**
+**Shipped:**
+- **§B icon-segment rail tabs** — HitabilityPage switcher: inactive icon-only, active icon+label; one Lucide language shared with the §116 strip. e2e `hitability-tabs.spec.js`.
+- **§C Hitability delete positions+targets** — config-mode rail `×` + cascade (ConfirmModal w/ hit-count; zero-hit skips). Isolated seed `TRN_HIT_DEL`. e2e `hitability-delete.spec.js`.
+- **§D batch** D2/D3/D4/D6b/D6c/D8 + escalation resolutions **D1** (`useUserWorkspaces` members array-contains + client-filter), **D6a** (CLOSED additive to event-type chip), **D7** (state-aware B26 box + `rostersRepairedAt {ts,byUid}`), **E3** (cross-origin image PWA cache).
+- **DEFERRED:** D6a re-confirm if the dual-badge surface wasn't `TournamentPicker`; §A 4.2/4.3 (next: 4.2/4.3 → READS splash brief → F2 → G → H0–H2); §F2/§G/§H.
 
 **Read-only discovery verdicts (autonomous):**
 - **E1 (CORRECTS earlier STOP):** THREE shot-capture modes all exist + are captured today — precision `shots[]`{x,y,isKill}, zone `zoneShots[]` (callout-polygon ids), direction `quickShots[]` (band enum dorito/center/snake; angle DERIVED at render via `shotGeometry.shotDirectionDeg`, NOT stored). No per-phase code gate ("settle=direction / mid=no-shooting" = product convention, not enforced). Capture = QuickShotPanel + ShotDrawer + ppt/ZoneShotDrawer; render = drawQuickShots.js; storage = dataService.js:181-192. → phase-view is a DISPLAY feature; barrel-angle is the only thing not stored (derivable).
 - **E3 (logo phone fallback):** ROOT CAUSE = `vite.config.js:41-46` Workbox `runtimeCaching` `sameOrigin` filter excludes external logo URLs (logoUrl is external, not Storage — §93.1) from the phone PWA cache → flaky fetch → emoji fallback. Fix candidate: drop the `sameOrigin` filter (PWA-caching change → GO-gated).
 - **E4 (defaultWorkspace prod):** read-only — 2 ws, 18 member uids; 14 have dW, **3 lack it** (rely on membership auto-enter), 1 no-/users straggler. FIT-criticality LOW.
-- **E5 (team↔league after CDF import):** **BY-DESIGN** — `leagues[]` + `divisions:{[league]:val}`; import MERGES (`ScheduleCSVImport.jsx:424-425`), never drops other leagues.
+- **E5 (team↔league after CDF import):** **BY-DESIGN** — `leagues[]` + `divisions:{[league]:val}`; import MERGES (`ScheduleCSVImport.jsx:424-425`), never drops other leagues. **OPEN: awaiting Jacek's UI re-check before the row closes.**
 
 **Lane-3 product items recorded (no implementation):** view-as revival (§38.5, currently by-design placeholder-toast); phase-view mockup (E1 datasets); barrel-angle CAPTURE (only if derived direction insufficient).
 
