@@ -25,14 +25,14 @@ export default function TrainingSquadsPage() {
   if (tLoading) {
     return <div style={{ padding: SPACE.lg }}><SkeletonList count={4} /></div>;
   }
-  if (!training) return <EmptyState icon="⏳" text="Training not found" />;
+  if (!training) return <EmptyState icon="⏳" text={t('training_not_found')} />;
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: `/training/${trainingId}/setup` }}
-        title={t('squads_title') || 'Squads'}
-        subtitle={`${attendeesCount} players`}
+        title={t('squads_title')}
+        subtitle={t('squads_players_subtitle', attendeesCount)}
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 96 }}>
@@ -50,7 +50,7 @@ export default function TrainingSquadsPage() {
           onClick={() => navigate(`/`)}
           style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
         >
-          {t('start_training') || 'Start training'}
+          {t('start_training')}
         </Btn>
       </div>
     </div>

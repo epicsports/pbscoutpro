@@ -28,7 +28,7 @@ export default function TrainingSetupPage() {
   if (tLoading) {
     return <div style={{ padding: SPACE.lg }}><SkeletonList count={4} /></div>;
   }
-  if (!training) return <EmptyState icon="⏳" text="Training not found" />;
+  if (!training) return <EmptyState icon="⏳" text={t('training_not_found')} />;
 
   const handleContinue = async () => {
     // Auto-distribute attendees into 2 squads if not already set, then navigate to squads.
@@ -48,7 +48,7 @@ export default function TrainingSetupPage() {
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: '/' }}
-        title="Who's at practice?"
+        title={t('setup_whos_at_practice')}
         subtitle={team?.name || '—'}
       />
 
@@ -69,8 +69,8 @@ export default function TrainingSetupPage() {
           style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
         >
           {attendees.length === 0
-            ? (t('no_attendees') || 'Select players to continue')
-            : `${attendees.length} here — ${t('form_squads') || 'Form squads'}`}
+            ? t('no_attendees')
+            : `${attendees.length} here — ${t('form_squads')}`}
         </Btn>
       </div>
     </div>
