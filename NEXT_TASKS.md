@@ -10,6 +10,26 @@
 
 ---
 
+## 🌙 Overnight 2026-06-11→12 — `CC_BRIEF_OVERNIGHT` status (built, NOT merged)
+
+Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Authorization §7.6: UI built on branches (await Jacek morning smoke + GO); read-only/doc autonomous.
+
+**Built + emulator-GREEN (await smoke + GO, unmerged):**
+- **§B icon-segment rail tabs** — branch `feat/rail-icon-segment-tabs` (`8e43cac1`+`3502ecd0`). HitabilityPage mode switcher: inactive tabs icon-only, active = icon+label (width animates); one Lucide icon language shared with the §116 collapsed strip. e2e `hitability-tabs.spec.js` green; `hitability-responsive` regression green.
+- **§C Hitability delete positions+targets** — branch `feat/hitability-marker-deletes` (`6e1dea83`, **stacked on §B**). Config-mode rail `×` delete with cascade (always drops connections; ConfirmModal w/ hit-count if hits reference it; zero-hit skips modal). Isolated seed fixture `TRN_HIT_DEL`/`lay-hit-del` so it never mutates `TRN_HIT`. e2e `hitability-delete.spec.js` green. **Merge order: §B → §C.**
+
+**Read-only discovery verdicts (autonomous):**
+- **E1 (CORRECTS earlier STOP):** THREE shot-capture modes all exist + are captured today — precision `shots[]`{x,y,isKill}, zone `zoneShots[]` (callout-polygon ids), direction `quickShots[]` (band enum dorito/center/snake; angle DERIVED at render via `shotGeometry.shotDirectionDeg`, NOT stored). No per-phase code gate ("settle=direction / mid=no-shooting" = product convention, not enforced). Capture = QuickShotPanel + ShotDrawer + ppt/ZoneShotDrawer; render = drawQuickShots.js; storage = dataService.js:181-192. → phase-view is a DISPLAY feature; barrel-angle is the only thing not stored (derivable).
+- **E3 (logo phone fallback):** ROOT CAUSE = `vite.config.js:41-46` Workbox `runtimeCaching` `sameOrigin` filter excludes external logo URLs (logoUrl is external, not Storage — §93.1) from the phone PWA cache → flaky fetch → emoji fallback. Fix candidate: drop the `sameOrigin` filter (PWA-caching change → GO-gated).
+- **E4 (defaultWorkspace prod):** read-only — 2 ws, 18 member uids; 14 have dW, **3 lack it** (rely on membership auto-enter), 1 no-/users straggler. FIT-criticality LOW.
+- **E5 (team↔league after CDF import):** **BY-DESIGN** — `leagues[]` + `divisions:{[league]:val}`; import MERGES (`ScheduleCSVImport.jsx:424-425`), never drops other leagues.
+
+**Lane-3 product items recorded (no implementation):** view-as revival (§38.5, currently by-design placeholder-toast); phase-view mockup (E1 datasets); barrel-angle CAPTURE (only if derived direction insufficient).
+
+**Not started (priority/scope/time):** §A 4.2/4.3 (gated on 4.1 GO — not arrived), §D cluster-fix implementation (root-cause discovery ran), §F doc merges, §G wave-3 seed, §H i18n/hex sweeps. Honest status in the morning report.
+
+---
+
 ## 🔥 Active — READY FOR OPUS BRIEF (priority queue)
 
 Per Jacek 2026-05-26: "wszystkie Twoje sugestie. Kolejny brief pisze Opus" — items below are accepted next-work, awaiting Opus to write per-task briefs. CC executes after each brief lands.
