@@ -101,6 +101,18 @@ const OTHER_WS = 'other-ws';
 const UID_OTHER = 'test-other';
 const EMAIL_OTHER = 'other@test.local';
 const TRN_OTHER = 'trn-other';
+// §C nav drawer — ISOLATED fixtures (own workspaces, never mutate demo-ws):
+//   - test-nav: member of TWO workspaces (nav-ws-1 admin+coach, nav-ws-2 coach)
+//     → the drawer's workspace-switcher row must render (>1 membership).
+//   - test-viewer: viewer-only in nav-ws-1 → zero content tabs → §C4 terminal
+//     workspace-summary home. Both carry linkSkippedAt so the PBLeagues
+//     onboarding gate never interposes (deterministic specs).
+const UID_NAV = 'test-nav';
+const EMAIL_NAV = 'nav@test.local';
+const UID_VIEWER = 'test-viewer';
+const EMAIL_VIEWER = 'viewer@test.local';
+const NAV_WS_1 = 'nav-ws-1';
+const NAV_WS_2 = 'nav-ws-2';
 const now = Date.now();
 
 // UAT #4/#5/#6 (additive): a 2nd division team (Charlie, DIV1) + a cross-division
@@ -129,7 +141,7 @@ const rosterC = playersFor('C', 'pc', TEAM_C);   // DIV1 players (cross-division
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -147,6 +159,9 @@ async function main() {
   await auth.createUser({ uid: UID_B4ADMIN, email: EMAIL_B4ADMIN, password: PASSWORD, displayName: 'B4 Admin', emailVerified: true });
   await auth.createUser({ uid: UID_B4SCOUT, email: EMAIL_B4SCOUT, password: PASSWORD, displayName: 'B4 Scout', emailVerified: true });
   await auth.createUser({ uid: UID_B4PLAYER, email: EMAIL_B4PLAYER, password: PASSWORD, displayName: 'B4 Player', emailVerified: true });
+  // §C nav drawer — multi-workspace member + viewer-only member.
+  await auth.createUser({ uid: UID_NAV, email: EMAIL_NAV, password: PASSWORD, displayName: 'Nav Multi', emailVerified: true });
+  await auth.createUser({ uid: UID_VIEWER, email: EMAIL_VIEWER, password: PASSWORD, displayName: 'Nav Viewer', emailVerified: true });
 
   const batch = db.batch();
 
@@ -183,6 +198,14 @@ async function main() {
   });
   batch.set(db.doc(`users/${UID_B4PLAYER}`), {
     email: EMAIL_B4PLAYER, displayName: 'B4 Player', defaultWorkspace: B4_ROLES_WS, roles: ['player'], createdAt: now,
+  });
+  // §C nav drawer — linkSkippedAt pre-set: these specs exercise nav chrome,
+  // not the PBLeagues onboarding flow (which would otherwise gate non-admins).
+  batch.set(db.doc(`users/${UID_NAV}`), {
+    email: EMAIL_NAV, displayName: 'Nav Multi', defaultWorkspace: NAV_WS_1, linkSkippedAt: now, createdAt: now,
+  });
+  batch.set(db.doc(`users/${UID_VIEWER}`), {
+    email: EMAIL_VIEWER, displayName: 'Nav Viewer', defaultWorkspace: NAV_WS_1, linkSkippedAt: now, createdAt: now,
   });
 
   // 3. Workspace — both coaches are members + admin + coach (admin bypasses the
@@ -228,6 +251,26 @@ async function main() {
     members: [UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER],
     userRoles: { [UID_B4ADMIN]: ['admin', 'coach'], [UID_B4SCOUT]: ['scout'], [UID_B4PLAYER]: ['player'] },
     adminUid: UID_B4ADMIN,
+    rolesVersion: 2,
+    createdAt: now,
+  });
+
+  // 3d. §C nav drawer — two isolated workspaces. test-nav belongs to BOTH
+  //     (switcher row must render); test-viewer is viewer-only in nav-ws-1
+  //     (zero content tabs → §C4 terminal home).
+  batch.set(db.doc(`workspaces/${NAV_WS_1}`), {
+    name: 'Nav One',
+    members: [UID_NAV, UID_VIEWER],
+    userRoles: { [UID_NAV]: ['admin', 'coach'], [UID_VIEWER]: ['viewer'] },
+    adminUid: UID_NAV,
+    rolesVersion: 2,
+    createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${NAV_WS_2}`), {
+    name: 'Nav Two',
+    members: [UID_NAV],
+    userRoles: { [UID_NAV]: ['coach'] },
+    adminUid: UID_NAV,
     rolesVersion: 2,
     createdAt: now,
   });

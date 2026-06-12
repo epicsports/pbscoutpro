@@ -32,6 +32,14 @@ export const B4_PLAYER_ACCOUNT = { email: 'b4player@test.local', password: 'test
 export const B4_WS = 'b4-ws';
 export const B4_ROLES_WS = 'b4-roles-ws';
 
+// §C nav drawer — isolated nav fixtures: a TWO-workspace member (switcher row
+// renders) + a viewer-only member (terminal summary home). Both seeded with
+// linkSkippedAt so the onboarding gate never interposes.
+export const NAV_ACCOUNT = { email: 'nav@test.local', password: 'test1234' };
+export const VIEWER_ACCOUNT = { email: 'viewer@test.local', password: 'test1234' };
+export const NAV_WS_1 = 'nav-ws-1';
+export const NAV_WS_2 = 'nav-ws-2';
+
 // § read-volume C 2 — second tenant + its sole member (CG isolation matrix).
 export const OTHER_ACCOUNT = { email: 'other@test.local', password: 'test1234' };
 export const UID_OTHER = 'test-other';

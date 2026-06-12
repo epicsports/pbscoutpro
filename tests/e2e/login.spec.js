@@ -14,8 +14,12 @@ test.describe('#3 Login → workspace → home', () => {
   });
 
   test('seeded account lands in the workspace and the tab bar renders', async ({ page }) => {
-    // Admin account → auto-enters defaultWorkspace (demo-ws) and sees all tabs.
-    await expect(page.locator('text=/Scout|Coach|Ustawienia|Settings/').first()).toBeVisible();
+    // Admin account → auto-enters defaultWorkspace (demo-ws) and sees all
+    // CONTENT tabs (§C3: the Settings tab is retired — drawer instead).
+    await expect(page.getByTestId('tab-bar')).toBeVisible();
+    await expect(page.getByTestId('tab-scout')).toBeVisible();
+    await expect(page.getByTestId('nav-ball')).toBeVisible();
+    await expect(page.getByTestId('tab-more')).toHaveCount(0);
     // Login form is gone (we're past the gate).
     await expect(page.locator('input[type="email"]')).toHaveCount(0);
   });
@@ -35,11 +39,12 @@ test.describe('#3 Login → workspace → home', () => {
   test('tab switching does not crash', async ({ page }) => {
     // Tabs are state-swap divs (not router links) — click and assert the shell
     // survives + stays on the app root (HashRouter root for non-Gracz tabs).
-    for (const label of ['Coach', 'Scout']) {
-      const tab = page.locator(`text="${label}"`).first();
+    // §C3: the Settings tab is gone, so "shell alive" = the drawer trigger.
+    for (const key of ['coach', 'scout']) {
+      const tab = page.getByTestId(`tab-${key}`);
       if (await tab.count()) {
         await tab.click();
-        await expect(page.locator('text=/Ustawienia|Settings/').first()).toBeVisible();
+        await expect(page.getByTestId('nav-ball')).toBeVisible();
       }
     }
   });
@@ -60,29 +65,31 @@ test.describe('#3 Login → workspace → home', () => {
   });
 });
 
-test.describe('B4 regression: Settings is never a cold-open landing', () => {
-  test('a stale persisted "more" tab redirects to the content view on reopen', async ({ page }) => {
+test.describe('B4/§C3 regression: a stale persisted "more" never lands the user on Settings', () => {
+  test('a stale persisted "more" tab migrates to the first content tab on reopen', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
-    // Simulate a session last left on the Settings (More/Ustawienia) tab.
+    // Simulate a session last left on the retired Settings ('more') tab.
     await page.evaluate(() => localStorage.setItem('pbscoutpro_activeTab', 'more'));
     await page.reload();
-    // Admin (all tabs; no tournament selected) must land on the CONTENT
-    // empty-state, NOT Settings — the AppShell cold-open guard redirects
-    // 'more' → first content tab. Without the fix, MoreTabContent would render
-    // and this empty-state text would be absent.
+    // §C3: 'more' no longer exists in TAB_DEFS — AppShell's fallback effect
+    // maps the hidden persisted value to the role's FIRST content tab, so the
+    // CONTENT empty-state renders (admin, no tournament selected).
     // Language-agnostic: this copy went through the H1 i18n extraction (PL+EN).
     await expect(page.getByText(/Select a tournament or create a new one|Wybierz turniej albo utwórz nowy/i)).toBeVisible();
+    // And the first content tab is the active one (scout for an admin).
+    await expect(page.getByTestId('tab-bar')).toBeVisible();
+    await expect(page.getByTestId('tab-more')).toHaveCount(0);
   });
 });
 
 test.describe('regression: member with no defaultWorkspace (5f69dc04)', () => {
   test('enters their workspace via membership, NOT NoWorkspaceScreen', async ({ page }) => {
     // coach3 is a member of demo-ws but has NO defaultWorkspace on /users.
-    // login() resolves only when the app tab bar renders — i.e. they entered
-    // the workspace. If they hit NoWorkspaceScreen instead, the tab bar never
-    // appears and login() throws (the regression).
+    // login() resolves only when the app chrome (reads ball) renders — i.e.
+    // they entered the workspace. If they hit NoWorkspaceScreen instead, the
+    // chrome never appears and login() throws (the regression).
     await login(page, TEST_ACCOUNT_3);
-    await expect(page.locator('text=/Scout|Coach|Ustawienia|Settings/').first()).toBeVisible();
+    await expect(page.getByTestId('nav-ball')).toBeVisible();
     // NoWorkspaceScreen must NOT be showing.
     await expect(page.getByText(/Account created|Konto utworzone/i)).toHaveCount(0);
   });

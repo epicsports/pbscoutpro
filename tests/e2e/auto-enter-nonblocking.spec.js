@@ -16,7 +16,9 @@ import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
 import { TEST_ACCOUNT, WS } from './fixtures.js';
 
-const tabBar = (page) => page.locator('text=/Scout|Coach|Ustawienia|Settings/').first();
+// §C nav drawer: "render unblocked" signal = the reads-ball drawer trigger
+// (always-rendered AppShell chrome; the Settings tab text no longer exists).
+const tabBar = (page) => page.getByTestId('nav-ball');
 const readLastAccessSecs = (page) => page.evaluate(
   (s) => window.__pbtest.readWorkspaceDoc(s).then((d) => d?.lastAccess?.seconds ?? null),
   WS,
