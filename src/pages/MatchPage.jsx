@@ -1808,7 +1808,7 @@ export default function MatchPage() {
         if (dataA) {
           const fs = dataA.fieldSide || pt.fieldSide || 'left';
           const mirrored = mirrorPointToLeft(dataA, fs);
-          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: pt.outcome, side: 'A', timeline: kfTimeline(pt.timeline, true, fs, false) });
+          results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: pt.outcome, side: 'A', ptId: pt.id, timeline: kfTimeline(pt.timeline, true, fs, false) });
         }
         if (dataB) {
           const fs = dataB.fieldSide || pt.fieldSide || 'left';
@@ -1822,7 +1822,7 @@ export default function MatchPage() {
           const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
           // Mirror shots to LEFT for team B (opposite)
           const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
-          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: pt.outcome, side: 'B', timeline: kfTimeline(pt.timeline, false, fs, true) });
+          results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: pt.outcome, side: 'B', ptId: pt.id, timeline: kfTimeline(pt.timeline, false, fs, true) });
         }
         return results;
       });
@@ -1835,7 +1835,7 @@ export default function MatchPage() {
       // NOTE: no `side` here — the single-side path historically renders as
       // team A (green) regardless; adding `side` would flip a B-side view to
       // teal. Replay on this path colors as one team (A), matching that.
-      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], eliminations: d.eliminations || [], outcome: pt.outcome, timeline: kfTimeline(pt.timeline, side === 'A', sideFieldSide, false) };
+      return { ...mirrored, shots: mirrorShotsToRight(sfs(d.shots), sideFieldSide), runners: d.runners || [], eliminations: d.eliminations || [], outcome: pt.outcome, ptId: pt.id, timeline: kfTimeline(pt.timeline, side === 'A', sideFieldSide, false) };
     }).filter(Boolean);
   };
 
@@ -1981,35 +1981,16 @@ export default function MatchPage() {
               <HeatmapCanvas fieldImage={field.fieldImage} points={(() => {
                 const mySideKey = scoutingSide === 'away' ? 'B' : 'A';
                 const showAll = scoutingSide === 'observe' || heatmapSide === 'all';
-                const allPts = getHeatmapPoints(showAll ? 'all' : mySideKey);
                 if (previewPointId) {
-                  // Show only the previewed point
-                  const previewPt = points.find(p => p.id === previewPointId);
-                  if (previewPt) {
-                    const results = [];
-                    const dataA = previewPt.homeData || previewPt.teamA;
-                    const dataB = previewPt.awayData || previewPt.teamB;
-                    if (dataA) {
-                      const fs = dataA.fieldSide || previewPt.fieldSide || 'left';
-                      const mirrored = mirrorPointToLeft(dataA, fs);
-                      results.push({ ...mirrored, shots: mirrorShotsToRight(sfs(dataA.shots), fs), runners: dataA.runners || [], eliminations: dataA.eliminations || [], outcome: previewPt.outcome, side: 'A' });
-                    }
-                    if (dataB) {
-                      const fs = dataB.fieldSide || previewPt.fieldSide || 'left';
-                      const mirroredToLeft = mirrorPointToLeft(dataB, fs);
-                      const mirroredToRight = {
-                        ...mirroredToLeft,
-                        players: (mirroredToLeft.players || []).map(p => p ? { ...p, x: 1 - p.x } : null),
-                        bumpStops: (mirroredToLeft.bumpStops || []).map(b => b ? { ...b, x: 1 - b.x } : null),
-                      };
-                      const shotsRight = mirrorShotsToRight(sfs(dataB.shots), fs);
-                      const shotsLeft = (shotsRight || []).map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null));
-                      results.push({ ...mirroredToRight, shots: shotsLeft, runners: dataB.runners || [], eliminations: dataB.eliminations || [], outcome: previewPt.outcome, side: 'B' });
-                    }
-                    return results;
-                  }
+                  // §B B2 — the preview point goes through the SAME mapper as
+                  // the aggregate, so it keeps its `timeline[]` (phases + ▶
+                  // operate on the preview scope; previously the inline copy
+                  // here stripped timeline and the preview stuck on its first
+                  // phase). Preview always shows BOTH sides (pre-existing).
+                  const previewPts = getHeatmapPoints('all').filter(r => r.ptId === previewPointId);
+                  if (previewPts.length) return previewPts;
                 }
-                return allPts;
+                return getHeatmapPoints(showAll ? 'all' : mySideKey);
               })()}
                 rosterPlayers={[...rosterA, ...rosterB]}
                 bunkers={[]} showBunkers={false}
@@ -2030,6 +2011,7 @@ export default function MatchPage() {
               active (§ 27 color discipline); disabled with no Settle/Mid data. */}
           <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', justifyContent: 'center' }}>
             <div
+              data-testid="phase-play"
               role="button" aria-pressed={replayOn && canReplay}
               onClick={canReplay ? () => setReplayOn(v => !v) : undefined}
               title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
@@ -2127,6 +2109,7 @@ export default function MatchPage() {
                     </div>
                     {/* Score center — tap to toggle preview */}
                     <div
+                      data-testid={`point-preview-${pt.id}`}
                       onClick={(e) => { e.stopPropagation(); setPreviewPointId(isPreviewing ? null : pt.id); }}
                       style={{
                         flex: '0 0 auto', minWidth: 68,
