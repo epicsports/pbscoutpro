@@ -44,6 +44,18 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: { cacheName: 'images', expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 } },
           },
+          // E3 (Jacek 2026-06-12) — DEDICATED rule for cross-origin images. An
+          // external workspace/team `logoUrl` (§ 93.1 — external URL, not Storage)
+          // was excluded by the sameOrigin rule above, so on a phone PWA it had no
+          // SW cache → offline/flaky fetch → emoji fallback (E3 root cause). This
+          // catches any image the sameOrigin rule didn't (first-match wins, so
+          // same-origin images still use the rule above). CacheFirst; opaque
+          // cross-origin responses count toward the cap.
+          {
+            urlPattern: ({ request }) => request.destination === 'image',
+            handler: 'CacheFirst',
+            options: { cacheName: 'images-external', expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 30 } },
+          },
         ],
       },
       devOptions: { enabled: false },
