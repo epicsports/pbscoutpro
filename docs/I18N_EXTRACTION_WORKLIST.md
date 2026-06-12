@@ -48,10 +48,19 @@ scope). Skipped per §H1: canvas-draw strings, fixtures, DEBUG, ids/hex/URLs.
 
 ## Flags / decisions for the batch briefs
 
-- **Enum-like options** ("Pro", "Semi-Pro", "D1–D5", league names): translate labels or
-  keep as data? Needs a one-line ruling before Batch 2.
+- **Enum-like options — RULED (Jacek 2026-06-12 evening):** divisions ("Pro", "Semi-Pro",
+  "D1–D5") = domain dictionary / DATA — international paintball terminology, identical in
+  every language, sourced from league data → do NOT translate, do NOT key. Roles
+  ("Player"/"Coach"/"Staff") = UI vocabulary → key normally, BUT translation ≠ forced
+  polonization: the Polish scene says "coach"/"scout", so PL values may deliberately stay
+  loanwords where the community speaks that way. Key exists; value = the language of the
+  field. **Unblocks the admin-forms batch (Batch 2).**
 - **State-init defaults** in LayoutDetailPage ("Dorito side"): persisted values must NOT
   change — extract at display only.
+- **Batch hygiene — RULED (Jacek, same ruling):** from batch 2 on, SEPARATE commits:
+  "extraction (render-identical)" vs "translation (visible change)", and every visible
+  change gets a row in `docs/EXPECTED_DIFF_REGISTER.md` BEFORE shipping. Batch 1 was not
+  pixel-identical (PL rendering flip) — registered retroactively.
 - **Per-batch gate** (per §H1): build · lint-ui · full e2e · pixel-diff 0 → commit.
 - Precommit already guards NEW Polish strings in UI; consider extending the guard to the
   swept files for EN hardcodes after each batch.

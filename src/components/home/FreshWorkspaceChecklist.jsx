@@ -102,6 +102,9 @@ export function FreshWorkspaceChecklist({ isAdmin, workspaceName, signals, confi
  * the codebase (kiosk is an overlay inside training scouting, no self-join
  * route), so the CTA is omitted rather than shipped dead; registered in
  * NEXT_TASKS as a follow-up requiring the join-by-code feature first.
+ * Jacek ruling 2026-06-12 evening: the mockup CTA shows as an HONEST disabled
+ * "wkrótce" control (never a dead button pretending to be live) until the
+ * join-by-code feature ships (NEXT_TASKS, arc E stage 2).
  */
 export function ScoutWaitingEmptyState() {
   const { t } = useLanguage();
@@ -110,6 +113,14 @@ export function ScoutWaitingEmptyState() {
       <div style={{ width: 64, height: 64, borderRadius: 18, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🎯</div>
       <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: COLORS.text }}>{t('b4_scout_title')}</div>
       <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.55, maxWidth: 280 }}>{t('b4_scout_text')}</div>
+      <div data-testid="b4-scout-join-disabled" aria-disabled="true" style={{
+        minHeight: 48, display: 'flex', alignItems: 'center', gap: 8, padding: '0 22px', borderRadius: 12,
+        background: 'transparent', border: `1px solid ${COLORS.border}`, color: COLORS.textMuted,
+        fontFamily: FONT, fontSize: 14, fontWeight: 700, marginTop: 4, cursor: 'default', opacity: 0.6,
+      }}>
+        {t('b4_scout_join_cta')}
+        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: COLORS.surfaceLight, border: `1px solid ${COLORS.border}`, letterSpacing: '.4px', textTransform: 'uppercase' }}>{t('coming_soon_badge')}</span>
+      </div>
       <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textMuted }}>{t('b4_scout_sub')}</div>
     </div>
   );
