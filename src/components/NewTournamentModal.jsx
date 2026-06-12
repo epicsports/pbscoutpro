@@ -6,6 +6,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, PLAYER_CL
 import { useLeagues, leagueDisplayName } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { yearOptions, currentYear } from '../utils/helpers';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * NewTournamentModal — create a tournament, practice, or training session.
@@ -19,6 +20,7 @@ import { yearOptions, currentYear } from '../utils/helpers';
  * the active tournament.
  */
 export default function NewTournamentModal({ open, onClose, onCreated, kind = 'tournament' }) {
+  const { t } = useLanguage();
   const { layouts } = useLayouts();
   const { teams } = useActiveTeams();
   const leaguesList = useLeagues();
@@ -156,11 +158,11 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
 
   return (
     <Modal open={open} onClose={onClose}
-      title={type === 'training' ? 'New training' : type === 'sparing' ? 'New sparing' : 'New tournament'}
+      title={type === 'training' ? t('new_training') : type === 'sparing' ? t('new_sparing') : t('new_tournament')}
       footer={<>
-        <Btn variant="default" onClick={onClose}>Cancel</Btn>
+        <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
         <Btn variant="accent" onClick={handleAdd} disabled={!canCreate}>
-          <Icons.Check /> Add
+          <Icons.Check /> {t('add')}
         </Btn>
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
@@ -174,9 +176,9 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
           gap: 2,
         }}>
           {[
-            { key: 'tournament', label: 'Tournament' },
-            { key: 'sparing',    label: 'Sparing'    },
-            { key: 'training',   label: 'Training'   },
+            { key: 'tournament', label: t('tournament') },
+            { key: 'sparing',    label: t('sparing')    },
+            { key: 'training',   label: t('training')   },
           ].map(opt => {
             const active = type === opt.key;
             return (
@@ -204,7 +206,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
         <Checkbox
           checked={isTest}
           onChange={setIsTest}
-          label="Test / stage session"
+          label={t('test_session')}
         />
 
         {type === 'training' ? (
@@ -212,37 +214,37 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             {/* Training fields: name (optional but encouraged) + team + date + layout */}
             <div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
-                Name <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(optional)</span>
+                {t('ntm_field_name')} <span style={{ color: COLORS.textDim, fontWeight: 400 }}>{t('ntm_optional')}</span>
               </div>
               <Input
                 value={name}
                 onChange={setName}
-                placeholder={teamId ? `e.g. pre-NXL Prague, ${teams.find(t => t.id === teamId)?.name || ''}` : 'e.g. pre-NXL Prague'}
+                placeholder={teamId ? `e.g. pre-NXL Prague, ${teams.find(tm => tm.id === teamId)?.name || ''}` : 'e.g. pre-NXL Prague'}
                 onKeyDown={e => e.key === 'Enter' && canCreate && handleAdd()}
                 autoFocus
               />
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Team</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('ntm_field_team')}</div>
               <Select value={teamId} onChange={setTeamId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-                <option value="">— select team —</option>
-                {teams.filter(t => !t.parentTeamId).map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
+                <option value="">{t('ntm_select_team')}</option>
+                {teams.filter(tm => !tm.parentTeamId).map(tm => (
+                  <option key={tm.id} value={tm.id}>{tm.name}</option>
                 ))}
-                {teams.filter(t => t.parentTeamId).map(t => (
-                  <option key={t.id} value={t.id}>↳ {t.name}</option>
+                {teams.filter(tm => tm.parentTeamId).map(tm => (
+                  <option key={tm.id} value={tm.id}>↳ {tm.name}</option>
                 ))}
               </Select>
             </div>
             <div>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Date</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('ntm_field_date')}</div>
               <Input value={date} onChange={setDate} type="date" />
             </div>
             {layouts.length > 0 && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Layout</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('layout_assigned_label')}</div>
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-                  <option value="">— no layout —</option>
+                  <option value="">{t('no_layout_option')}</option>
                   {layouts.map(l => (
                     <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
                   ))}
@@ -256,19 +258,19 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             <Input
               value={name}
               onChange={setName}
-              placeholder="Sparing name…"
+              placeholder={t('ntm_sparing_name_ph')}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               autoFocus
             />
             <div>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Date</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('ntm_field_date')}</div>
               <Input value={date} onChange={setDate} type="date" />
             </div>
             {layouts.length > 0 && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Layout</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('layout_assigned_label')}</div>
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-                  <option value="">— no layout —</option>
+                  <option value="">{t('no_layout_option')}</option>
                   {layouts.map(l => (
                     <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
                   ))}
@@ -281,13 +283,13 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             <Input
               value={name}
               onChange={setName}
-              placeholder="NXL Tampa 2026…"
+              placeholder={t('ntm_tournament_name_ph')}
               onKeyDown={e => e.key === 'Enter' && handleAdd()}
               autoFocus
             />
             <div style={{ display: 'flex', gap: SPACE.md }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>League</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('league_label')}</div>
                 <div style={{ display: 'flex', gap: 6 }}>
                   {leaguesList.map(L => {
                     const l = L.shortName;
@@ -305,7 +307,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                 </div>
               </div>
               <div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Year</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('year_label')}</div>
                 <Select value={year} onChange={v => setYear(Number(v))}>
                   {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
                 </Select>
@@ -314,7 +316,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             {leagueHasDivisions && (
               <div>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
-                  Divisions <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(one or more)</span>
+                  {t('divisions_label')} <span style={{ color: COLORS.textDim, fontWeight: 400 }}>{t('divisions_one_or_more')}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {leagueDivisions.map(d => (
@@ -329,7 +331,7 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                     fontFamily: FONT, fontSize: 11, fontWeight: 600,
                     color: COLORS.danger, marginTop: 6,
                   }}>
-                    Select at least one division
+                    {t('divisions_required_error')}
                   </div>
                 )}
               </div>
@@ -341,9 +343,9 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
                   fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4,
                   display: 'flex', justifyContent: 'space-between',
                 }}>
-                  <span>Eligible player classes</span>
+                  <span>{t('ntm_eligible_classes')}</span>
                   {eligClasses.length > 0 && (
-                    <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{eligClasses.length} z {PLAYER_CLASSES.length}</span>
+                    <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{t('ntm_eligible_count', eligClasses.length, PLAYER_CLASSES.length)}</span>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -368,9 +370,9 @@ export default function NewTournamentModal({ open, onClose, onCreated, kind = 't
             )}
             {layouts.length > 0 && (
               <div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>Layout</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('layout_assigned_label')}</div>
                 <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-                  <option value="">— no layout —</option>
+                  <option value="">{t('no_layout_option')}</option>
                   {layouts.filter(l => l.league === league || league === 'NXL' || l.league === 'NXL').map(l => (
                     <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
                   ))}

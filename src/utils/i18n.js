@@ -1184,6 +1184,22 @@ const T = {
     offline_download_btn:'📥 Pobierz do trybu offline',
     offline_download_failed: 'Pobieranie nie powiodło się — sprawdź połączenie i spróbuj ponownie.',
     offline_last_downloaded: (when) => `Ostatnio pobrano ${when}`,
+
+    /* ─── §H1 Batch 6 — modal & action strings ─────────── */
+    /* NewTournamentModal field labels + placeholders */
+    ntm_field_name:           'Name',
+    ntm_optional:             '(optional)',
+    ntm_field_team:           'Team',
+    ntm_select_team:          '— select team —',
+    ntm_field_date:           'Date',
+    ntm_sparing_name_ph:      'Sparing name…',
+    ntm_eligible_classes:     'Eligible player classes',
+    ntm_eligible_count:       (n, total) => `${n} of ${total}`,
+    ntm_tournament_name_ph:   'NXL Tampa 2026…',
+    /* EntityPickerModal defaults */
+    entity_picker_select:     'Select',
+    /* ui.jsx shared controls */
+    loading_default:          'Loading…',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2321,6 +2337,22 @@ const T = {
     offline_download_btn:'📥 Download for offline',
     offline_download_failed: 'Download failed — check your connection and try again.',
     offline_last_downloaded: (when) => `Last downloaded ${when}`,
+
+    /* ─── §H1 Batch 6 — modal & action strings ─────────── */
+    /* NewTournamentModal field labels + placeholders */
+    ntm_field_name:           'Name',
+    ntm_optional:             '(optional)',
+    ntm_field_team:           'Team',
+    ntm_select_team:          '— select team —',
+    ntm_field_date:           'Date',
+    ntm_sparing_name_ph:      'Sparing name…',
+    ntm_eligible_classes:     'Eligible player classes',
+    ntm_eligible_count:       (n, total) => `${n} of ${total}`,
+    ntm_tournament_name_ph:   'NXL Tampa 2026…',
+    /* EntityPickerModal defaults */
+    entity_picker_select:     'Select',
+    /* ui.jsx shared controls */
+    loading_default:          'Loading…',
   },
 };
 
