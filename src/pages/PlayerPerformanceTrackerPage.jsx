@@ -6,6 +6,7 @@ import TrainingPickerView from '../components/ppt/TrainingPickerView';
 import WizardShell from '../components/ppt/WizardShell';
 import TodaysLogsList from '../components/ppt/TodaysLogsList';
 import ColdReviewFlow from '../components/selflog/ColdReviewFlow';
+import { PlayerClaimCard } from '../components/home/FreshWorkspaceChecklist';
 import { usePPTIdentity } from '../hooks/usePPTIdentity';
 import { useLayouts, useActiveTeams } from '../hooks/useFirestore';
 import { useLanguage } from '../hooks/useLanguage';
@@ -284,6 +285,10 @@ function PPTInner() {
 
   return (
     <>
+      {/* B4 — unclaimed account: claim card ABOVE the picker (deep-links to the
+          existing /profile LinkProfileModal flow). The picker stays usable so
+          the §110.1 unlinked pendingSelfReports path is not regressed. */}
+      {!loading && !isLinked && <PlayerClaimCard />}
       <TrainingPickerView
         playerName={player?.nickname || player?.name || ''}
         teamName={teamName}

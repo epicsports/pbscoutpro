@@ -47,6 +47,17 @@ const EMAIL2 = 'coach2@test.local';
 // membership, not hit NoWorkspaceScreen.
 const UID3 = 'test-coach-3';
 const EMAIL3 = 'coach3@test.local';
+// B4 role-aware home — FRESH workspaces (zero events/overlays). b4-ws has the
+// admin as its ONLY member (all 3 checklist signals false); b4-roles-ws hosts
+// the scout + unlinked player for their B4 empty states.
+const B4_WS = 'b4-ws';
+const B4_ROLES_WS = 'b4-roles-ws';
+const UID_B4ADMIN = 'test-b4admin';
+const EMAIL_B4ADMIN = 'b4admin@test.local';
+const UID_B4SCOUT = 'test-b4scout';
+const EMAIL_B4SCOUT = 'b4scout@test.local';
+const UID_B4PLAYER = 'test-b4player';
+const EMAIL_B4PLAYER = 'b4player@test.local';
 const LAYOUT = 'lay-demo';
 const TRN = 'trn-demo';
 const MATCH = 'mat-demo';     // #2 single-coach log-a-point
@@ -118,7 +129,7 @@ const rosterC = playersFor('C', 'pc', TEAM_C);   // DIV1 players (cross-division
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -132,6 +143,10 @@ async function main() {
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
   // § read-volume C 2 — second-tenant member (other-ws only).
   await auth.createUser({ uid: UID_OTHER, email: EMAIL_OTHER, password: PASSWORD, displayName: 'Other Tenant', emailVerified: true });
+  // B4 role-aware home — fresh-workspace fixtures.
+  await auth.createUser({ uid: UID_B4ADMIN, email: EMAIL_B4ADMIN, password: PASSWORD, displayName: 'B4 Admin', emailVerified: true });
+  await auth.createUser({ uid: UID_B4SCOUT, email: EMAIL_B4SCOUT, password: PASSWORD, displayName: 'B4 Scout', emailVerified: true });
+  await auth.createUser({ uid: UID_B4PLAYER, email: EMAIL_B4PLAYER, password: PASSWORD, displayName: 'B4 Player', emailVerified: true });
 
   const batch = db.batch();
 
@@ -159,6 +174,16 @@ async function main() {
   batch.set(db.doc(`users/${UID_OTHER}`), {
     email: EMAIL_OTHER, displayName: 'Other Tenant', defaultWorkspace: OTHER_WS, createdAt: now,
   });
+  // B4 — fresh-workspace fixtures.
+  batch.set(db.doc(`users/${UID_B4ADMIN}`), {
+    email: EMAIL_B4ADMIN, displayName: 'B4 Admin', defaultWorkspace: B4_WS, createdAt: now,
+  });
+  batch.set(db.doc(`users/${UID_B4SCOUT}`), {
+    email: EMAIL_B4SCOUT, displayName: 'B4 Scout', defaultWorkspace: B4_ROLES_WS, roles: ['scout'], createdAt: now,
+  });
+  batch.set(db.doc(`users/${UID_B4PLAYER}`), {
+    email: EMAIL_B4PLAYER, displayName: 'B4 Player', defaultWorkspace: B4_ROLES_WS, roles: ['player'], createdAt: now,
+  });
 
   // 3. Workspace — both coaches are members + admin + coach (admin bypasses the
   //    onboarding/pending AuthGate so login lands straight in the app).
@@ -183,6 +208,26 @@ async function main() {
     members: [UID_OTHER],
     userRoles: { [UID_OTHER]: ['admin', 'coach'] },
     adminUid: UID_OTHER,
+    rolesVersion: 2,
+    createdAt: now,
+  });
+
+  // 3c. B4 — FRESH workspaces: NO tournaments/trainings, NO layout overlays.
+  //     b4-ws: admin is the ONLY member → all 3 checklist signals false (1/5).
+  //     b4-roles-ws: scout + player members for their B4 empty states.
+  batch.set(db.doc(`workspaces/${B4_WS}`), {
+    name: 'B4 Fresh',
+    members: [UID_B4ADMIN],
+    userRoles: { [UID_B4ADMIN]: ['admin', 'coach'] },
+    adminUid: UID_B4ADMIN,
+    rolesVersion: 2,
+    createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${B4_ROLES_WS}`), {
+    name: 'B4 Roles',
+    members: [UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER],
+    userRoles: { [UID_B4ADMIN]: ['admin', 'coach'], [UID_B4SCOUT]: ['scout'], [UID_B4PLAYER]: ['player'] },
+    adminUid: UID_B4ADMIN,
     rolesVersion: 2,
     createdAt: now,
   });

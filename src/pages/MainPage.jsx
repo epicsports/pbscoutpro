@@ -11,6 +11,9 @@ import TrainingCoachTab from '../components/tabs/TrainingCoachTab';
 import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useActiveTeams, usePlayers } from '../hooks/useFirestore';
+import { useWorkspace } from '../hooks/useWorkspace';
+import { hasAnyRole } from '../utils/roleUtils';
+import { FreshWorkspaceChecklist, ScoutWaitingEmptyState } from '../components/home/FreshWorkspaceChecklist';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, LEAGUE_COLORS } from '../utils/theme';
 import { useLeagues, leagueDisplayName } from '../hooks/useLeagues';
@@ -26,10 +29,13 @@ const LAST_TRAINING_KEY = 'pbscoutpro_lastTraining';
 export default function MainPage({ onSignOut, workspaceName }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { tournaments } = useTournaments();
-  const { trainings } = useTrainings();
+  const { tournaments, loading: tournamentsLoading } = useTournaments();
+  const { trainings, loading: trainingsLoading } = useTrainings();
   const { teams } = useActiveTeams();
   const { players } = usePlayers();
+  // B4 role-aware home — roles + derived onboarding signals (mockup-4).
+  const { workspace, roles, isAdmin } = useWorkspace();
+  const { layouts, loading: layoutsLoading } = useLayouts();
 
   const [activeTab, setActiveTab] = useState(() => {
     try { return localStorage.getItem(TAB_KEY) || 'scout'; }
@@ -169,7 +175,50 @@ export default function MainPage({ onSignOut, workspaceName }) {
 
   const contextSubtitle = isTrainingMode ? trainingSubtitle : tournamentSubtitle;
 
+  // ── B4 role-aware home (mockup-4, gate passed 2026-06-10) ──
+  // Checklist state is DERIVED FROM DATA (no onboarding-progress collection):
+  // signals come from subscriptions MainPage already mounts (+ the
+  // version-cached catalog read for layouts) — A3 zero-new-expensive-reads.
+  // hasLayout keys off the workspace's OVERLAYS (useLayouts maps overlays→base
+  // join), so the global library alone does NOT satisfy the step.
+  const signalsReady = !tournamentsLoading && !trainingsLoading && !layoutsLoading && !!workspace;
+  const signals = {
+    hasEvent: tournaments.length > 0 || trainings.length > 0,
+    hasLayout: layouts.length > 0,
+    hasMembers: (workspace?.members || []).length > 1,
+  };
+  // Admin nudge row (step 5) — done when any overlay carries config content;
+  // does NOT gate checklist disappearance (signals only).
+  const configDone = layouts.some(l => (l.zones || []).length > 0 || (l.lines || []).length > 0);
+  const isCoachish = isAdmin || hasAnyRole(roles, 'coach');
+  const isScoutOnly = !isCoachish && hasAnyRole(roles, 'scout');
+  // "Zrobię to później" — session-scoped dismissal, no stored state beyond it.
+  const [checklistLater, setChecklistLater] = useState(() => {
+    try { return sessionStorage.getItem('pbscoutpro_b4_later') === '1'; } catch { return false; }
+  });
+  const dismissChecklist = () => {
+    setChecklistLater(true);
+    try { sessionStorage.setItem('pbscoutpro_b4_later', '1'); } catch {}
+  };
+  const checklistVisible = signalsReady && isCoachish && !checklistLater
+    && !(signals.hasEvent && signals.hasLayout && signals.hasMembers);
+
   const renderContent = () => {
+    // B4 — coach/admin fresh-workspace checklist replaces the home content
+    // until all signals are true or the user defers it for this session.
+    // Settings ('more') and an explicitly-entered training stay reachable.
+    if (!isTrainingMode && activeTab !== 'more' && checklistVisible) {
+      return (
+        <FreshWorkspaceChecklist
+          isAdmin={isAdmin}
+          workspaceName={workspace?.name || workspaceName || 'Workspace'}
+          signals={signals}
+          configDone={configDone}
+          onAddEvent={() => setNewModalOpen(true)}
+          onLater={dismissChecklist}
+        />
+      );
+    }
     if (isTrainingMode && training) {
       if (activeTab === 'more') {
         return (
@@ -206,6 +255,10 @@ export default function MainPage({ onSignOut, workspaceName }) {
         ? <ScoutTabContent tournamentId={tournamentId} />
         : <CoachTabContent tournamentId={tournamentId} />;
     }
+
+    // B4 — a scout with no active event gets the single-path waiting state
+    // (mockup-4) instead of the coach-flavoured tournament-picker empty state.
+    if (isScoutOnly) return <ScoutWaitingEmptyState />;
 
     return <NoTournamentEmptyState onChoose={() => setPickerOpen(true)} onNew={() => setNewModalOpen(true)} />;
   };
