@@ -14,8 +14,10 @@ import { useLayouts, useBaseLayouts } from '../hooks/useFirestore';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, SPACE, responsive } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function LayoutsPage() {
+  const { t } = useLanguage();
   const device = useDevice();
   const R = responsive(device.type);
   const navigate = useNavigate();
@@ -40,16 +42,16 @@ export default function LayoutsPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title="Layouts" subtitle="FIELD MAPS" />
+      <PageHeader back={{ to: '/' }} title={t('layouts_label')} subtitle={t('layouts_subtitle')} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>
-          Layouts ({layouts.length})
+          {t('layouts_count_title', layouts.length)}
         </SectionTitle>
 
         {loading && <SkeletonList count={3} />}
         {!loading && !layouts.length && (
-          <EmptyState icon="🗺️" text="Add a field from the library to start" />
+          <EmptyState icon="🗺️" text={t('layouts_empty_add_first')} />
         )}
 
         {/* 2x2 grid, sorted by year desc then name */}
@@ -91,22 +93,22 @@ export default function LayoutsPage() {
 
         {/* Browse the shared library — add an existing field to this workspace */}
         <Btn variant="accent" onClick={() => setLibraryOpen(true)} style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}>
-          <Icons.Plus /> Browse library
+          <Icons.Plus /> {t('layouts_browse_library')}
         </Btn>
 
         {/* Authoring a new base layout is super_admin-only (§ 96) */}
         {isSuper && (
           <Btn variant="default" onClick={() => navigate('/layout/new')} style={{ width: '100%', justifyContent: 'center' }}>
-            <Icons.Plus /> New layout (base)
+            <Icons.Plus /> {t('layouts_new_base')}
           </Btn>
         )}
       </div>
 
       {/* ═══ LIBRARY MODAL — add a global base to this workspace ═══ */}
-      <Modal open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Field library" maxWidth={520}>
+      <Modal open={libraryOpen} onClose={() => setLibraryOpen(false)} title={t('layouts_library_title')} maxWidth={520}>
         {basesLoading && <SkeletonList count={3} />}
         {!basesLoading && !available.length && (
-          <EmptyState icon="✓" text={bases.length ? 'Every library field is already in this workspace' : 'No fields in the library yet'} />
+          <EmptyState icon="✓" text={bases.length ? t('layouts_library_all_added') : t('layouts_library_empty')} />
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {available
@@ -132,7 +134,7 @@ export default function LayoutsPage() {
               </div>
               <Btn variant="accent" size="sm" disabled={adding === base.id}
                 onClick={() => handleAdd(base)}>
-                {adding === base.id ? '…' : 'Add'}
+                {adding === base.id ? '…' : t('add')}
               </Btn>
             </div>
           ))}

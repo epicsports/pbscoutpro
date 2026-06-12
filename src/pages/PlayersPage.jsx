@@ -19,8 +19,10 @@ import { COLORS, responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 import { playerOnTeam } from '../utils/playerTeams';
 import { matchEntity, playerInLeague, playerInDivision } from '../utils/entityFilters';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function PlayersPage() {
+  const { t } = useLanguage();
   const { players, loading } = usePlayers();
   const { teams } = useActiveTeams();
   const device = useDevice();
@@ -70,11 +72,11 @@ export default function PlayersPage() {
 
   const anyActive = !!(filterLeague || filterDiv || filterTeam || filterClass || filterRole);
   const filters = [
-    { key: 'liga', label: 'Liga', value: filterLeague, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
-    { key: 'dyw', label: 'Dywizja', value: filterDiv, onChange: v => setParam('dyw', v), allLabel: 'wszystkie', options: (filterLeague ? (divisionsByLeague[filterLeague] || []) : []).map(d => ({ value: d.name, label: d.name })) },
-    { key: 'team', label: 'Drużyna', value: filterTeam, onChange: v => setParam('team', v), allLabel: 'wszystkie', options: teams.map(t => ({ value: t.id, label: t.name })) },
-    { key: 'class', label: 'Klasa', value: filterClass, onChange: v => setParam('class', v), allLabel: 'wszystkie', options: ['Pro', 'Semi-Pro', 'D1', 'D2', 'D3', 'D4', 'D5'].map(c => ({ value: c, label: c })) },
-    { key: 'role', label: 'Rola', value: filterRole, onChange: v => setParam('role', v), allLabel: 'wszystkie', options: [{ value: 'player', label: 'Player' }, { value: 'coach', label: 'Coach' }, { value: 'staff', label: 'Staff' }] },
+    { key: 'liga', label: t('league_label'), value: filterLeague, onChange: setLiga, allLabel: t('all_label'), options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+    { key: 'dyw', label: t('division_label'), value: filterDiv, onChange: v => setParam('dyw', v), allLabel: t('all_label'), options: (filterLeague ? (divisionsByLeague[filterLeague] || []) : []).map(d => ({ value: d.name, label: d.name })) },
+    { key: 'team', label: t('tab_team'), value: filterTeam, onChange: v => setParam('team', v), allLabel: t('all_label'), options: teams.map(t => ({ value: t.id, label: t.name })) },
+    { key: 'class', label: t('profile_player_class_label'), value: filterClass, onChange: v => setParam('class', v), allLabel: t('all_label'), options: ['Pro', 'Semi-Pro', 'D1', 'D2', 'D3', 'D4', 'D5'].map(c => ({ value: c, label: c })) },
+    { key: 'role', label: t('role_label'), value: filterRole, onChange: v => setParam('role', v), allLabel: t('all_label'), options: [{ value: 'player', label: 'Player' }, { value: 'coach', label: 'Coach' }, { value: 'staff', label: 'Staff' }] },
   ];
 
   const openAdd = () => { setEditPlayer(null); modal.open('edit'); };
@@ -118,7 +120,7 @@ export default function PlayersPage() {
       setBulkDeleteOpen(false);
       clearSelection();
     } else {
-      setBulkError(`${failed.length} of ${ids.length} deletes failed — see console`);
+      setBulkError(t('players_bulk_delete_failed', failed.length, ids.length));
       // eslint-disable-next-line no-console
       console.warn('[PlayersPage] bulk delete failures:', failed, results);
       setSelectedIds(new Set(failed));
@@ -134,34 +136,34 @@ export default function PlayersPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title="Players" />
+      <PageHeader back={{ to: '/' }} title={t('players_label')} />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={
           <div style={{ display: 'flex', gap: 4 }}>
             <Btn variant="default" size="sm" onClick={() => setCsvOpen(true)}>📋 CSV</Btn>
-            <Btn variant="accent" onClick={openAdd}><Icons.Plus /> Player</Btn>
+            <Btn variant="accent" onClick={openAdd}><Icons.Plus /> {t('players_add_btn')}</Btn>
           </div>
         }>
-          <Icons.DB /> Players ({players.length})
+          <Icons.DB /> {t('players_count_title', players.length)}
         </SectionTitle>
 
         {/* § Stage B — unified search/filter panel (search → Liga → Dywizja → Team → Klasa → Rola) */}
         <SearchFilterPanel
           search={search}
           onSearchChange={v => setParam('q', v)}
-          searchPlaceholder="🔍 Search by name, nickname, number..."
+          searchPlaceholder={t('players_search_ph')}
           filters={filters}
           style={{ marginBottom: 12 }}
         />
         {anyActive && (
           <Btn variant="ghost" size="sm" onClick={clearFilters}
             style={{ color: COLORS.danger, fontSize: 11, padding: '4px 8px', marginBottom: 8 }}>
-            ✕ Wyczyść
+            ✕ {t('clear_preset')}
           </Btn>
         )}
 
         {loading && <SkeletonList count={5} />}
-        {!loading && !filtered.length && <EmptyState icon="👤" text={search ? 'No results' : 'Add your first player'} />}
+        {!loading && !filtered.length && <EmptyState icon="👤" text={search ? t('no_results') : t('players_empty_add_first')} />}
 
         {filtered.map(p => {
           const isSelected = selectedIds.has(p.id);
@@ -184,7 +186,7 @@ export default function PlayersPage() {
                 p.playerClass,
                 p.nationality,
                 p.role && p.role !== 'player' && p.role,
-                p.age && `${p.age} yo`,
+                p.age && t('players_age_yo', p.age),
               ].filter(Boolean).join(' · ')}
               onClick={() => openEdit(p)}
               actions={isSuperAdmin ? (
@@ -216,19 +218,19 @@ export default function PlayersPage() {
       />
 
       <ConfirmModal open={modal.is('delete')} onClose={() => modal.close()}
-        title="Delete player permanently?" danger confirmLabel="Delete"
-        message={`Permanently delete "${modal.value?.name}" from the global catalog? This removes the player everywhere and cannot be undone.`}
+        title={t('players_delete_title')} danger confirmLabel={t('delete')}
+        message={t('players_delete_msg', modal.value?.name)}
         onConfirm={() => handleDelete(modal.value?.id)} />
 
       <ConfirmModal
         open={bulkDeleteOpen}
         onClose={() => { if (!bulkPending) { setBulkDeleteOpen(false); setBulkError(null); } }}
-        title={`Delete ${selectedIds.size} players?`}
+        title={t('players_bulk_delete_title', selectedIds.size)}
         danger
-        confirmLabel={bulkPending ? 'Deleting…' : `Delete ${selectedIds.size}`}
+        confirmLabel={bulkPending ? t('players_bulk_deleting') : t('players_bulk_delete_label', selectedIds.size)}
         message={bulkError
           ? bulkError
-          : `Permanently delete ${selectedIds.size} player${selectedIds.size === 1 ? '' : 's'} from the global catalog? This removes them everywhere and cannot be undone.`}
+          : t('players_bulk_delete_msg', selectedIds.size)}
         onConfirm={handleBulkDelete}
       />
 

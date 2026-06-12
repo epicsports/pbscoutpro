@@ -149,8 +149,8 @@ export default function MainPage({ onSignOut, workspaceName }) {
   const tournamentSubtitle = tournament
     ? [
         tournament.league || null,
-        matches?.length ? `${matches.length} matches` : null,
-        scouted?.length ? `${scouted.length} teams` : null,
+        matches?.length ? t('matches_count', matches.length) : null,
+        scouted?.length ? t('teams_count', scouted.length) : null,
       ].filter(Boolean).join(' \u00b7 ')
     : '';
 
@@ -159,14 +159,14 @@ export default function MainPage({ onSignOut, workspaceName }) {
         training.date,
         // If we used training.name as title, surface team in subtitle so context isn't lost
         training.name && trainingTeam?.name ? trainingTeam.name : null,
-        training.layoutId ? 'Layout assigned' : null,
+        training.layoutId ? t('training_layout_assigned') : null,
       ].filter(Boolean).join(' \u00b7 ')
     : '';
 
   // Context object for AppShell.
   const contextObj = isTrainingMode
     ? (training ? {
-        name: training.name || trainingTeam?.name || 'Training',
+        name: training.name || trainingTeam?.name || t('training'),
         isTest: training.isTest,
         status: training.status,
         _isTraining: true,
@@ -211,7 +211,7 @@ export default function MainPage({ onSignOut, workspaceName }) {
       return (
         <FreshWorkspaceChecklist
           isAdmin={isAdmin}
-          workspaceName={workspace?.name || workspaceName || 'Workspace'}
+          workspaceName={workspace?.name || workspaceName || t('workspace_label')}
           signals={signals}
           configDone={configDone}
           onAddEvent={() => setNewModalOpen(true)}
@@ -324,9 +324,9 @@ export default function MainPage({ onSignOut, workspaceName }) {
         }}
       />
       <ConfirmModal open={deleteTrainingConfirm} onClose={() => setDeleteTrainingConfirm(false)}
-        title="Delete training?"
-        message="All matchups, scouted points and results will be permanently deleted."
-        confirmLabel="Delete training" danger
+        title={t('delete_training_confirm_title')}
+        message={t('delete_training_confirm_msg')}
+        confirmLabel={t('delete_training')} danger
         onConfirm={async () => {
           await ds.deleteTraining(trainingId);
           setTrainingId(null);
@@ -335,9 +335,9 @@ export default function MainPage({ onSignOut, workspaceName }) {
         }}
       />
       <ConfirmModal open={deleteTournamentConfirm} onClose={() => setDeleteTournamentConfirm(false)}
-        title="Delete tournament?"
-        message={`"${tournament?.name}" and all its matches, scouted points and data will be permanently deleted.`}
-        confirmLabel="Delete tournament" danger
+        title={t('delete_tournament_confirm_title')}
+        message={t('delete_tournament_confirm_msg', tournament?.name)}
+        confirmLabel={t('delete_tournament')} danger
         onConfirm={async () => {
           await ds.deleteTournament(tournamentId);
           setTournamentId(null);
@@ -350,6 +350,7 @@ export default function MainPage({ onSignOut, workspaceName }) {
 }
 
 function NoTournamentEmptyState({ onChoose, onNew }) {
+  const { t } = useLanguage();
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -360,15 +361,15 @@ function NoTournamentEmptyState({ onChoose, onNew }) {
         fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 500,
         color: COLORS.textDim, maxWidth: 280, lineHeight: 1.4,
       }}>
-        Select a tournament or create a new one
+        {t('main_no_event_text')}
       </div>
       <Btn variant="accent" onClick={onChoose}
         style={{ minHeight: 48, fontSize: FONT_SIZE.md, fontWeight: 700, padding: '0 24px' }}>
-        Choose tournament
+        {t('main_choose_tournament')}
       </Btn>
       <Btn variant="default" onClick={() => onNew?.()}
         style={{ minHeight: 44, fontSize: FONT_SIZE.sm, fontWeight: 600, padding: '0 20px' }}>
-        + New tournament or training
+        {t('main_new_event_btn')}
       </Btn>
     </div>
   );
@@ -447,16 +448,16 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Tournament settings"
+    <Modal open={open} onClose={onClose} title={t('tournament_settings_title')}
       footer={<>
         <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
-        <Btn variant="accent" onClick={handleSave} disabled={!canSave}><Icons.Check /> Save</Btn>
+        <Btn variant="accent" onClick={handleSave} disabled={!canSave}><Icons.Check /> {t('save')}</Btn>
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
-        <Input value={name} onChange={setName} placeholder="Tournament name..." autoFocus />
+        <Input value={name} onChange={setName} placeholder={t('tournament_name_ph')} autoFocus />
         <div style={{ display: 'flex', gap: SPACE.md }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>League</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('league_label')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               {leaguesList.map(L => {
                 const l = L.shortName;
@@ -469,7 +470,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
             </div>
           </div>
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Year</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('year_label')}</div>
             <Select value={year} onChange={v => setYear(Number(v))}>
               {yearOptions().map(y => <option key={y} value={y}>{y}</option>)}
             </Select>
@@ -478,7 +479,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
         {leagueHasDivisions && (
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
-              Divisions <span style={{ color: COLORS.textDim, fontWeight: 400 }}>(one or more)</span>
+              {t('divisions_label')} <span style={{ color: COLORS.textDim, fontWeight: 400 }}>{t('divisions_one_or_more')}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {leagueDivisions.map(d => (
@@ -491,14 +492,14 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
                 fontFamily: FONT, fontSize: 11, fontWeight: 600,
                 color: COLORS.danger, marginTop: 6,
               }}>
-                Select at least one division
+                {t('divisions_required_error')}
               </div>
             )}
           </div>
         )}
         {layouts.length > 0 && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Layout</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('layout_assigned_label')}</div>
             <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
               <option value="">— no layout —</option>
               {layouts.map(l => (
@@ -512,19 +513,19 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
             (variant=default — Save stays the single amber CTA). Eager-reads the
             tournament into IndexedDB so the app opens it offline at the venue. */}
         <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: SPACE.md, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Offline</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{t('offline_label')}</div>
           <Btn variant="default" onClick={handleDownloadOffline} disabled={dlStatus === 'downloading'}
             style={{ justifyContent: 'center', minHeight: TOUCH.minTarget }}>
-            {dlStatus === 'downloading' ? '⏳ Downloading…' : dlStatus === 'done' ? 'Downloaded ✓' : '📥 Download for offline'}
+            {dlStatus === 'downloading' ? t('offline_downloading') : dlStatus === 'done' ? t('offline_downloaded') : t('offline_download_btn')}
           </Btn>
           {dlStatus === 'error' && (
             <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.danger }}>
-              Download failed — check your connection and try again.
+              {t('offline_download_failed')}
             </div>
           )}
           {dlAt > 0 && (
             <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
-              Last downloaded {new Date(dlAt).toLocaleString()}
+              {t('offline_last_downloaded', new Date(dlAt).toLocaleString())}
             </div>
           )}
         </div>
