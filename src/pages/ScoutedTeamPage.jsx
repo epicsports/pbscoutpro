@@ -22,6 +22,7 @@ import { resolveZones } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
+import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 import SearchFilterPanel from '../components/SearchFilterPanel';
 import { matchEntity, playerInDivision, playerDivisionSet } from '../utils/entityFilters';
@@ -711,19 +712,237 @@ export default function ScoutedTeamPage() {
   const replaying = hmReplay && canReplay;
   const inertWhileReplaying = replaying ? { opacity: 0.4, pointerEvents: 'none' } : null;
 
-  return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader
-        back={{ to: '/' }}
-        title={team?.name || 'Team'}
-        subtitle={t('opponent_analysis')}
-        badges={team ? <TeamBadge team={team} size={28} /> : null}
-      />
+  // §116 Stage 4.2 — in LANDSCAPE the heatmap is promoted to the HERO
+  // (CanvasRailLayout) and the report column (scope pills + all sections,
+  // original order) moves to the rail BY REFERENCE; portrait is unchanged.
+  // The canvas + its overlay chrome (Rysuj chip / DrawToolbar) are defined ONCE
+  // and rendered in whichever branch is live; the below-canvas view controls
+  // (Stage / Layers / Isolate) stay with the heatmap section in the column, so
+  // in landscape they land in the rail at their original position.
+  const landscape = device.isLandscape;
+  const heroAvailable = teamMatches.length > 0 && !!field?.fieldImage;
 
-      {/* Scope pills (§ 60.6) — Ostatni mecz / Ten turniej / Cały layout /
-          Mecz ▾ picker. Layout pill only renders when tournament shares a
-          layout with another tournament; rest always visible. */}
-      {(() => {
+  const heatmapCanvasEl = (
+    <HeatmapCanvas
+      fieldImage={field.fieldImage}
+      points={heatmapPoints}
+      rosterPlayers={roster}
+      bunkers={field.bunkers || []}
+      dangerZone={field.dangerZone}
+      sajgonZone={field.sajgonZone}
+      showPositions={hmShowPositions}
+      showShots={hmShowShots}
+      heroPlayerIds={heroPlayerIds}
+      // § OSTRZAŁ — intrinsic per-mode zones: the choropleth
+      // always renders for the active phase (no "Strefy" toggle).
+      calloutZones={calloutZonesResolved}
+      calloutZoneWeights={calloutZoneWeights}
+      phase={hmPhase}
+      selectedPlayerId={hmSelectedPlayer}
+      // § Stage 6-lite — replay overlay (markers-only while on).
+      replay={hmReplay && canReplay}
+      // § 78 Stage 2 — annotation layers.
+      showAnnotations={hmShowAnnotations}
+      showCoachPlan={hmShowCoachPlan}
+      coachAnnotations={coachStrokes}
+      drawMode={coachDrawMode}
+      onDrawStart={handleCoachDrawStart}
+      onDrawMove={handleCoachDrawMove}
+      onDrawEnd={handleCoachDrawEnd}
+      onDrawAbort={handleCoachDrawAbort}
+    >
+      {/* § 78 2a — DrawingOverlay shows the LIVE editing copy on top of
+          HeatmapCanvas while coachDrawMode is on. HeatmapCanvas hides the
+          saved-set during drawMode (showCoachPlan && !drawMode gate) so we
+          don't render both the stale-saved and live-edit versions. */}
+      {coachDrawMode && (
+        <DrawingOverlay strokes={coachStrokes} currentStroke={coachCurrent} />
+      )}
+    </HeatmapCanvas>
+  );
+
+  // Overlay chrome that rides the CANVAS (absolute-positioned) in both branches.
+  const heatmapChromeEl = (
+    <>
+      {/* § 78 2a — "✏ Rysuj" entry chip, BOTH orientations (ScoutedTeam is not
+          a scouting surface — landscape-only gate from Match per § 77 does NOT
+          apply here). Only visible on the expanded heatmap; miniature (110px)
+          stays read-only. */}
+      {!coachDrawMode && (
+        <div
+          role="button" aria-label="Rysuj plan coacha"
+          onClick={enterCoachDrawMode}
+          style={{
+            position: 'absolute', top: 8, right: 8, zIndex: 35,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            minHeight: 36, padding: '0 12px', borderRadius: 18,
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: `1px solid ${COLORS.border}`,
+            color: COLORS.text,
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+            backdropFilter: 'blur(8px)',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          <Pencil size={16} strokeWidth={2.25} /> Rysuj
+        </div>
+      )}
+      {coachDrawMode && (
+        <DrawToolbar
+          color={coachColor}
+          onColorChange={setCoachColor}
+          sizeKey={coachSizeKey}
+          onSizeChange={setCoachSizeKey}
+          eraserActive={coachEraser}
+          onEraserToggle={setCoachEraser}
+          canUndo={coachStrokes.length > 0}
+          canRedo={coachRedo.length > 0}
+          hasStrokes={coachStrokes.length > 0}
+          onUndo={handleCoachUndo}
+          onRedo={handleCoachRedo}
+          onClear={handleCoachClear}
+          onDone={exitCoachDrawMode}
+        />
+      )}
+    </>
+  );
+
+  // §116 Stage 4.2 — the landscape HERO: canvas + chrome in a relative box
+  // (CanvasRailLayout's aspect box drives the size; the canvas self-refits).
+  const heatmapHeroEl = (
+    <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0 }}>
+      {heatmapCanvasEl}
+      {heatmapChromeEl}
+    </div>
+  );
+
+  // Below-canvas view controls — shared between the portrait expanded region
+  // and the landscape rail (where they keep the section's original position).
+  const heatmapControlsEl = (
+    <>
+      {/* § Stage 2 — coach 3-way axis (Break/Settle/Mid) GOVERNS the view:
+          positions, the intrinsic zone choropleth, and the luf connectors all
+          resolve to the active stage. Surface-fill segmented bar (coach idiom).
+          Mid is greyed when no point captured it. */}
+      <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Stage</div>
+        <SegmentedControl
+          items={[
+            { key: 'break', label: 'Break' },
+            { key: 'settle', label: 'Settle' },
+            { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? 'No Mid stage captured yet' : undefined },
+          ]}
+          value={hmPhase}
+          onChange={setHmPhase}
+        />
+      </div>
+      {/* Subordinate layer toggles — sit beneath the governing mode group.
+          Zones are no longer here (intrinsic per mode). */}
+      <div style={{ padding: '10px 16px 0', fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Layers</div>
+      <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div onClick={() => setHmShowPositions(v => !v)} style={{
+          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+          background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
+          color: hmShowPositions ? COLORS.success : COLORS.textMuted,
+          border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
+          ...inertWhileReplaying,
+        }}>● Positions</div>
+        <div onClick={() => setHmShowShots(v => !v)} style={{
+          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+          background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
+          color: hmShowShots ? COLORS.danger : COLORS.textMuted,
+          border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
+          ...inertWhileReplaying,
+        }}>⊕ Shots</div>
+        {/* § Stage 6-lite — Replay toggle. Reuses the layer-pill idiom; amber
+            (accent) only while active (playing) per § 27 color discipline.
+            Disabled when no Settle/Mid keyframes exist to play. */}
+        <div
+          onClick={canReplay ? () => setHmReplay(v => !v) : undefined}
+          title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
+          style={{
+            padding: '5px 14px', borderRadius: RADIUS.full,
+            cursor: canReplay ? 'pointer' : 'default',
+            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+            background: replaying ? `${COLORS.accent}1f` : 'transparent',
+            color: replaying ? COLORS.accent : COLORS.textMuted,
+            border: `1px solid ${replaying ? `${COLORS.accent}66` : COLORS.border}`,
+            opacity: canReplay ? 1 : 0.4,
+          }}>▶ Replay</div>
+        {/* § OSTRZAŁ — "Strefy" toggle removed: zones are intrinsic per mode now
+            (always-on choropleth keyed to hmPhase). */}
+        {/* § 78 Stage 2 — annotation layer toggles. Neutral styling (no semantic
+            color) since strokes are multi-color per stroke and Jacek's spec was
+            "labelowy pill". Default ON / OFF per § 78 brief. */}
+        <div onClick={() => setHmShowCoachPlan(v => !v)} style={{
+          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+          background: hmShowCoachPlan ? `${COLORS.accent}1f` : 'transparent',
+          color: hmShowCoachPlan ? COLORS.accent : COLORS.textMuted,
+          border: `1px solid ${hmShowCoachPlan ? `${COLORS.accent}66` : COLORS.border}`,
+          ...inertWhileReplaying,
+        }}>Plan coacha</div>
+        <div onClick={() => setHmShowAnnotations(v => !v)} style={{
+          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+          background: hmShowAnnotations ? `${COLORS.accent}1f` : 'transparent',
+          color: hmShowAnnotations ? COLORS.accent : COLORS.textMuted,
+          border: `1px solid ${hmShowAnnotations ? `${COLORS.accent}66` : COLORS.border}`,
+          ...inertWhileReplaying,
+        }}>Notatki scouta</div>
+        {/* Collapse is a portrait scroll-estate device — meaningless when the
+            hero is promoted (§116 Stage 4.2), so it hides in landscape. */}
+        {!landscape && (
+          <div onClick={() => setHeatmapExpanded(false)} style={{
+            padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
+            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+            background: 'transparent', color: COLORS.textMuted,
+            border: `1px solid ${COLORS.border}`,
+          }}>⇱ Collapse</div>
+        )}
+      </div>
+      {/* § OSTRZAŁ B3 — per-player isolation selector. Tap a roster player →
+          only their positions/cones/zones read full, the rest dim; tap again to
+          clear. Chip-based (not canvas-tap): the heatmap aggregates many
+          overlapping positions per player, so a deterministic roster pick is
+          unambiguous. Active chip = amber (selected state). */}
+      {roster.length > 0 && (
+        <div style={{ display: 'flex', gap: 6, padding: '0 16px 8px', overflowX: 'auto', alignItems: 'center' }}>
+          <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Isolate</span>
+          {roster.map(p => {
+            const active = hmSelectedPlayer === p.id;
+            return (
+              <div key={p.id} onClick={() => setHmSelectedPlayer(active ? null : p.id)} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                padding: '3px 10px 3px 3px', borderRadius: RADIUS.full, cursor: 'pointer',
+                background: active ? `${COLORS.accent}1f` : COLORS.surface,
+                border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+              }}>
+                <PlayerAvatar player={p} size={20} />
+                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: active ? COLORS.accent : COLORS.text, whiteSpace: 'nowrap' }}>{p.name || `#${p.number}`}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+
+  const pageHeaderEl = (
+    <PageHeader
+      back={{ to: '/' }}
+      title={team?.name || 'Team'}
+      subtitle={t('opponent_analysis')}
+      badges={team ? <TeamBadge team={team} size={28} /> : null}
+    />
+  );
+
+  // Scope pills (§ 60.6) — Ostatni mecz / Ten turniej / Cały layout /
+  // Mecz ▾ picker. Layout pill only renders when tournament shares a
+  // layout with another tournament; rest always visible.
+  const scopePillsEl = (() => {
         const layoutTs = currentLayoutId
           ? tournaments.filter(t => t.layoutId === currentLayoutId)
           : [];
@@ -790,8 +1009,9 @@ export default function ScoutedTeamPage() {
             </Pill>
           </div>
         );
-      })()}
+      })();
 
+  const columnEl = (
       <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}
         {heatmapPoints.length > 0 && (() => {
@@ -932,8 +1152,17 @@ export default function ScoutedTeamPage() {
 
         {/* ─── ABOVE FOLD — Coach Brief priorities (Sławek § 34 + § 60) ─── */}
 
-        {/* Heatmap — promoted to top of analysis, expanded by default (§ 60.1) */}
-        {teamMatches.length > 0 && (
+        {/* Heatmap — promoted to top of analysis, expanded by default (§ 60.1).
+            §116 Stage 4.2: in landscape the canvas is the page HERO (promoted
+            out of the column), so this section keeps only the view controls at
+            their original position in the rail. */}
+        {teamMatches.length > 0 && landscape && heroAvailable && (
+          <>
+            <SectionHeader>{t('section_heatmap')}</SectionHeader>
+            <div style={{ margin: '0 0 4px' }}>{heatmapControlsEl}</div>
+          </>
+        )}
+        {teamMatches.length > 0 && !(landscape && heroAvailable) && (
           <>
             <SectionHeader>{t('section_heatmap')}</SectionHeader>
             <div style={{ margin: '0 16px 4px' }}>
@@ -978,44 +1207,7 @@ export default function ScoutedTeamPage() {
                   overflow: 'hidden',
                   paddingBottom: 'env(safe-area-inset-bottom, 0px)',
                 } : { borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016', position: 'relative' }}>
-                  <HeatmapCanvas
-                    fieldImage={field.fieldImage}
-                    points={heatmapPoints}
-                    rosterPlayers={roster}
-                    bunkers={field.bunkers || []}
-                    dangerZone={field.dangerZone}
-                    sajgonZone={field.sajgonZone}
-                    showPositions={hmShowPositions}
-                    showShots={hmShowShots}
-                    heroPlayerIds={heroPlayerIds}
-                    // § OSTRZAŁ — intrinsic per-mode zones: the choropleth
-                    // always renders for the active phase (no "Strefy" toggle).
-                    calloutZones={calloutZonesResolved}
-                    calloutZoneWeights={calloutZoneWeights}
-                    phase={hmPhase}
-                    selectedPlayerId={hmSelectedPlayer}
-                    // § Stage 6-lite — replay overlay (markers-only while on).
-                    replay={hmReplay && canReplay}
-                    // § 78 Stage 2 — annotation layers.
-                    showAnnotations={hmShowAnnotations}
-                    showCoachPlan={hmShowCoachPlan}
-                    coachAnnotations={coachStrokes}
-                    drawMode={coachDrawMode}
-                    onDrawStart={handleCoachDrawStart}
-                    onDrawMove={handleCoachDrawMove}
-                    onDrawEnd={handleCoachDrawEnd}
-                    onDrawAbort={handleCoachDrawAbort}
-                  >
-                    {/* § 78 2a — DrawingOverlay shows the LIVE editing copy
-                        on top of HeatmapCanvas while coachDrawMode is on.
-                        HeatmapCanvas hides the saved-set during drawMode
-                        (see showCoachPlan && !drawMode gate) so we don't
-                        render both the stale-saved and live-edit versions
-                        on top of each other. */}
-                    {coachDrawMode && (
-                      <DrawingOverlay strokes={coachStrokes} currentStroke={coachCurrent} />
-                    )}
-                  </HeatmapCanvas>
+                  {heatmapCanvasEl}
                   {/* § 81 ScoutedTeam immersive — heatmap-region overlay
                       trigger. top-left placement avoids collision with the
                       "✏ Rysuj" chip (top-right). Both orientations (NO
@@ -1032,154 +1224,8 @@ export default function ScoutedTeamPage() {
                     onToggle={heatmapFullscreen ? exitHeatmapFs : enterHeatmapFs}
                     isLandscape={false}
                   />
-                  {/* § 78 2a — "✏ Rysuj" entry chip, BOTH orientations
-                      (ScoutedTeam is not a scouting surface — landscape-only
-                      gate from Match per § 77 does NOT apply here). Only
-                      visible on the expanded heatmap; miniature (110px)
-                      stays read-only. */}
-                  {!coachDrawMode && (
-                    <div
-                      role="button" aria-label="Rysuj plan coacha"
-                      onClick={enterCoachDrawMode}
-                      style={{
-                        position: 'absolute', top: 8, right: 8, zIndex: 35,
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        minHeight: 36, padding: '0 12px', borderRadius: 18,
-                        background: 'rgba(15, 23, 42, 0.85)',
-                        border: `1px solid ${COLORS.border}`,
-                        color: COLORS.text,
-                        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-                        backdropFilter: 'blur(8px)',
-                        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                      }}
-                    >
-                      <Pencil size={16} strokeWidth={2.25} /> Rysuj
-                    </div>
-                  )}
-                  {coachDrawMode && (
-                    <DrawToolbar
-                      color={coachColor}
-                      onColorChange={setCoachColor}
-                      sizeKey={coachSizeKey}
-                      onSizeChange={setCoachSizeKey}
-                      eraserActive={coachEraser}
-                      onEraserToggle={setCoachEraser}
-                      canUndo={coachStrokes.length > 0}
-                      canRedo={coachRedo.length > 0}
-                      hasStrokes={coachStrokes.length > 0}
-                      onUndo={handleCoachUndo}
-                      onRedo={handleCoachRedo}
-                      onClear={handleCoachClear}
-                      onDone={exitCoachDrawMode}
-                    />
-                  )}
-                  {/* § Stage 2 — coach 3-way axis (Break/Settle/Mid) GOVERNS the
-                      view: positions, the intrinsic zone choropleth, and the luf
-                      connectors all resolve to the active stage. Surface-fill
-                      segmented bar (coach idiom). Mid is greyed when no point
-                      captured it; Break + Settle always available. */}
-                  <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
-                    <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Stage</div>
-                    <SegmentedControl
-                      items={[
-                        { key: 'break', label: 'Break' },
-                        { key: 'settle', label: 'Settle' },
-                        { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? 'No Mid stage captured yet' : undefined },
-                      ]}
-                      value={hmPhase}
-                      onChange={setHmPhase}
-                    />
-                  </div>
-                  {/* Subordinate layer toggles — sit beneath the governing mode
-                      group. Zones are no longer here (intrinsic per mode). */}
-                  <div style={{ padding: '10px 16px 0', fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Layers</div>
-                  <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <div onClick={() => setHmShowPositions(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
-                      color: hmShowPositions ? COLORS.success : COLORS.textMuted,
-                      border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
-                      ...inertWhileReplaying,
-                    }}>● Positions</div>
-                    <div onClick={() => setHmShowShots(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
-                      color: hmShowShots ? COLORS.danger : COLORS.textMuted,
-                      border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
-                      ...inertWhileReplaying,
-                    }}>⊕ Shots</div>
-                    {/* § Stage 6-lite — Replay toggle. Reuses the layer-pill
-                        idiom; amber (accent) only while active (playing) per
-                        § 27 color discipline. Disabled when no Settle/Mid
-                        keyframes exist to play. */}
-                    <div
-                      onClick={canReplay ? () => setHmReplay(v => !v) : undefined}
-                      title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
-                      style={{
-                        padding: '5px 14px', borderRadius: RADIUS.full,
-                        cursor: canReplay ? 'pointer' : 'default',
-                        fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                        background: replaying ? `${COLORS.accent}1f` : 'transparent',
-                        color: replaying ? COLORS.accent : COLORS.textMuted,
-                        border: `1px solid ${replaying ? `${COLORS.accent}66` : COLORS.border}`,
-                        opacity: canReplay ? 1 : 0.4,
-                      }}>▶ Replay</div>
-                    {/* § OSTRZAŁ — "Strefy" toggle removed: zones are intrinsic
-                        per mode now (always-on choropleth keyed to hmPhase). */}
-                    {/* § 78 Stage 2 — annotation layer toggles. Neutral
-                        styling (no semantic color) since strokes are
-                        multi-color per stroke and Jacek's spec was
-                        "labelowy pill". Default ON / OFF per § 78 brief. */}
-                    <div onClick={() => setHmShowCoachPlan(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowCoachPlan ? `${COLORS.accent}1f` : 'transparent',
-                      color: hmShowCoachPlan ? COLORS.accent : COLORS.textMuted,
-                      border: `1px solid ${hmShowCoachPlan ? `${COLORS.accent}66` : COLORS.border}`,
-                      ...inertWhileReplaying,
-                    }}>Plan coacha</div>
-                    <div onClick={() => setHmShowAnnotations(v => !v)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: hmShowAnnotations ? `${COLORS.accent}1f` : 'transparent',
-                      color: hmShowAnnotations ? COLORS.accent : COLORS.textMuted,
-                      border: `1px solid ${hmShowAnnotations ? `${COLORS.accent}66` : COLORS.border}`,
-                      ...inertWhileReplaying,
-                    }}>Notatki scouta</div>
-                    <div onClick={() => setHeatmapExpanded(false)} style={{
-                      padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-                      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                      background: 'transparent', color: COLORS.textMuted,
-                      border: `1px solid ${COLORS.border}`,
-                    }}>⇱ Collapse</div>
-                  </div>
-                  {/* § OSTRZAŁ B3 — per-player isolation selector. Tap a roster
-                      player → only their positions/cones/zones read full, the
-                      rest dim; tap again to clear. Chip-based (not canvas-tap):
-                      the heatmap aggregates many overlapping positions per
-                      player, so a deterministic roster pick is unambiguous.
-                      Active chip = amber (selected state). */}
-                  {roster.length > 0 && (
-                    <div style={{ display: 'flex', gap: 6, padding: '0 16px 8px', overflowX: 'auto', alignItems: 'center' }}>
-                      <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Isolate</span>
-                      {roster.map(p => {
-                        const active = hmSelectedPlayer === p.id;
-                        return (
-                          <div key={p.id} onClick={() => setHmSelectedPlayer(active ? null : p.id)} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
-                            padding: '3px 10px 3px 3px', borderRadius: RADIUS.full, cursor: 'pointer',
-                            background: active ? `${COLORS.accent}1f` : COLORS.surface,
-                            border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-                          }}>
-                            <PlayerAvatar player={p} size={20} />
-                            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: active ? COLORS.accent : COLORS.text, whiteSpace: 'nowrap' }}>{p.name || `#${p.number}`}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {heatmapChromeEl}
+                  {heatmapControlsEl}
                 </div>
               )}
             </div>
@@ -1990,7 +2036,10 @@ export default function ScoutedTeamPage() {
         )}
         </div>
       </div>
+  );
 
+  const modalsEl = (
+    <>
       {/* Delete match — password protected */}
       <ConfirmModal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)}
         title={t('delete_match')} danger confirmLabel={t('delete')}
@@ -2087,6 +2136,37 @@ export default function ScoutedTeamPage() {
           if (deleteNoteConfirm) ds.deleteNote(tournamentId, scoutedId, deleteNoteConfirm);
           setDeleteNoteConfirm(null);
         }} />
+    </>
+  );
+
+  // §116 Stage 4.2 — LANDSCAPE (hero available): the heatmap is the HERO, the
+  // report column (scope pills + sections) is the rail BY REFERENCE. Collapses
+  // to the §116 strip on cramped tablet-landscape. The §81 fullscreen overlay
+  // trigger is landscape-suppressed (the hero is already maximized).
+  if (landscape && heroAvailable) {
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
+        <CanvasRailLayout
+          isLandscape
+          aspect={16 / 10}
+          railMin={200}
+          header={pageHeaderEl}
+          artifact={heatmapHeroEl}
+          rail={<>{scopePillsEl}{columnEl}</>}
+          collapsed={{ tabs: [], count: null, onBack: () => navigate('/') }}
+        />
+        {modalsEl}
+      </div>
+    );
+  }
+
+  // PORTRAIT (and landscape without a hero) — the original stacked layout.
+  return (
+    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      {pageHeaderEl}
+      {scopePillsEl}
+      {columnEl}
+      {modalsEl}
     </div>
   );
 }
