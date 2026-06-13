@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-13 — [arc-B migration] list batch: Teams + Players + Layouts → <Screen archetype=list>
+**HEAD `feecf4cb`.** **App-only.** Tier 1 by-proof. Functional **61 green**; migration diff gate **10/10** (phone+tablet=0, incl. detail batch). Revert: `git revert feecf4cb`. Desktop caps to the **list tier 960**; phone+tablet identical. Same recipe (R.layout+flex-column shell, padBottom={false}). **5/~18 screens migrated.** Register rows added.
+
 ## 2026-06-13 — [arc-B migration] detail batch 1: TeamDetailPage + ProfilePage → <Screen>
 **HEAD `48ac131d`.** **App-only.** Tier 1 by-proof. Functional **61 green**; migration diff gate **4/4** (phone+tablet=0). Revert: `git revert 48ac131d`.
 - First migration batch (recipe proven): both wrapped in `<Screen archetype="detail">`, model C → desktop caps to 640, **phone+tablet pixel-diff = 0** (TeamDetail = R.layout-maxWidth shell; Profile = no-maxWidth shell — both shapes covered). Matched each shell exactly via `padBottom={false}` + `style` (flex-column / 100dvh / bg). +`screen-migration-diff` harness (phone 414 + tablet 768, `npm run test:e2e:migrationdiff`, isolated/excluded from shared suite). **Desktop register rows in EXPECTED_DIFF.** **Owed: Jacek smoke** — Team detail + Profile on desktop (now 640-capped) vs phone/tablet (unchanged).
