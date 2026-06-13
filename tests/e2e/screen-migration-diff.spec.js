@@ -12,8 +12,12 @@ const PHONE = { width: 414, height: 896 };
 const TABLET = { width: 768, height: 1024 };
 
 const PAGES = [
-  { name: 'team-detail', url: `/#/team/${TEAM_A}`, anchor: 'team-load-error' /* unused; just settle */ },
+  { name: 'team-detail', url: `/#/team/${TEAM_A}` },
   { name: 'profile', url: '/#/profile' },
+  // list batch (tier 960)
+  { name: 'teams', url: '/#/teams' },
+  { name: 'players', url: '/#/players' },
+  { name: 'layouts', url: '/#/layouts' },
 ];
 
 async function dismissNudge(page) {

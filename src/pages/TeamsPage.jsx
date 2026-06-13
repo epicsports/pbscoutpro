@@ -4,6 +4,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, ConfirmModal } from '../components/ui';
 import SearchFilterPanel from '../components/SearchFilterPanel';
 import TeamBadge from '../components/TeamBadge';
@@ -131,8 +132,8 @@ export default function TeamsPage() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title={t('teams_label')} subtitle={t('teams_subtitle')} />
+    <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
+      header={<PageHeader back={{ to: '/' }} title={t('teams_label')} subtitle={t('teams_subtitle')} />}>
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={<Btn variant="accent" onClick={openAdd}><Icons.Plus /> {t('tab_team')}</Btn>}>
           {t('teams_count_title', teams.length)}
@@ -242,6 +243,6 @@ export default function TeamsPage() {
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={v => setDeletePassword(v)}
         onConfirm={() => handleDelete(modal.value?.id)} />
-    </div>
+    </Screen>
   );
 }

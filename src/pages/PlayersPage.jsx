@@ -4,6 +4,7 @@ import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Icons, ConfirmModal } from '../components/ui';
 import SearchFilterPanel from '../components/SearchFilterPanel';
 import PlayerEditModal from '../components/PlayerEditModal';
@@ -135,8 +136,8 @@ export default function PlayersPage() {
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '—';
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title={t('players_label')} />
+    <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
+      header={<PageHeader back={{ to: '/' }} title={t('players_label')} />}>
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={
           <div style={{ display: 'flex', gap: 4 }}>
@@ -243,6 +244,6 @@ export default function PlayersPage() {
       />
 
       <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
-    </div>
+    </Screen>
   );
 }

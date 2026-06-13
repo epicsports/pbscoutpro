@@ -9,6 +9,7 @@ import { useDevice } from '../hooks/useDevice';
 import { useNavigate } from 'react-router-dom';
 
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Btn, SectionTitle, EmptyState, SkeletonList, Modal, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useBaseLayouts } from '../hooks/useFirestore';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
@@ -41,8 +42,8 @@ export default function LayoutsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title={t('layouts_label')} subtitle={t('layouts_subtitle')} />
+    <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
+      header={<PageHeader back={{ to: '/' }} title={t('layouts_label')} subtitle={t('layouts_subtitle')} />}>
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>
@@ -140,6 +141,6 @@ export default function LayoutsPage() {
           ))}
         </div>
       </Modal>
-    </div>
+    </Screen>
   );
 }
