@@ -371,7 +371,7 @@ export default function PlayerStatsPage() {
   const midParam = searchParams.get('mid') || null;
   const lidParam = searchParams.get('lid') || null;
 
-  const { players, playersById } = usePlayers();
+  const { players, playersById, loading: playersLoading } = usePlayers();
   const { teams } = useActiveTeams();
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
@@ -380,6 +380,16 @@ export default function PlayerStatsPage() {
 
   const player = playersById[playerId];
   const playerTeam = teams.find(t => t.id === player?.teamId);
+
+  // §H3 no-eternal-loading — 12s ceiling on the catalog loading state.
+  // useGatedCatalog always resolves, but if loading stays true indefinitely
+  // (e.g. cold cache + network stall), the timeout flips to error state.
+  const [playerLoadTimedOut, setPlayerLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (player) { setPlayerLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setPlayerLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [player]);
 
   // Brief E Gap 5 — auto-default scope=training + latest tid for self-view.
   // Triggers only when (a) viewing own profile, (b) no ?scope= in URL, and
@@ -862,12 +872,24 @@ export default function PlayerStatsPage() {
   };
 
   if (!player) {
+    const stillLoading = playersLoading && !playerLoadTimedOut;
     return (
-      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto' }}>
+      <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto' }} data-testid={stillLoading ? undefined : 'player-load-error'}>
         <PageHeader back={{ to: backTo }} title={t('player_stats')} />
-        {players.length === 0
-          ? <Loading text="Loading player..." />
-          : <EmptyState icon="?" text="Player not found" />}
+        {stillLoading ? (
+          <Loading text="Loading player..." />
+        ) : (
+          <>
+            <EmptyState
+              icon="⚠️"
+              text={t('player_load_error')}
+              subtitle={t('player_load_error_sub')}
+            />
+            <div style={{ textAlign: 'center', marginTop: 4 }}>
+              <Btn variant="accent" onClick={() => { setPlayerLoadTimedOut(false); navigate(0); }}>{t('match_retry')}</Btn>
+            </div>
+          </>
+        )}
       </div>
     );
   }

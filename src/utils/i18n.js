@@ -1344,6 +1344,9 @@ const T = {
     /* ui.jsx shared controls */
     loading_default:          'Ładowanie…',
     /* ─── §H1 Batch 5 — Training pages (TrainingResultsPage / TrainingSetupPage / TrainingSquadsPage) ── */
+    /* §H3 no-eternal-loading — training error state */
+    training_load_error:      'Nie można załadować treningu',
+    training_load_error_sub:  'Trening mógł zostać usunięty lub dane nie załadowały się. Spróbuj ponownie.',
     training_not_found:       'Nie znaleziono treningu',
     training_practice_fallback: 'Trening',
     results_info_line:        (pts, ptLabel, matchups, mLabel) => `${pts} zescoutowanych ${pts === 1 ? 'pkt' : 'pkt'} · ${matchups} ${matchups === 1 ? 'matchup' : 'matchupów'}`,
@@ -1365,6 +1368,12 @@ const T = {
     nav_menu_label:     'Menu',
     drawer_available:   (n) => `${n} dostępne`,
     viewer_home_hint:   'Menu i ustawienia znajdziesz pod kulką reads w lewym górnym rogu.',
+    /* §H3 no-eternal-loading — layout error state */
+    layout_load_error:     'Nie można załadować tego układu',
+    layout_load_error_sub: 'Układ mógł zostać usunięty lub dane nie załadowały się. Spróbuj ponownie.',
+    /* §H3 no-eternal-loading — player error state */
+    player_load_error:     'Nie można załadować profilu gracza',
+    player_load_error_sub: 'Profil mógł zostać usunięty lub dane nie załadowały się. Spróbuj ponownie.',
     /* ─── §H1 Batch 3 — Layout config (LayoutDetailPage + LayoutWizardPage) ── */
     /* LayoutDetailPage */
     layout_detail_subtitle:          'UKŁAD POLA',
@@ -3025,6 +3034,9 @@ const T = {
     /* ui.jsx shared controls */
     loading_default:          'Loading…',
     /* ─── §H1 Batch 5 — Training pages (TrainingResultsPage / TrainingSetupPage / TrainingSquadsPage) ── */
+    /* §H3 no-eternal-loading — training error state */
+    training_load_error:      'Couldn\'t load this training',
+    training_load_error_sub:  'It may have been removed, or the data didn\'t load. Try again.',
     training_not_found:       'Training not found',
     training_practice_fallback: 'Practice',
     results_info_line:        (pts, ptLabel, matchups, mLabel) => `${pts} scouted ${ptLabel} · ${matchups} ${mLabel}`,
@@ -3046,6 +3058,12 @@ const T = {
     nav_menu_label:     'Menu',
     drawer_available:   (n) => `${n} available`,
     viewer_home_hint:   'Find the menu and settings under the reads ball in the top-left corner.',
+    /* §H3 no-eternal-loading — layout error state */
+    layout_load_error:     'Couldn\'t load this layout',
+    layout_load_error_sub: 'It may have been removed, or the data didn\'t load. Try again.',
+    /* §H3 no-eternal-loading — player error state */
+    player_load_error:     'Couldn\'t load this player profile',
+    player_load_error_sub: 'It may have been removed, or the data didn\'t load. Try again.',
     /* ─── §H1 Batch 3 — Layout config (LayoutDetailPage + LayoutWizardPage) ── */
     /* LayoutDetailPage */
     layout_detail_subtitle:          'FIELD LAYOUT',

@@ -47,6 +47,15 @@ export default function LayoutDetailPage() {
 
   const layout = layouts?.find(l => l.id === layoutId);
 
+  // §H3 no-eternal-loading — bounded 12s wait. If the layouts subscription
+  // never fires (network issue / deleted layout URL), flip to error state.
+  const [layoutLoadTimedOut, setLayoutLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (layout) { setLayoutLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setLayoutLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [layout]);
+
   const leaguesList = useLeagues();
 
   // ── Editable state ──
@@ -379,8 +388,19 @@ export default function LayoutDetailPage() {
   // gate only (toggle renders null in landscape — rotation already immerses).
   const { isLandscape, fsActive, immersive, setFullscreen, canvasMaxHeight } = useLandscapeMode();
 
-  if (layoutsLoading) return <SkeletonList count={4} />;
-  if (!layout) return <EmptyState icon="?" text="Layout not found" />;
+  if (layoutsLoading && !layoutLoadTimedOut) return <SkeletonList count={4} />;
+  if (!layout) return (
+    <div data-testid="layout-load-error">
+      <EmptyState
+        icon="⚠️"
+        text={t('layout_load_error')}
+        subtitle={t('layout_load_error_sub')}
+      />
+      <div style={{ textAlign: 'center', marginTop: 4 }}>
+        <Btn variant="accent" onClick={() => { setLayoutLoadTimedOut(false); navigate(0); }}>{t('match_retry')}</Btn>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ height: '100dvh', maxWidth: immersive ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto', display: 'flex', flexDirection: 'column' }}>

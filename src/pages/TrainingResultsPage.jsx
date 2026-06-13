@@ -76,6 +76,14 @@ export default function TrainingResultsPage() {
   const training = trainings.find(t => t.id === trainingId);
   const field = useField(training, layouts, true);
 
+  // §H3 no-eternal-loading — 12s ceiling on the training subscription.
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (training) { setLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [training]);
+
   // Fetch all points across all matchups for the leaderboard.
   const [allPoints, setAllPoints] = useState(null);
   useEffect(() => {
@@ -283,10 +291,23 @@ export default function TrainingResultsPage() {
     setReviewVersion(v => v + 1);
   };
 
-  if (tLoading || mLoading || allPoints === null) {
+  if ((tLoading || mLoading || allPoints === null) && !loadTimedOut) {
     return <div style={{ padding: SPACE.lg }}><SkeletonList count={5} /></div>;
   }
-  if (!training) return <EmptyState icon="⏳" text={t('training_not_found')} />;
+  if (!training) {
+    return (
+      <div data-testid="training-load-error">
+        <EmptyState
+          icon="⚠️"
+          text={t('training_load_error')}
+          subtitle={t('training_load_error_sub')}
+        />
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>{t('match_retry')}</Btn>
+        </div>
+      </div>
+    );
+  }
 
   const totalPoints = allPoints.length;
   const attendees = (training.attendees || []).map(pid => playersById[pid]).filter(Boolean);
