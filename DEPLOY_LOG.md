@@ -1,5 +1,9 @@
 # Deploy Log
 
+## 2026-06-13 — [arc-B migration] detail batch 1: TeamDetailPage + ProfilePage → <Screen>
+**HEAD `48ac131d`.** **App-only.** Tier 1 by-proof. Functional **61 green**; migration diff gate **4/4** (phone+tablet=0). Revert: `git revert 48ac131d`.
+- First migration batch (recipe proven): both wrapped in `<Screen archetype="detail">`, model C → desktop caps to 640, **phone+tablet pixel-diff = 0** (TeamDetail = R.layout-maxWidth shell; Profile = no-maxWidth shell — both shapes covered). Matched each shell exactly via `padBottom={false}` + `style` (flex-column / 100dvh / bg). +`screen-migration-diff` harness (phone 414 + tablet 768, `npm run test:e2e:migrationdiff`, isolated/excluded from shared suite). **Desktop register rows in EXPECTED_DIFF.** **Owed: Jacek smoke** — Team detail + Profile on desktop (now 640-capped) vs phone/tablet (unchanged).
+
 ## 2026-06-13 — [arc-B foundation] <Screen> model C (desktop-only cap) + i18n dedup complete
 **HEAD `8b4ab8e8`.** **App-only.** Tier 1 (logic + machine-proven). Functional **61 green**; pilot phone diff-gate **3/3**. Revert: `git revert 8b4ab8e8` (model C) / the dedup commit.
 - **Model C (Jacek decision):** `<Screen>` now caps width ONLY on desktop (`device.isDesktop`, ≥1024 non-touch); below that = full-width, so phone + tablet keep natural width (tablet ~768, zero narrowing). Tiers detail 640 / **list 960** / form 560 (list 760→960 exception for dense rows; 960 validated by render). **The 3 shipped pilot pages (ScoutDetail/ScoutIssues/ScoutRanking) now UN-NARROW on tablet** (640→768, desired) + stay 640 on desktop; phone unchanged. → migration of ~18 screens proceeds in batches detail→form→list (phone+tablet diff=0 by construction, desktop register row per screen).
