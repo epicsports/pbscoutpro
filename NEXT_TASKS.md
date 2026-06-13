@@ -76,7 +76,13 @@ Same authorized autonomous block. Brief: `docs/briefs/CC_BRIEF_POST_NIGHT_CONSOL
 ### STEP 5 registrations / housekeeping
 > **[arc B] Fold the reads-ball into PageHeader app-wide** — PPT currently shows a slim ball bar ABOVE its PageHeader (two stacked bars on player screens; minimal-diff choice from §C nav drawer). The real fix is folding the reads-ball drawer trigger INTO PageHeader so every headered screen has one bar. Not a hotfix — touches every header. Own arc-B item (ties into the `<Screen>` pilot).
 > **"Top bar renders with no event selected" = BY DESIGN, closed.** The ball/drawer must stay reachable even before an event is picked; the empty event-context beside it is intentional. No action.
-> **i18n dedupe ticket (28 duplicate keys)** — `T.pl`/`T.en` carry 28 duplicate key names (profile/password cluster + generics cancel/save/saving/done/tab_*…), PRE-EXISTING (predate the night run); JS last-wins so earlier defs are dead. Own careful ticket — **values may differ between dupes, verify before deleting** (do NOT auto-dedupe). Add a precommit guard against NEW duplicates once cleaned.
+> **i18n dedupe ticket (28 duplicate keys)** — CC verified 2026-06-13 (read-only classify): **23 are IDENTICAL-valued** in both pl+en → removing the dead earlier def is a provable no-op (JS already uses the last; values match) → **CC clearing these autonomously after B13 merges** (full-suite gated). **5 DIFFER and need Jacek's value-ruling** (app currently shows the LAST/live value; the earlier is dead — confirm the live one is right, or say "use the earlier"):
+> 1. `no_matches` — live: PL "Brak wyników" / EN "No matches" · alt: "Brak meczy" / "No matches yet"
+> 2. `display_name_ph` — live EN "e.g. John" · alt "e.g. Jacek"
+> 3. `password_changed` — live EN "Password changed successfully." · alt "Password changed."
+> 4. `avatar_coming` — live: long "…— after Firebase Storage is enabled." · alt: short "Profile photos coming soon."
+> 5. `not_signed_in` — live EN "You are not signed in." · alt "Not signed in."
+> Add a precommit guard against NEW duplicate keys once cleaned.
 > **defaultWorkspace multi-ws rules fix — smoke #4 OPEN** — the tenant-isolation `isMember` list-query fix (night run) should let multi-ws non-super-admins see the switcher; row stays open pending Jacek's other-account prod test.
 
 ## 🌙 NIGHT RUN 2026-06-12→13 ✅ SHIPPED to prod (HEAD `63c1296e`) + Opus-review reconcile
