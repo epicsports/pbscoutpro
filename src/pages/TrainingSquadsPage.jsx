@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import SquadEditor from '../components/training/SquadEditor';
@@ -22,10 +22,31 @@ export default function TrainingSquadsPage() {
   const training = trainings.find(t => t.id === trainingId);
   const attendeesCount = training?.attendees?.length || 0;
 
-  if (tLoading) {
+  // §H3 no-eternal-loading — 12s ceiling on the training subscription.
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  useEffect(() => {
+    if (training) { setLoadTimedOut(false); return undefined; }
+    const id = setTimeout(() => setLoadTimedOut(true), 12000);
+    return () => clearTimeout(id);
+  }, [training]);
+
+  if (tLoading && !loadTimedOut) {
     return <div style={{ padding: SPACE.lg }}><SkeletonList count={4} /></div>;
   }
-  if (!training) return <EmptyState icon="⏳" text={t('training_not_found')} />;
+  if (!training) {
+    return (
+      <div data-testid="training-load-error">
+        <EmptyState
+          icon="⚠️"
+          text={t('training_load_error')}
+          subtitle={t('training_load_error_sub')}
+        />
+        <div style={{ textAlign: 'center', marginTop: 4 }}>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>{t('match_retry')}</Btn>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
