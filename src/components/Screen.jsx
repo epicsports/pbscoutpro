@@ -1,5 +1,6 @@
 import React from 'react';
 import { LAYOUT_TIERS } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
 
 /**
  * <Screen> — arc B page-shell primitive (mockup-5, ratified-by-proof).
@@ -32,7 +33,13 @@ export default function Screen({
   style,
   children,
 }) {
-  const maxWidth = LAYOUT_TIERS[archetype] || LAYOUT_TIERS.detail;
+  // Model C — DESKTOP-ONLY cap: full-width below the desktop breakpoint (phone +
+  // tablet untouched, by construction identical to the old R.layout full/768),
+  // tier only on desktop. device.isDesktop = ≥1024 AND non-touch (a touch device
+  // <1200 stays 'tablet' → full-width, so real tablets never narrow).
+  const device = useDevice();
+  const cap = LAYOUT_TIERS[archetype] || LAYOUT_TIERS.detail;
+  const maxWidth = device.isDesktop ? cap : '100%';
   return (
     <div style={{
       minHeight: '100vh',

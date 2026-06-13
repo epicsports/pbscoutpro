@@ -85,13 +85,17 @@ export const ZONE_COLORS = {
   snake:  '#22d3ee',   // cyan400 — bottom breakouts
 };
 
-// ── Arc B — <Screen> shell archetype tiers (mockup-5, ratified-by-proof) ──
-// The page-content max-width per archetype, replacing per-page magic numbers.
-//   detail — single-entity profile/detail (= today's 640, no change)
-//   list   — collections/tables; the ONE deliberate desktop delta (640→760)
-//   form   — wizards/config, narrow reading column
+// ── Arc B — <Screen> shell archetype tiers (model C, Jacek decision 2026-06-13) ──
+// DESKTOP-ONLY CAP: below the desktop breakpoint the column is full-width
+// (phone + tablet keep their natural width — tablet stays ~768, ZERO narrowing,
+// the whole point of model C). The tier caps the column ONLY on desktop
+// (device.isDesktop, i.e. ≥1024 and non-touch). Applied in <Screen>.
+//   detail — single-entity profile/detail (desktop cap 640)
+//   list   — collections + dense tables; cap 960 (player rows look cramped at
+//            760 on desktop — Jacek's exception; revisit if renders say otherwise)
+//   form   — wizards/config, narrow reading column (cap 560)
 //   canvas screens are NOT here — CanvasRailLayout owns their sizing.
-export const LAYOUT_TIERS = { detail: 640, list: 760, form: 560 };
+export const LAYOUT_TIERS = { detail: 640, list: 960, form: 560 };
 
 // § 88 unified zones — palette pickable by users for custom callout zones.
 // Amber `#f59e0b` is RESERVED for interactive accent + BigMove default and is
