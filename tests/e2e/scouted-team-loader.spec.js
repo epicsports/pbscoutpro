@@ -25,6 +25,6 @@ test.describe('scouted-team loader', () => {
     // Pre-fix: gate spins forever (no error text) → RED. Post-fix: resolved-but-
     // absent → error state + Retry → GREEN.
     await expect(page.getByTestId('scouted-load-error')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /Retry/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Retry|Ponów/i })).toBeVisible();
   });
 });
