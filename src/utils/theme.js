@@ -85,6 +85,14 @@ export const ZONE_COLORS = {
   snake:  '#22d3ee',   // cyan400 — bottom breakouts
 };
 
+// ── Arc B — <Screen> shell archetype tiers (mockup-5, ratified-by-proof) ──
+// The page-content max-width per archetype, replacing per-page magic numbers.
+//   detail — single-entity profile/detail (= today's 640, no change)
+//   list   — collections/tables; the ONE deliberate desktop delta (640→760)
+//   form   — wizards/config, narrow reading column
+//   canvas screens are NOT here — CanvasRailLayout owns their sizing.
+export const LAYOUT_TIERS = { detail: 640, list: 760, form: 560 };
+
 // § 88 unified zones — palette pickable by users for custom callout zones.
 // Amber `#f59e0b` is RESERVED for interactive accent + BigMove default and is
 // deliberately absent from this list. The first three colors are also the

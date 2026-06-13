@@ -10,6 +10,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Loading } from '../components/ui';
 import { useTournaments } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -108,9 +109,7 @@ export default function ScoutDetailPage() {
   }, [points, uid, matchesByTid, scoutedByTid]);
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
-      <PageHeader back={{ to: '/scouts' }} title={name} subtitle={t('scout_detail_subtitle')} />
-
+    <Screen archetype="detail" header={<PageHeader back={{ to: '/scouts' }} title={name} subtitle={t('scout_detail_subtitle')} />}>
       {loading ? (
         <Loading text={t('scouted_loading')} />
       ) : (
@@ -138,7 +137,7 @@ export default function ScoutDetailPage() {
           )}
         </div>
       )}
-    </div>
+    </Screen>
   );
 }
 
