@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>arc B — FULL width matrix: 5 viewportów × 3 modele × 4 archetypy</title>
+<!--
+  DECISION EVIDENCE v2 (pełna matryca, korekta po desktop-only). Jacek 2026-06-13.
+  4 archetypy (detail / list / form / table) × 5 viewportów §114 × 3 modele szerokości:
+    (a) current   — apka jak jest (device.type-aware: mobile=100%, tablet=768, desktop=1200; touch <1200 => tablet)
+    (b) fixed      — sztywny tier (detail 640 / list 760 / form 560 / table 640)
+    (c) responsive — min(tier, 100% - 32px): tier jako CAP, ale zawsze 16px rynna na małych
+  Render: emulator, hasTouch wierny per-viewport (więc 'current' = realna klasyfikacja urządzenia).
+  Obrazy 'b'/'c' powstały przez ograniczenie szerokości kolumny treści na żywym ekranie (to, co robi <Screen>).
+-->
+<style>
+  body{margin:0;background:#05080f;color:#e2e8f0;font-family:-apple-system,system-ui,'Segoe UI',sans-serif}
+  h1{font-size:19px;padding:18px 22px 4px;margin:0}
+  .lede{color:#94a3b8;font-size:12.5px;padding:0 22px 12px;max-width:1000px;line-height:1.5}
+  .key{margin:0 22px 14px;padding:10px 14px;background:#0d1320;border:1px solid #2a3548;border-radius:10px;font-size:12px;color:#94a3b8;max-width:1000px;line-height:1.6}
+  .key b{color:#e2e8f0}
+  .flag{color:#fbbf24}
+  h2{font-size:16px;margin:22px 22px 2px;padding-top:14px;border-top:1px solid #1a2234}
+  h2 span{color:#64748b;font-weight:500;font-size:12px}
+  .grid{display:grid;grid-template-columns:90px repeat(3,1fr);gap:8px;padding:10px 22px 8px;align-items:start}
+  .hcell{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#94a3b8;position:sticky;top:0;padding-bottom:4px}
+  .hcell.b{color:#f59e0b}.hcell.c{color:#22d3ee}
+  .vlabel{font-size:11px;font-weight:700;color:#94a3b8;padding-top:6px}
+  .vlabel small{display:block;color:#64748b;font-weight:500;font-size:10px}
+  .cell img{width:100%;border:1px solid #2a3548;border-radius:6px;display:block;background:#0a0e17}
+  .tp{outline:2px solid #fbbf24;outline-offset:2px;border-radius:8px}
+</style>
+</head>
+<body>
+<h1>arc B — pełna matryca szerokości</h1>
+<p class="lede">Telefon się nie zmienia (diff=0 udowodnione). Decyzja dotyczy desktopu/tabletu. Poniżej każdy archetyp na 5 viewportach × 3 modele.
+<span class="flag">Tablet-portrait obwiedziony na żółto</span> — Twoje podejrzenie: sztywny tier (b) wypada PONIŻEJ naturalnej szerokości tabletu.</p>
+<div class="key">
+  <b>(a) current</b> — apka dziś: mobile=100%, tablet=768, desktop=1200 (touch &lt;1200 ⇒ tablet, więc tablet-L i phone-L też = 768). &nbsp;
+  <b>(b) fixed</b> — sztywny tier (detail/table 640 · list 760 · form 560). &nbsp;
+  <b>(c) responsive</b> — <code>min(tier, 100%−32px)</code>: tier jako sufit, 16px rynna zawsze (na telefonie ≈ pełna szerokość z marginesem, na tablecie = tier jeśli mniejszy niż ekran).<br>
+  <b class="flag">Kluczowa obserwacja tablet-P (834):</b> current=768 (ciasne marginesy), fixed-640 = ~97px marginesu z każdej strony (kolumna wyraźnie węższa, „pływa"). (c) responsive na tablet-P = też 640 (bo tier &lt; ekran) — więc dla DETAIL na tablecie (b) i (c) wychodzą tak samo wąsko; (c) ratuje głównie telefon (rynna zamiast edge-to-edge). To jest sedno wyboru.
+</div>
+
+<div id="sheet"></div>
+<script>
+  const ARCH = [
+    { key:'detail', label:'DETAIL — TeamDetailPage', tier:640 },
+    { key:'list',   label:'LIST — PlayersPage',       tier:760 },
+    { key:'form',   label:'FORM — LayoutWizardPage',  tier:560 },
+    { key:'table',  label:'TABLE — LayoutAnalyticsPage', tier:640 },
+  ];
+  const VPS = [
+    { key:'phone-p',  label:'phone-P',  sub:'414×896' },
+    { key:'phone-l',  label:'phone-L',  sub:'896×414 (=tablet)' },
+    { key:'tablet-p', label:'tablet-P', sub:'834×1112', flag:true },
+    { key:'tablet-l', label:'tablet-L', sub:'1112×834 (touch=tablet)' },
+    { key:'desktop',  label:'desktop',  sub:'1440×900' },
+  ];
+  const MODELS = [['a-current','current','hcell'],['b-fixed','fixed tier','hcell b'],['c-responsive','responsive','hcell c']];
+  const root = document.getElementById('sheet');
+  for (const a of ARCH) {
+    const h = document.createElement('h2');
+    h.innerHTML = a.label + ' <span>· tier ' + a.tier + 'px</span>';
+    root.appendChild(h);
+    const g = document.createElement('div'); g.className = 'grid';
+    g.innerHTML = '<div class="hcell"></div>' + MODELS.map(m => '<div class="'+m[2]+'">'+m[1]+'</div>').join('');
+    for (const v of VPS) {
+      g.innerHTML += '<div class="vlabel">'+v.label+'<small>'+v.sub+'</small></div>'
+        + MODELS.map(m => '<div class="cell"><img class="'+(v.flag?'tp':'')+'" loading="lazy" src="matrix/'+a.key+'-'+v.key+'-'+m[0]+'.png" alt="'+a.key+' '+v.key+' '+m[0]+'"></div>').join('');
+    }
+    root.appendChild(g);
+  }
+</script>
+</body>
+</html>
