@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-13 — [HOTFIX] training quick-log crash ("can't find variable t")
+**HEAD `0e50625a`.** **App-only.** Tier 1 (regression fix). Functional **61 green**. Revert: `git revert 0e50625a`.
+- **Crash (Jacek):** training matchup → Quick › → ReferenceError. `PlayerTileGrid` is a MODULE-LEVEL sub-component in `QuickLogView.jsx` (outside the main component's `const { t }` scope); the i18n regression-sweep added `t('quicklog_win_label')` at line 927 without giving it its own `useLanguage()` → threw on the player-pick render. Fix = `const { t } = useLanguage()` in PlayerTileGrid.
+- **Why it escaped:** the QuickLogView quick-log path had ZERO e2e coverage (log-point covers MatchPage only). Added `quicklog-render.spec.js` (fail-first verified RED on revert) via the training matchup → Quick › CTA.
+- **Follow-up (`605a65f3`, same deploy session):** repo-wide scan for the class (a scope calling `t()` with no `t` in it) found **2 more latent crashes**, both fixed: **CoachTabContent** (tournament coach tab — no `useLanguage` at all, `t()` ×4) and **ShotMenuOverlay** (ShotDrawer precision-shot menu — module-level sub-component, B13 added `t('b13_delete_shot')` without a hook). 3 other scan hits are false positives (receive `t` as a prop). **Owed: Jacek smoke** — training matchup → Quick → player grid + WIN labels · tournament Coach tab renders · precision-shot tap → delete menu.
+
 ## 2026-06-13 — [feature] Hitability track-mode per-target shot sheet (Jacek-requested)
 **HEAD `f2a122da`.** **App-only.** Tier 1.5 (propagation of the approved STEP-2 long-press gesture). Functional suite **60 green**; all 5 hitability specs green. Revert: `git revert f2a122da`.
 - **Problem (Jacek):** in tracking, the rail's flat all-hits list is very hard to navigate to undo a specific target's mis-recorded shots. A plain tap can't open a list — tap IS the record gesture.
