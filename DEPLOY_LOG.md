@@ -1,5 +1,10 @@
 # Deploy Log
 
+## 2026-06-13 — [arc-B migration] admin batch: AdminLayouts/Leagues/Players/Teams → <Screen> (list 960)
+**HEAD `8970f312`** (merge; feature `dc93601b`). **App-only** (+ e2e seed fixture). Tier 1 by-proof. Migration diff gate **8/8** (phone 414 + tablet 768 = 0 for all 4). Revert: `git revert 8970f312`. **11/~18 migrated.** Desktop caps to list tier 960 (AdminLayouts was 1200; the 3 bare-`<>`-fragment pages were uncapped). Register row added.
+- **Harness unblock (reusable):** super_admin is a deliberate demo-ws **non-member** (layout-globalization rules-proof) → it hit the "Konto utworzone, admin must add you to a workspace" gate and never rendered AppShell, so the admin UI was unreachable in e2e. Fix = isolated single-member workspace **`admin-ws`** + `defaultWorkspace` for super in `seed-emulator.cjs` (the demo-ws non-member invariant is **untouched** — separate ws). Admin pages read GLOBAL collections, so content is workspace-independent → pixel-deterministic. Harness logs in as `SUPER_ACCOUNT` with `ws: ADMIN_WS`. Unblocks ALL future admin-UI e2e, not just this migration.
+- AdminLayouts = clean R.layout+flex-column shell (`padBottom={false}`, flex preserved via `style`); the 3 others = bare `<>` fragments → PageHeader moved to `header={}`, `padBottom={false}` (inner div already had `paddingBottom:80`). **Owed: Jacek smoke** — the 4 admin pages on desktop (now 960-capped) vs phone/tablet (unchanged).
+
 ## 2026-06-13 — [arc-B migration] MembersPage + TrainingResultsPage → <Screen> (list 960)
 **HEAD `68a86ae1`.** **App-only.** Tier 1 by-proof. Functional **61 green**; migration diff gate **14/14** (phone+tablet=0). Revert: `git revert 68a86ae1`. **7/~18 migrated.** UserDetailPage attempted but DEFERRED — 68px content noise (async profile load) blocked a clean phone/tablet 0; needs a deterministic wait or content-mask (flagged in NEXT_TASKS). Desktop register row added.
 
