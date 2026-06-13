@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-13 — [feature] Hitability track-mode per-target shot sheet (Jacek-requested)
+**HEAD `f2a122da`.** **App-only.** Tier 1.5 (propagation of the approved STEP-2 long-press gesture). Functional suite **60 green**; all 5 hitability specs green. Revert: `git revert f2a122da`.
+- **Problem (Jacek):** in tracking, the rail's flat all-hits list is very hard to navigate to undo a specific target's mis-recorded shots. A plain tap can't open a list — tap IS the record gesture.
+- **Fix:** long-press a target in track mode → a bottom sheet (`target-shot-sheet`) of just THAT target's shots, each with `×` delete. Reuses `hitsForTarget` + `delHit` + the HitList row idiom + ActionSheet scrim/slide. `HitabilityCanvas` long-press arming moved out of the config-only early-return (drag stays config-only; the existing `longFired` guard suppresses tap-record so a hold never also records). i18n `hitability_target_shots_*` (pl+en). Isolated `TRN_HIT_TRACK` fixture + e2e (record→long-press→delete→count drops).
+- **Owed: Jacek smoke** — track mode, tap target to record, **long-press the target** → its shot list → delete → count drops. **Discoverability note:** the trigger is long-press (consistent with the config-mode editor); no on-screen hint added — say the word and I'll add a track-hint line ("przytrzymaj cel = lista strzałów").
+
 ## 2026-06-13 — [autonomous] i18n B13 residual-EN + arc-C motion infra (DARK) + 23-key dedup
 **HEAD `bde2fcf7`.** **App + tooling.** Tier 1 / flag-OFF. Functional **59 green**, unit **8 green**, pixel-diff **3/3**. Revert: the individual merge/commits. Autonomous block (Jacek driving; width decision held; everything else full speed).
 - **i18n B13** — residual hardcoded-EN: the EN-literal guard's 69 warnings → **5** (the 5 remaining are intentional: 2 Polish misidentified, 3 dev-facing admin-doc strings). 48 keys, 29 files; SearchField/StageSwitcher/AdminLayouts gained `useLanguage`. extraction/translation split + register row.
