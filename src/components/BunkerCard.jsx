@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { Btn, Input, Icons, Checkbox } from './ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, POSITION_NAMES, POSITION_TYPE_SUGGEST, guessType } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 import { getBunkerSide } from '../utils/helpers';
 
 const BUNKER_TYPES = [
@@ -113,6 +114,7 @@ function PairIndicator({ side, isSingle }) {
 }
 
 export default function BunkerCard({ bunker, isNew, position, mirror = true, doritoSide = 'top', onSave, onDelete, onClose }) {
+  const { t } = useLanguage();
   const [positionName, setPositionName] = useState('');
   const [type, setType] = useState('Br');
   const [doMirror, setDoMirror] = useState(mirror);
@@ -165,19 +167,19 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, dor
       <Sheet onClose={onClose}>
         <PairIndicator side={side} isSingle={isCenterSingle} />
         <div style={{ fontFamily: FONT, fontWeight: 700, fontSize: TOUCH.fontBase, color: COLORS.text, marginBottom: SPACE.sm }}>
-          Snake Beam
+          {t('bunker_card_snake_beam')}
         </div>
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.md }}>
-          Structural cover. Affects ballistics only.
+          {t('bunker_card_structural_cover')}
         </div>
         <div style={{ display: 'flex', gap: SPACE.sm }}>
           {onDelete && (
             <Btn variant="ghost" onClick={() => { onDelete(bunker); onClose(); }} style={{ color: COLORS.danger }}>
-              <Icons.Trash /> Delete
+              <Icons.Trash /> {t('delete')}
             </Btn>
           )}
           <div style={{ flex: 1 }} />
-          <Btn variant="default" onClick={onClose}>Close</Btn>
+          <Btn variant="default" onClick={onClose}>{t('close')}</Btn>
         </div>
       </Sheet>
     );
@@ -194,7 +196,7 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, dor
       {/* Position pills */}
       <div style={{ marginBottom: SPACE.sm }}>
         <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: SPACE.xs }}>
-          Position name
+          {t('bunker_card_position_name')}
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {sideNames.map(n => (
@@ -216,7 +218,7 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, dor
               border: `1px dashed ${COLORS.border}`, color: COLORS.textMuted,
               background: customInput ? COLORS.surfaceLight : 'transparent',
             }}>
-            + Custom
+            {t('bunker_card_custom')}
           </div>
         </div>
         {customInput && (
@@ -246,7 +248,7 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, dor
 
       {/* Mirror checkbox (new bunkers only) */}
       {isNew && (
-        <Checkbox label="Mirror (add symmetric bunker)" checked={doMirror} onChange={setDoMirror} style={{ marginBottom: SPACE.sm }} />
+        <Checkbox label={t('bunker_card_mirror_label')} checked={doMirror} onChange={setDoMirror} style={{ marginBottom: SPACE.sm }} />
       )}
 
       {/* Actions */}
@@ -257,9 +259,9 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, dor
           </Btn>
         )}
         <div style={{ flex: 1 }} />
-        <Btn variant="default" onClick={onClose}>Cancel</Btn>
+        <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
         <Btn variant="accent" onClick={handleSave}>
-          <Icons.Check /> Done
+          <Icons.Check /> {t('done')}
         </Btn>
       </div>
     </Sheet>

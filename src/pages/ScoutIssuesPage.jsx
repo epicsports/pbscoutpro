@@ -14,16 +14,18 @@ import { useTournaments } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, SPACE } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 import { computeScoutIssues } from '../utils/scoutStats';
 
 const TYPES = [
-  { key: 'shots', label: 'Missing shots', icon: '🎯' },
-  { key: 'assignments', label: 'Missing player assignments', icon: '👥' },
-  { key: 'runners', label: 'No runners flagged', icon: '🏃' },
-  { key: 'eliminations', label: 'No eliminations marked', icon: '💀' },
+  { key: 'shots',        label: 'Missing shots',              labelKey: 'scout_issues_type_shots',        icon: '🎯' },
+  { key: 'assignments',  label: 'Missing player assignments',  labelKey: 'scout_issues_type_assignments',  icon: '👥' },
+  { key: 'runners',      label: 'No runners flagged',          labelKey: 'scout_issues_type_runners',      icon: '🏃' },
+  { key: 'eliminations', label: 'No eliminations marked',      labelKey: 'scout_issues_type_eliminations', icon: '💀' },
 ];
 
 export default function ScoutIssuesPage() {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { user } = useWorkspace();
   const uid = user?.uid;
@@ -75,28 +77,28 @@ export default function ScoutIssuesPage() {
   if (!uid) {
     return (
       <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto' }}>
-        <PageHeader back={{ to: '/' }} title="My scouting TODO" />
-        <EmptyState icon="🔒" text="Sign in to see your scouting TODO" />
+        <PageHeader back={{ to: '/' }} title={t('scout_issues_title')} />
+        <EmptyState icon="🔒" text={t('scout_issues_sign_in')} />
       </div>
     );
   }
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
-      <PageHeader back={{ to: '/' }} title="My scouting TODO" subtitle="MISSING DATA" />
+      <PageHeader back={{ to: '/' }} title={t('scout_issues_title')} subtitle={t('scout_issues_subtitle')} />
       {loading ? (
-        <Loading text="Scanning your points..." />
+        <Loading text={t('loading')} />
       ) : totalIssues === 0 ? (
-        <EmptyState icon="✓" text="All caught up" subtitle="No missing data in the points you scouted." />
+        <EmptyState icon="✓" text={t('scout_issues_all_caught_up')} subtitle="No missing data in the points you scouted." />
       ) : (
         <div style={{ padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
-          {TYPES.map(t => {
-            const list = issues[t.key] || [];
+          {TYPES.map(type => {
+            const list = issues[type.key] || [];
             if (!list.length) return null;
             const groupedByMatch = groupByMatch(list);
             return (
-              <div key={t.key}>
-                <SectionHeader icon={t.icon} label={t.label} count={list.length} />
+              <div key={type.key}>
+                <SectionHeader icon={type.icon} label={t(type.labelKey)} count={list.length} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {groupedByMatch.map(({ key, items }) => {
                     const info = matchMeta[key] || {};
@@ -106,6 +108,7 @@ export default function ScoutIssuesPage() {
                         tournamentName={info.tournamentName}
                         matchName={info.matchName}
                         items={items}
+                        t={t}
                         onJump={(item) => navigate(
                           `/tournament/${item.tournamentId}/match/${item.matchId}?point=${item.pointId}`
                         )}
@@ -157,7 +160,7 @@ function SectionHeader({ icon, label, count }) {
   );
 }
 
-function MatchGroup({ tournamentName, matchName, items, onJump }) {
+function MatchGroup({ tournamentName, matchName, items, onJump, t }) {
   // Collapse multiple issues for the same point into a single chip.
   const byPoint = new Map();
   items.forEach(it => {
@@ -189,7 +192,7 @@ function MatchGroup({ tournamentName, matchName, items, onJump }) {
               fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent,
               cursor: 'pointer', minHeight: 44,
             }}>
-            Point #{idx + 1}
+            {t('scout_issues_point_n', idx + 1)}
           </button>
         ))}
       </div>

@@ -214,7 +214,7 @@ export default function TeamDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: backTo }} title={team.name} subtitle="TEAM PROFILE" />
+      <PageHeader back={{ to: backTo }} title={team.name} subtitle={t('team_detail_subtitle')} />
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* § Team branding — hero mark + subtle brand tint */}
@@ -227,7 +227,7 @@ export default function TeamDetailPage() {
           <TeamBadge team={{ ...team, color: effColor }} size={52} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800, color: COLORS.text, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{team.name}</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{(team.leagues || []).join(' · ') || 'No league'}</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{(team.leagues || []).join(' · ') || t('team_detail_no_league')}</div>
           </div>
         </div>
 
@@ -235,7 +235,7 @@ export default function TeamDetailPage() {
         <div>
           {/* External ID */}
           <div style={{ marginBottom: 12 }}>
-            <SectionLabel>PBLeagues Team ID</SectionLabel>
+            <SectionLabel>{t('team_detail_pbli_id_label')}</SectionLabel>
             <Input
               value={extIdLocal}
               onChange={setExtIdLocal}
@@ -246,7 +246,7 @@ export default function TeamDetailPage() {
 
           {/* § Team branding — brand color picker (super-admin canonical edit) */}
           <div style={{ marginBottom: 12 }}>
-            <SectionLabel>Brand color</SectionLabel>
+            <SectionLabel>{t('team_detail_brand_color_label')}</SectionLabel>
             {/* HSV picker = the brand-color control (preset swatches removed per
                 Jacek 2026-06-06). Live drag = optimistic preview; persists on
                 pointer release / hex blur. */}
@@ -263,12 +263,12 @@ export default function TeamDetailPage() {
                 cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs,
                 color: !isHex(effColor) ? COLORS.accent : COLORS.textDim,
                 WebkitTapHighlightColor: 'transparent',
-              }}>↺ Reset to auto color</div>
+              }}>{t('team_detail_reset_color')}</div>
           </div>
 
           {/* § Team branding Phase 2 — logo URL ref (paste a link; never base64) */}
           <div style={{ marginBottom: 12 }}>
-            <SectionLabel>Team logo (URL)</SectionLabel>
+            <SectionLabel>{t('team_detail_logo_url_label')}</SectionLabel>
             <Input
               value={logoLocal}
               onChange={setLogoLocal}
@@ -277,7 +277,7 @@ export default function TeamDetailPage() {
             />
           </div>
 
-          <SectionLabel>Leagues</SectionLabel>
+          <SectionLabel>{t('team_detail_leagues_label')}</SectionLabel>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {leaguesList.map(L => {
               const l = L.shortName;
@@ -317,10 +317,10 @@ export default function TeamDetailPage() {
               </Btn>
             </div>
           }>
-            Roster ({teamPlayers.length})
+            {t('team_detail_roster_n', teamPlayers.length)}
           </SectionTitle>
 
-          {!teamPlayers.length && <EmptyState icon="?" text="Add players to this team" />}
+          {!teamPlayers.length && <EmptyState icon="?" text={t('team_detail_empty_roster')} />}
 
           {teamPlayers.map(p => (
             <div key={p.id} style={{
@@ -355,8 +355,8 @@ export default function TeamDetailPage() {
                 <span style={{ fontSize: 12, color: p.hero ? COLORS.accent : COLORS.textMuted }}>★</span>
                 <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
               </div>
-              <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title="Edit profile"><Icons.Edit /></Btn>
-              <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title="Remove from team"><Icons.Trash /></Btn>
+              <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
+              <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
             </div>
           ))}
         </div>
@@ -365,13 +365,13 @@ export default function TeamDetailPage() {
         <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, marginTop: 8 }}>
           <Btn variant="ghost" onClick={() => setDeleteModal(true)}
             style={{ color: COLORS.danger, width: '100%', justifyContent: 'center' }}>
-            <Icons.Trash /> Delete team
+            <Icons.Trash /> {t('team_detail_delete_btn')}
           </Btn>
         </div>
       </div>
 
       {/* Add new player (quick form) */}
-      <Modal open={modal.is('addNew')} onClose={() => modal.close()} title="New player"
+      <Modal open={modal.is('addNew')} onClose={() => modal.close()} title={t('team_detail_new_player_title')}
         footer={<>
           <Btn variant="default" onClick={() => modal.close()}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Add</Btn>
@@ -390,7 +390,7 @@ export default function TeamDetailPage() {
       <EntityPickerModal
         open={modal.is('addExisting')}
         onClose={() => modal.close()}
-        title="Add existing player"
+        title={t('team_detail_add_existing_title')}
         items={players}
         fields={['name', 'nickname', 'number']}
         filters={addFilters}
@@ -414,7 +414,7 @@ export default function TeamDetailPage() {
 
       {/* Delete team confirm */}
       <ConfirmModal open={deleteModal} onClose={() => { setDeleteModal(false); setDeletePassword(''); }}
-        title="Delete team?" danger confirmLabel="Delete"
+        title={t('delete_team')} danger confirmLabel={t('delete')}
         message={`"${team.name}" will be removed from your teams. Scouted data is preserved and an admin can restore the team.`}
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={setDeletePassword}

@@ -15,11 +15,13 @@ import { useTournaments } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, SPACE } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 import {
   computeScoutRow, computeMatchCompleteness, compositeColor, scoutStars,
 } from '../utils/scoutStats';
 
 export default function ScoutDetailPage() {
+  const { t } = useLanguage();
   const { uid } = useParams();
   const { tournaments } = useTournaments();
   const [points, setPoints] = useState([]);
@@ -107,15 +109,15 @@ export default function ScoutDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
-      <PageHeader back={{ to: '/scouts' }} title={name} subtitle="SCOUT PROFILE" />
+      <PageHeader back={{ to: '/scouts' }} title={name} subtitle={t('scout_detail_subtitle')} />
 
       {loading ? (
-        <Loading text="Loading scouted points..." />
+        <Loading text={t('scouted_loading')} />
       ) : (
         <div style={{ padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
-          <SummaryCard row={row} stars={scoutStars(row.composite)} />
+          <SummaryCard row={row} stars={scoutStars(row.composite)} t={t} />
           {matchProgression.length > 0 && (
-            <Section title="Match progression">
+            <Section title={t('scout_detail_section_progression')}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {matchProgression.map(m => (
                   <ProgressRow key={m.key} label={m.label} pct={m.pct} />
@@ -124,13 +126,13 @@ export default function ScoutDetailPage() {
             </Section>
           )}
           {row.points > 0 && (
-            <Section title="Per-section breakdown">
+            <Section title={t('scout_detail_section_breakdown')}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <MicroBar label="Breaks" pct={row.breakPct} />
-                <MicroBar label="Shots" pct={row.shotPct} />
-                <MicroBar label="Assignments" pct={row.assignPct} />
-                <MicroBar label="Runners flagged" pct={row.runnerPct} />
-                <MicroBar label="Eliminations" pct={row.elimPct} />
+                <MicroBar label={t('scout_detail_breaks')} pct={row.breakPct} />
+                <MicroBar label={t('scout_detail_shots')} pct={row.shotPct} />
+                <MicroBar label={t('scout_detail_assignments')} pct={row.assignPct} />
+                <MicroBar label={t('scout_detail_runners_flagged')} pct={row.runnerPct} />
+                <MicroBar label={t('scout_detail_eliminations')} pct={row.elimPct} />
               </div>
             </Section>
           )}
@@ -153,7 +155,7 @@ function findOpponentScoutedId(match, pts, uid) {
   return null;
 }
 
-function SummaryCard({ row, stars }) {
+function SummaryCard({ row, stars, t }) {
   const color = compositeColor(row.composite);
   return (
     <div style={{
@@ -165,17 +167,17 @@ function SummaryCard({ row, stars }) {
         <div style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted,
           letterSpacing: 0.4, textTransform: 'uppercase',
-        }}>Volume</div>
+        }}>{t('scout_detail_volume')}</div>
         <div style={{
           fontFamily: FONT, fontSize: 22, fontWeight: 800, color: COLORS.text,
           letterSpacing: '-0.02em', marginTop: 2,
         }}>
-          {row.points}<span style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}> pts</span>
+          {row.points}<span style={{ fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>{t('scout_detail_pts_suffix')}</span>
         </div>
         <div style={{
           fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
         }}>
-          {row.matches} match{row.matches === 1 ? '' : 'es'} · {row.tournaments} tournament{row.tournaments === 1 ? '' : 's'}
+          {t('scout_detail_matches_n', row.matches)} · {t('scout_detail_tournaments_n', row.tournaments)}
         </div>
       </div>
       <div style={{
@@ -185,7 +187,7 @@ function SummaryCard({ row, stars }) {
         <div style={{
           fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted,
           letterSpacing: 0.4, textTransform: 'uppercase',
-        }}>Quality</div>
+        }}>{t('scout_detail_quality')}</div>
         <div style={{
           fontFamily: FONT, fontSize: 22, fontWeight: 800, color,
           letterSpacing: '-0.02em', marginTop: 2,

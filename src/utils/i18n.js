@@ -1482,6 +1482,56 @@ const T = {
     scouted_layer_collapse:   '⇱ Zwiń',
     /* QuickLogView */
     quicklog_no_players:      'Brak graczy w składzie',
+
+    /* ─── B9 detail pages ───────────────────────────────── */
+    /* TeamDetailPage */
+    team_detail_subtitle:           'TEAM PROFILE',
+    team_detail_no_league:          'No league',
+    team_detail_pbli_id_label:      'PBLeagues Team ID',
+    team_detail_brand_color_label:  'Brand color',
+    team_detail_reset_color:        '↺ Reset to auto color',
+    team_detail_logo_url_label:     'Team logo (URL)',
+    team_detail_leagues_label:      'Leagues',
+    team_detail_roster_n:           (n) => `Roster (${n})`,
+    team_detail_empty_roster:       'Add players to this team',
+    team_detail_new_player_title:   'New player',
+    team_detail_add_existing_title: 'Add existing player',
+    team_detail_edit_profile_title: 'Edit profile',
+    team_detail_remove_title:       'Remove from team',
+    team_detail_delete_btn:         'Delete team',
+
+    /* ScoutDetailPage */
+    scout_detail_subtitle:          'SCOUT PROFILE',
+    scout_detail_section_progression: 'Match progression',
+    scout_detail_section_breakdown: 'Per-section breakdown',
+    scout_detail_breaks:            'Breaks',
+    scout_detail_shots:             'Shots',
+    scout_detail_assignments:       'Assignments',
+    scout_detail_runners_flagged:   'Runners flagged',
+    scout_detail_eliminations:      'Eliminations',
+    scout_detail_volume:            'Volume',
+    scout_detail_quality:           'Quality',
+    scout_detail_pts_suffix:        ' pts',
+    scout_detail_matches_n:         (n) => `${n} match${n === 1 ? '' : 'es'}`,
+    scout_detail_tournaments_n:     (n) => `${n} tournament${n === 1 ? '' : 's'}`,
+
+    /* ScoutIssuesPage */
+    scout_issues_title:             'My scouting TODO',
+    scout_issues_subtitle:          'MISSING DATA',
+    scout_issues_sign_in:           'Sign in to see your scouting TODO',
+    scout_issues_all_caught_up:     'All caught up',
+    scout_issues_type_shots:        'Missing shots',
+    scout_issues_type_assignments:  'Missing player assignments',
+    scout_issues_type_runners:      'No runners flagged',
+    scout_issues_type_eliminations: 'No eliminations marked',
+    scout_issues_point_n:           (n) => `Point #${n}`,
+
+    /* BunkerCard */
+    bunker_card_snake_beam:         'Snake Beam',
+    bunker_card_structural_cover:   'Structural cover. Affects ballistics only.',
+    bunker_card_position_name:      'Position name',
+    bunker_card_custom:             '+ Custom',
+    bunker_card_mirror_label:       'Mirror (add symmetric bunker)',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2915,6 +2965,56 @@ const T = {
     scouted_layer_collapse:   '⇱ Collapse',
     /* QuickLogView */
     quicklog_no_players:      'No players in this squad',
+
+    /* ─── B9 detail pages ───────────────────────────────── */
+    /* TeamDetailPage */
+    team_detail_subtitle:           'TEAM PROFILE',
+    team_detail_no_league:          'No league',
+    team_detail_pbli_id_label:      'PBLeagues Team ID',
+    team_detail_brand_color_label:  'Brand color',
+    team_detail_reset_color:        '↺ Reset to auto color',
+    team_detail_logo_url_label:     'Team logo (URL)',
+    team_detail_leagues_label:      'Leagues',
+    team_detail_roster_n:           (n) => `Roster (${n})`,
+    team_detail_empty_roster:       'Add players to this team',
+    team_detail_new_player_title:   'New player',
+    team_detail_add_existing_title: 'Add existing player',
+    team_detail_edit_profile_title: 'Edit profile',
+    team_detail_remove_title:       'Remove from team',
+    team_detail_delete_btn:         'Delete team',
+
+    /* ScoutDetailPage */
+    scout_detail_subtitle:          'SCOUT PROFILE',
+    scout_detail_section_progression: 'Match progression',
+    scout_detail_section_breakdown: 'Per-section breakdown',
+    scout_detail_breaks:            'Breaks',
+    scout_detail_shots:             'Shots',
+    scout_detail_assignments:       'Assignments',
+    scout_detail_runners_flagged:   'Runners flagged',
+    scout_detail_eliminations:      'Eliminations',
+    scout_detail_volume:            'Volume',
+    scout_detail_quality:           'Quality',
+    scout_detail_pts_suffix:        ' pts',
+    scout_detail_matches_n:         (n) => `${n} match${n === 1 ? '' : 'es'}`,
+    scout_detail_tournaments_n:     (n) => `${n} tournament${n === 1 ? '' : 's'}`,
+
+    /* ScoutIssuesPage */
+    scout_issues_title:             'My scouting TODO',
+    scout_issues_subtitle:          'MISSING DATA',
+    scout_issues_sign_in:           'Sign in to see your scouting TODO',
+    scout_issues_all_caught_up:     'All caught up',
+    scout_issues_type_shots:        'Missing shots',
+    scout_issues_type_assignments:  'Missing player assignments',
+    scout_issues_type_runners:      'No runners flagged',
+    scout_issues_type_eliminations: 'No eliminations marked',
+    scout_issues_point_n:           (n) => `Point #${n}`,
+
+    /* BunkerCard */
+    bunker_card_snake_beam:         'Snake Beam',
+    bunker_card_structural_cover:   'Structural cover. Affects ballistics only.',
+    bunker_card_position_name:      'Position name',
+    bunker_card_custom:             '+ Custom',
+    bunker_card_mirror_label:       'Mirror (add symmetric bunker)',
   },
 };
 
