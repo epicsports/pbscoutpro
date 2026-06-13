@@ -583,10 +583,10 @@ export default function LayoutAnalyticsPage() {
                 <thead>
                   <tr style={{ position: 'sticky', top: 0, background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}` }}>
                     <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>#</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>Tournament</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>Match</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>{t('layout_analytics_col_tournament')}</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>{t('layout_analytics_col_match')}</th>
                     <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>Pt</th>
-                    <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>Side</th>
+                    <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>{t('layout_analytics_col_side')}</th>
                     <th style={{ padding: '6px 8px', textAlign: 'center', color: COLORS.textMuted, fontWeight: 600 }}>P#</th>
                     <th style={{ padding: '6px 8px', textAlign: 'left', color: COLORS.textMuted, fontWeight: 600 }}>{t('deaths_col_shooter_pos')}</th>
                   </tr>

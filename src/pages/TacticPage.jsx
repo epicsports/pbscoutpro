@@ -397,7 +397,7 @@ export default function TacticPage() {
 
   // ── Navigation ──
   const backTo = isLayoutMode ? `/layout/${layoutId}` : '/';
-  const backLabel = isLayoutMode ? 'Layout' : 'Home';
+  const backLabel = isLayoutMode ? t('tactic_back_layout') : t('tactic_back_home');
 
   // ── Auto-print when ?print=1 ──
   useEffect(() => {
@@ -424,7 +424,7 @@ export default function TacticPage() {
     if (stillLoading) {
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ fontFamily: FONT, color: COLORS.textMuted }}>Loading...</div>
+          <div style={{ fontFamily: FONT, color: COLORS.textMuted }}>{t('tactic_loading')}</div>
         </div>
       );
     }
@@ -432,11 +432,11 @@ export default function TacticPage() {
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <EmptyState
           icon="⚠️"
-          text="Couldn't load this tactic"
-          subtitle="It may have been removed, or the data didn't load. Try again."
+          text={t('tactic_not_found')}
+          subtitle={t('tactic_not_found_sub')}
         />
         <div style={{ textAlign: 'center', marginTop: 4 }}>
-          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>{t('match_retry')}</Btn>
         </div>
       </div>
     );
@@ -666,16 +666,16 @@ export default function TacticPage() {
         }}] : []),
         { label: 'Print', onPress: () => window.print() },
         { separator: true },
-        { label: 'Delete tactic', danger: true, onPress: () => setDeleteModal(true) },
+        { label: t('tactic_delete_action'), danger: true, onPress: () => setDeleteModal(true) },
       ]} />
 
       {/* ═══ RENAME MODAL ═══ */}
-      <Modal open={renameModal} onClose={() => setRenameModal(false)} title="Rename tactic"
+      <Modal open={renameModal} onClose={() => setRenameModal(false)} title={t('tactic_rename_modal_title')}
         footer={<>
           <Btn variant="default" onClick={() => setRenameModal(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleRename} disabled={!newName.trim()}><Icons.Check /> Save</Btn>
         </>}>
-        <Input value={newName} onChange={setNewName} placeholder="Tactic name" autoFocus
+        <Input value={newName} onChange={setNewName} placeholder={t('tactic_name_placeholder')} autoFocus
           onKeyDown={e => e.key === 'Enter' && handleRename()} />
       </Modal>
 
