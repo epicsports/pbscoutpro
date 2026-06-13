@@ -3,6 +3,7 @@ import { Btn, Input, Select, Icons, Modal } from './ui';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 import { playerOnTeam } from '../utils/playerTeams';
 import { STATIC_FLAGS } from '../utils/featureFlags';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * ScheduleImport — OCR-based tournament schedule import
@@ -47,6 +48,7 @@ function findBestMatch(name, teams) {
 }
 
 export default function ScheduleImport({ open, onClose, tournament, teams, scouted, players, ds, tournamentId }) {
+  const { t } = useLanguage();
   const [step, setStep] = useState('upload'); // upload | processing | review | importing | done
   const [apiKey, setApiKey] = useState(getApiKey());
   const [showKeyInput, setShowKeyInput] = useState(!getApiKey());
@@ -324,14 +326,14 @@ Rules:
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title="📋 Import schedule from image">
+    <Modal open={open} onClose={onClose} title={t('schedule_import_title')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {/* API key setup */}
         {showKeyInput && (
           <div style={{ padding: 10, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginBottom: 6 }}>
-              Anthropic API key (saved in browser)
+              {t('schedule_import_api_key_label')}
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <Input value={apiKey} onChange={setApiKey} placeholder="sk-ant-..." style={{ flex: 1, fontSize: TOUCH.fontSm }} />
@@ -344,8 +346,8 @@ Rules:
 
         {!showKeyInput && apiKey && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.success }}>✅ API key set</span>
-            <Btn variant="ghost" size="sm" onClick={() => setShowKeyInput(true)} style={{ fontSize: TOUCH.fontXs }}>Change</Btn>
+            <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.success }}>{t('schedule_import_api_key_set')}</span>
+            <Btn variant="ghost" size="sm" onClick={() => setShowKeyInput(true)} style={{ fontSize: TOUCH.fontXs }}>{t('schedule_import_change')}</Btn>
           </div>
         )}
 
@@ -376,8 +378,8 @@ Rules:
         {step === 'processing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>🔄</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Claude is reading the schedule...</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginTop: 6 }}>This may take a few seconds</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>{t('schedule_import_reading')}</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, marginTop: 6 }}>{t('schedule_import_reading_sub')}</div>
           </div>
         )}
 
@@ -387,7 +389,7 @@ Rules:
             {/* Meta info */}
             {ocrResult.meta && (
               <div style={{ padding: 10, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', marginBottom: 4 }}>Tournament data</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', marginBottom: 4 }}>{t('schedule_import_tournament_data')}</div>
                 {ocrResult.meta.event && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text }}>{ocrResult.meta.event}</div>}
                 {ocrResult.meta.division && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Division: {ocrResult.meta.division}</div>}
                 {ocrResult.meta.location && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📍 {ocrResult.meta.location}</div>}
@@ -398,7 +400,7 @@ Rules:
 
             {/* Team mapping — global (per unique team name) */}
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.accent }}>
-              Map teams ({uniqueTeamNames.length}):
+              {t('schedule_import_map_teams', uniqueTeamNames.length)}
             </div>
             {uniqueTeamNames.map(name => {
               const currentMapping = teamMappingState[name];
@@ -432,7 +434,7 @@ Rules:
 
             {/* Match list preview */}
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginTop: 8 }}>
-              {mappings.length} matches to import
+              {t('schedule_import_matches_n', mappings.length)}
             </div>
             <div style={{ maxHeight: 150, overflowY: 'auto', fontSize: TOUCH.fontXs, fontFamily: FONT, color: COLORS.textMuted }}>
               {mappings.map((m, i) => (
@@ -445,10 +447,10 @@ Rules:
             {error && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger }}>{error}</div>}
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="default" onClick={() => { setStep('upload'); setParsedMatches([]); }}>← Back</Btn>
+              <Btn variant="default" onClick={() => { setStep('upload'); setParsedMatches([]); }}>{t('back')}</Btn>
               <Btn variant="accent" onClick={handleImport} disabled={!allMapped || importing}
                 style={{ flex: 1, justifyContent: 'center', minHeight: 48 }}>
-                <Icons.Check /> Import {mappings.length} matches
+                <Icons.Check /> {t('schedule_import_do_import', mappings.length)}
               </Btn>
             </div>
           </>
@@ -458,7 +460,7 @@ Rules:
         {step === 'importing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>Importing...</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text }}>{t('schedule_import_importing')}</div>
           </div>
         )}
 
@@ -466,12 +468,12 @@ Rules:
         {step === 'done' && (
           <>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, fontWeight: 700, color: COLORS.success }}>
-              ✅ Import complete
+              {t('schedule_import_done')}
             </div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
               {importLog.map((l, i) => <div key={i}>{l}</div>)}
             </div>
-            <Btn variant="accent" onClick={onClose} style={{ justifyContent: 'center' }}>Close</Btn>
+            <Btn variant="accent" onClick={onClose} style={{ justifyContent: 'center' }}>{t('close')}</Btn>
           </>
         )}
       </div>

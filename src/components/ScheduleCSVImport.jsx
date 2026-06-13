@@ -4,6 +4,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH } from '../utils/theme';
 import { playerOnTeam } from '../utils/playerTeams';
 import { resolveScheduleDivision, parseScheduleDateTime } from '../utils/divisionAliases';
 import { useAllLeagues } from '../hooks/useLeagues';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * ScheduleCSVImport — alternative input to the tournament schedule pipeline.
@@ -146,6 +147,7 @@ function findNameMatches(name, teams) {
 }
 
 export default function ScheduleCSVImport({ open, onClose, tournaments, teams, scouted, players, ds }) {
+  const { t } = useLanguage();
   const [step, setStep] = useState('upload'); // upload | resolve | importing | done
   const [tournamentId, setTournamentId] = useState('');
   const [parseError, setParseError] = useState('');
@@ -498,8 +500,8 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         });
         written++;
       }
-      log.push(`✅ Zapisano: ${written} meczów · drużyny dodane: ${scoutedCreated}${taggedTeams ? ` · oznaczone w lidze: ${taggedTeams}` : ''}${scoutedFailed ? ` · drużyn nie udało się dodać: ${scoutedFailed}` : ''}`);
-      if (skipped) log.push(`⚠ Pominięto: ${skipped} meczów (drużyna oznaczona jako skip lub niepowodzenie dodania)`);
+      log.push(t('schedule_csv_import_log_saved', written, scoutedCreated, taggedTeams, scoutedFailed));
+      if (skipped) log.push(t('schedule_csv_import_log_skipped', skipped));
       setImportLog(log);
       setStep('done');
     } catch (e) {
@@ -513,7 +515,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={() => { reset(); onClose(); }} title="📅 Import harmonogramu (CSV)">
+    <Modal open={open} onClose={() => { reset(); onClose(); }} title={t('schedule_csv_import_title')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {/* ─── Step: Upload ─────────────────────────────────────────── */}
@@ -526,7 +528,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
 
             <div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: 4 }}>
-                Turniej:
+                {t('schedule_csv_import_tournament_label')}
               </div>
               <Select value={tournamentId} onChange={setTournamentId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
                 <option value="">— wybierz turniej —</option>
@@ -536,7 +538,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
               </Select>
               {!leagueTournaments.length && (
                 <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.danger, marginTop: 4 }}>
-                  Brak turniejów z przypisaną ligą. Utwórz turniej najpierw.
+                  {t('schedule_csv_import_no_tournaments')}
                 </div>
               )}
             </div>
@@ -637,11 +639,11 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
             )}
 
             <div style={{ display: 'flex', gap: 8 }}>
-              <Btn variant="default" onClick={() => { setStep('upload'); }}>← Wstecz</Btn>
+              <Btn variant="default" onClick={() => { setStep('upload'); }}>{t('back')}</Btn>
               <Btn variant="accent" onClick={handleImport}
                 disabled={!allResolved || importing}
                 style={{ flex: 1, justifyContent: 'center', minHeight: 48 }}>
-                <Icons.Check /> Zaimportuj {previewStats.willWrite} meczów
+                <Icons.Check /> {t('schedule_csv_import_do_import', previewStats.willWrite)}
               </Btn>
             </div>
           </>
@@ -651,7 +653,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         {step === 'importing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.text }}>Importowanie...</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.text }}>{t('schedule_csv_import_importing')}</div>
           </div>
         )}
 
@@ -659,13 +661,13 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         {step === 'done' && (
           <>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.success }}>
-              ✅ Import zakończony
+              {t('schedule_csv_import_done')}
             </div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, maxHeight: 240, overflowY: 'auto' }}>
               {importLog.map((l, i) => <div key={i}>{l}</div>)}
             </div>
             <Btn variant="accent" onClick={() => { reset(); onClose(); }} style={{ justifyContent: 'center' }}>
-              Zamknij
+              {t('close')}
             </Btn>
           </>
         )}
