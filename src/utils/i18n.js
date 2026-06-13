@@ -1482,6 +1482,59 @@ const T = {
     scouted_layer_collapse:   '⇱ Zwiń',
     /* QuickLogView */
     quicklog_no_players:      'Brak graczy w składzie',
+
+    /* ─── §B7 LoginPage + PlayerEditModal + MergePlayersModal ─── */
+    /* LoginPage — titles + field labels */
+    login_title_signin:           'Sign in',
+    login_title_register:         'Create account',
+    login_field_email:            'Email',
+    login_field_password:         'Password',
+    login_field_display_name:     'Display name',
+    login_submit_login:           '→ Log in',
+    login_submit_register:        '→ Create account',
+    login_loading:                '⏳ Please wait…',
+    login_switch_to_register:     'Create account',
+    login_switch_to_login:        'Already have an account? Log in',
+    /* LoginPage — offline card */
+    login_offline_title:          "You're offline",
+    login_offline_body:           'Connect to the internet once to sign in. After that your session is saved on this device and the app opens offline — at the venue with no signal.',
+    /* LoginPage — mapAuthError strings */
+    login_auth_err_credentials:   'Invalid email or password.',
+    login_auth_err_invalid_email: 'Please enter a valid email address.',
+    login_auth_err_email_in_use:  'An account with this email already exists.',
+    login_auth_err_weak_password: 'Password must be at least 6 characters.',
+    login_auth_err_network:       'Connection failed, try again.',
+    login_auth_err_too_many:      'Too many attempts. Try again in a moment.',
+    login_auth_err_not_allowed:   'Email/password sign-in is not enabled in Firebase.',
+    login_auth_err_generic:       'Sign in failed. Try again.',
+    /* PlayerEditModal — UI labels (NATIONALITIES values = domain data, left as-is) */
+    player_edit_title_edit:       'Edit player',
+    player_edit_title_new:        'New player',
+    player_edit_photo_label:      'Link do zdjęcia (np. z pbleagues.com)',
+    player_edit_open_pbl:         'Otwórz profil PBL ↗',
+    player_edit_remove_link:      'Usuń link',
+    player_edit_teams_label:      'Teams',
+    player_edit_teams_primary:    '· ★ = primary',
+    player_edit_add_team:         '+ add team…',
+    player_edit_team_history_label: 'Team history',
+    /* MergePlayersModal */
+    merge_title:                  (n) => `Merge ${n} players`,
+    merge_description:            (absorbed) => `Pick the canonical record. For each field, choose which player's value wins. The other ${absorbed === 1 ? 'record will be' : 'records will be'} added to canonical's aliasIds[] and deleted. Team memberships are unioned.`,
+    merge_merging:                'Merging…',
+    merge_confirm_into:           (name) => `Merge into ${name}`,
+    merge_name_locked:            'Name (locked to canonical)',
+    merge_teams_union:            (n) => `Teams — union (${n})`,
+    /* MergePlayersModal — MERGEABLE_FIELDS label keys */
+    merge_field_nickname:         'Nickname',
+    merge_field_number:           'Jersey #',
+    merge_field_photo_url:        'Photo URL',
+    merge_field_class:            'Class',
+    merge_field_nationality:      'Nationality',
+    merge_field_age:              'Age',
+    merge_field_pbli_id:          'PBLI ID',
+    merge_field_fav_bunker:       'Fav bunker',
+    merge_field_notes:            'Notes',
+    merge_field_role:             'Role',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2915,6 +2968,59 @@ const T = {
     scouted_layer_collapse:   '⇱ Collapse',
     /* QuickLogView */
     quicklog_no_players:      'No players in this squad',
+
+    /* ─── §B7 LoginPage + PlayerEditModal + MergePlayersModal ─── */
+    /* LoginPage — titles + field labels */
+    login_title_signin:           'Sign in',
+    login_title_register:         'Create account',
+    login_field_email:            'Email',
+    login_field_password:         'Password',
+    login_field_display_name:     'Display name',
+    login_submit_login:           '→ Log in',
+    login_submit_register:        '→ Create account',
+    login_loading:                '⏳ Please wait…',
+    login_switch_to_register:     'Create account',
+    login_switch_to_login:        'Already have an account? Log in',
+    /* LoginPage — offline card */
+    login_offline_title:          "You're offline",
+    login_offline_body:           'Connect to the internet once to sign in. After that your session is saved on this device and the app opens offline — at the venue with no signal.',
+    /* LoginPage — mapAuthError strings */
+    login_auth_err_credentials:   'Invalid email or password.',
+    login_auth_err_invalid_email: 'Please enter a valid email address.',
+    login_auth_err_email_in_use:  'An account with this email already exists.',
+    login_auth_err_weak_password: 'Password must be at least 6 characters.',
+    login_auth_err_network:       'Connection failed, try again.',
+    login_auth_err_too_many:      'Too many attempts. Try again in a moment.',
+    login_auth_err_not_allowed:   'Email/password sign-in is not enabled in Firebase.',
+    login_auth_err_generic:       'Sign in failed. Try again.',
+    /* PlayerEditModal — UI labels (NATIONALITIES values = domain data, left as-is) */
+    player_edit_title_edit:       'Edit player',
+    player_edit_title_new:        'New player',
+    player_edit_photo_label:      'Link do zdjęcia (np. z pbleagues.com)',
+    player_edit_open_pbl:         'Otwórz profil PBL ↗',
+    player_edit_remove_link:      'Usuń link',
+    player_edit_teams_label:      'Teams',
+    player_edit_teams_primary:    '· ★ = primary',
+    player_edit_add_team:         '+ add team…',
+    player_edit_team_history_label: 'Team history',
+    /* MergePlayersModal */
+    merge_title:                  (n) => `Merge ${n} players`,
+    merge_description:            (absorbed) => `Pick the canonical record. For each field, choose which player's value wins. The other ${absorbed === 1 ? 'record will be' : 'records will be'} added to canonical's aliasIds[] and deleted. Team memberships are unioned.`,
+    merge_merging:                'Merging…',
+    merge_confirm_into:           (name) => `Merge into ${name}`,
+    merge_name_locked:            'Name (locked to canonical)',
+    merge_teams_union:            (n) => `Teams — union (${n})`,
+    /* MergePlayersModal — MERGEABLE_FIELDS label keys */
+    merge_field_nickname:         'Nickname',
+    merge_field_number:           'Jersey #',
+    merge_field_photo_url:        'Photo URL',
+    merge_field_class:            'Class',
+    merge_field_nationality:      'Nationality',
+    merge_field_age:              'Age',
+    merge_field_pbli_id:          'PBLI ID',
+    merge_field_fav_bunker:       'Fav bunker',
+    merge_field_notes:            'Notes',
+    merge_field_role:             'Role',
   },
 };
 

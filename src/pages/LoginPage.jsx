@@ -67,10 +67,10 @@ export default function LoginPage() {
             borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'center',
           }}>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.danger }}>
-              You're offline
+              {t('login_offline_title')}
             </div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, color: COLORS.textMuted, lineHeight: 1.5 }}>
-              Connect to the internet once to sign in. After that your session is saved on this device and the app opens offline — at the venue with no signal.
+              {t('login_offline_body')}
             </div>
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function LoginPage() {
       }
       // Auth state listener in WorkspaceProvider will route forward.
     } catch (err) {
-      setError(mapAuthError(err));
+      setError(mapAuthError(err, t));
       setLoading(false);
     }
   };
@@ -181,22 +181,22 @@ export default function LoginPage() {
             fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700,
             color: COLORS.text, textAlign: 'center', marginBottom: 4,
           }}>
-            {isLogin ? 'Sign in' : 'Create account'}
+            {isLogin ? t('login_title_signin') : t('login_title_register')}
           </div>
 
           {!isLogin && (
-            <Field label="Display name">
+            <Field label={t('login_field_display_name')}>
               <TextInput value={displayName} onChange={setDisplayName}
                 placeholder="e.g. Kacper" autoComplete="name" autoFocus />
             </Field>
           )}
 
-          <Field label="Email">
+          <Field label={t('login_field_email')}>
             <TextInput value={email} onChange={setEmail} placeholder="you@example.com"
               type="email" autoComplete="email" autoFocus={isLogin} />
           </Field>
 
-          <Field label="Password">
+          <Field label={t('login_field_password')}>
             <TextInput value={password} onChange={setPassword} placeholder="••••••"
               type="password" autoComplete={isLogin ? 'current-password' : 'new-password'} />
           </Field>
@@ -222,7 +222,7 @@ export default function LoginPage() {
               fontWeight: 800, cursor: canSubmit ? 'pointer' : 'default',
               transition: 'all 0.15s', minHeight: TOUCH.minTarget || 44,
             }}>
-            {loading ? '⏳ Please wait…' : isLogin ? '→ Log in' : '→ Create account'}
+            {loading ? t('login_loading') : isLogin ? t('login_submit_login') : t('login_submit_register')}
           </button>
 
           <button
@@ -233,7 +233,7 @@ export default function LoginPage() {
               fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
               cursor: 'pointer', padding: '6px 0', minHeight: 44,
             }}>
-            {isLogin ? 'Create account' : 'Already have an account? Log in'}
+            {isLogin ? t('login_switch_to_register') : t('login_switch_to_login')}
           </button>
 
           {isLogin && (
@@ -300,16 +300,16 @@ function TextInput({ value, onChange, placeholder, type = 'text', autoComplete, 
   );
 }
 
-function mapAuthError(err) {
+function mapAuthError(err, t) {
   const code = err?.code || '';
   if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-    return 'Invalid email or password.';
+    return t('login_auth_err_credentials');
   }
-  if (code === 'auth/invalid-email') return 'Please enter a valid email address.';
-  if (code === 'auth/email-already-in-use') return 'An account with this email already exists.';
-  if (code === 'auth/weak-password') return 'Password must be at least 6 characters.';
-  if (code === 'auth/network-request-failed') return 'Connection failed, try again.';
-  if (code === 'auth/too-many-requests') return 'Too many attempts. Try again in a moment.';
-  if (code === 'auth/operation-not-allowed') return 'Email/password sign-in is not enabled in Firebase.';
-  return err?.message || 'Sign in failed. Try again.';
+  if (code === 'auth/invalid-email') return t('login_auth_err_invalid_email');
+  if (code === 'auth/email-already-in-use') return t('login_auth_err_email_in_use');
+  if (code === 'auth/weak-password') return t('login_auth_err_weak_password');
+  if (code === 'auth/network-request-failed') return t('login_auth_err_network');
+  if (code === 'auth/too-many-requests') return t('login_auth_err_too_many');
+  if (code === 'auth/operation-not-allowed') return t('login_auth_err_not_allowed');
+  return err?.message || t('login_auth_err_generic');
 }

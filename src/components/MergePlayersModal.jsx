@@ -3,6 +3,7 @@ import { Btn, Modal } from './ui';
 import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { playerTeams } from '../utils/playerTeams';
+import { useLanguage } from '../hooks/useLanguage';
 
 // Shared by PlayersPage (workspace) + AdminPlayersPage (global).
 // Mirrors TeamDuplicateResolutionView pattern:
@@ -15,16 +16,16 @@ import { playerTeams } from '../utils/playerTeams';
 // component works for both workspace + global semantics).
 
 const MERGEABLE_FIELDS = [
-  { key: 'nickname',       label: 'Nickname' },
-  { key: 'number',         label: 'Jersey #' },
-  { key: 'photoURL',       label: 'Photo URL' },
-  { key: 'playerClass',    label: 'Class' },
-  { key: 'nationality',    label: 'Nationality' },
-  { key: 'age',            label: 'Age' },
-  { key: 'pbliId',         label: 'PBLI ID' },
-  { key: 'favoriteBunker', label: 'Fav bunker' },
-  { key: 'comment',        label: 'Notes' },
-  { key: 'role',           label: 'Role' },
+  { key: 'nickname',       label: 'Nickname',     labelKey: 'merge_field_nickname' },
+  { key: 'number',         label: 'Jersey #',     labelKey: 'merge_field_number' },
+  { key: 'photoURL',       label: 'Photo URL',    labelKey: 'merge_field_photo_url' },
+  { key: 'playerClass',    label: 'Class',        labelKey: 'merge_field_class' },
+  { key: 'nationality',    label: 'Nationality',  labelKey: 'merge_field_nationality' },
+  { key: 'age',            label: 'Age',          labelKey: 'merge_field_age' },
+  { key: 'pbliId',         label: 'PBLI ID',      labelKey: 'merge_field_pbli_id' },
+  { key: 'favoriteBunker', label: 'Fav bunker',   labelKey: 'merge_field_fav_bunker' },
+  { key: 'comment',        label: 'Notes',        labelKey: 'merge_field_notes' },
+  { key: 'role',           label: 'Role',         labelKey: 'merge_field_role' },
 ];
 
 const isEmpty = (v) => v == null || v === '' || (typeof v === 'string' && v.trim() === '');
@@ -51,6 +52,7 @@ function scorePlayer(p) {
 }
 
 export default function MergePlayersModal({ open, onClose, players, teams = [], onConfirm }) {
+  const { t } = useLanguage();
   const list = useMemo(() => Array.isArray(players) ? players.filter(Boolean) : [], [players]);
   const scored = useMemo(
     () => [...list].map(p => ({ p, score: scorePlayer(p) })).sort((a, b) => b.score - a.score),
@@ -145,20 +147,20 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
     <Modal
       open={open}
       onClose={pending ? () => {} : onClose}
-      title={`Merge ${list.length} players`}
+      title={t('merge_title')(list.length)}
       footer={<>
-        <Btn variant="default" onClick={onClose} disabled={pending}>Cancel</Btn>
+        <Btn variant="default" onClick={onClose} disabled={pending}>{t('cancel')}</Btn>
         <Btn variant="accent" onClick={handleConfirm}
           disabled={!canonical || pending || absorbed.length === 0}>
           {pending
-            ? 'Merging…'
-            : `Merge into ${canonical?.nickname || canonical?.name || '—'}`}
+            ? t('merge_merging')
+            : t('merge_confirm_into')(canonical?.nickname || canonical?.name || '—')}
         </Btn>
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md, maxHeight: '70dvh', overflowY: 'auto' }}>
         <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
-          Pick the canonical record. For each field, choose which player's value wins. The other {absorbed.length === 1 ? 'record will be' : 'records will be'} added to canonical's <code style={{ color: COLORS.text }}>aliasIds[]</code> and deleted. Team memberships are unioned.
+          {t('merge_description')(absorbed.length)}
         </div>
 
         {/* Canonical picker cards */}
@@ -217,7 +219,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
 
         {/* Name (locked to canonical) */}
         {canonical && (
-          <FieldHeader label="Name (locked to canonical)" />
+          <FieldHeader label={t('merge_name_locked')} />
         )}
         {canonical && (
           <div style={{
@@ -236,7 +238,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
           if (distinct.size <= 1) return null;
           return (
             <div key={f.key}>
-              <FieldHeader label={f.label} />
+              <FieldHeader label={t(f.labelKey)} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {values.map(v => {
                   const isPicked = picks[f.key] === v.pid;
@@ -286,7 +288,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
         {/* Teams union — display only */}
         {unionTeams.length > 0 && (
           <div>
-            <FieldHeader label={`Teams — union (${unionTeams.length})`} />
+            <FieldHeader label={t('merge_teams_union')(unionTeams.length)} />
             <div style={{
               padding: '8px 10px', borderRadius: RADIUS.sm,
               background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,

@@ -16,6 +16,7 @@ import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, TOUCH, BUNKER_TYPES } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
 import { playerTeams, withTeamAdded, withTeamRemoved } from '../utils/playerTeams';
+import { useLanguage } from '../hooks/useLanguage';
 
 export const NATIONALITIES = [
   { code: 'PL', flag: '🇵🇱', name: 'Polska' },
@@ -58,6 +59,7 @@ export const NATIONALITIES = [
 ];
 
 export default function PlayerEditModal({ player, defaultTeamId = '', teams = [], onSave, onCancel, open }) {
+  const { t } = useLanguage();
   const isEdit = !!player;
 
   const [fName,      setFName]      = useState('');
@@ -149,10 +151,10 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
     <Modal
       open={open}
       onClose={onCancel}
-      title={isEdit ? 'Edit player' : 'New player'}
+      title={isEdit ? t('player_edit_title_edit') : t('player_edit_title_new')}
       footer={<>
-        <Btn variant="default" onClick={onCancel}>Cancel</Btn>
-        <Btn variant="accent" disabled={!valid} onClick={handleSave}><Icons.Check /> Save</Btn>
+        <Btn variant="default" onClick={onCancel}>{t('cancel')}</Btn>
+        <Btn variant="accent" disabled={!valid} onClick={handleSave}><Icons.Check /> {t('save')}</Btn>
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -168,7 +170,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
               fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
             }}>
-              <span>Link do zdjęcia (np. z pbleagues.com)</span>
+              <span>{t('player_edit_photo_label')}</span>
               {fPbliId.trim() && (
                 <a
                   href={`https://pbleagues.com/player/${fPbliId.trim()}`}
@@ -179,7 +181,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
                     color: COLORS.accent, textDecoration: 'none',
                     WebkitTapHighlightColor: 'transparent',
                   }}>
-                  Otwórz profil PBL ↗
+                  {t('player_edit_open_pbl')}
                 </a>
               )}
             </div>
@@ -193,7 +195,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
                 fontFamily: FONT, fontSize: 11, color: COLORS.danger,
                 cursor: 'pointer', marginTop: 4, WebkitTapHighlightColor: 'transparent',
               }}>
-                Usuń link
+                {t('player_edit_remove_link')}
               </div>
             )}
           </div>
@@ -215,7 +217,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Teams — multi-membership (§ 72). ★ = primary team (tap to set). */}
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>
-            Teams{fTeams.length > 1 ? ' · ★ = primary' : ''}
+            {t('player_edit_teams_label')}{fTeams.length > 1 ? t('player_edit_teams_primary') : ''}
           </div>
           {fTeams.map(tid => {
             const isPrimary = tid === fTeamId;
@@ -247,7 +249,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
             );
           })}
           <Select value="" onChange={addTeam} style={{ width: '100%' }}>
-            <option value="">+ add team…</option>
+            <option value="">{t('player_edit_add_team')}</option>
             {teams.filter(t => !fTeams.includes(t.id)).map(t => (
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
@@ -256,22 +258,22 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
 
         {/* Age */}
         <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Age</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_age_label')}</div>
           <Input value={fAge} onChange={setFAge} placeholder="e.g. 25" type="number" />
         </div>
 
         {/* Row: Role + Class */}
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Role</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('role_label')}</div>
             <Select value={fRole} onChange={setFRole} style={{ width: '100%' }}>
-              <option value="player">Player</option>
-              <option value="coach">Coach</option>
-              <option value="staff">Staff</option>
+              <option value="player">{t('role_player')}</option>
+              <option value="coach">{t('role_coach')}</option>
+              <option value="staff">{t('player_form_staff_role')}</option>
             </Select>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Class</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_class_label')}</div>
             <Select value={fClass} onChange={setFClass} style={{ width: '100%' }}>
               <option value="">— none —</option>
               <option value="Pro">Pro</option>
@@ -288,21 +290,21 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Row: Nationality + PBLI ID */}
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Nationality</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_nationality_label')}</div>
             <Select value={fNation} onChange={setFNation} style={{ width: '100%' }}>
               <option value="">— none —</option>
               {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
             </Select>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>PBLI ID</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_pbli_id_label')}</div>
             <Input value={fPbliId} onChange={setFPbliId} placeholder="Profile number" />
           </div>
         </div>
 
         {/* Fav bunker */}
         <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Favorite bunker</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_fav_bunker_label')}</div>
           <Select value={fFavBunker} onChange={setFFavBunker} style={{ width: '100%' }}>
             <option value="">— none —</option>
             {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
@@ -311,7 +313,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
 
         {/* Comment */}
         <div>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Notes</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_notes_label')}</div>
           <TextArea
             value={fComment}
             onChange={setFComment}
@@ -323,7 +325,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Team history — edit mode only */}
         {isEdit && player?.teamHistory?.length > 0 && (
           <div>
-            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Team history</div>
+            <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_edit_team_history_label')}</div>
             <div style={{ background: COLORS.bg, borderRadius: 6, padding: 8, maxHeight: 110, overflowY: 'auto' }}>
               {player.teamHistory.map((h, i) => (
                 <div key={i} style={{
