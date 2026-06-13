@@ -990,7 +990,7 @@ export default function MatchPage() {
     if (sourcesLoading && !loadTimedOut) {
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <EmptyState icon="⏳" text="Loading..." />
+          <EmptyState icon="⏳" text={t('loading_default')} />
         </div>
       );
     }
@@ -1015,7 +1015,7 @@ export default function MatchPage() {
   if (!scoutingSide) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <EmptyState icon="⏳" text="Loading..." />
+        <EmptyState icon="⏳" text={t('loading_default')} />
       </div>
     );
   }

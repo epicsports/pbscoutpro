@@ -655,7 +655,7 @@ export default function ScoutedTeamPage() {
   if (!tournament || !team) {
     // Still resolving (subscriptions in flight) AND within the 12s ceiling → spinner.
     const stillLoading = (tournamentsLoading || teamsLoading || scoutedLoading) && !loadTimedOut;
-    if (stillLoading) return <EmptyState icon="⏳" text="Loading..." />;
+    if (stillLoading) return <EmptyState icon="⏳" text={t('loading_default')} />;
     // Resolved-but-absent OR timed out → explicit error state, never an eternal
     // spinner. (Covers a deleted/invalid scouted-team URL on prod too.)
     return (
@@ -1757,7 +1757,7 @@ export default function ScoutedTeamPage() {
                       {/* Both available — show precision bunkers + quick zone summary */}
                       {hasQuick && hasPrecision && precisionTargets.length > 0 && (
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
-                          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.borderLight }}>Quick shots:</span>
+                          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.borderLight }}>{t('b13_quick_shots_label')}</span>
                           {[
                             { key: 'dorito', label: 'D', pct: quickZones.dorito, color: COLORS.bump },
                             { key: 'snake',  label: 'S', pct: quickZones.snake,  color: COLORS.zeeker },
@@ -1964,9 +1964,9 @@ export default function ScoutedTeamPage() {
               {!roster.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 6 }}>{t('scouted_empty_roster')}</div>}
               {/* Quick add */}
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${COLORS.border}30` }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Add new player:</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('b13_add_new_player_label')}</div>
                 <div style={{ display: 'flex', gap: 6 }}>
-                  <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Full name"
+                  <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t('player_form_full_name_label')}
                     style={{ flex: 2, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 10px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 44 }} />
                   <input value={newNumber} onChange={e => setNewNumber(e.target.value)} placeholder="#"
                     style={{ width: 50, fontFamily: FONT, fontSize: TOUCH.fontSm, padding: '6px 8px', borderRadius: 6, background: COLORS.bg, color: COLORS.text, border: `1px solid ${COLORS.border}`, minHeight: 44, textAlign: 'center' }} />
@@ -1987,7 +1987,7 @@ export default function ScoutedTeamPage() {
         <div>
           <SectionHeader>{t('section_matches', teamMatches.length)}</SectionHeader>
 
-          {!teamMatches.length && <EmptyState icon="📋" text="Add a match or import schedule" />}
+          {!teamMatches.length && <EmptyState icon="📋" text={t('b13_add_match_or_schedule')} />}
 
           {teamMatches.map(m => {
             const isA = m.teamA === scoutedId;

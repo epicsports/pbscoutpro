@@ -176,7 +176,7 @@ export default function AdminPlayersPage() {
 
   return (
     <>
-      <PageHeader back={{ to: '/' }} title="Players admin" />
+      <PageHeader back={{ to: '/' }} title={t('b13_players_admin')} />
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         {/* Search + Liga + Dywizja (shared kit) */}
@@ -199,8 +199,8 @@ export default function AdminPlayersPage() {
             style={{ minWidth: 160 }}
           >
             <option value="name">{t('admin_players_sort_name')}</option>
-            <option value="updatedAt">Sort: updated ↓</option>
-            <option value="originWorkspace">Sort: workspace</option>
+            <option value="updatedAt">{t('b13_admin_sort_updated_desc')}</option>
+            <option value="originWorkspace">{t('b13_admin_sort_workspace')}</option>
           </Select>
           <Btn variant="default" onClick={() => setCsvOpen(true)}>📋 CSV import</Btn>
           <Btn variant="accent" onClick={() => setEditing('new')}>+ New player</Btn>
@@ -236,7 +236,7 @@ export default function AdminPlayersPage() {
 
         {/* List */}
         {!loading && total === 0 ? (
-          <EmptyState icon="👤" text="No players" subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.2.a bootstrap missing?'} />
+          <EmptyState icon="👤" text={t('b13_admin_no_players')} subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.2.a bootstrap missing?'} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {paged.map(p => {

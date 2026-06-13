@@ -54,7 +54,7 @@ export default function ChildrenOrphanWarning({ team, children, allTeams, pendin
             ))}
           </div>
 
-          <div style={{ fontWeight: 600, color: COLORS.text, marginBottom: SPACE.xs }}>How to handle the children?</div>
+          <div style={{ fontWeight: 600, color: COLORS.text, marginBottom: SPACE.xs }}>{t('b13_orphan_how_handle')}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs, marginBottom: SPACE.sm }}>
             <RadioOption
               label={t('admin_orphan_repoint')}

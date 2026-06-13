@@ -119,7 +119,7 @@ export default function ScoutRankingPage() {
       </div>
 
       {loading ? (
-        <Loading text="Loading scouted points..." />
+        <Loading text={t('b13_loading_scouted_pts')} />
       ) : stats.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center' }}>
           <EmptyState icon="👤" text={t('scout_empty')} subtitle={t('scout_empty_sub')} />

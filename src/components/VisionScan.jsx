@@ -265,7 +265,7 @@ export default function VisionScan({ image, calibration, doritoSide, onComplete,
           padding: SPACE.xxl, gap: SPACE.md,
         }}>
           <div style={{ fontSize: 48, animation: 'spin 1.5s linear infinite' }}>🔍</div>
-          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, color: COLORS.text }}>Scanning field...</div>
+          <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, color: COLORS.text }}>{t('b13_scanning_field')}</div>
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>
             Analyzing bunker positions with AI
           </div>

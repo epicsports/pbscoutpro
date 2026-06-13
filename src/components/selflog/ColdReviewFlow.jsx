@@ -4,6 +4,7 @@ import HotSheet from './HotSheet';
 import * as ds from '../../services/dataService';
 import { makeMeta } from '../../utils/observationMeta';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 /**
  * ColdReviewFlow — claim flow Phase 1b (W4): the player picks an EXISTING
@@ -28,6 +29,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme
  * @param {Function} onControlledClose - close handler for the controlled picker.
  */
 export default function ColdReviewFlow({ playerId, uid, teamId, layouts, controlledEventId = null, onControlledClose }) {
+  const { t } = useLanguage();
   const [candidates, setCandidates] = useState(null); // null = loading, [] = none
   const [picker, setPicker] = useState(false);
   const [active, setActive] = useState(null);         // candidate being logged | null
@@ -158,7 +160,7 @@ export default function ColdReviewFlow({ playerId, uid, teamId, layouts, control
       )}
 
       {/* ── Point picker — grouped per event, whole-row tap. ── */}
-      <Modal open={pickerOpen} onClose={closePicker} title="Review a point">
+      <Modal open={pickerOpen} onClose={closePicker} title={t('b13_review_a_point')}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
           {visibleGroups.length === 0 && (
             <div style={{

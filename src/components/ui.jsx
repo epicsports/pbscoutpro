@@ -546,10 +546,11 @@ export function YearBadge({ year }) {
 //           title="Delete match?" message={`Delete "${name}"?`}
 //           onConfirm={() => { ds.deleteX(deleteId); setDeleteId(null); }}
 //           confirmLabel="Delete" danger />
-export function ConfirmModal({ open, onClose, title, message, onConfirm, confirmLabel = 'Confirm', danger = false,
+export function ConfirmModal({ open, onClose, title, message, onConfirm, confirmLabel, danger = false,
   requirePassword, passwordLabel = 'Enter workspace password to confirm...',
   password, onPasswordChange }) {
   const { t } = useLanguage();
+  const resolvedConfirmLabel = confirmLabel ?? t('confirm');
   const passwordMatch = requirePassword
     ? requirePassword === password?.toLowerCase().trim().replace(/^##/, '').replace(/\s+/g, '-').replace(/[^a-z0-9\-]/g, '').slice(0, 40)
     : true;
@@ -560,7 +561,7 @@ export function ConfirmModal({ open, onClose, title, message, onConfirm, confirm
         <Btn variant={danger ? 'danger' : 'accent'}
           disabled={!passwordMatch}
           onClick={onConfirm}>
-          {danger ? <Icons.Trash /> : <Icons.Check />} {confirmLabel}
+          {danger ? <Icons.Trash /> : <Icons.Check />} {resolvedConfirmLabel}
         </Btn>
       </>}>
       {message && <p style={{ fontFamily: 'var(--font)', fontSize: 15, color: 'var(--color-text-dim)', margin: '0 0 12px' }}>{message}</p>}

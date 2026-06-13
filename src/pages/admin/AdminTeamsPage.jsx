@@ -187,7 +187,7 @@ export default function AdminTeamsPage() {
 
   return (
     <>
-      <PageHeader back={{ to: '/' }} title="Teams admin" />
+      <PageHeader back={{ to: '/' }} title={t('b13_teams_admin')} />
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         {/* Duplicate banner */}
@@ -226,8 +226,8 @@ export default function AdminTeamsPage() {
             onChange={(v) => updateParams({ sort: v, page: 0 })}
             style={{ minWidth: 160 }}
           >
-            <option value="name">Sort: name ↑</option>
-            <option value="updatedAt">Sort: updated ↓</option>
+            <option value="name">{t('admin_players_sort_name')}</option>
+            <option value="updatedAt">{t('b13_admin_sort_updated_desc')}</option>
           </Select>
           <Btn variant="accent" onClick={() => setEditing('new')}>+ New team</Btn>
         </div>
@@ -257,7 +257,7 @@ export default function AdminTeamsPage() {
 
         {/* List */}
         {!loading && total === 0 ? (
-          <EmptyState icon="🛡" text="No teams" subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.3.a bootstrap missing?'} />
+          <EmptyState icon="🛡" text={t('b13_admin_no_teams')} subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.3.a bootstrap missing?'} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {paged.map(t => {

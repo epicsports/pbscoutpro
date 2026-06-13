@@ -149,7 +149,7 @@ export default function ScoutTabContent({ tournamentId }) {
     [sortedAvailable, addSearch, addDiv, tournament?.league],
   );
 
-  if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
+  if (!tournament) return <EmptyState icon="⏳" text={t('loading_default')} />;
 
   const getTeamName = (scoutedId) => {
     const s = scouted.find(x => x.id === scoutedId);
@@ -333,7 +333,7 @@ export default function ScoutTabContent({ tournamentId }) {
 
         {filtered.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
-            <SearchField value={matchSearch} onChange={setMatchSearch} placeholder="🔍 Search by team…" />
+            <SearchField value={matchSearch} onChange={setMatchSearch} placeholder={t('b13_scout_search_team_ph')} />
           </div>
         )}
         {filtered.length > 0 && matchSearch.trim() && searched.length === 0 && (

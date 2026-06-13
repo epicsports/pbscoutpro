@@ -1,5 +1,6 @@
 import React from 'react';
 import { COLORS, FONT } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 /**
  * StageSwitcher — the "E": a mini-timeline + playhead for the SCOUT capture
@@ -25,8 +26,9 @@ const STAGES = [
 ];
 
 export default function StageSwitcher({ stage = 'break', onChange, done = {} }) {
+  const { t } = useLanguage();
   return (
-    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} role="tablist" aria-label="Capture stage">
+    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} role="tablist" aria-label={t('b13_capture_stage')}>
       {STAGES.map((s, i) => {
         const active = stage === s.key;
         const hasData = !!done[s.key];

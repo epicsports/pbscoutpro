@@ -61,7 +61,7 @@ export default function ViewAsIndicator() {
         <span
           onClick={(e) => { e.stopPropagation(); exitImpersonation(); }}
           role="button"
-          aria-label="Exit impersonation"
+          aria-label={t('b13_exit_impersonation')}
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             minWidth: 44, minHeight: 44,

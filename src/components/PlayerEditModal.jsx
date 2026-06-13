@@ -204,7 +204,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Row: Name + Nr */}
         <div style={{ display: 'flex', gap: 8 }}>
           <div style={{ flex: 2 }}>
-            <Input value={fName} onChange={setFName} placeholder="Full name *" autoFocus />
+            <Input value={fName} onChange={setFName} placeholder={t('b13_input_full_name_star')} autoFocus />
           </div>
           <div style={{ flex: 1 }}>
             <Input value={fNumber} onChange={setFNumber} placeholder="Nr *" />
@@ -228,7 +228,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
                 background: COLORS.surfaceDark,
                 border: `1px solid ${isPrimary ? COLORS.accent : COLORS.border}`,
               }}>
-                <span role="button" title="Set primary" onClick={() => setFTeamId(tid)}
+                <span role="button" title={t('b13_set_primary')} onClick={() => setFTeamId(tid)}
                   style={{
                     width: 44, height: 44, flexShrink: 0, fontSize: 16,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -259,7 +259,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         {/* Age */}
         <div>
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_age_label')}</div>
-          <Input value={fAge} onChange={setFAge} placeholder="e.g. 25" type="number" />
+          <Input value={fAge} onChange={setFAge} placeholder={t('b13_eg_25')} type="number" />
         </div>
 
         {/* Row: Role + Class */}
@@ -298,7 +298,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('player_form_pbli_id_label')}</div>
-            <Input value={fPbliId} onChange={setFPbliId} placeholder="Profile number" />
+            <Input value={fPbliId} onChange={setFPbliId} placeholder={t('b13_profile_number_ph')} />
           </div>
         </div>
 
@@ -317,7 +317,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
           <TextArea
             value={fComment}
             onChange={setFComment}
-            placeholder="Notes about player..."
+            placeholder={t('b13_notes_about_player_ph')}
             rows={2}
           />
         </div>
