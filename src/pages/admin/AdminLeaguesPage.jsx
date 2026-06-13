@@ -6,6 +6,7 @@ import { Btn, Card, ConfirmModal, EmptyState, MoreBtn, ActionSheet } from '../..
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { deactivateLeague, reactivateLeague } from '../../services/dataService';
 import LeagueFormModal from './LeagueFormModal';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.1c — Super admin CRUD for /leagues/ collection.
 // Per DESIGN_DECISIONS § 63.15.1 + MULTI_TENANT_MIGRATION_PLAN.md Phase 2 Step 1c.
@@ -15,6 +16,7 @@ import LeagueFormModal from './LeagueFormModal';
 //   2. Component-level early return (this file) — paranoid safety net
 //   3. Firestore rules block writes to /leagues/{leagueId} unless email matches
 export default function AdminLeaguesPage() {
+  const { t } = useLanguage();
   const { effectiveIsAdmin } = useViewAs();
   const leagues = useAllLeagues();
   const [showInactive, setShowInactive] = useState(false);
@@ -47,10 +49,10 @@ export default function AdminLeaguesPage() {
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.md, alignItems: 'center' }}>
-          <Btn variant={!showInactive ? 'accent' : 'default'} size="sm" onClick={() => setShowInactive(false)}>Active</Btn>
-          <Btn variant={showInactive ? 'accent' : 'default'} size="sm" onClick={() => setShowInactive(true)}>All</Btn>
+          <Btn variant={!showInactive ? 'accent' : 'default'} size="sm" onClick={() => setShowInactive(false)}>{t('admin_leagues_filter_active')}</Btn>
+          <Btn variant={showInactive ? 'accent' : 'default'} size="sm" onClick={() => setShowInactive(true)}>{t('admin_leagues_filter_all')}</Btn>
           <div style={{ flex: 1 }} />
-          <Btn variant="accent" onClick={() => setEditing('new')}>+ New league</Btn>
+          <Btn variant="accent" onClick={() => setEditing('new')}>{t('admin_leagues_new')}</Btn>
         </div>
 
         {filtered.length === 0 && (
@@ -73,7 +75,7 @@ export default function AdminLeaguesPage() {
         </div>
 
         <div style={{ marginTop: SPACE.lg, padding: SPACE.md, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, lineHeight: 1.5 }}>
-          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>About leagues</div>
+          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>{t('admin_leagues_about_title')}</div>
           Global resource shared across workspaces. Workspace UI consumes via <code style={{ color: COLORS.text }}>useLeagues</code> hook with constants fallback. Changes visible to all users on next page load.
           <br />Deactivated leagues stay in stored data — historical tournaments tagged with them still resolve. Use "All" filter to see + reactivate.
           <br />Renaming a division regenerates its id; existing stored tournament/team division values are name strings (preserved).
@@ -85,19 +87,19 @@ export default function AdminLeaguesPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.shortName}
         actions={actionFor ? [
-          { label: 'Edit', onPress: () => { setEditing(actionFor); setActionFor(null); } },
+          { label: t('edit'), onPress: () => { setEditing(actionFor); setActionFor(null); } },
           actionFor.active === false
             ? { label: 'Reactivate', onPress: () => handleReactivate(actionFor.id) }
-            : { label: 'Deactivate', danger: true, onPress: () => setConfirmDeact(actionFor) },
+            : { label: t('admin_leagues_deactivate_label'), danger: true, onPress: () => setConfirmDeact(actionFor) },
         ] : []}
       />
 
       <ConfirmModal
         open={!!confirmDeact}
         onClose={() => setConfirmDeact(null)}
-        title="Deactivate league?"
+        title={t('admin_leagues_deactivate_title')}
         message={confirmDeact ? `${confirmDeact.shortName} will be hidden from new tournament/team creation. Existing data preserved. You can reactivate from the All filter.` : ''}
-        confirmLabel={pending ? 'Saving...' : 'Deactivate'}
+        confirmLabel={pending ? 'Saving...' : t('admin_leagues_deactivate_label')}
         danger
         onConfirm={() => handleDeactivate(confirmDeact.id)}
       />

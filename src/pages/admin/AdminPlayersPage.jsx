@@ -15,6 +15,7 @@ import CSVImport from '../../components/CSVImport';
 import MergePlayersModal from '../../components/MergePlayersModal';
 import PlayerMultiSelectBar, { SelectCheckbox } from '../../components/PlayerMultiSelectBar';
 import PlayerFormModal from './PlayerFormModal';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.2.c — Super admin CRUD for global /players/ collection (934 docs).
 // Per DESIGN_DECISIONS § 63.15.3 + MULTI_TENANT_MIGRATION_PLAN.md Phase 2 Step 2c.
@@ -36,6 +37,7 @@ const tsMs = (t) => {
 };
 
 export default function AdminPlayersPage() {
+  const { t } = useLanguage();
   const { effectiveIsAdmin } = useViewAs();
   const { players, loading } = usePlayers();
   const { teams } = useActiveTeams();
@@ -196,7 +198,7 @@ export default function AdminPlayersPage() {
             onChange={(v) => updateParams({ sort: v, page: 0 })}
             style={{ minWidth: 160 }}
           >
-            <option value="name">Sort: name ↑</option>
+            <option value="name">{t('admin_players_sort_name')}</option>
             <option value="updatedAt">Sort: updated ↓</option>
             <option value="originWorkspace">Sort: workspace</option>
           </Select>
@@ -207,9 +209,9 @@ export default function AdminPlayersPage() {
         {/* Filter pills */}
         <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.md, flexWrap: 'wrap' }}>
           {[
-            { key: 'all', label: 'All' },
-            { key: 'linked', label: 'Linked (PBLI)' },
-            { key: 'unlinked', label: 'Unlinked' },
+            { key: 'all', label: t('admin_leagues_filter_all') },
+            { key: 'linked', label: t('admin_players_filter_linked') },
+            { key: 'unlinked', label: t('admin_players_filter_unlinked') },
             { key: 'hero', label: 'HERO' },
           ].map(p => (
             <Btn key={p.key}
@@ -267,17 +269,17 @@ export default function AdminPlayersPage() {
         {totalPages > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: SPACE.md, marginTop: SPACE.lg }}>
             <Btn variant="default" size="sm" disabled={safePage === 0}
-              onClick={() => updateParams({ page: safePage - 1 })}>← Prev</Btn>
+              onClick={() => updateParams({ page: safePage - 1 })}>{t('admin_teams_prev')}</Btn>
             <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-              Page {safePage + 1} of {totalPages}
+              {t('admin_teams_page_n_of_m')(safePage + 1, totalPages)}
             </span>
             <Btn variant="default" size="sm" disabled={safePage >= totalPages - 1}
-              onClick={() => updateParams({ page: safePage + 1 })}>Next →</Btn>
+              onClick={() => updateParams({ page: safePage + 1 })}>{t('admin_teams_next')}</Btn>
           </div>
         )}
 
         <div style={{ marginTop: SPACE.lg, padding: SPACE.md, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, lineHeight: 1.5 }}>
-          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>About players</div>
+          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>{t('admin_players_about_title')}</div>
           Global resource (§ 63.15.3) — single player identity across all workspaces. Workspace UI consumes via <code style={{ color: COLORS.text }}>usePlayers</code> hook (alias-aware). Edits propagate live via Firestore onSnapshot.
           <br />Edits dual-write to both the workspace doc and <code style={{ color: COLORS.text }}>/players/{'{id}'}</code>. Delete removes only the global doc; the workspace copy stays as recovery cushion until Phase 2.2.d cleanup.
           <br />Aliases come from Phase 2.2.a dedup (legacy doc IDs collapsed onto a canonical). Deleting a canonical with non-empty <code style={{ color: COLORS.text }}>aliasIds</code> orphans those references in old match data.
@@ -290,8 +292,8 @@ export default function AdminPlayersPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.nickname || actionFor?.name}
         actions={actionFor ? [
-          { label: 'Edit', onPress: () => { setEditing(actionFor); setActionFor(null); } },
-          { label: 'Delete', danger: true, onPress: () => { setDeleteFor(actionFor); setActionFor(null); } },
+          { label: t('edit'), onPress: () => { setEditing(actionFor); setActionFor(null); } },
+          { label: t('delete'), danger: true, onPress: () => { setDeleteFor(actionFor); setActionFor(null); } },
         ] : []}
       />
 
@@ -301,7 +303,7 @@ export default function AdminPlayersPage() {
         onClose={() => { if (!pending) { setDeleteFor(null); setDeleteError(null); } }}
         title={hasAliases ? `⚠ Delete ${deleteFor?.nickname || deleteFor?.name}?` : `Delete ${deleteFor?.nickname || deleteFor?.name}?`}
         footer={<>
-          <Btn variant="default" onClick={() => { setDeleteFor(null); setDeleteError(null); }} disabled={pending}>Cancel</Btn>
+          <Btn variant="default" onClick={() => { setDeleteFor(null); setDeleteError(null); }} disabled={pending}>{t('cancel')}</Btn>
           <Btn variant="danger" onClick={handleDelete} disabled={pending}>
             {pending ? 'Deleting…' : (hasAliases ? 'Delete anyway' : 'Delete')}
           </Btn>
@@ -365,7 +367,7 @@ export default function AdminPlayersPage() {
         onClose={() => { if (!bulkPending) { setBulkDeleteOpen(false); setBulkError(null); } }}
         title={`Delete ${selectedIds.size} player${selectedIds.size === 1 ? '' : 's'} from /players/?`}
         footer={<>
-          <Btn variant="default" onClick={() => { setBulkDeleteOpen(false); setBulkError(null); }} disabled={bulkPending}>Cancel</Btn>
+          <Btn variant="default" onClick={() => { setBulkDeleteOpen(false); setBulkError(null); }} disabled={bulkPending}>{t('cancel')}</Btn>
           <Btn variant="danger" onClick={handleBulkDelete} disabled={bulkPending}>
             {bulkPending ? 'Deleting…' : `Delete ${selectedIds.size}`}
           </Btn>
