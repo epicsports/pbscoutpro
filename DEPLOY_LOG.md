@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-13 — [NIGHT RUN cont.] H1 batch 3 (layout config)
+**HEAD `b2990b9a`.** **App-only.** Tier 1, night blanket GO. Full emulator e2e **48/48 green** post-merge. 56 keys (`layout_detail_*` 43 / `layout_wizard_*` 13), extraction/translation split + register row. **Persistence-risk strings correctly left as DATA:** "Dorito side"/"Snake side" (state-init + Firestore read fallback → `lineDivision.*.name` save path) and `Line ${n}` default callout-line name. PL users see Polish chrome on LayoutDetail/LayoutWizard. **Owed: Jacek smoke** (layout config po polsku; nazwy linii/stron PER DANE bez zmian).
+
 ## 2026-06-13 — [NIGHT RUN] H1 batches 2/6/5 + §B phase view + §C nav drawer + tenant-isolation rules fix
 **HEAD `c5726aea` (merge train: batch 2 → 6 → 5 → phase-view → nav-drawer).** **App + RULES** (rules = Jacek explicit CONFIRM 2026-06-13 ~00:00, tenant-isolation predicate). Night-mode blanket GO ("bez moich akceptów", 2026-06-12 23:13). Full emulator e2e **48/48 green** on merged main (42/42 mid-train checkpoint). Batches executed on Sonnet subagents (token-economy split); e2e serialized through the main session.
 
