@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-13 — [arc-B foundation] <Screen> model C (desktop-only cap) + i18n dedup complete
+**HEAD `8b4ab8e8`.** **App-only.** Tier 1 (logic + machine-proven). Functional **61 green**; pilot phone diff-gate **3/3**. Revert: `git revert 8b4ab8e8` (model C) / the dedup commit.
+- **Model C (Jacek decision):** `<Screen>` now caps width ONLY on desktop (`device.isDesktop`, ≥1024 non-touch); below that = full-width, so phone + tablet keep natural width (tablet ~768, zero narrowing). Tiers detail 640 / **list 960** / form 560 (list 760→960 exception for dense rows; 960 validated by render). **The 3 shipped pilot pages (ScoutDetail/ScoutIssues/ScoutRanking) now UN-NARROW on tablet** (640→768, desired) + stay 640 on desktop; phone unchanged. → migration of ~18 screens proceeds in batches detail→form→list (phone+tablet diff=0 by construction, desktop register row per screen).
+- **i18n dedup COMPLETE:** the 5 differing duplicate keys resolved (no_matches→'Brak meczy'/'No matches'; display_name_ph EN→'e.g. John'; password_changed→'Password changed.' [confirmed a ✓ confirmation, not a button]; avatar_coming→short [dropped the Firebase-Storage impl leak]; not_signed_in→'Not signed in.'). **Dict now 0 duplicate keys** (all 28 cleared).
+- **Owed: Jacek smoke** — the 3 pilot pages on a tablet (wider now, full 768, not 640) + desktop (still capped). EXPECTED_DIFF rows registered.
+
 ## 2026-06-13 — [HOTFIX] training quick-log crash ("can't find variable t")
 **HEAD `0e50625a`.** **App-only.** Tier 1 (regression fix). Functional **61 green**. Revert: `git revert 0e50625a`.
 - **Crash (Jacek):** training matchup → Quick › → ReferenceError. `PlayerTileGrid` is a MODULE-LEVEL sub-component in `QuickLogView.jsx` (outside the main component's `const { t }` scope); the i18n regression-sweep added `t('quicklog_win_label')` at line 927 without giving it its own `useLanguage()` → threw on the player-pick render. Fix = `const { t } = useLanguage()` in PlayerTileGrid.
