@@ -95,7 +95,7 @@ export default function LoginPage() {
             </div>
             {resetSent ? (
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500, color: COLORS.success, lineHeight: 1.5, textAlign: 'center' }}>
-                {t('reset_sent', { email: email.trim() }) || `Reset link sent to ${email.trim()}. Check your inbox.`}
+                {t('reset_sent', email.trim())}
               </div>
             ) : (
               <>

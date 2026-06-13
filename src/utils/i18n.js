@@ -652,10 +652,10 @@ const T = {
     user_global_role_super:         'Super admin',
     user_global_role_desc:          'Super admin zarządza użytkownikami, rolami i zasobami globalnymi we wszystkich workspace’ach.',
     user_global_role_promote_title: 'Nadać super admina?',
-    user_global_role_promote_body:  '{name} otrzyma nieograniczony dostęp do wszystkich workspace’ów i zasobów globalnych.',
+    user_global_role_promote_body:  (name) => `${name} otrzyma nieograniczony dostęp do wszystkich workspace’ów i zasobów globalnych.`,
     user_global_role_promote_btn:   'Nadaj',
     user_global_role_revoke_title:  'Odebrać super admina?',
-    user_global_role_revoke_body:   '{name} straci uprawnienia super admina.',
+    user_global_role_revoke_body:   (name) => `${name} straci uprawnienia super admina.`,
     user_global_role_revoke_btn:    'Odbierz',
     user_global_role_badge:         'Super admin',
     user_disable_btn:           'Wyłącz konto',
@@ -666,7 +666,7 @@ const T = {
     reset_intro:                'Podaj e-mail konta — wyślemy link do ustawienia nowego hasła.',
     reset_send_btn:             'Wyślij link',
     reset_sending:              'Wysyłanie…',
-    reset_sent:                 'Link do resetu wysłany na {email}. Sprawdź skrzynkę (i spam).',
+    reset_sent:                 (email) => `Link do resetu wysłany na ${email}. Sprawdź skrzynkę (i spam).`,
     reset_back:                 '← Powrót do logowania',
     reset_err_notfound:         'Nie znaleziono konta z tym adresem e-mail.',
     reset_err_invalid:          'Podaj poprawny adres e-mail.',
@@ -934,6 +934,7 @@ const T = {
     /* ─── Player Performance Tracker (PPT) — § 48 ──────── */
     // Picker (Checkpoint 2)
     ppt_picker_title:            'Wybierz trening',
+    ppt_step_counter:            (display, total) => `Krok ${display} z ${total}`,
     ppt_picker_hero_greeting:    (name) => `Cześć ${name || 'graczu'} 👋`,
     ppt_picker_hero_no_live:     'W tym momencie nie ma aktywnego treningu. Wybierz z listy do którego chcesz logować punkty.',
     ppt_picker_hero_multi_live:  'Masz kilka aktywnych treningów. Wybierz który scoutujesz.',
@@ -1094,7 +1095,7 @@ const T = {
     line_add_btn:                '+ Nowa linia',
     line_side_above:             'Ponad',
     line_side_below:             'Pod',
-    line_draw_banner:            'Narysuj linię „{0}" — tapnij 2 punkty',
+    line_draw_banner:            (n) => `Narysuj linię „${n}" — tapnij 2 punkty`,
     line_delete_confirm_title:   'Usunąć linię?',
 
     /* ─── §H1 Batch 1 — nav & core pages (Teams/Players/Layouts/Profile/Main) ── */
@@ -1767,6 +1768,7 @@ const T = {
   en: {
     /* PPT keys — § 48. Picker first (Checkpoint 2). */
     ppt_picker_title:            'Pick a training',
+    ppt_step_counter:            (display, total) => `Step ${display} of ${total}`,
     ppt_picker_hero_greeting:    (name) => `Hi ${name || 'player'} 👋`,
     ppt_picker_hero_no_live:     'No live training right now. Pick one from the list to log points into.',
     ppt_picker_hero_multi_live:  'You have several active trainings. Pick which one you are logging.',
@@ -2498,10 +2500,10 @@ const T = {
     user_global_role_super:         'Super admin',
     user_global_role_desc:          'Super admin manages users, roles, and global resources across all workspaces.',
     user_global_role_promote_title: 'Grant super admin?',
-    user_global_role_promote_body:  '{name} will get unrestricted access to all workspaces and global resources.',
+    user_global_role_promote_body:  (name) => `${name} will get unrestricted access to all workspaces and global resources.`,
     user_global_role_promote_btn:   'Grant',
     user_global_role_revoke_title:  'Revoke super admin?',
-    user_global_role_revoke_body:   '{name} will lose super admin privileges.',
+    user_global_role_revoke_body:   (name) => `${name} will lose super admin privileges.`,
     user_global_role_revoke_btn:    'Revoke',
     user_global_role_badge:         'Super admin',
     user_disable_btn:           'Disable user',
@@ -2512,7 +2514,7 @@ const T = {
     reset_intro:                'Enter your account email — we’ll send a link to set a new password.',
     reset_send_btn:             'Send reset link',
     reset_sending:              'Sending…',
-    reset_sent:                 'Reset link sent to {email}. Check your inbox (and spam).',
+    reset_sent:                 (email) => `Reset link sent to ${email}. Check your inbox (and spam).`,
     reset_back:                 '← Back to sign in',
     reset_err_notfound:         'No account found with that email.',
     reset_err_invalid:          'Enter a valid email address.',
@@ -2805,7 +2807,7 @@ const T = {
     line_add_btn:                  '+ New line',
     line_side_above:               'Above',
     line_side_below:               'Below',
-    line_draw_banner:              'Draw line "{0}" — tap 2 points',
+    line_draw_banner:              (n) => `Draw line "${n}" — tap 2 points`,
     line_delete_confirm_title:     'Delete line?',
 
     /* ─── §H1 Batch 1 — nav & core pages (Teams/Players/Layouts/Profile/Main) ── */

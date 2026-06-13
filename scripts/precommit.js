@@ -40,6 +40,11 @@ run('Build compiles', 'npx vite build --logLevel error 2>&1 | tail -3');
 // 2. UI lint
 run('UI consistency lint', 'node scripts/lint-ui.js');
 
+// 2b. i18n call-shape lint — a key called with args (t('k', …) or t('k')(…))
+// MUST be a function in both pl+en. Closes the shape-mismatch crash/render class
+// (sibling to the t()-without-scope discipline) that pixel-diff cannot see.
+run('i18n call-shape vs definition', 'node scripts/lint-i18n-shapes.js');
+
 // 3. § 27 Apple HIG nudges (warning-only — baseline has violations)
 // These are INFORMATIONAL. They don't block commits.
 // Real enforcement: docs/REVIEW_CHECKLIST.md self-review by CC.

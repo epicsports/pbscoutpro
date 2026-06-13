@@ -147,20 +147,20 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
     <Modal
       open={open}
       onClose={pending ? () => {} : onClose}
-      title={t('merge_title')(list.length)}
+      title={t('merge_title', list.length)}
       footer={<>
         <Btn variant="default" onClick={onClose} disabled={pending}>{t('cancel')}</Btn>
         <Btn variant="accent" onClick={handleConfirm}
           disabled={!canonical || pending || absorbed.length === 0}>
           {pending
             ? t('merge_merging')
-            : t('merge_confirm_into')(canonical?.nickname || canonical?.name || '—')}
+            : t('merge_confirm_into', canonical?.nickname || canonical?.name || '—')}
         </Btn>
       </>}
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md, maxHeight: '70dvh', overflowY: 'auto' }}>
         <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
-          {t('merge_description')(absorbed.length)}
+          {t('merge_description', absorbed.length)}
         </div>
 
         {/* Canonical picker cards */}
@@ -288,7 +288,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
         {/* Teams union — display only */}
         {unionTeams.length > 0 && (
           <div>
-            <FieldHeader label={t('merge_teams_union')(unionTeams.length)} />
+            <FieldHeader label={t('merge_teams_union', unionTeams.length)} />
             <div style={{
               padding: '8px 10px', borderRadius: RADIUS.sm,
               background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,

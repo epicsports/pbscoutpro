@@ -153,6 +153,19 @@ const playersFor = (team, prefix, teamId) =>
 const rosterA = playersFor('A', 'pa');
 const rosterB = playersFor('B', 'pb');
 const rosterC = playersFor('C', 'pc', TEAM_C);   // DIV1 players (cross-division bleed source for #4)
+// Pagination fixture (admin-pagination.spec): 40 padding players push the GLOBAL
+// /players pool past AdminPlayersPage's PAGE_SIZE (50) → totalPages > 1 so the
+// "Strona N z M" pager renders (the crash class was unreachable in e2e at 15).
+// teamId:null keeps them OFF every team/roster-scoped view — they surface ONLY in
+// the two unfiltered global lists (PlayersPage + AdminPlayersPage), bounding blast
+// radius to those baselines. 15 + 40 = 55 → 2 pages (50 + 5).
+const rosterPad = Array.from({ length: 40 }, (_, i) => ({
+  id: `pad${i + 1}`,
+  name: `Pad Player ${String(i + 1).padStart(2, '0')}`,
+  number: String(100 + i),
+  teamId: null,
+  ownerWorkspaceId: WS,
+}));
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
@@ -323,7 +336,7 @@ async function main() {
   batch.set(db.doc(`teams/${TEAM_B}`), { name: 'Team Bravo', ownerWorkspaceId: WS, leagues: ['NXL'], divisions: { NXL: 'PRO' } });
   // #4 — Team Charlie in a DIFFERENT division (NXL/DIV1) to prove no bleed.
   batch.set(db.doc(`teams/${TEAM_C}`), { name: 'Team Charlie', ownerWorkspaceId: WS, leagues: ['NXL'], divisions: { NXL: 'DIV1' } });
-  [...rosterA, ...rosterB, ...rosterC].forEach(p => {
+  [...rosterA, ...rosterB, ...rosterC, ...rosterPad].forEach(p => {
     batch.set(db.doc(`players/${p.id}`), {
       name: p.name, number: p.number, teamId: p.teamId, ownerWorkspaceId: WS,
     });
