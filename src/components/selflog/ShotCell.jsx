@@ -3,9 +3,9 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ZONE_COLORS } from '../.
 import { getBunkerSide } from '../../utils/helpers';
 
 const RESULT_COLOR = {
-  hit: '#22c55e',     // success green
-  miss: '#ef4444',    // danger red
-  unknown: '#94a3b8', // neutral grey
+  hit: COLORS.success,   // success green
+  miss: COLORS.danger,   // danger red
+  unknown: COLORS.textDim, // neutral grey
 };
 const RESULT_GLYPH = {
   hit: '\u2713',      // ✓

@@ -36,11 +36,11 @@ export default function BreakoutCollapsed({ bunker, doritoSide = 'top', onChange
       <span style={{
         flex: 1, textAlign: 'left',
         fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800,
-        color: '#000',
+        color: COLORS.black,
       }}>{name}</span>
       <span style={{
         fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-        color: '#000', opacity: 0.7,
+        color: COLORS.black, opacity: 0.7,
       }}>{t('selflog_breakout_change') || 'Zmień'} ⌄</span>
     </button>
   );

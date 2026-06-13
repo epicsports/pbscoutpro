@@ -98,7 +98,7 @@ function ChemistryCard({ members, winRate, played, dim, t }) {
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 14px', minHeight: 60,
       background: COLORS.surfaceDark,
-      border: '1px solid #1a2234',
+      border: `1px solid ${COLORS.surfaceLight}`,
       borderRadius: 10,
       opacity: dim ? 0.65 : 1,
     }}>

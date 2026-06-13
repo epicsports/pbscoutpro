@@ -96,7 +96,7 @@ export function NotatkiSection({ notes, userId, userRole, onAdd, onEdit, onDelet
         {unseen.length > 0 && !expanded && (
           <div style={{
             padding: '2px 7px', borderRadius: 10,
-            background: COLORS.accent, color: '#000',
+            background: COLORS.accent, color: COLORS.black,
             fontFamily: FONT, fontSize: 10, fontWeight: 800,
           }}>{unseen.length}</div>
         )}

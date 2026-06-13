@@ -320,7 +320,7 @@ export default function CoachTabContent({ tournamentId }) {
               <div style={{
                 fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.text,
                 marginTop: SPACE.sm, padding: '8px 12px',
-                background: '#22c55e10',
+                background: `${COLORS.success}10`,
                 border: `1px solid ${COLORS.success}30`,
                 borderRadius: RADIUS.sm,
                 fontWeight: 500,
@@ -334,7 +334,7 @@ export default function CoachTabContent({ tournamentId }) {
               <div style={{
                 fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.danger,
                 marginTop: SPACE.sm, padding: '8px 12px',
-                background: '#ef444410',
+                background: `${COLORS.danger}10`,
                 border: `1px solid ${COLORS.danger}30`,
                 borderRadius: RADIUS.sm,
                 fontWeight: 600,

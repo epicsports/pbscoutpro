@@ -550,7 +550,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
             </Btn>
 
             {parseError && (
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger, background: '#ef444410', border: `1px solid ${COLORS.danger}40`, borderRadius: 8, padding: '8px 10px' }}>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger, background: `${COLORS.danger}10`, border: `1px solid ${COLORS.danger}40`, borderRadius: 8, padding: '8px 10px' }}>
                 {parseError}
               </div>
             )}

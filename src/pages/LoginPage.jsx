@@ -114,7 +114,7 @@ export default function LoginPage() {
                   style={{
                     width: '100%', padding: '14px', borderRadius: 10, marginTop: 4,
                     background: (email.trim() && !loading) ? COLORS.accentGradient : COLORS.border,
-                    color: (email.trim() && !loading) ? '#000' : COLORS.textMuted,
+                    color: (email.trim() && !loading) ? COLORS.black : COLORS.textMuted,
                     boxShadow: (email.trim() && !loading) ? COLORS.accentGlow : 'none',
                     border: 'none', fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800,
                     cursor: (email.trim() && !loading) ? 'pointer' : 'default', minHeight: TOUCH.minTarget || 44,
@@ -216,7 +216,7 @@ export default function LoginPage() {
             style={{
               width: '100%', padding: '14px', borderRadius: 10, marginTop: 4,
               background: canSubmit ? COLORS.accentGradient : COLORS.border,
-              color: canSubmit ? '#000' : COLORS.textMuted,
+              color: canSubmit ? COLORS.black : COLORS.textMuted,
               boxShadow: canSubmit ? COLORS.accentGlow : 'none',
               border: 'none', fontFamily: FONT, fontSize: FONT_SIZE.md,
               fontWeight: 800, cursor: canSubmit ? 'pointer' : 'default',

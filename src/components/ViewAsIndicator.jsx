@@ -52,7 +52,7 @@ export default function ViewAsIndicator() {
           background: COLORS.accentGradient,
           boxShadow: COLORS.accentGlow,
           fontFamily: FONT, fontSize: 12, fontWeight: 700,
-          color: '#000',
+          color: COLORS.black,
           cursor: 'pointer',
           WebkitTapHighlightColor: 'transparent',
         }}>
@@ -70,7 +70,7 @@ export default function ViewAsIndicator() {
             borderBottomRightRadius: 999,
             background: '#00000018',
             fontSize: 18, lineHeight: 1, fontWeight: 800,
-            color: '#000',
+            color: COLORS.black,
           }}>×</span>
       </div>
       <ViewAsDropdown open={dropdownOpen} onClose={() => setDropdownOpen(false)} />

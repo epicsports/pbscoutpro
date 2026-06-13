@@ -323,7 +323,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
             style={{
               minHeight: 48, padding: `0 ${SPACE.lg}px`,
               background: COLORS.accentGradient || `linear-gradient(135deg, #f59e0b 0%, #d97706 100%)`,
-              color: '#0a0e17', border: 'none',
+              color: COLORS.bg, border: 'none',
               borderRadius: 10,
               fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
               cursor: 'pointer',
