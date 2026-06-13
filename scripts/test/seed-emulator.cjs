@@ -94,6 +94,9 @@ const INVITE_EXPIRED = 'expiredtokenseeded01';
 const UID_SUPER = 'test-super';
 const EMAIL_SUPER = 'super@test.local';
 const BASE_LAYOUT = 'base-demo';
+// Admin-UI <Screen>-migration harness: super's OWN isolated workspace so the app
+// shell renders (membership-gated). Separate from demo-ws — non-member invariant holds.
+const ADMIN_WS = 'admin-ws';
 // A3 regression — a plain coach member (not adminUid, not super) used ONLY by the
 // self-leave spec (so removing them never affects other specs).
 const UID_LEAVER = 'test-leaver';
@@ -189,9 +192,16 @@ async function main() {
   batch.set(db.doc(`users/${UID3}`), {
     email: EMAIL3, displayName: 'Test Coach 3', createdAt: now,
   });
-  // Super admin — globalRole drives isSuperAdmin() in rules (no membership).
+  // Super admin — globalRole drives isSuperAdmin() in rules (no demo-ws
+  // membership; layout-globalization proves base writes ride globalRole). The
+  // admin-UI <Screen>-migration harness needs the app shell to render, which is
+  // gated on workspace membership, so super also owns an ISOLATED single-member
+  // workspace (admin-ws) + defaultWorkspace for auto-entry. This is a SEPARATE
+  // workspace — the "not a demo-ws member" invariant above is untouched.
+  // linkSkippedAt so the PBLeagues onboarding gate never interposes.
   batch.set(db.doc(`users/${UID_SUPER}`), {
-    email: EMAIL_SUPER, displayName: 'Super Admin', globalRole: 'super_admin', createdAt: now,
+    email: EMAIL_SUPER, displayName: 'Super Admin', globalRole: 'super_admin',
+    defaultWorkspace: ADMIN_WS, linkSkippedAt: now, createdAt: now,
   });
   // A3 leaver — /users doc (leaveWorkspaceSelf reads it for the super-admin guard).
   batch.set(db.doc(`users/${UID_LEAVER}`), {
@@ -290,6 +300,19 @@ async function main() {
     members: [UID_NAV],
     userRoles: { [UID_NAV]: ['coach'] },
     adminUid: UID_NAV,
+    rolesVersion: 2,
+    migrationReviewedAt: admin.firestore.Timestamp.now(), // nudge not under test
+    createdAt: now,
+  });
+
+  // 3e. Admin-UI harness — super's isolated single-member workspace. Lets the
+  //     app shell render so /admin/* pages (global collections) are reachable in
+  //     the e2e <Screen>-migration pixel gate. super is admin → bypasses onboarding.
+  batch.set(db.doc(`workspaces/${ADMIN_WS}`), {
+    name: 'Admin WS',
+    members: [UID_SUPER],
+    userRoles: { [UID_SUPER]: ['admin', 'coach'] },
+    adminUid: UID_SUPER,
     rolesVersion: 2,
     migrationReviewedAt: admin.firestore.Timestamp.now(), // nudge not under test
     createdAt: now,

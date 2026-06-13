@@ -20,6 +20,9 @@ export const INVITE_EXPIRED = 'expiredtokenseeded01';
 // a seeded global base layout with a demo-ws overlay.
 export const SUPER_ACCOUNT = { email: 'super@test.local', password: 'test1234' };
 export const BASE_LAYOUT = 'base-demo';
+// Admin-UI <Screen>-migration harness: super's isolated workspace (clears the
+// membership gate so AppShell + /admin/* render). NOT demo-ws.
+export const ADMIN_WS = 'admin-ws';
 
 // A3 self-leave regression — a plain coach member used only by the leave spec.
 export const LEAVER_ACCOUNT = { email: 'leaver@test.local', password: 'test1234' };

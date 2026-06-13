@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useViewAs } from '../../hooks/useViewAs';
 import { useAllLeagues, refreshLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
+import Screen from '../../components/Screen';
 import { Btn, Card, ConfirmModal, EmptyState, MoreBtn, ActionSheet } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { deactivateLeague, reactivateLeague } from '../../services/dataService';
@@ -44,8 +45,7 @@ export default function AdminLeaguesPage() {
   };
 
   return (
-    <>
-      <PageHeader back={{ to: '/' }} title={t('b13_leagues_admin')} />
+    <Screen archetype="list" padBottom={false} header={<PageHeader back={{ to: '/' }} title={t('b13_leagues_admin')} />}>
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.md, alignItems: 'center' }}>
@@ -109,6 +109,6 @@ export default function AdminLeaguesPage() {
         onClose={() => setEditing(null)}
         league={editing === 'new' ? null : editing}
       />
-    </>
+    </Screen>
   );
 }
