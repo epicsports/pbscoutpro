@@ -4,6 +4,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { usePlayers, useActiveTeams } from '../../hooks/useFirestore';
 import { useLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
+import Screen from '../../components/Screen';
 import { Btn, Card, EmptyState, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
 import SearchFilterPanel from '../../components/SearchFilterPanel';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
@@ -175,8 +176,7 @@ export default function AdminPlayersPage() {
   };
 
   return (
-    <>
-      <PageHeader back={{ to: '/' }} title={t('b13_players_admin')} />
+    <Screen archetype="list" padBottom={false} header={<PageHeader back={{ to: '/' }} title={t('b13_players_admin')} />}>
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         {/* Search + Liga + Dywizja (shared kit) */}
@@ -405,6 +405,6 @@ export default function AdminPlayersPage() {
       {/* § 71 — global team + player CSV import (PBLeagues format). One entry
           covers both: CSVImport writes /teams/ and /players/. */}
       <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
-    </>
+    </Screen>
   );
 }

@@ -4,6 +4,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { useTeams, usePlayers } from '../../hooks/useFirestore';
 import { useLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
+import Screen from '../../components/Screen';
 import { Btn, Card, EmptyState, MoreBtn, ActionSheet, Modal, Select } from '../../components/ui';
 import SearchFilterPanel from '../../components/SearchFilterPanel';
 import TeamBadge from '../../components/TeamBadge';
@@ -186,8 +187,7 @@ export default function AdminTeamsPage() {
   ];
 
   return (
-    <>
-      <PageHeader back={{ to: '/' }} title={t('b13_teams_admin')} />
+    <Screen archetype="list" padBottom={false} header={<PageHeader back={{ to: '/' }} title={t('b13_teams_admin')} />}>
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         {/* Duplicate banner */}
@@ -378,6 +378,6 @@ export default function AdminTeamsPage() {
         childrenByParent={childrenByParent}
         onRequestRetire={(t) => { setRetireFor(t); }}
       />
-    </>
+    </Screen>
   );
 }

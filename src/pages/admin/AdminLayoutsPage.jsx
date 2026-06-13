@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDevice } from '../../hooks/useDevice';
 import PageHeader from '../../components/PageHeader';
+import Screen from '../../components/Screen';
 import { Btn, SectionTitle, EmptyState, SkeletonList, Icons, LeagueBadge, YearBadge } from '../../components/ui';
 import { useBaseLayouts, useLayouts } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
@@ -43,8 +44,12 @@ export default function AdminLayoutsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title={t('b13_field_library')} subtitle="GLOBAL BASE LAYOUTS" />
+    <Screen
+      archetype="list"
+      padBottom={false}
+      style={{ display: 'flex', flexDirection: 'column' }}
+      header={<PageHeader back={{ to: '/' }} title={t('b13_field_library')} subtitle="GLOBAL BASE LAYOUTS" />}
+    >
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>Library ({bases.length})</SectionTitle>
@@ -93,6 +98,6 @@ export default function AdminLayoutsPage() {
           <Icons.Plus /> New layout (base)
         </Btn>
       </div>
-    </div>
+    </Screen>
   );
 }
