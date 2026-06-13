@@ -379,11 +379,11 @@ export default function QuickLogView({
     if (onEndMatch || onDeleteMatch) menuActions.push({ separator: true });
   }
   if (onEndMatch) menuActions.push({
-    label: 'End match (mark as FINAL)',
+    label: t('match_end_final_action'), testId: 'end-match-final-action',
     onPress: () => { setMenuOpen(false); onEndMatch(); },
   });
   if (onDeleteMatch) menuActions.push({
-    label: 'Delete match', danger: true,
+    label: t('match_delete_action'), danger: true,
     onPress: () => { setMenuOpen(false); onDeleteMatch(); },
   });
 
@@ -839,7 +839,7 @@ function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPla
           }}>{label}</span>
         </div>
         <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, padding: '6px 2px' }}>
-          No players in this squad
+          {t('quicklog_no_players')}
         </div>
       </div>
     );

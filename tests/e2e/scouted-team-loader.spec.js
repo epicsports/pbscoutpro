@@ -16,7 +16,7 @@ test.describe('scouted-team loader', () => {
     await page.evaluate(h => { window.location.hash = h; }, `#/tournament/${TRN}/team/${TEAM_A}`);
     // Pre-fix: eternal "Loading…", this never appears → RED. Post-fix → GREEN.
     await expect(page.getByText(/Team Alpha/i).first()).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Couldn\'t load this scouted team')).toHaveCount(0);
+    await expect(page.getByTestId('scouted-load-error')).toHaveCount(0);
   });
 
   test('an invalid scouted-team URL shows an error state, not an eternal spinner', async ({ page }) => {
@@ -24,7 +24,7 @@ test.describe('scouted-team loader', () => {
     await page.evaluate(h => { window.location.hash = h; }, `#/tournament/${TRN}/team/does-not-exist`);
     // Pre-fix: gate spins forever (no error text) → RED. Post-fix: resolved-but-
     // absent → error state + Retry → GREEN.
-    await expect(page.getByText(/Couldn't load this scouted team/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('scouted-load-error')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: /Retry/i })).toBeVisible();
   });
 });

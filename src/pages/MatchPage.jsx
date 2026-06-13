@@ -597,7 +597,7 @@ export default function MatchPage() {
     <>
       <button
         onClick={() => setHotSheetOpen(true)}
-        title="Zaloguj swój punkt"
+        title={t('selflog_fab_tooltip')}
         style={{
           position: 'fixed', bottom: SPACE.xxl, right: SPACE.xxl,
           width: 56, height: 56, borderRadius: RADIUS.full,
@@ -996,13 +996,15 @@ export default function MatchPage() {
     }
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <EmptyState
-          icon="⚠️"
-          text="Couldn't load this match"
-          subtitle="It may have been removed, or the data didn't load. Try again."
-        />
-        <div style={{ textAlign: 'center', marginTop: 4 }}>
-          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+        <div data-testid="match-load-error">
+          <EmptyState
+            icon="⚠️"
+            text={t('match_load_error')}
+            subtitle={t('match_load_error_sub')}
+          />
+          <div style={{ textAlign: 'center', marginTop: 4 }}>
+            <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>{t('match_retry')}</Btn>
+          </div>
         </div>
       </div>
     );
@@ -1981,12 +1983,12 @@ export default function MatchPage() {
               ) : (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
-                    Scout ›
+                    {t('match_scout_cta')} ›
                   </div>
                   {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
                   {isTraining && (
                     <div onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
-                      Quick ›
+                      {t('match_quick_cta')} ›
                     </div>
                   )}
                 </div>
@@ -2005,7 +2007,7 @@ export default function MatchPage() {
                 {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
               </div>
               <div style={{ fontFamily: FONT, fontSize: compact ? 8 : 10, fontWeight: 600, color: COLORS.textMuted, marginTop: compact ? 2 : 4, letterSpacing: '.4px' }}>
-                {points.length} POINT{points.length === 1 ? '' : 'S'}
+                {t('match_point_counter', points.length)}
               </div>
             </div>
             <div style={{ width: 1, background: COLORS.surfaceLight }} />
@@ -2031,11 +2033,11 @@ export default function MatchPage() {
                   {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
                   {isTraining && (
                     <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
-                      ‹ Quick
+                      ‹ {t('match_quick_cta')}
                     </div>
                   )}
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamB); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
-                    ‹ Scout
+                    ‹ {t('match_scout_cta')}
                   </div>
                 </div>
               ))}
@@ -2150,7 +2152,7 @@ export default function MatchPage() {
             {/* §B B6 — preview discoverability: the section label carries the
                 tap-score hint (muted, non-uppercase — informational only). */}
             <SectionLabel>
-              Points ({points.length})
+              {t('match_points_section', points.length)}
               <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 600, color: COLORS.textMuted }}>
                 {' '}· {t('review_preview_hint')}
               </span>
@@ -2340,7 +2342,7 @@ export default function MatchPage() {
                   cursor: 'pointer',
                   transition: 'background 0.15s, border-color 0.15s',
                 }}>
-                End match
+                {t('match_end_btn')}
               </div>
             )}
             {isLocked && (
@@ -2386,7 +2388,7 @@ export default function MatchPage() {
       <>
       <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
-        { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
+        { title: t('match_delete_point_title'), message: t('match_delete_point_msg'), confirmLabel: t('delete') }
       )} />
       <ConfirmModal {...closeMatchConfirm.modalProps(
         async () => {
@@ -2408,7 +2410,7 @@ export default function MatchPage() {
             alert('End match failed: ' + (e.message || 'Unknown error'));
           }
         },
-        { title: 'End match', message: 'Mark this match as FINAL? No more points can be added.', confirmLabel: 'End match' }
+        { title: t('match_end_title'), message: t('match_end_msg'), confirmLabel: t('match_end_title') }
       )} />
       <ConfirmModal {...clearAllConfirm.modalProps(
         async () => {
@@ -2423,14 +2425,14 @@ export default function MatchPage() {
           }
           resetDraft();
         },
-        { title: 'Clear all points?', message: `Delete all ${points.length} points from this match? This cannot be undone.`, confirmLabel: 'Clear all' }
+        { title: t('match_clear_all_title'), message: t('match_clear_all_msg', points.length), confirmLabel: t('match_clear_all') }
       )} />
       <ConfirmModal {...deleteMatchConfirm.modalProps(
         async () => {
           await deleteMatchFn();
           navigate(backToParent);
         },
-        { title: 'Delete match?', message: 'All scouted points and data for this match will be permanently lost.', confirmLabel: 'Delete match', danger: true }
+        { title: t('match_delete_title'), message: t('match_delete_msg'), confirmLabel: t('match_delete_confirm'), danger: true }
       )} />
       {/* § 61 hotfix 2026-05-12 Bug 7: relock + aggregate recompute on
           second close. setMatchEditLockReleased(false) flips the flag,
@@ -2446,9 +2448,9 @@ export default function MatchPage() {
         { title: t('match_relock_confirm_title'), message: t('match_relock_confirm_msg'), confirmLabel: t('match_relock_confirm_label') }
       )} />
       <ActionSheet open={!!pointMenu} onClose={() => setPointMenu(null)} actions={[
-        { label: 'Edit point', onPress: () => { const pt = points.find(p => p.id === pointMenu?.id); if (pt) editPoint(pt); } },
+        { label: t('match_edit_point'), onPress: () => { const pt = points.find(p => p.id === pointMenu?.id); if (pt) editPoint(pt); } },
         { separator: true },
-        { label: `Delete Point #${pointMenu?.idx}`, danger: true, onPress: () => deleteConfirm.ask(pointMenu?.id) },
+        { label: t('match_delete_point_n', pointMenu?.idx), danger: true, onPress: () => deleteConfirm.ask(pointMenu?.id) },
       ]} />
       {/* § 89 / B5 — scout editor ⋮ menu. Visible only when a draftKey
           is available (i.e. user is in active scout context with a
@@ -2475,10 +2477,10 @@ export default function MatchPage() {
         // "End match" only shown for active matches. In post-close-edit mode
         // (isLockReleased), re-closing is handled by the sticky Zamknij ponownie
         // button so the menu doesn't duplicate it.
-        ...(!isLockReleased ? [{ label: 'End match (mark as FINAL)', onPress: () => closeMatchConfirm.ask(true) }] : []),
-        ...(points.length > 0 ? [{ separator: true }, { label: 'Clear all points', danger: true, onPress: () => clearAllConfirm.ask(true) }] : []),
+        ...(!isLockReleased ? [{ label: t('match_end_final_action'), testId: 'end-match-final-action', onPress: () => closeMatchConfirm.ask(true) }] : []),
+        ...(points.length > 0 ? [{ separator: true }, { label: t('match_clear_all_action'), danger: true, onPress: () => clearAllConfirm.ask(true) }] : []),
         { separator: true },
-        { label: 'Delete match', danger: true, onPress: () => deleteMatchConfirm.ask(true) },
+        { label: t('match_delete_action'), danger: true, onPress: () => deleteMatchConfirm.ask(true) },
       ]} />
       {notesModalEl}
       {selfLogFabEl}
@@ -2977,7 +2979,7 @@ export default function MatchPage() {
               <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: isOT ? COLORS.accent : COLORS.textMuted }}>Overtime</span>
             </div>
             <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
-              placeholder="Quick note (optional)"
+              placeholder={t('match_quick_note_ph')}
               style={{
                 fontFamily: FONT, fontSize: FONT_SIZE.sm, padding: '10px 14px', borderRadius: RADIUS.lg,
                 background: COLORS.surfaceDark, color: COLORS.textMuted, border: `1px solid ${COLORS.border}`,
@@ -2990,7 +2992,7 @@ export default function MatchPage() {
         {!editingId && (
           <div onClick={() => { closeMatchConfirm.ask(true); setSaveSheetOpen(false); }}
             style={{ textAlign: 'center', padding: '10px 0 0', fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.borderLight, cursor: 'pointer' }}>
-            Close match (mark as final)
+            {t('match_close_bottom')}
           </div>
         )}
       </BottomSheet>
@@ -2998,7 +3000,7 @@ export default function MatchPage() {
       {/* ═══ ASSIGN BOTTOM SHEET ═══ */}
       <BottomSheet open={assignTarget !== null} onClose={() => setAssignTarget(null)}>
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, textAlign: 'center', marginBottom: SPACE.md }}>
-          Assign {assignTarget !== null ? getChipLabel(assignTarget) : ''}
+          {assignTarget !== null ? t('match_assign_slot', getChipLabel(assignTarget)) : t('match_assign_slot', '')}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: SPACE.xs + 2 }}>
           {/* Assign list = players only (exclude coach/staff). Same `role`
@@ -3040,7 +3042,7 @@ export default function MatchPage() {
             setAssignTarget(null);
           }}
             style={{ textAlign: 'center', padding: `${SPACE.md}px 0 0`, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, cursor: 'pointer' }}>
-            Unassign
+            {t('match_unassign')}
           </div>
         )}
       </BottomSheet>
@@ -3048,7 +3050,7 @@ export default function MatchPage() {
       {/* Delete point confirmation */}
       <ConfirmModal {...deleteConfirm.modalProps(
         (id) => handleDeletePoint(id),
-        { title: 'Delete point?', message: 'Match score will be recalculated. This cannot be undone.', confirmLabel: 'Delete' }
+        { title: t('match_delete_point_title'), message: t('match_delete_point_msg'), confirmLabel: t('delete') }
       )} />
 
       {/* Concurrent scouting blocker */}

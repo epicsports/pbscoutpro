@@ -146,7 +146,7 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await expect(page.getByTestId('end-match-inline')).toHaveCount(0);
     // ⋮ ActionSheet still carries End match.
     await page.getByTestId('match-menu-btn').click();
-    await expect(page.getByText('End match (mark as FINAL)')).toBeVisible();
+    await expect(page.getByTestId('end-match-final-action')).toBeVisible();
 
     // Portrait keeps the inline destructive button.
     await openReview(page, PORTRAIT);

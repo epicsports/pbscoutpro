@@ -166,6 +166,7 @@ export function ActionSheet({ open, onClose, actions = [], title }) {
           }
           return (
             <div key={i} onClick={() => { a.onPress(); onClose(); }}
+              data-testid={a.testId || undefined}
               style={{
                 padding: '14px 20px', fontFamily: FONT, fontSize: TOUCH.fontBase,
                 fontWeight: 600, cursor: 'pointer',
