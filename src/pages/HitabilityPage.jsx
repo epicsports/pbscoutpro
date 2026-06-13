@@ -57,6 +57,7 @@ export default function HitabilityPage() {
   const [saveError, setSaveError] = useState(false);
   const [confirmDel, setConfirmDel] = useState(null); // { kind:'p'|'t', id, label, count } | null
   const [editor, setEditor] = useState(null); // { kind:'p'|'t', id } | null — STEP 2 marker popup
+  const [shotSheet, setShotSheet] = useState(null); // track-mode: targetId whose shots to list+delete
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
@@ -245,6 +246,15 @@ export default function HitabilityPage() {
     else if (h.targets.length > 1) setChooser({ title: t('hitability_choose_target'), options: h.targets.map(tid => ({ label: targetNode(tid), onPick: () => openEditor('t', tid) })) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [t]);
+  // Track-mode long-press a TARGET → list THAT target's shots with per-shot
+  // delete (same STEP 2 long-press gesture model; plain tap still records the
+  // hit — the dominant capture flow is untouched). Fixes the "flat all-hits
+  // list is hard to navigate to undo a specific target's shots" pain.
+  const trackLongPress = useCallback((h) => {
+    if (h.targets.length === 1) setShotSheet(h.targets[0]);
+    else if (h.targets.length > 1) setChooser({ title: t('hitability_choose_target'), options: h.targets.map(tid => ({ label: targetNode(tid), onPick: () => setShotSheet(tid) })) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
   const saveEditor = ({ name, color }) => {
     if (!editor) return;
     const cfg = configRef.current;
@@ -332,7 +342,7 @@ export default function HitabilityPage() {
       hitsByTarget={mode === 'config' ? {} : hitsByTarget}
       weightTargets={mode === 'sum'}
       onTap={onTap}
-      onLongPress={mode === 'config' ? configLongPress : undefined}
+      onLongPress={mode === 'config' ? configLongPress : mode === 'track' ? trackLongPress : undefined}
       onDragMarker={moveMarker}
       onDragEnd={persistNow}
       maxHeight={maxH}
@@ -477,6 +487,18 @@ export default function HitabilityPage() {
         />
       )}
 
+      {shotSheet && (
+        <TargetShotSheet
+          targetName={tAlias(shotSheet) || tName(shotSheet)}
+          shots={hitsForTarget(shotSheet).sort((a, b) => msOf(b.ts) - msOf(a.ts))}
+          pColor={pColor}
+          pName={pName}
+          onDelete={delHit}
+          onClose={() => setShotSheet(null)}
+          t={t}
+        />
+      )}
+
       <ConfirmModal
         open={!!confirmDel}
         onClose={() => setConfirmDel(null)}
@@ -552,6 +574,47 @@ function HitList({ hits, pColor, pName, tName, onDelete, t }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// Track-mode per-target shot sheet — long-press a target → just THAT target's
+// recorded shots, each deletable (×). Reuses the HitList row idiom + the
+// ActionSheet bottom-sheet mechanics (scrim/tap-close, z 90/91). Fixes the
+// flat all-hits list being hard to navigate to undo a specific target's shots.
+function TargetShotSheet({ targetName, shots, pColor, pName, onDelete, onClose, t }) {
+  const ROW = { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: 10 };
+  const DEL = { minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, fontSize: 18, cursor: 'pointer', flexShrink: 0, WebkitTapHighlightColor: 'transparent' };
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 90, animation: 'fadeIn 0.15s ease-out' }} />
+      <div data-testid="target-shot-sheet" style={{
+        position: 'fixed', left: 0, right: 0, bottom: 0, background: COLORS.surface,
+        borderTop: `1px solid ${COLORS.border}`, borderRadius: '14px 14px 0 0',
+        padding: '8px 0 calc(8px + env(safe-area-inset-bottom, 0px))', zIndex: 91,
+        animation: 'slideUp 0.2s ease-out', maxHeight: '70dvh', display: 'flex', flexDirection: 'column',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 8px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: COLORS.border }} />
+        </div>
+        <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, padding: '0 16px 8px' }}>
+          {t('hitability_target_shots_title', targetName, shots.length)}
+        </div>
+        <div style={{ overflowY: 'auto', padding: '0 12px 8px', minHeight: 0 }}>
+          {shots.length === 0 && (
+            <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic', padding: '4px 4px 12px' }}>{t('hitability_target_shots_empty')}</div>
+          )}
+          {shots.map(h => (
+            <div key={h.id} style={ROW}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: (h.playerId ? pColor(h.playerId) : null) || COLORS.textMuted, flexShrink: 0 }} />
+              <span style={{ flex: 1, fontFamily: FONT, fontSize: 12, color: COLORS.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {h.playerId ? pName(h.playerId) : '—'}
+              </span>
+              <div onClick={() => onDelete(h.id)} role="button" aria-label="delete" style={DEL}>×</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 

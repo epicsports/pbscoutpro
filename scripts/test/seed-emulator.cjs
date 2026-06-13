@@ -74,6 +74,11 @@ const LAYOUT_HIT_DEL = 'lay-hit-del';
 // config + creates the link itself, so it gets its own layout; NO seeded link).
 const TRN_HIT_POP = 'trn-hit-pop';
 const LAYOUT_HIT_POP = 'lay-hit-pop';
+// Isolated track-mode per-target-shots fixture (own layout — the spec records a
+// hit then long-presses the target to list+delete it; net-zero but isolated so a
+// mid-test failure never strands a hit on a shared config — §C shared-state rule).
+const TRN_HIT_TRACK = 'trn-hit-track';
+const LAYOUT_HIT_TRACK = 'lay-hit-track';
 const TEAM_A = 'team-a';
 const TEAM_B = 'team-b';
 // Invite-isolation guards (Stage 4): two OUTSIDERS (not members of demo-ws) +
@@ -548,6 +553,20 @@ async function main() {
     status: 'open', attendees: [], squads: {}, createdAt: now, updatedAt: now,
   });
   batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${LAYOUT_HIT_DEL}/hitability/config`), {
+    players: [{ id: HIT_POS, x: 0.3, y: 0.5, color: '#22d3ee', label: '1' }],
+    targets: [{ id: HIT_TGT, x: 0.7, y: 0.5, label: 'A' }],
+    links: [{ playerId: HIT_POS, targetId: HIT_TGT }],
+    updatedAt: now,
+  });
+
+  // Track-mode per-target-shots fixture — own layout; one position + one target
+  // + link so a track tap auto-attributes (count == taps). The spec records a
+  // hit, long-presses the target → per-target shot sheet → deletes it.
+  batch.set(db.doc(`workspaces/${WS}/trainings/${TRN_HIT_TRACK}`), {
+    type: 'training', name: 'Hitability Track', layoutId: LAYOUT_HIT_TRACK,
+    status: 'open', attendees: [], squads: {}, createdAt: now, updatedAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS}/layoutOverlays/${LAYOUT_HIT_TRACK}/hitability/config`), {
     players: [{ id: HIT_POS, x: 0.3, y: 0.5, color: '#22d3ee', label: '1' }],
     targets: [{ id: HIT_TGT, x: 0.7, y: 0.5, label: 'A' }],
     links: [{ playerId: HIT_POS, targetId: HIT_TGT }],

@@ -66,6 +66,9 @@ export const TRN_HIT_POP = 'trn-hit-pop';
 export const LAYOUT_HIT_POP = 'lay-hit-pop';
 export const HIT_POS_XY = { x: 0.3, y: 0.5 }; // seeded position coords (HIT_POS)
 export const hitabilityPopUrl = `#/training/${TRN_HIT_POP}/hitability`;
+// Isolated track-mode per-target-shots fixture (target+position+link seeded).
+export const TRN_HIT_TRACK = 'trn-hit-track';
+export const hitabilityTrackUrl = `#/training/${TRN_HIT_TRACK}/hitability`;
 export const MATCH = 'mat-demo';     // #2 single-coach log-a-point
 export const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge
 export const TEAM_A = 'team-a';
