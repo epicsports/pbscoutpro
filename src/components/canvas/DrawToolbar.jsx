@@ -3,6 +3,7 @@ import { Undo2, Redo2, Eraser, Trash2, Check, Minus, Equal } from 'lucide-react'
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 import { ConfirmModal } from '../ui';
 import { STROKE_COLORS, STROKE_SIZES } from './DrawingOverlay';
+import { useLanguage } from '../../hooks/useLanguage';
 
 /**
  * DrawToolbar — § 77 Draw Stage 1.
@@ -39,6 +40,7 @@ export default function DrawToolbar({
   canUndo, canRedo, hasStrokes,
   onUndo, onRedo, onClear, onDone,
 }) {
+  const { t } = useLanguage();
   const [confirmClear, setConfirmClear] = useState(false);
 
   return (
@@ -123,10 +125,10 @@ export default function DrawToolbar({
 
         {/* Actions: Undo / Redo / Eraser */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-          <IconBtn label="Undo" disabled={!canUndo} onClick={onUndo} icon={<Undo2 size={20} strokeWidth={2} />} />
-          <IconBtn label="Redo" disabled={!canRedo} onClick={onRedo} icon={<Redo2 size={20} strokeWidth={2} />} />
+          <IconBtn label={t('draw_toolbar_undo')} disabled={!canUndo} onClick={onUndo} icon={<Undo2 size={20} strokeWidth={2} />} />
+          <IconBtn label={t('draw_toolbar_redo')} disabled={!canRedo} onClick={onRedo} icon={<Redo2 size={20} strokeWidth={2} />} />
           <IconBtn
-            label="Eraser"
+            label={t('draw_toolbar_eraser')}
             active={eraserActive}
             onClick={() => onEraserToggle(!eraserActive)}
             icon={<Eraser size={20} strokeWidth={2} />}
@@ -138,14 +140,14 @@ export default function DrawToolbar({
         {/* Destructive + done */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           <IconBtn
-            label="Clear all"
+            label={t('draw_toolbar_clear_all')}
             disabled={!hasStrokes}
             danger
             onClick={() => setConfirmClear(true)}
             icon={<Trash2 size={20} strokeWidth={2} />}
           />
           <div
-            role="button" aria-label="Done"
+            role="button" aria-label={t('done')}
             onClick={onDone}
             style={{
               minWidth: 72, height: TOUCH.minTarget, padding: '0 14px',
@@ -157,7 +159,7 @@ export default function DrawToolbar({
               letterSpacing: '.3px',
             }}
           >
-            <Check size={16} strokeWidth={2.5} /> Done
+            <Check size={16} strokeWidth={2.5} /> {t('done')}
           </div>
         </div>
       </div>
@@ -165,9 +167,9 @@ export default function DrawToolbar({
       <ConfirmModal
         open={confirmClear}
         onClose={() => setConfirmClear(false)}
-        title="Clear all drawings?"
+        title={t('draw_toolbar_clear_confirm_title')}
         message="This will remove every stroke on this point. Cannot be undone via Undo."
-        confirmLabel="Clear all"
+        confirmLabel={t('draw_toolbar_clear_all')}
         danger
         onConfirm={() => { onClear(); setConfirmClear(false); }}
       />

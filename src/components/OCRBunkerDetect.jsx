@@ -13,12 +13,14 @@ import { guessType, typeData } from './BunkerCard';
 import { COLORS, FONT, TOUCH } from '../utils/theme';
 import { uid } from '../utils/helpers';
 import { STATIC_FLAGS } from '../utils/featureFlags';
+import { useLanguage } from '../hooks/useLanguage';
 
 const API_KEY_STORAGE = 'pbscoutpro_anthropic_key';
 function getApiKey() { return localStorage.getItem(API_KEY_STORAGE) || ''; }
 function setApiKeyStorage(key) { localStorage.setItem(API_KEY_STORAGE, key); }
 
 export default function OCRBunkerDetect({ image, onAccept, onClose }) {
+  const { t } = useLanguage();
   const [apiKey, setApiKey] = useState(getApiKey());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -174,7 +176,7 @@ export default function OCRBunkerDetect({ image, onAccept, onClose }) {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8 }}>
-          <Btn variant="default" onClick={onClose}>Cancel</Btn>
+          <Btn variant="default" onClick={onClose}>{t('cancel')}</Btn>
           <div style={{ flex: 1 }} />
           {!results ? (
             <Btn variant="accent" onClick={detect} disabled={loading || !apiKey}>

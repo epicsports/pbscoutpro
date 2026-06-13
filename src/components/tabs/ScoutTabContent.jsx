@@ -18,6 +18,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme
 import { playerOnTeam } from '../../utils/playerTeams';
 import { STATIC_FLAGS } from '../../utils/featureFlags';
 import { groupMatchesByStage } from '../../utils/divisionAliases';
+import { useLanguage } from '../../hooks/useLanguage';
 
 /**
  * ScoutTabContent — match list with split-tap "tap to scout" UX.
@@ -28,6 +29,7 @@ import { groupMatchesByStage } from '../../utils/divisionAliases';
  */
 export default function ScoutTabContent({ tournamentId }) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const { tournaments } = useTournaments();
   const { teams } = useActiveTeams();
   const { players } = usePlayers();
@@ -342,11 +344,11 @@ export default function ScoutTabContent({ tournamentId }) {
 
         {!filtered.length && (
           <div style={{ textAlign: 'center', padding: SPACE.xl }}>
-            <EmptyState icon="⚔️" text="No matches yet" />
+            <EmptyState icon="⚔️" text={t('scout_tab_no_matches_yet')} />
             {!isClosed && !isViewer && (
               <div style={{ display: 'flex', gap: SPACE.sm, justifyContent: 'center', marginTop: SPACE.md, flexWrap: 'wrap' }}>
                 {scouted.length === 0 && (
-                  <Btn variant="accent" onClick={() => setAddTeamModal(true)}>+ Add team</Btn>
+                  <Btn variant="accent" onClick={() => setAddTeamModal(true)}>{t('scout_tab_add_team')}</Btn>
                 )}
                 {/* "Import schedule (zdjęcie)" hidden per DESIGN_DECISIONS § 65 (2026-05-20) —
                     OCR-based image import uses client-side Anthropic key (security violation).
@@ -449,7 +451,7 @@ export default function ScoutTabContent({ tournamentId }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            + Add match
+            {t('scout_tab_add_match')}
           </div>
           <div
             onClick={() => setAddTeamModal(true)}
@@ -467,38 +469,38 @@ export default function ScoutTabContent({ tournamentId }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            + Add team
+            {t('scout_tab_add_team')}
           </div>
         </div>
       )}
 
       {/* New match modal */}
-      <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title="New match"
+      <Modal open={addMatchModal} onClose={() => setAddMatchModal(false)} title={t('scout_tab_new_match')}
         footer={<>
-          <Btn variant="default" onClick={() => setAddMatchModal(false)}>Cancel</Btn>
+          <Btn variant="default" onClick={() => setAddMatchModal(false)}>{t('cancel')}</Btn>
           <Btn variant="accent" onClick={handleAddMatch}
             disabled={!matchTeamA || !matchTeamB || matchTeamA === matchTeamB}>
-            Create
+            {t('create')}
           </Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
           <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Home team</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('scout_tab_home_team')}</div>
             <Select value={matchTeamA} onChange={setMatchTeamA} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
               <option value="">— select —</option>
               {divisionScouted.map(s => {
-                const t = teams.find(x => x.id === s.teamId);
-                return t ? <option key={s.id} value={s.id}>{t.name}</option> : null;
+                const team = teams.find(x => x.id === s.teamId);
+                return team ? <option key={s.id} value={s.id}>{team.name}</option> : null;
               })}
             </Select>
           </div>
           <div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>Away team</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('scout_tab_away_team')}</div>
             <Select value={matchTeamB} onChange={setMatchTeamB} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
               <option value="">— select —</option>
               {divisionScouted.filter(s => s.id !== matchTeamA).map(s => {
-                const t = teams.find(x => x.id === s.teamId);
-                return t ? <option key={s.id} value={s.id}>{t.name}</option> : null;
+                const team = teams.find(x => x.id === s.teamId);
+                return team ? <option key={s.id} value={s.id}>{team.name}</option> : null;
               })}
             </Select>
           </div>
@@ -512,7 +514,7 @@ export default function ScoutTabContent({ tournamentId }) {
           Division auto-derives from each team's league mapping in
           buildScoutedPayload (preserves pre-multi-select behavior). */}
       <Modal open={addTeamModal} onClose={() => setAddTeamModal(false)}
-        title="Add teams"
+        title={t('scout_tab_add_teams_title')}
         footer={sortedAvailable.length > 0 ? (
           <>
             <div style={{
@@ -520,21 +522,19 @@ export default function ScoutTabContent({ tournamentId }) {
               fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
               color: COLORS.textMuted,
             }}>
-              {selectedTeamIds.size > 0 && `${selectedTeamIds.size} selected`}
+              {selectedTeamIds.size > 0 && t('scout_tab_n_selected', selectedTeamIds.size)}
             </div>
             <Btn variant="default" onClick={() => setAddTeamModal(false)} disabled={addingBatch}>
-              Cancel
+              {t('cancel')}
             </Btn>
             <Btn variant="accent"
               disabled={selectedTeamIds.size === 0 || addingBatch}
               onClick={handleBatchAddTeams}>
               {addingBatch
-                ? 'Adding…'
+                ? t('scout_tab_adding')
                 : selectedTeamIds.size === 0
-                  ? 'Add'
-                  : selectedTeamIds.size === 1
-                    ? 'Add 1 team'
-                    : `Add ${selectedTeamIds.size} teams`}
+                  ? t('add')
+                  : t('scout_tab_add_n_teams', selectedTeamIds.size)}
             </Btn>
           </>
         ) : null}>
@@ -545,8 +545,8 @@ export default function ScoutTabContent({ tournamentId }) {
             fontStyle: 'italic',
           }}>
             {tournament.league
-              ? `No eligible teams for ${leagueDisplayName(tournament.league)}. Create one in Teams or pick another league.`
-              : 'All available teams are already in this tournament.'}
+              ? t('scout_tab_no_eligible_league', leagueDisplayName(tournament.league))
+              : t('scout_tab_no_eligible_all')}
           </div>
         ) : (
           <>
@@ -579,7 +579,7 @@ export default function ScoutTabContent({ tournamentId }) {
               style={{ marginBottom: SPACE.sm }}
             />
             {visibleAvailable.length === 0 ? (
-              <div style={{ padding: SPACE.lg, textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>No matches</div>
+              <div style={{ padding: SPACE.lg, textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>{t('picker_no_matches')}</div>
             ) : null}
             <div style={{
               display: 'flex', flexDirection: 'column', gap: 6,

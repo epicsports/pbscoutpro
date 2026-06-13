@@ -254,7 +254,7 @@ export default function LivePointTracker({
         padding: '10px 14px 6px',
       }}>
         <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: COLORS.textMuted }}>
-          {t('players_title') || 'Gracze'} · <span style={{ color: COLORS.textDim }}>{aliveCount} w polu</span>
+          {t('players_title') || 'Gracze'} · <span style={{ color: COLORS.textDim }}>{aliveCount} {t('live_point_in_field')}</span>
         </span>
         {aliveCount === pickedPlayers.length && (
           <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase', color: '#22d3ee' }}>
@@ -365,7 +365,7 @@ function PlayerCard({
             ) : (
               <>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: COLORS.success, display: 'inline-block' }}></span>
-                <span style={{ color: COLORS.success }}>w polu</span>
+                <span style={{ color: COLORS.success }}>{t('live_point_in_field')}</span>
               </>
             )}
           </div>
@@ -468,7 +468,7 @@ function PickerPanel({
           <textarea
             value={inaczejText}
             onChange={(e) => onChangeInaczejText?.(e.target.value)}
-            placeholder="Opisz własnymi słowami…"
+            placeholder={t('live_point_describe_ph')}
             rows={2}
             style={{
               width: '100%', minHeight: 44,
