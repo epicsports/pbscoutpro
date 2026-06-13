@@ -3,6 +3,7 @@ import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, ConfirmModal } from '../components/ui';
 import PlayerEditModal from '../components/PlayerEditModal';
 import EntityPickerModal from '../components/EntityPickerModal';
@@ -213,8 +214,8 @@ export default function TeamDetailPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: backTo }} title={team.name} subtitle={t('team_detail_subtitle')} />
+    <Screen archetype="detail" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
+      header={<PageHeader back={{ to: backTo }} title={team.name} subtitle={t('team_detail_subtitle')} />}>
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* § Team branding — hero mark + subtle brand tint */}
@@ -419,6 +420,6 @@ export default function TeamDetailPage() {
         requirePassword={workspace?.slug}
         password={deletePassword} onPasswordChange={setDeletePassword}
         onConfirm={handleDeleteTeam} />
-    </div>
+    </Screen>
   );
 }

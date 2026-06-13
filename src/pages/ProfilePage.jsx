@@ -6,6 +6,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Btn, ConfirmModal, Input, Modal, Select } from '../components/ui';
 import RoleChips from '../components/settings/RoleChips';
 import LinkProfileModal from '../components/settings/LinkProfileModal';
@@ -110,12 +111,12 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
-        <PageHeader back={{ to: '/' }} title={t('my_profile') || 'Mój profil'} />
+      <Screen archetype="detail" padBottom={false} style={{ minHeight: '100dvh', background: COLORS.bg }}
+        header={<PageHeader back={{ to: '/' }} title={t('my_profile') || 'Mój profil'} />}>
         <div style={{ padding: SPACE.lg, textAlign: 'center', color: COLORS.textMuted }}>
           {t('not_signed_in') || 'Nie jesteś zalogowany.'}
         </div>
-      </div>
+      </Screen>
     );
   }
 
@@ -259,9 +260,8 @@ export default function ProfilePage() {
   };
 
   return (
-    <div style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title={t('my_profile') || 'Mój profil'} />
-
+    <Screen archetype="detail" padBottom={false} style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}
+      header={<PageHeader back={{ to: '/' }} title={t('my_profile') || 'Mój profil'} />}>
       <div style={{ flex: 1, padding: SPACE.lg, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
 
         {/* Identity block — avatar + email. Avatar URL editor removed per
@@ -743,6 +743,6 @@ export default function ProfilePage() {
           )}
         </div>
       </Modal>
-    </div>
+    </Screen>
   );
 }

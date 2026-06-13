@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",
     "test": "playwright test",
-    "test:e2e": "playwright test --config playwright.emulator.config.js --grep-invert \"pixel-diff\"",
+    "test:e2e": "playwright test --config playwright.emulator.config.js --grep-invert \"pixel-diff|model C\"",
     "test:e2e:diff": "playwright test --config playwright.emulator.config.js --grep \"pixel-diff\"",
     "seed:emulator": "node scripts/test/seed-emulator.cjs",
     "test:screenshots": "playwright test responsive-audit",
@@ -19,7 +19,8 @@
     "review:ux": "node scripts/reviewers/run-all.js --ux",
     "review:code": "node scripts/reviewers/run-all.js --code",
     "review:ai": "node scripts/reviewers/run-all.js --ai",
-    "review:screenshots": "node scripts/reviewers/capture-screens.js"
+    "review:screenshots": "node scripts/reviewers/capture-screens.js",
+    "test:e2e:migrationdiff": "playwright test --config playwright.emulator.config.js --grep \"model C\""
   },
   "dependencies": {
     "@sentry/react": "^10.49.0",
