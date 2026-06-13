@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>arc B — desktop width decision: 1200 (dziś) vs tier (&lt;Screen&gt;)</title>
+<!--
+  DECISION EVIDENCE for Jacek (2026-06-13). The <Screen> pilot shipped (diff=0
+  on phone). The ~18 R.layout pages currently render at maxWidth 1200 on desktop;
+  migrating them to a tier (detail 640 / list 760 / form 560) NARROWS them on
+  desktop (diff=0 on phone). This is the ONE held decision. Below = the actual
+  render at 1200 (today) vs the content capped to its tier (what <Screen> does),
+  per archetype. Screenshots generated on the emulator at viewport 1200×900.
+  Pick: ratify the narrowing app-wide (then CC batch-migrates, per-batch phone
+  diff=0 + a desktop register row), OR keep 1200 (migrate shell only where
+  already diff=0). Phone is unaffected either way.
+-->
+<style>
+  body{margin:0;background:#05080f;color:#e2e8f0;font-family:-apple-system,system-ui,'Segoe UI',sans-serif}
+  h1{font-size:20px;padding:20px 24px 4px;margin:0}
+  .lede{color:#94a3b8;font-size:13px;padding:0 24px 16px;max-width:900px;line-height:1.5}
+  .row{padding:18px 24px;border-top:1px solid #1a2234}
+  .row h2{font-size:15px;margin:0 0 2px}
+  .row .meta{color:#64748b;font-size:12px;margin-bottom:12px}
+  .pair{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .col{flex:1;min-width:340px}
+  .col .cap{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#94a3b8;margin-bottom:6px}
+  .col.target .cap{color:#f59e0b}
+  img{width:100%;border:1px solid #2a3548;border-radius:8px;display:block;background:#0a0e17}
+  .note{margin:8px 24px 28px;color:#94a3b8;font-size:12.5px;background:#0d1320;border:1px solid #2a3548;border-radius:12px;padding:14px 16px;max-width:900px;line-height:1.6}
+  .note b{color:#e2e8f0}
+</style>
+</head>
+<body>
+<h1>arc B — desktop width: <span style="color:#94a3b8">1200 (dziś)</span> vs <span style="color:#f59e0b">tier (&lt;Screen&gt;)</span></h1>
+<p class="lede">Telefon się NIE zmienia (diff=0, udowodnione). To dotyczy tylko desktopu/tabletu: ~18 ekranów jest dziś rozciągniętych do 1200,
+migracja zwęża je do tieru (detail 640 / list 760 / form 560 — kolumna czytania wyśrodkowana). Wybierz: zatwierdzasz zwężenie (CC migruje batchami,
+każdy z phone-diff=0 + wpis desktop do rejestru), albo zostawiamy 1200.</p>
+
+<div class="row">
+  <h2>DETAIL — TeamDetailPage (tier 640)</h2>
+  <div class="meta">gęsty profil drużyny: roster + branding + ligi/dywizje</div>
+  <div class="pair">
+    <div class="col"><div class="cap">teraz — 1200</div><img src="detail-teamdetail-current-1200.png" alt="team detail 1200"></div>
+    <div class="col target"><div class="cap">docelowo — 640</div><img src="detail-teamdetail-tier-640.png" alt="team detail 640"></div>
+  </div>
+</div>
+
+<div class="row">
+  <h2>LIST — PlayersPage (tier 760)</h2>
+  <div class="meta">lista zawodników z filtrami + wierszami</div>
+  <div class="pair">
+    <div class="col"><div class="cap">teraz — 1200</div><img src="list-players-current-1200.png" alt="players 1200"></div>
+    <div class="col target"><div class="cap">docelowo — 760</div><img src="list-players-tier-760.png" alt="players 760"></div>
+  </div>
+</div>
+
+<div class="row">
+  <h2>FORM — LayoutWizardPage (tier 560)</h2>
+  <div class="meta">wąska kolumna formularza/wizarda</div>
+  <div class="pair">
+    <div class="col"><div class="cap">teraz — 1200</div><img src="form-layoutwizard-current-1200.png" alt="form 1200"></div>
+    <div class="col target"><div class="cap">docelowo — 560</div><img src="form-layoutwizard-tier-560.png" alt="form 560"></div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Uwaga metodyczna:</b> obrazki „docelowo" powstały przez ograniczenie szerokości kolumny treści na żywym ekranie 1200 (dokładnie to,
+  co robi <code>&lt;Screen archetype&gt;</code>) — wiernie pokazują wynik, łącznie z marginesami tła po bokach. Header też się zwęża, bo PageHeader
+  siedzi w tej samej kolumnie. To jedyna widoczna różnica całej migracji poza telefonem; po decyzji CC dowozi resztę batchami.
+</div>
+</body>
+</html>
