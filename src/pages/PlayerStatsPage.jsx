@@ -1066,7 +1066,7 @@ export default function PlayerStatsPage() {
         })()}
 
         {/* ─── Loading state ─────────────────────────── */}
-        {dataLoading && <Loading text="Computing stats..." />}
+        {dataLoading && <Loading text={t('player_stats_computing')} />}
 
         {/* § read-volume — global all-time walk is deferred; tap to run it. */}
         {!dataLoading && scopeParam === 'global' && !runHeavy && (
@@ -1075,9 +1075,9 @@ export default function PlayerStatsPage() {
             padding: '28px 16px', textAlign: 'center',
           }}>
             <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, maxWidth: 280 }}>
-              All-time stats scan every tournament — tap to load.
+              {t('player_stats_load_alltime_hint')}
             </div>
-            <Btn variant="accent" onClick={() => setRunHeavy(true)}>Load all-time stats</Btn>
+            <Btn variant="accent" onClick={() => setRunHeavy(true)}>{t('player_stats_load_alltime_btn')}</Btn>
           </div>
         )}
 
@@ -1086,7 +1086,7 @@ export default function PlayerStatsPage() {
             Suppressed while the global walk is deferred (CTA shown above). */}
         {!dataLoading && stats.played === 0 && selfReports.length === 0
           && !(scopeParam === 'global' && !runHeavy) && (
-          <EmptyState icon="?" text="No scouted points yet" subtitle="Scout matches with this player on the field to see stats." />
+          <EmptyState icon="?" text="No scouted points yet" subtitle={t('player_stats_empty_subtitle')} />
         )}
 
         {!dataLoading && stats.played > 0 && (() => {
@@ -1149,22 +1149,22 @@ export default function PlayerStatsPage() {
                 (heatmapHeroEl), so this section is suppressed (§116 Stage 4.1). */}
             {!landscape && (outgoingZones.hasAny || breakoutPoints.length > 0) && statsField?.fieldImage && (
               <div>
-                <SectionHeader t={t} source="scout+self" title="Strefy ostrzału + przeszkody startowe" />
+                <SectionHeader t={t} source="scout+self" title={t('player_stats_zone_section_title')} />
                 {heatmapHeroEl}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
                     <span style={{ width: 9, height: 9, borderRadius: '50%', background: COLORS.success }} />
-                    przeszkoda startowa (gdzie biegłeś)
+                    {t('player_stats_legend_breakout')}
                   </span>
                   {outgoingZones.hasAny && (
                     <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
-                      strefy = w co strzelałeś · jaśniej = częściej
+                      {t('player_stats_legend_zones')}
                     </span>
                   )}
                   {outgoingZones.kill.length > 0 && (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
                       <span style={{ width: 12, height: 12, borderRadius: 3, border: `2px solid ${COLORS.danger}` }} />
-                      strefa z eliminacją
+                      {t('player_stats_legend_elim_zone')}
                     </span>
                   )}
                 </div>

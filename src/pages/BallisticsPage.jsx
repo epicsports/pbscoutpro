@@ -14,12 +14,14 @@ import PageHeader from '../components/PageHeader';
 import { useLayouts } from '../hooks/useFirestore';
 import { useVisibility } from '../hooks/useVisibility';
 import { COLORS, FONT, FONT_SIZE, SPACE, responsive } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function BallisticsPage() {
   const { layoutId } = useParams();
   const navigate = useNavigate();
   const device = useDevice();
   const R = responsive(device.type);
+  const { t } = useLanguage();
   const { layouts } = useLayouts();
   const layout = layouts?.find(l => l.id === layoutId);
 
@@ -81,8 +83,8 @@ export default function BallisticsPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <PageHeader
         back={{ to: `/layout/${layoutId}` }}
-        title="Ballistics"
-        subtitle={selectedBunker ? `FROM ${selectedBunker.positionName || selectedBunker.name || selectedBunker.type}` : shooterPos ? 'FROM FREE POINT' : 'TAP FIELD TO PLACE SHOOTER'}
+        title={t('ballistics_title')}
+        subtitle={selectedBunker ? t('ballistics_subtitle_from_bunker', selectedBunker.positionName || selectedBunker.name || selectedBunker.type) : shooterPos ? t('ballistics_subtitle_free_point') : t('ballistics_subtitle_tap')}
       />
 
       {/* Canvas with visibility overlay */}
@@ -113,10 +115,10 @@ export default function BallisticsPage() {
         borderTop: `1px solid ${COLORS.border}`,
         fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, textAlign: 'center',
       }}>
-        {progress ? `Computing... ${progress.pct || 0}%` :
-         visData ? '3-channel: green=safe · orange=arc · blue=exposed' :
-         isReady ? 'Tap a bunker or any point on the field' :
-         'Initializing field...'}
+        {progress ? t('ballistics_status_computing', progress.pct || 0) :
+         visData ? t('ballistics_status_channels') :
+         isReady ? t('ballistics_status_tap_bunker') :
+         t('ballistics_status_initializing')}
       </div>
     </div>
   );

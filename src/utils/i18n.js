@@ -1600,6 +1600,39 @@ const T = {
     bunker_card_position_name:      'Nazwa pozycji',
     bunker_card_custom:             '+ Własna',
     bunker_card_mirror_label:       'Lustro (dodaj symetryczny bunker)',
+
+    /* ─── B10 analytics + ballistics pages ──────────────── */
+    /* BallisticsPage */
+    ballistics_title:                 'Ballistics',
+    ballistics_subtitle_from_bunker:  (name) => `FROM ${name}`,
+    ballistics_subtitle_free_point:   'FROM FREE POINT',
+    ballistics_subtitle_tap:          'TAP FIELD TO PLACE SHOOTER',
+    ballistics_status_computing:      (pct) => `Computing... ${pct}%`,
+    ballistics_status_channels:       '3-channel: green=safe · orange=arc · blue=exposed',
+    ballistics_status_tap_bunker:     'Tap a bunker or any point on the field',
+    ballistics_status_initializing:   'Initializing field...',
+    /* PlayerStatsPage */
+    player_stats_computing:           'Computing stats...',
+    player_stats_load_alltime_hint:   'All-time stats scan every tournament — tap to load.',
+    player_stats_load_alltime_btn:    'Load all-time stats',
+    player_stats_empty_subtitle:      'Scout matches with this player on the field to see stats.',
+    player_stats_zone_section_title:  'Strefy ostrzału + przeszkody startowe',
+    player_stats_legend_breakout:     'przeszkoda startowa (gdzie biegłeś)',
+    player_stats_legend_zones:        'strefy = w co strzelałeś · jaśniej = częściej',
+    player_stats_legend_elim_zone:    'strefa z eliminacją',
+    /* LayoutAnalyticsPage */
+    layout_analytics_col_tournament:  'Tournament',
+    layout_analytics_col_match:       'Match',
+    layout_analytics_col_side:        'Side',
+    /* TacticPage */
+    tactic_not_found:                 'Couldn\'t load this tactic',
+    tactic_not_found_sub:             'It may have been removed, or the data didn\'t load. Try again.',
+    tactic_loading:                   'Loading...',
+    tactic_rename_modal_title:        'Rename tactic',
+    tactic_delete_action:             'Delete tactic',
+    tactic_name_placeholder:          'Tactic name',
+    tactic_back_layout:               'Layout',
+    tactic_back_home:                 'Home',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -3152,6 +3185,39 @@ const T = {
     bunker_card_position_name:      'Position name',
     bunker_card_custom:             '+ Custom',
     bunker_card_mirror_label:       'Mirror (add symmetric bunker)',
+
+    /* ─── B10 analytics + ballistics pages ──────────────── */
+    /* BallisticsPage */
+    ballistics_title:                 'Ballistics',
+    ballistics_subtitle_from_bunker:  (name) => `FROM ${name}`,
+    ballistics_subtitle_free_point:   'FROM FREE POINT',
+    ballistics_subtitle_tap:          'TAP FIELD TO PLACE SHOOTER',
+    ballistics_status_computing:      (pct) => `Computing... ${pct}%`,
+    ballistics_status_channels:       '3-channel: green=safe · orange=arc · blue=exposed',
+    ballistics_status_tap_bunker:     'Tap a bunker or any point on the field',
+    ballistics_status_initializing:   'Initializing field...',
+    /* PlayerStatsPage */
+    player_stats_computing:           'Computing stats...',
+    player_stats_load_alltime_hint:   'All-time stats scan every tournament — tap to load.',
+    player_stats_load_alltime_btn:    'Load all-time stats',
+    player_stats_empty_subtitle:      'Scout matches with this player on the field to see stats.',
+    player_stats_zone_section_title:  'Shooting zones + breakout obstacles',
+    player_stats_legend_breakout:     'breakout obstacle (where you ran)',
+    player_stats_legend_zones:        'zones = what you shot at · brighter = more often',
+    player_stats_legend_elim_zone:    'zone with a kill',
+    /* LayoutAnalyticsPage */
+    layout_analytics_col_tournament:  'Tournament',
+    layout_analytics_col_match:       'Match',
+    layout_analytics_col_side:        'Side',
+    /* TacticPage */
+    tactic_not_found:                 'Couldn\'t load this tactic',
+    tactic_not_found_sub:             'It may have been removed, or the data didn\'t load. Try again.',
+    tactic_loading:                   'Loading...',
+    tactic_rename_modal_title:        'Rename tactic',
+    tactic_delete_action:             'Delete tactic',
+    tactic_name_placeholder:          'Tactic name',
+    tactic_back_layout:               'Layout',
+    tactic_back_home:                 'Home',
   },
 };
 
