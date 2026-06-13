@@ -828,6 +828,7 @@ export default function QuickLogView({
  * the parent Set→Array migration in Bug B.
  */
 function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPlayer, isTablet }) {
+  const { t } = useLanguage(); // own hook — module-level sub-component, not in QuickLogView's scope
   if (roster.length === 0) {
     return (
       <div style={{ padding: isTablet ? '0 24px 4px' : '0 16px 4px' }}>
