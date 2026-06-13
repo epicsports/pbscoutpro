@@ -381,10 +381,8 @@ export default function UserDetailPage() {
           ? (t('user_global_role_promote_title') || 'Grant super admin?')
           : (t('user_global_role_revoke_title') || 'Revoke super admin?')}
         message={pendingGlobalRole === 'super_admin'
-          ? (t('user_global_role_promote_body', { name: displayName })
-             || `${displayName} will get unrestricted access to all workspaces and global resources.`)
-          : (t('user_global_role_revoke_body', { name: displayName })
-             || `${displayName} will lose super admin privileges.`)}
+          ? t('user_global_role_promote_body', displayName)
+          : t('user_global_role_revoke_body', displayName)}
         confirmLabel={pendingGlobalRole === 'super_admin'
           ? (t('user_global_role_promote_btn') || 'Grant')
           : (t('user_global_role_revoke_btn') || 'Revoke')}

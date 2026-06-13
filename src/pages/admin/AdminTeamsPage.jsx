@@ -299,7 +299,7 @@ export default function AdminTeamsPage() {
             <Btn variant="default" size="sm" disabled={safePage === 0}
               onClick={() => updateParams({ page: safePage - 1 })}>{t('admin_teams_prev')}</Btn>
             <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-              {t('admin_teams_page_n_of_m')(safePage + 1, totalPages)}
+              {t('admin_teams_page_n_of_m', safePage + 1, totalPages)}
             </span>
             <Btn variant="default" size="sm" disabled={safePage >= totalPages - 1}
               onClick={() => updateParams({ page: safePage + 1 })}>{t('admin_teams_next')}</Btn>

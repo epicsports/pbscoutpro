@@ -253,7 +253,7 @@ export default function KioskWizardHost({
           <ChevronLeft size={24} strokeWidth={2.5} />
         </div>
         <div style={{ flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
-          {t('ppt_step_counter', display, total) || `Krok ${display} z ${total}`}
+          {t('ppt_step_counter', display, total)}
         </div>
         <div onClick={onClose} style={{
           color: COLORS.textMuted,
