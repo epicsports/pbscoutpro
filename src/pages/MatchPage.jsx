@@ -1978,8 +1978,19 @@ export default function MatchPage() {
                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
                 overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamA?.name || 'Home'}</div>
+              {/* §B B5 + post-night STEP 3: compact rail variant. Tournament →
+                  bare chevron (whole zone = Scout tap). TRAINING → Quick is a
+                  valid path here (only removed in tournaments, D6c), so the
+                  compact variant keeps an explicit Quick › link beside Scout. */}
               {!isLocked && (compact ? (
-                <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>›</div>
+                isTraining ? (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 1 }}>
+                    <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.accent }}>{t('match_scout_cta')} ›</div>
+                    <div data-testid="quick-cta-a" onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>{t('match_quick_cta')} ›</div>
+                  </div>
+                ) : (
+                  <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>›</div>
+                )
               ) : (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3 }}>
                   <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamA); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.accent }}>
@@ -1987,7 +1998,7 @@ export default function MatchPage() {
                   </div>
                   {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
                   {isTraining && (
-                    <div onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
+                    <div data-testid="quick-cta-a" onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
                       {t('match_quick_cta')} ›
                     </div>
                   )}
@@ -2027,12 +2038,19 @@ export default function MatchPage() {
                 overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
               }}>{teamB?.name || 'Away'}</div>
               {!isLocked && (compact ? (
-                <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>‹</div>
+                isTraining ? (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 1, justifyContent: 'flex-end' }}>
+                    <div data-testid="quick-cta-b" onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>‹ {t('match_quick_cta')}</div>
+                    <div onClick={(e) => { e.stopPropagation(); goScout(match?.teamB); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.accent }}>‹ {t('match_scout_cta')}</div>
+                  </div>
+                ) : (
+                  <div aria-hidden="true" style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent, marginTop: 1 }}>‹</div>
+                )
               ) : (
                 <div style={{ display: 'flex', gap: 12, marginTop: 3, justifyContent: 'flex-end' }}>
                   {/* Quick Log is a TRAINING-only path — hidden in tournament context (D6c). */}
                   {isTraining && (
-                    <div onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
+                    <div data-testid="quick-cta-b" onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>
                       ‹ {t('match_quick_cta')}
                     </div>
                   )}

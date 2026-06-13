@@ -125,6 +125,11 @@ const MATCH_PSTATS = 'mat-pstats';   // PlayerStats landscape-hero e2e (Stage 4.
 const TRN_PSTATS = 'trn-pstats';     // dedicated tournament on the base layout (with fieldImage)
 const TRN_PHASE = 'trn-phase';       // §B phase-view fixture (timeline-bearing points)
 const MATCH_PHASE = 'mat-phase';
+// Post-night STEP 3 — a TRAINING + matchup on the base layout (fieldImage →
+// landscape rail renders), so the rail-compact scoreboard shows the training
+// "Quick ›" CTA (valid in training, removed only in tournaments). Isolated.
+const TRN_TRAIN_REVIEW = 'trn-train-review';
+const MATCHUP_REVIEW = 'matchup-review';
 // A 160×100 (16:10) SVG field image — non-degenerate aspect so BaseCanvas's
 // fit-sizing renders a real <canvas> (the PlayerStats breakout-heatmap HERO).
 const DEMO_FIELD_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='100'%3E%3Crect width='160' height='100' fill='%230a1410'/%3E%3C/svg%3E";
@@ -452,6 +457,20 @@ async function main() {
       assignments: [rosterA[0].id, null, null, null, null],
       bumpStops: E5N, eliminations: E5F, runners: E5F, fieldSide: 'left',
     },
+  });
+
+  // Post-night STEP 3 — training-matchup review fixture (base layout w/ fieldImage
+  // → landscape rail; rail-compact scoreboard must show the training Quick › CTA).
+  batch.set(db.doc(`workspaces/${WS}/trainings/${TRN_TRAIN_REVIEW}`), {
+    name: 'Quick Review Training', eventType: 'training', layoutId: BASE_LAYOUT,
+    teamId: TEAM_A, status: 'active', createdAt: now,
+    squads: { red: rosterA.map(p => p.id), blue: rosterB.map(p => p.id) },
+    squadNames: { red: 'Red Squad', blue: 'Blue Squad' },
+  });
+  batch.set(db.doc(`workspaces/${WS}/trainings/${TRN_TRAIN_REVIEW}/matchups/${MATCHUP_REVIEW}`), {
+    homeSquad: 'red', awaySquad: 'blue',
+    homeRoster: rosterA.map(p => p.id), awayRoster: rosterB.map(p => p.id),
+    scoreA: 0, scoreB: 0, status: 'playing', order: now, createdAt: now,
   });
 
   // 7. Invite tokens (Stage 4) — admin-issued (createdBy = demo-ws admin UID).

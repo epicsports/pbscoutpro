@@ -10,7 +10,7 @@
 // so a previewed point could never animate past its first phase).
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, matchPhaseReviewUrl } from './fixtures.js';
+import { TEST_ACCOUNT, matchPhaseReviewUrl, matchupReviewUrl } from './fixtures.js';
 
 const PORTRAIT = { width: 414, height: 896 };
 const PHONE_LS = { width: 896, height: 414 };
@@ -151,5 +151,24 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     // Portrait keeps the inline destructive button.
     await openReview(page, PORTRAIT);
     await expect(page.getByTestId('end-match-inline')).toBeVisible();
+  });
+
+  // Post-night STEP 3 — rail-compact scoreboard: training keeps Quick ›, tournament drops it.
+  test('rail-compact Quick CTA: present in training, absent in tournament', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+
+    // Tournament landscape (TRN_PHASE) → compact scoreboard, NO Quick CTA.
+    await openReview(page, PHONE_LS);
+    await expect(page.getByTestId('review-scoreboard')).toBeVisible();
+    await expect(page.getByTestId('quick-cta-a')).toHaveCount(0);
+
+    // Training matchup landscape → compact scoreboard WITH Quick CTA.
+    await page.setViewportSize(PHONE_LS);
+    await page.goto('/' + matchupReviewUrl);
+    await expect(page.getByTestId('review-scoreboard')).toBeVisible({ timeout: 20000 });
+    const rolesNudge = page.getByRole('button', { name: /^(Zrobię to później|I'll do it later)$/ });
+    if (await rolesNudge.isVisible().catch(() => false)) await rolesNudge.click();
+    await expect(page.getByTestId('quick-cta-a')).toBeVisible();
+    await expect(page.getByTestId('quick-cta-b')).toBeVisible();
   });
 });

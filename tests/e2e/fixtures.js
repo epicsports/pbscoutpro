@@ -83,6 +83,11 @@ export const TRN_PSTATS = 'trn-pstats';         // dedicated base-layout tournam
 export const TRN_PHASE = 'trn-phase';
 export const MATCH_PHASE = 'mat-phase';
 export const matchPhaseReviewUrl = `#/tournament/${TRN_PHASE}/match/${MATCH_PHASE}`;
+// Post-night STEP 3 — training-matchup review (base layout w/ fieldImage) for the
+// rail-compact training Quick › CTA assertion.
+export const TRN_TRAIN_REVIEW = 'trn-train-review';
+export const MATCHUP_REVIEW = 'matchup-review';
+export const matchupReviewUrl = `#/training/${TRN_TRAIN_REVIEW}/matchup/${MATCHUP_REVIEW}`;
 export const ROSTER_A_IDS = ['pa1', 'pa2', 'pa3', 'pa4', 'pa5'];   // PRO
 export const ROSTER_C_IDS = ['pc1', 'pc2', 'pc3', 'pc4', 'pc5'];   // DIV1 (the bleed)
 export const FIELD = { discoLine: 0.30, zeekerLine: 0.80, doritoSide: 'top' };
