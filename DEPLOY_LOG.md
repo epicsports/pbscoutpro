@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-13 — [arc-B migration] MembersPage + TrainingResultsPage → <Screen> (list 960)
+**HEAD `68a86ae1`.** **App-only.** Tier 1 by-proof. Functional **61 green**; migration diff gate **14/14** (phone+tablet=0). Revert: `git revert 68a86ae1`. **7/~18 migrated.** UserDetailPage attempted but DEFERRED — 68px content noise (async profile load) blocked a clean phone/tablet 0; needs a deterministic wait or content-mask (flagged in NEXT_TASKS). Desktop register row added.
+
 ## 2026-06-13 — [arc-B migration] list batch: Teams + Players + Layouts → <Screen archetype=list>
 **HEAD `feecf4cb`.** **App-only.** Tier 1 by-proof. Functional **61 green**; migration diff gate **10/10** (phone+tablet=0, incl. detail batch). Revert: `git revert feecf4cb`. Desktop caps to the **list tier 960**; phone+tablet identical. Same recipe (R.layout+flex-column shell, padBottom={false}). **5/~18 screens migrated.** Register rows added.
 
