@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-13 — [autonomous] i18n B13 residual-EN + arc-C motion infra (DARK) + 23-key dedup
+**HEAD `bde2fcf7`.** **App + tooling.** Tier 1 / flag-OFF. Functional **59 green**, unit **8 green**, pixel-diff **3/3**. Revert: the individual merge/commits. Autonomous block (Jacek driving; width decision held; everything else full speed).
+- **i18n B13** — residual hardcoded-EN: the EN-literal guard's 69 warnings → **5** (the 5 remaining are intentional: 2 Polish misidentified, 3 dev-facing admin-doc strings). 48 keys, 29 files; SearchField/StageSwitcher/AdminLayouts gained `useLanguage`. extraction/translation split + register row.
+- **arc-C motion infra (ADDENDUM STEP 10), flag `ENABLE_MOTION` default OFF = zero visual surface:** `withViewTransition()` (no-op fallthrough when off/unsupported/reduced) + `shouldUseViewTransition()` pure + `useReducedMotion()` hook + `<Skeleton>` (anti-flash doctrine: show >200ms, hold >300ms; pulses via existing keyframe; static under reduced-motion; **mounted nowhere**). 8 unit tests. NOT wired into the live router — off-state provably identical; flag-on (router wrap) = future Tier-2 gate. +`import.meta.env?.DEV` guard in featureFlags (unit-loadable).
+- **i18n 23-key dedup** — removed 48 dead earlier defs for the 23 dup keys verified IDENTICAL-valued (JS already used the surviving last def, same value → behavior-identical). Dict dups 28 → **5**. **The 5 DIFFERING dups LEFT INTACT pending Jacek's value-ruling** (listed in NEXT_TASKS: no_matches / display_name_ph / password_changed / avatar_coming / not_signed_in).
+- Spec fix: team-detail invalid-URL → `team-load-error` testid (B13 keyed the copy → PL). **Owed: Jacek smoke** — PL on the B13 component/admin surfaces; nothing visual from motion (flag off) or dedup.
+
 ## 2026-06-13 — [arc B + STEP 3] ScoutRanking migration + H2 hex sweep + H3 loaders + EN-literal guard
 **HEAD `bae53829`.** **App + tooling.** Tier 1 / Tier 1.5-by-proof. Functional suite **59 green**; pixel-diff gate **3/3 at maxDiffPixels:0** (`test:e2e:diff`). Revert: the individual merge commits. Autonomous block (Jacek: desktop-narrowing held, everything else full speed).
 - **ScoutRanking → `<Screen detail>`** (3rd hardcoded-640 page; kept at 640 = diff=0 all widths, re-tags to list if the desktop decision ratifies). Pixel-diff=0 proven (baseline stashed pre-migration).
