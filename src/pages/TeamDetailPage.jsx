@@ -118,7 +118,7 @@ export default function TeamDetailPage() {
     // Resolved-but-absent OR timed out → explicit error state, never an
     // eternal spinner (the 2026-06-11 scouted-team bug class).
     return (
-      <div>
+      <div data-testid="team-load-error">
         <EmptyState
           icon="⚠️"
           text={t('b13_team_load_error')}

@@ -23,7 +23,8 @@ test.describe('team-detail loader', () => {
   test('an invalid team URL shows an error state, not an eternal spinner', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.evaluate(h => { window.location.hash = h; }, '#/team/does-not-exist');
-    await expect(page.getByText(/Couldn't load this team/i)).toBeVisible({ timeout: 15000 });
+    // testid (language-agnostic): B13 keyed the error copy → PL by default.
+    await expect(page.getByTestId('team-load-error')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: /Retry|Ponów/i })).toBeVisible();
   });
 
