@@ -19,9 +19,9 @@ test.describe('STAGE 4 — PWA offline sign-in', () => {
       await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 20000 });
 
       // Drop the network (page already loaded — no SW required). useOnline flips.
+      // Language-agnostic: assert the offline card by testid (B7 keyed its copy).
       await ctx.setOffline(true);
-      await expect(page.getByText(/you're offline|offline/i)).toBeVisible();
-      await expect(page.getByText(/connect to the internet once/i)).toBeVisible();
+      await expect(page.getByTestId('login-offline')).toBeVisible();
 
       // Reconnect → the form returns (no dead-state stuck).
       await ctx.setOffline(false);

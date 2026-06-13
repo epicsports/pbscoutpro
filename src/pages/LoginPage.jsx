@@ -62,7 +62,7 @@ export default function LoginPage() {
             <img src={`${BASE}logo.png`} alt="PBScoutPRO"
               style={{ width: 200, height: 200, objectFit: 'contain', display: 'block' }} />
           </picture>
-          <div style={{
+          <div data-testid="login-offline" style={{
             width: '100%', background: COLORS.surface, border: `1px solid ${COLORS.border}`,
             borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'center',
           }}>
