@@ -1600,6 +1600,50 @@ const T = {
     bunker_card_position_name:      'Nazwa pozycji',
     bunker_card_custom:             '+ Własna',
     bunker_card_mirror_label:       'Lustro (dodaj symetryczny bunker)',
+
+    /* ─── B11 Admin pages (AdminLeaguesPage / AdminTeamsPage / AdminPlayersPage /
+           ChildrenOrphanWarning / TeamDuplicateResolutionView / MoreTabContent
+           super-admin section) ──────────────────────────────────────────────── */
+    /* AdminLeaguesPage */
+    admin_leagues_filter_active:    'Active',
+    admin_leagues_filter_all:       'All',
+    admin_leagues_new:              '+ New league',
+    admin_leagues_about_title:      'About leagues',
+    admin_leagues_about_body:       'Global resource shared across workspaces. Workspace UI consumes via useLeagues hook with constants fallback. Changes visible to all users on next page load.\nDeactivated leagues stay in stored data — historical tournaments tagged with them still resolve. Use "All" filter to see + reactivate.\nRenaming a division regenerates its id; existing stored tournament/team division values are name strings (preserved).',
+    admin_leagues_deactivate_title: 'Deactivate league?',
+    admin_leagues_deactivate_label: 'Deactivate',
+    /* AdminTeamsPage */
+    admin_teams_about_title:        'About teams',
+    admin_teams_about_body:         'Global resource (§ 63.15.2 + § 63.15.2.X). Sister team relationships (parent ↔ children) are in-app curation — PBLeagues does not model them. externalId is canonical only for PBLeagues-tracked leagues (NXL today). Soft delete via retiredAt — retired teams hidden from user-facing lists but preserved for audit + reference resolution.\nEdits dual-write to both /teams/ and legacy workspace path. Live updates via onSnapshot — all users see admin changes immediately.',
+    admin_teams_action_resolve_dup: 'Resolve duplicate →',
+    admin_teams_action_restore:     'Restore',
+    admin_teams_action_retire:      'Retire',
+    admin_teams_prev:               '← Prev',
+    admin_teams_next:               'Next →',
+    admin_teams_page_n_of_m:        (n, m) => `Page ${n} of ${m}`,
+    /* AdminPlayersPage */
+    admin_players_about_title:      'About players',
+    admin_players_about_body:       'Global resource (§ 63.15.3) — single player identity across all workspaces. Workspace UI consumes via usePlayers hook (alias-aware). Edits propagate live via Firestore onSnapshot.\nEdits dual-write to both the workspace doc and /players/{id}. Delete removes only the global doc; the workspace copy stays as recovery cushion until Phase 2.2.d cleanup.\nAliases come from Phase 2.2.a dedup (legacy doc IDs collapsed onto a canonical). Deleting a canonical with non-empty aliasIds orphans those references in old match data.',
+    admin_players_filter_linked:    'Linked (PBLI)',
+    admin_players_filter_unlinked:  'Unlinked',
+    admin_players_sort_name:        'Sort: name ↑',
+    /* ChildrenOrphanWarning */
+    admin_orphan_repoint:           'Re-point to another parent',
+    admin_orphan_cascade:           'Cascade retire (retire children too)',
+    admin_orphan_orphan:            'Orphan (do nothing)',
+    /* TeamDuplicateResolutionView */
+    admin_dup_recommended:          'recommended',
+    /* MoreTabContent — Super Admin section item labels + sub captions */
+    more_admin_workspaces_label:    'Workspaces',
+    more_admin_workspaces_sub:      'Create + manage members across all workspaces',
+    more_admin_layouts_label:       'Layouts',
+    more_admin_layouts_sub:         'Global field library — all base layouts',
+    more_admin_leagues_label:       'Leagues',
+    more_admin_leagues_sub:         'Manage leagues + divisions (global)',
+    more_admin_players_label:       'Players',
+    more_admin_players_sub:         'Manage global player roster (934 docs)',
+    more_admin_teams_label:         'Teams',
+    more_admin_teams_sub:           'Manage global teams + sister relationships + duplicate resolution (132 docs)',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -3152,6 +3196,50 @@ const T = {
     bunker_card_position_name:      'Position name',
     bunker_card_custom:             '+ Custom',
     bunker_card_mirror_label:       'Mirror (add symmetric bunker)',
+
+    /* ─── B11 Admin pages (AdminLeaguesPage / AdminTeamsPage / AdminPlayersPage /
+           ChildrenOrphanWarning / TeamDuplicateResolutionView / MoreTabContent
+           super-admin section) ──────────────────────────────────────────────── */
+    /* AdminLeaguesPage */
+    admin_leagues_filter_active:    'Active',
+    admin_leagues_filter_all:       'All',
+    admin_leagues_new:              '+ New league',
+    admin_leagues_about_title:      'About leagues',
+    admin_leagues_about_body:       'Global resource shared across workspaces. Workspace UI consumes via useLeagues hook with constants fallback. Changes visible to all users on next page load.\nDeactivated leagues stay in stored data — historical tournaments tagged with them still resolve. Use "All" filter to see + reactivate.\nRenaming a division regenerates its id; existing stored tournament/team division values are name strings (preserved).',
+    admin_leagues_deactivate_title: 'Deactivate league?',
+    admin_leagues_deactivate_label: 'Deactivate',
+    /* AdminTeamsPage */
+    admin_teams_about_title:        'About teams',
+    admin_teams_about_body:         'Global resource (§ 63.15.2 + § 63.15.2.X). Sister team relationships (parent ↔ children) are in-app curation — PBLeagues does not model them. externalId is canonical only for PBLeagues-tracked leagues (NXL today). Soft delete via retiredAt — retired teams hidden from user-facing lists but preserved for audit + reference resolution.\nEdits dual-write to both /teams/ and legacy workspace path. Live updates via onSnapshot — all users see admin changes immediately.',
+    admin_teams_action_resolve_dup: 'Resolve duplicate →',
+    admin_teams_action_restore:     'Restore',
+    admin_teams_action_retire:      'Retire',
+    admin_teams_prev:               '← Prev',
+    admin_teams_next:               'Next →',
+    admin_teams_page_n_of_m:        (n, m) => `Page ${n} of ${m}`,
+    /* AdminPlayersPage */
+    admin_players_about_title:      'About players',
+    admin_players_about_body:       'Global resource (§ 63.15.3) — single player identity across all workspaces. Workspace UI consumes via usePlayers hook (alias-aware). Edits propagate live via Firestore onSnapshot.\nEdits dual-write to both the workspace doc and /players/{id}. Delete removes only the global doc; the workspace copy stays as recovery cushion until Phase 2.2.d cleanup.\nAliases come from Phase 2.2.a dedup (legacy doc IDs collapsed onto a canonical). Deleting a canonical with non-empty aliasIds orphans those references in old match data.',
+    admin_players_filter_linked:    'Linked (PBLI)',
+    admin_players_filter_unlinked:  'Unlinked',
+    admin_players_sort_name:        'Sort: name ↑',
+    /* ChildrenOrphanWarning */
+    admin_orphan_repoint:           'Re-point to another parent',
+    admin_orphan_cascade:           'Cascade retire (retire children too)',
+    admin_orphan_orphan:            'Orphan (do nothing)',
+    /* TeamDuplicateResolutionView */
+    admin_dup_recommended:          'recommended',
+    /* MoreTabContent — Super Admin section item labels + sub captions */
+    more_admin_workspaces_label:    'Workspaces',
+    more_admin_workspaces_sub:      'Create + manage members across all workspaces',
+    more_admin_layouts_label:       'Layouts',
+    more_admin_layouts_sub:         'Global field library — all base layouts',
+    more_admin_leagues_label:       'Leagues',
+    more_admin_leagues_sub:         'Manage leagues + divisions (global)',
+    more_admin_players_label:       'Players',
+    more_admin_players_sub:         'Manage global player roster (934 docs)',
+    more_admin_teams_label:         'Teams',
+    more_admin_teams_sub:           'Manage global teams + sister relationships + duplicate resolution (132 docs)',
   },
 };
 

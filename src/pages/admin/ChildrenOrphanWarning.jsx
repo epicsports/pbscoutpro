@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Btn, Select } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.3.c — Retire confirmation content, branches on children count.
 // Per § 63.15.2.X.1 children-orphan safety pattern (mirror of Phase 2.2.c
@@ -15,6 +16,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 //   onCancel    — () => void
 //   onConfirm   — (childAction: 'orphan'|'rePoint'|'cascade', newParentForChildren: id|null) => Promise
 export default function ChildrenOrphanWarning({ team, children, allTeams, pending, error, onCancel, onConfirm }) {
+  const { t } = useLanguage();
   const hasChildren = children.length > 0;
   const [childAction, setChildAction] = useState(hasChildren ? 'rePoint' : 'orphan');
   const [newParentId, setNewParentId] = useState('');
@@ -55,7 +57,7 @@ export default function ChildrenOrphanWarning({ team, children, allTeams, pendin
           <div style={{ fontWeight: 600, color: COLORS.text, marginBottom: SPACE.xs }}>How to handle the children?</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs, marginBottom: SPACE.sm }}>
             <RadioOption
-              label="Re-point to another parent"
+              label={t('admin_orphan_repoint')}
               hint="Children's parentTeamId set to selected canonical team. Recommended for duplicate cleanup."
               value="rePoint" current={childAction} onChange={setChildAction}
             />
@@ -72,12 +74,12 @@ export default function ChildrenOrphanWarning({ team, children, allTeams, pendin
               </div>
             )}
             <RadioOption
-              label="Cascade retire (retire children too)"
+              label={t('admin_orphan_cascade')}
               hint="Each child gets retiredAt set. Reversible per-child via Restore action."
               value="cascade" current={childAction} onChange={setChildAction}
             />
             <RadioOption
-              label="Orphan (do nothing)"
+              label={t('admin_orphan_orphan')}
               hint="Children keep parentTeamId pointing to retired team. Acceptable per § 63.15.2.X.1 — references continue resolving."
               value="orphan" current={childAction} onChange={setChildAction}
             />
@@ -96,7 +98,7 @@ export default function ChildrenOrphanWarning({ team, children, allTeams, pendin
       )}
 
       <div style={{ display: 'flex', gap: SPACE.xs, justifyContent: 'flex-end', marginTop: SPACE.md }}>
-        <Btn variant="default" onClick={onCancel} disabled={pending}>Cancel</Btn>
+        <Btn variant="default" onClick={onCancel} disabled={pending}>{t('cancel')}</Btn>
         <Btn variant="danger" onClick={submit} disabled={!canSubmit}>
           {pending ? 'Retiring…' : 'Retire team'}
         </Btn>

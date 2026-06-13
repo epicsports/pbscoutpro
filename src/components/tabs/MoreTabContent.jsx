@@ -141,32 +141,32 @@ export default function MoreTabContent({
         <MoreSection title={t('super_admin_section') || 'Super Admin'}>
           <MoreItem
             icon="🏢"
-            label="Workspaces"
-            sub="Create + manage members across all workspaces"
+            label={t('more_admin_workspaces_label')}
+            sub={t('more_admin_workspaces_sub')}
             onClick={() => navigate('/admin/workspaces')}
           />
           <MoreItem
             icon="🗺"
-            label="Layouts"
-            sub="Global field library — all base layouts"
+            label={t('more_admin_layouts_label')}
+            sub={t('more_admin_layouts_sub')}
             onClick={() => navigate('/admin/layouts')}
           />
           <MoreItem
             icon="🏷"
-            label="Leagues"
-            sub="Manage leagues + divisions (global)"
+            label={t('more_admin_leagues_label')}
+            sub={t('more_admin_leagues_sub')}
             onClick={() => navigate('/admin/leagues')}
           />
           <MoreItem
             icon="👤"
-            label="Players"
-            sub="Manage global player roster (934 docs)"
+            label={t('more_admin_players_label')}
+            sub={t('more_admin_players_sub')}
             onClick={() => navigate('/admin/players')}
           />
           <MoreItem
             icon="🛡"
-            label="Teams"
-            sub="Manage global teams + sister relationships + duplicate resolution (132 docs)"
+            label={t('more_admin_teams_label')}
+            sub={t('more_admin_teams_sub')}
             onClick={() => navigate('/admin/teams')}
             isLast
           />

@@ -14,6 +14,7 @@ import { useSearchFilter } from '../../hooks/useSearchFilter';
 import TeamFormModal from './TeamFormModal';
 import TeamDuplicateResolutionView from './TeamDuplicateResolutionView';
 import ChildrenOrphanWarning from './ChildrenOrphanWarning';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.3.c — Super admin CRUD for global /teams/ collection (132 docs).
 // Per DESIGN_DECISIONS § 63.15.2 + § 63.15.2.X + § 63.15.2.X.1 +
@@ -33,6 +34,7 @@ const tsMs = (t) => {
 };
 
 export default function AdminTeamsPage() {
+  const { t } = useLanguage();
   const { effectiveIsAdmin } = useViewAs();
   const navigate = useNavigate();
   const { teams, loading } = useTeams();
@@ -295,17 +297,17 @@ export default function AdminTeamsPage() {
         {totalPages > 1 && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: SPACE.md, marginTop: SPACE.lg }}>
             <Btn variant="default" size="sm" disabled={safePage === 0}
-              onClick={() => updateParams({ page: safePage - 1 })}>← Prev</Btn>
+              onClick={() => updateParams({ page: safePage - 1 })}>{t('admin_teams_prev')}</Btn>
             <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-              Page {safePage + 1} of {totalPages}
+              {t('admin_teams_page_n_of_m')(safePage + 1, totalPages)}
             </span>
             <Btn variant="default" size="sm" disabled={safePage >= totalPages - 1}
-              onClick={() => updateParams({ page: safePage + 1 })}>Next →</Btn>
+              onClick={() => updateParams({ page: safePage + 1 })}>{t('admin_teams_next')}</Btn>
           </div>
         )}
 
         <div style={{ marginTop: SPACE.lg, padding: SPACE.md, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, lineHeight: 1.5 }}>
-          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>About teams</div>
+          <div style={{ color: COLORS.textDim, fontWeight: 600, marginBottom: 4 }}>{t('admin_teams_about_title')}</div>
           Global resource (§ 63.15.2 + § 63.15.2.X). Sister team relationships (parent ↔ children) are in-app curation — PBLeagues does not model them. <code style={{ color: COLORS.text }}>externalId</code> is canonical only for PBLeagues-tracked leagues (NXL today). Soft delete via <code style={{ color: COLORS.text }}>retiredAt</code> — retired teams hidden from user-facing lists but preserved for audit + reference resolution.
           <br />Edits dual-write to both <code style={{ color: COLORS.text }}>/teams/</code> and legacy workspace path. Live updates via onSnapshot — all users see admin changes immediately.
         </div>
@@ -317,16 +319,16 @@ export default function AdminTeamsPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.name}
         actions={actionFor ? [
-          { label: 'Edit', onPress: () => { setEditing(actionFor); setActionFor(null); } },
+          { label: t('edit'), onPress: () => { setEditing(actionFor); setActionFor(null); } },
           ...(dupTeamIds.has(actionFor.id) ? [{
-            label: 'Resolve duplicate →',
+            label: t('admin_teams_action_resolve_dup'),
             onPress: () => { setResolveExternalId(actionFor.externalId); setActionFor(null); },
           }] : []),
           ...(actionFor.retiredAt ? [{
-            label: 'Restore',
+            label: t('admin_teams_action_restore'),
             onPress: () => handleRestore(actionFor),
           }] : [{
-            label: 'Retire',
+            label: t('admin_teams_action_retire'),
             danger: true,
             onPress: () => { setRetireFor(actionFor); setActionFor(null); },
           }]),

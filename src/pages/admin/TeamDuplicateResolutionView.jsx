@@ -3,6 +3,7 @@ import { Btn, Modal } from '../../components/ui';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { playerOnTeam } from '../../utils/playerTeams';
 import { retireTeam, setParentTeam } from '../../services/dataService';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // Phase 2.3.c — Duplicate resolution view (inline modal).
 // Side-by-side comparison of teams sharing an externalId; admin picks
@@ -28,6 +29,7 @@ import { retireTeam, setParentTeam } from '../../services/dataService';
 //   allPlayers       — full /players/ array for ref-count
 //   childrenByParent — pre-computed map
 export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, allTeams, allPlayers, childrenByParent }) {
+  const { t } = useLanguage();
   const refCounts = useMemo(() => {
     const counts = {};
     for (const t of dupTeams) {
@@ -132,7 +134,7 @@ export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, a
       onClose={pending ? () => {} : onClose}
       title={`Resolve duplicate · extId ${dupTeams[0]?.externalId?.slice(0, 12)}…`}
       footer={<>
-        <Btn variant="default" onClick={onClose} disabled={pending}>Cancel</Btn>
+        <Btn variant="default" onClick={onClose} disabled={pending}>{t('cancel')}</Btn>
         <Btn variant="accent" onClick={handleConfirm} disabled={!canonical || !retireOther || pending}>
           {pending ? 'Resolving…' : 'Confirm resolution'}
         </Btn>
@@ -176,7 +178,7 @@ export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, a
                       fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                       background: `${COLORS.success}20`, color: COLORS.success,
                       letterSpacing: 0.5, textTransform: 'uppercase',
-                    }}>recommended</span>
+                    }}>{t('admin_dup_recommended')}</span>
                   )}
                 </div>
                 <code style={{ fontSize: 10, color: COLORS.textMuted, wordBreak: 'break-all' }}>{team.id}</code>
