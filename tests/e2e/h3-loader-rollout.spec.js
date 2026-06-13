@@ -19,6 +19,7 @@ import {
   TEST_ACCOUNT,
   TRN,
   LAYOUT,
+  BASE_LAYOUT,
   ROSTER_A_IDS,
 } from './fixtures.js';
 
@@ -33,9 +34,11 @@ const PLAYER_ID = ROSTER_A_IDS[0]; // 'pa1'
 test.describe('LayoutDetailPage loader (§H3)', () => {
   test('renders a valid layout', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
-    await page.evaluate(h => { window.location.hash = h; }, `#/layout/${LAYOUT}`);
-    // The demo layout is named "Demo Field" in the seed.
-    await expect(page.getByText(/Demo Field/i).first()).toBeVisible({ timeout: 15000 });
+    // §90/§96: the app resolves layouts from GLOBAL /layouts/ + overlays — the
+    // workspace /layouts/ path (LAYOUT='lay-demo') was decommissioned. The
+    // resolvable layout is BASE_LAYOUT ('base-demo' = "Library Field").
+    await page.evaluate(h => { window.location.hash = h; }, `#/layout/${BASE_LAYOUT}`);
+    await expect(page.getByText(/Library Field/i).first()).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('layout-load-error')).toHaveCount(0);
   });
 
