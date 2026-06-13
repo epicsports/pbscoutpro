@@ -15,16 +15,17 @@ test.describe('STAGE 4 — PWA offline sign-in', () => {
     try {
       await page.goto('/');
       // Unauthenticated fresh context → the email/password form renders.
-      await expect(page.getByText('Sign in', { exact: true })).toBeVisible({ timeout: 20000 });
+      // Use the email input as a language-agnostic signal (B7: "Sign in" is now i18n-keyed).
+      await expect(page.locator('input[type="email"]')).toBeVisible({ timeout: 20000 });
 
       // Drop the network (page already loaded — no SW required). useOnline flips.
       await ctx.setOffline(true);
-      await expect(page.getByText(/you're offline/i)).toBeVisible();
+      await expect(page.getByText(/you're offline|offline/i)).toBeVisible();
       await expect(page.getByText(/connect to the internet once/i)).toBeVisible();
 
       // Reconnect → the form returns (no dead-state stuck).
       await ctx.setOffline(false);
-      await expect(page.getByText('Sign in', { exact: true })).toBeVisible();
+      await expect(page.locator('input[type="email"]')).toBeVisible();
     } finally {
       await ctx.close();
     }
