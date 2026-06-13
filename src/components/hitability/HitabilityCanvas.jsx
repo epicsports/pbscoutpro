@@ -44,7 +44,7 @@ export default function HitabilityCanvas({
   hitsByTarget = {},   // { targetId: count } — tracking badge (STAGE 2+)
   weightTargets = false, // STAGE 3 analytics — scale target size by cumulative count
   onTap,               // (normX, normY, { players:[ids], targets:[ids], conns:[{t,p}] })
-  onLongPress,         // (hits) — config only; fires on a ≥500ms hold over a MARKER
+  onLongPress,         // (hits) — config + track; fires on a ≥500ms hold over a MARKER
   onDragMarker,        // (kind 'p'|'t', id, normX, normY)
   onDragEnd,           // ()
   maxHeight = 520,
@@ -242,15 +242,19 @@ export default function HitabilityCanvas({
   const handleDown = (e) => {
     const v = relPos(e);
     down.current = { ...v, moved: false, drag: null, longFired: false };
-    if (mode !== 'config') return;
-    const px = v.nx * v.w, py = v.ny * v.h;
-    const ps = players.filter(p => dist(px, py, p.x * v.w, p.y * v.h) <= DRAG_R);
-    const ts = targets.filter(t => dist(px, py, t.x * v.w, t.y * v.h) <= DRAG_R);
-    if (ps.length === 1 && ts.length === 0) down.current.drag = { k: 'p', id: ps[0].id };
-    else if (ts.length === 1 && ps.length === 0) down.current.drag = { k: 't', id: ts[0].id };
-    if (down.current.drag) { try { canvasRef.current.setPointerCapture(e.pointerId); } catch { /* noop */ } }
-    // Long-press → marker editor (STEP 2, decision (b)-extended): armed only over
-    // a MARKER; movement (drag) or lift cancels. Plain tap keeps the linking flow.
+    // Drag to reposition is a CONFIG-only affordance.
+    if (mode === 'config') {
+      const px = v.nx * v.w, py = v.ny * v.h;
+      const ps = players.filter(p => dist(px, py, p.x * v.w, p.y * v.h) <= DRAG_R);
+      const ts = targets.filter(t => dist(px, py, t.x * v.w, t.y * v.h) <= DRAG_R);
+      if (ps.length === 1 && ts.length === 0) down.current.drag = { k: 'p', id: ps[0].id };
+      else if (ts.length === 1 && ps.length === 0) down.current.drag = { k: 't', id: ts[0].id };
+      if (down.current.drag) { try { canvasRef.current.setPointerCapture(e.pointerId); } catch { /* noop */ } }
+    }
+    // Long-press over a MARKER → consumer popup (STEP 2 gesture model): config =
+    // marker editor, track = the target's shot sheet. Armed whenever onLongPress
+    // is provided; movement/lift cancels; a plain tap keeps the mode's tap flow
+    // (config link / track record). longFired (handleUp) suppresses the tap.
     if (onLongPress) {
       const hh = collectHits(v.nx, v.ny, v.w, v.h);
       if (hh.players.length || hh.targets.length) {
