@@ -11,6 +11,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { EmptyState } from '../components/ui';
 import PendingMemberCard from '../components/settings/PendingMemberCard';
 import MemberCard from '../components/settings/MemberCard';
@@ -134,7 +135,7 @@ export default function MembersPage() {
   };
 
   return (
-    <div style={{ background: COLORS.bg, minHeight: '100dvh', paddingBottom: 80 }}>
+    <Screen archetype="list" style={{ background: COLORS.bg, minHeight: '100dvh' }}>
       <PageHeader
         back={{ to: '/' }}
         title={t('members_page_title') || 'Członkowie workspace\u2019u'}
@@ -235,7 +236,7 @@ export default function MembersPage() {
         onClose={() => setTransferTarget(null)}
         onSuccess={handleTransferSuccess}
       />
-    </div>
+    </Screen>
   );
 }
 

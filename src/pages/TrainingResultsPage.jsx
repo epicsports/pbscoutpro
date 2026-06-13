@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { SectionTitle, SectionLabel, EmptyState, SkeletonList, SideTag, Btn } from '../components/ui';
 import { useTrainings, useMatchups, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -315,7 +316,7 @@ export default function TrainingResultsPage() {
   const matchupCount = matchups.length;
 
   return (
-    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
+    <Screen archetype="list" padBottom={false} style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
       <PageHeader
         back={{ to: () => navigate(`/training/${trainingId}`) }}
         title={t('results')}
@@ -460,7 +461,7 @@ export default function TrainingResultsPage() {
           </div>
         )}
       </div>
-    </div>
+    </Screen>
   );
 }
 

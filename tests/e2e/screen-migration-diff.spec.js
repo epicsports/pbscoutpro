@@ -6,7 +6,7 @@
 // (run via test:e2e:migrationdiff), excluded from the shared suite.
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, WS, TEAM_A } from './fixtures.js';
+import { TEST_ACCOUNT, WS, TEAM_A, TRN_TRAIN_REVIEW } from './fixtures.js';
 
 const PHONE = { width: 414, height: 896 };
 const TABLET = { width: 768, height: 1024 };
@@ -18,6 +18,11 @@ const PAGES = [
   { name: 'teams', url: '/#/teams' },
   { name: 'players', url: '/#/players' },
   { name: 'layouts', url: '/#/layouts' },
+  // batch 3 — members + results (list 960). user-detail deferred: 68px content
+  // noise (async profile load) made phone+tablet diff non-zero — needs a
+  // deterministic wait/mask before it can prove 0; flagged in NEXT_TASKS.
+  { name: 'members', url: '/#/settings/members' },
+  { name: 'training-results', url: `/#/training/${TRN_TRAIN_REVIEW}/results` },
 ];
 
 async function dismissNudge(page) {
