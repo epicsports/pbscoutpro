@@ -20,8 +20,17 @@ export const STATIC_FLAGS = {
   // the "Import schedule (zdjęcie)" Btn. Code preserved behind flag.
   ENABLE_VISION_API: false,
   ENABLE_BALLISTICS: true,
-  DEBUG_PANEL: import.meta.env.DEV,
-  LOG_PERFORMANCE: import.meta.env.DEV,
+  // arc C — motion infrastructure (ADDENDUM STEP 10). DEFAULT OFF = zero visual
+  // surface: withViewTransition() falls through to a synchronous no-op and
+  // <Skeleton> is mounted nowhere. Flipping on is a future Tier-2 gate (Opus
+  // pilot); the router wire-in is the one-line flag-on step, deliberately NOT
+  // wired while OFF so today's behavior is provably identical.
+  ENABLE_MOTION: false,
+  // Optional-chaining so modules importing this are loadable outside Vite (the
+  // pure-function unit harness runs in a bare loader where import.meta.env is
+  // undefined). In the Vite build import.meta.env is defined → identical value.
+  DEBUG_PANEL: import.meta.env?.DEV,
+  LOG_PERFORMANCE: import.meta.env?.DEV,
 };
 
 export const DYNAMIC_FLAG_DEFAULTS = {
