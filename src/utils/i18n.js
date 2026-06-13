@@ -598,7 +598,6 @@ const T = {
     invite_guest:       'Zaproś gościa',
     invite_guest_title: 'Zaproś gościa na trening',
     guests_hint:        'Zawodnicy spoza drużyny zaproszeni na trening (np. reprezentacja).',
-    no_matches:         'Brak wyników',
     all_invited_or_member: 'Wszyscy zawodnicy z workspace są już na liście lub w drużynie.',
     done:               'Gotowe',
     player_deleted:     'Zawodnik usunięty',
@@ -880,7 +879,6 @@ const T = {
     sign_out:            'Wyloguj się',
     account_section:     'Konto',
     display_name:        'Nazwa użytkownika',
-    display_name_ph:     'Np. Jacek',
     save:                'Zapisz',
     saved:               'Zapisano',
     save_failed:         'Błąd zapisu',
@@ -893,9 +891,6 @@ const T = {
     pw_too_short:        'Hasło musi mieć minimum 6 znaków.',
     pw_mismatch:         'Hasła się nie zgadzają.',
     pw_wrong_current:    'Obecne hasło jest nieprawidłowe.',
-    password_changed:    'Hasło zostało zmienione.',
-    avatar_coming:       'Zdjęcia profilowe i graczy wkrótce — po aktywacji Firebase Storage.',
-    not_signed_in:       'Nie jesteś zalogowany.',
     signed_in_as:        'Zalogowany jako',
 
     /* ─── ProfilePage — § 33.3 roles + linked-player self-edit ─ */
@@ -2389,7 +2384,6 @@ const T = {
     add_short:          '+ Add',
     add_match:          '+ Add match',
     tap_to_scout:       'tap to scout',
-    no_matches:         'No matches yet',
     set_up_squads:      'Set up squads',
     new_matchup:        'New matchup',
     home_squad:         'Home squad',
@@ -2555,7 +2549,6 @@ const T = {
     leaving:                    'Leaving…',
 
     /* ─── Account / profile ────────────────────────────── */
-    display_name_ph:    'e.g. Jacek',
     password_changed:   'Password changed.',
     avatar_coming:      'Profile photos coming soon.',
     not_signed_in:      'Not signed in.',
@@ -2737,9 +2730,6 @@ const T = {
     pw_too_short:        'Password must be at least 6 characters.',
     pw_mismatch:         'Passwords do not match.',
     pw_wrong_current:    'Current password is incorrect.',
-    password_changed:    'Password changed successfully.',
-    avatar_coming:       'Profile & player photos coming soon — after Firebase Storage is enabled.',
-    not_signed_in:       'You are not signed in.',
     signed_in_as:        'Signed in as',
 
     /* ─── ProfilePage — § 33.3 roles + linked-player self-edit ─ */
