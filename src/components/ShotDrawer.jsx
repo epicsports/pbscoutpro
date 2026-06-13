@@ -6,6 +6,7 @@ import BaseCanvas, { useBaseCanvas } from './canvas/BaseCanvas';
 import { drawField } from './field/drawField';
 import { drawBunkers } from './field/drawBunkers';
 import { recomputeMirrorsWithCalibration } from '../utils/helpers';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * ShotDrawer — § 86 / B11 / A2 migration.
@@ -63,6 +64,7 @@ export default function ShotDrawer({
   // Hooks must run unconditionally — early `if (!open) return null` was
   // safe here (no hooks above it) pre-§86 but BaseCanvas mount path has
   // its own hooks; we gate the visible render at the bottom.
+  const { t } = useLanguage();
   const fromRight = fieldSide === 'left';
   // Opponent half = opposite of scouter's fieldSide.
   // BaseCanvas viewportSide pans canvas so this half stays in container.
@@ -357,7 +359,7 @@ function ShotMenuOverlay({ shot, onClose, onDelete, onToggleKill }) {
             color: COLORS.textMuted,
             WebkitTapHighlightColor: 'transparent',
           }}
-          aria-label="Delete shot"
+          aria-label={t('b13_delete_shot')}
         >
           <Trash2 size={17} strokeWidth={2} />
           <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, letterSpacing: 0.3 }}>

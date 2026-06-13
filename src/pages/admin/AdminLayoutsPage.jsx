@@ -17,8 +17,10 @@ import { Btn, SectionTitle, EmptyState, SkeletonList, Icons, LeagueBadge, YearBa
 import { useBaseLayouts, useLayouts } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, TOUCH, responsive } from '../../utils/theme';
+import { useLanguage } from '../../hooks/useLanguage';
 
 export default function AdminLayoutsPage() {
+  const { t } = useLanguage();
   const device = useDevice();
   const R = responsive(device.type);
   const navigate = useNavigate();
@@ -42,14 +44,14 @@ export default function AdminLayoutsPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
-      <PageHeader back={{ to: '/' }} title="Field library" subtitle="GLOBAL BASE LAYOUTS" />
+      <PageHeader back={{ to: '/' }} title={t('b13_field_library')} subtitle="GLOBAL BASE LAYOUTS" />
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>Library ({bases.length})</SectionTitle>
 
         {loading && <SkeletonList count={3} />}
         {!loading && !bases.length && (
-          <EmptyState icon="🗺️" text="No base layouts yet — author one below" />
+          <EmptyState icon="🗺️" text={t('b13_no_base_layouts')} />
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>

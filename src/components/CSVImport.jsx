@@ -436,7 +436,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
               Auto-normalizacja: <strong style={{ color: COLORS.text }}>Division 4→D4</strong>, <strong style={{ color: COLORS.text }}>Poland→PL</strong>, Brak→null, nophoto→null, BOM→strip
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>Default league:</span>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{t('b13_csv_default_league_label')}</span>
               <Select value={league} onChange={setLeague} style={{ minWidth: 140 }}>
                 {leagues.map(L => (
                   <option key={L.shortName} value={L.shortName}>{L.name}</option>

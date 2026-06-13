@@ -223,7 +223,7 @@ export default function BunkerCard({ bunker, isNew, position, mirror = true, dor
         </div>
         {customInput && (
           <Input value={positionName} onChange={v => { setPositionName(v); const s = POSITION_TYPE_SUGGEST[v]; if (s) setType(s); }}
-            placeholder="Custom name..." autoFocus
+            placeholder={t('b13_custom_name_ph')} autoFocus
             style={{ marginTop: SPACE.xs }} />
         )}
       </div>

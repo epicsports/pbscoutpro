@@ -185,9 +185,9 @@ export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, a
                 <div style={{ fontSize: 11, color: COLORS.textDim, lineHeight: 1.5 }}>
                   <div>Created: {formatTs(team.createdAt)}</div>
                   <div>Updated: {formatTs(team.updatedAt)}</div>
-                  <div>Children: <strong style={{ color: COLORS.text }}>{counts.children ?? 0}</strong></div>
-                  <div>Player refs: <strong style={{ color: COLORS.text }}>{counts.players ?? 0}</strong></div>
-                  <div>Tournament refs: <span style={{ color: COLORS.textMuted }}>— (deferred)</span></div>
+                  <div>{t('b13_dup_children_label')} <strong style={{ color: COLORS.text }}>{counts.children ?? 0}</strong></div>
+                  <div>{t('b13_dup_player_refs')} <strong style={{ color: COLORS.text }}>{counts.players ?? 0}</strong></div>
+                  <div>{t('b13_dup_tournament_refs')} <span style={{ color: COLORS.textMuted }}>— (deferred)</span></div>
                   {team.leagues?.length ? <div>Leagues: {team.leagues.join('/')}</div> : null}
                   {team.parentTeamId ? <div style={{ color: COLORS.textMuted }}>(child of another team)</div> : null}
                 </div>
@@ -215,14 +215,14 @@ export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, a
             <CheckboxRow
               checked={rePointChildren}
               onChange={setRePointChildren}
-              label="Re-point children's parentTeamId to canonical"
+              label={t('b13_dup_repoint_children')}
               hint={otherWithChildren ? `Affects ${(childrenByParent[otherWithChildren.id] || []).filter(c => !c.retiredAt).length} child team(s).` : 'N/A — non-canonical has no active children.'}
               disabled={pending || !otherWithChildren}
             />
             <CheckboxRow
               checked={false}
               onChange={() => {}}
-              label="Re-point tournament / player references to canonical"
+              label={t('b13_dup_repoint_refs')}
               hint="Deferred per § 63.15.2.X.1 / Phase 2.3.d. Retired team docs still resolve in lookups — references continue working with '(retired)' indicator in consumer UI."
               disabled
             />

@@ -877,7 +877,7 @@ export default function PlayerStatsPage() {
       <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto' }} data-testid={stillLoading ? undefined : 'player-load-error'}>
         <PageHeader back={{ to: backTo }} title={t('player_stats')} />
         {stillLoading ? (
-          <Loading text="Loading player..." />
+          <Loading text={t('b13_loading_player')} />
         ) : (
           <>
             <EmptyState

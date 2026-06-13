@@ -114,15 +114,15 @@ export default function TeamDetailPage() {
 
   if (!team) {
     const stillLoading = teamsLoading && !loadTimedOut;
-    if (stillLoading) return <EmptyState icon="⏳" text="Loading..." />;
+    if (stillLoading) return <EmptyState icon="⏳" text={t('loading_default')} />;
     // Resolved-but-absent OR timed out → explicit error state, never an
     // eternal spinner (the 2026-06-11 scouted-team bug class).
     return (
       <div>
         <EmptyState
           icon="⚠️"
-          text="Couldn't load this team"
-          subtitle="It may have been removed, or the data didn't load. Try again."
+          text={t('b13_team_load_error')}
+          subtitle={t('b13_team_load_error_sub')}
         />
         <div style={{ textAlign: 'center', marginTop: 4 }}>
           <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
@@ -240,7 +240,7 @@ export default function TeamDetailPage() {
               value={extIdLocal}
               onChange={setExtIdLocal}
               onBlur={handleExtIdBlur}
-              placeholder="np. QmHs1LzxaTRgn85P"
+              placeholder={t('b13_team_ext_id_ph')}
             />
           </div>
 
@@ -378,10 +378,10 @@ export default function TeamDetailPage() {
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder="Full name *" autoFocus /></div>
+            <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder={t('b13_input_full_name_star')} autoFocus /></div>
             <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="Nr *" /></div>
           </div>
-          <Input value={fNick} onChange={setFNick} placeholder="Nickname" />
+          <Input value={fNick} onChange={setFNick} placeholder={t('b13_input_nickname')} />
         </div>
       </Modal>
 

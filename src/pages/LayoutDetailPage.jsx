@@ -1262,10 +1262,10 @@ export default function LayoutDetailPage() {
                 />
                 <div onClick={() => { setDrawPoints(ln.geometry?.a && ln.geometry?.b ? [ln.geometry.a, ln.geometry.b] : []); setLineDrawMode(ln.id); }}
                   style={{ width: TOUCH.minTarget, height: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textDim, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-                  aria-label="Draw line"><Pencil size={18} strokeWidth={2} /></div>
+                  aria-label={t('b13_aria_draw_line')}><Pencil size={18} strokeWidth={2} /></div>
                 <div onClick={() => setLineDeleteConfirm(ln.id)}
                   style={{ width: TOUCH.minTarget, height: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.danger, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}
-                  aria-label="Delete line"><Trash2 size={18} strokeWidth={2} /></div>
+                  aria-label={t('b13_aria_delete_line')}><Trash2 size={18} strokeWidth={2} /></div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, flexWrap: 'wrap' }}>
                 {(COLORS.zonePalette || []).map(c => (
@@ -1411,7 +1411,7 @@ export default function LayoutDetailPage() {
                           color: COLORS.textDim, cursor: 'pointer',
                           WebkitTapHighlightColor: 'transparent',
                         }}
-                        aria-label="Draw zone"
+                        aria-label={t('b13_aria_draw_zone')}
                       >
                         <Pencil size={18} strokeWidth={2} />
                       </div>
@@ -1424,7 +1424,7 @@ export default function LayoutDetailPage() {
                           color: COLORS.danger, cursor: 'pointer',
                           WebkitTapHighlightColor: 'transparent',
                         }}
-                        aria-label="Delete zone"
+                        aria-label={t('b13_aria_delete_zone')}
                       >
                         <Trash2 size={18} strokeWidth={2} />
                       </div>

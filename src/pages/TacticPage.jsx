@@ -684,7 +684,7 @@ export default function TacticPage() {
         open={deleteModal}
         onClose={() => setDeleteModal(false)}
         onConfirm={handleDelete}
-        title="Delete tactic"
+        title={t('tactic_delete_action')}
         message="This tactic and all its data will be permanently lost."
         confirmLabel="Delete"
         danger

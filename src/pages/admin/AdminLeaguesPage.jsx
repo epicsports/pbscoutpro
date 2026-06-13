@@ -45,7 +45,7 @@ export default function AdminLeaguesPage() {
 
   return (
     <>
-      <PageHeader back={{ to: '/' }} title="Leagues admin" />
+      <PageHeader back={{ to: '/' }} title={t('b13_leagues_admin')} />
       <div style={{ padding: SPACE.lg, paddingBottom: 80 }}>
 
         <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.md, alignItems: 'center' }}>

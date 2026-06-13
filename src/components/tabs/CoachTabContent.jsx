@@ -198,7 +198,7 @@ export default function CoachTabContent({ tournamentId }) {
     return s ? teams.find(x => x.id === s.teamId) || null : null;
   };
 
-  if (!tournament) return <EmptyState icon="⏳" text="Loading..." />;
+  if (!tournament) return <EmptyState icon="⏳" text={t('loading_default')} />;
 
   return (
     <div style={{
@@ -241,12 +241,12 @@ export default function CoachTabContent({ tournamentId }) {
         <SectionTitle>Teams ({divisionScouted.length})</SectionTitle>
         {!loading && divisionScouted.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
-            <SearchField value={teamSearch} onChange={setTeamSearch} placeholder="🔍 Search team…" />
+            <SearchField value={teamSearch} onChange={setTeamSearch} placeholder={t('b13_coach_search_team_ph')} />
           </div>
         )}
         {loading && <SkeletonList count={3} />}
         {!loading && divisionScouted.length === 0 && (
-          <EmptyState icon="🏴" text="No teams yet" />
+          <EmptyState icon="🏴" text={t('b13_no_teams_yet')} />
         )}
         {!loading && divisionScouted.length === 0 && scouted.length > 0 && (
           <div style={{
@@ -397,7 +397,7 @@ export default function CoachTabContent({ tournamentId }) {
         <SectionTitle>Matches ({filteredMatches.length})</SectionTitle>
 
         {filteredMatches.length === 0 && (
-          <EmptyState icon="⚔️" text="No matches yet" />
+          <EmptyState icon="⚔️" text={t('scout_tab_no_matches_yet')} />
         )}
 
         {live.length > 0 && (

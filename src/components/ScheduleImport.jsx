@@ -426,7 +426,7 @@ Rules:
                     <option value="__new__">➕ Create new: "{name}"</option>
                   </select>
                   {bestMatch && bestMatch.score >= 0.7 && (
-                    <span style={{ fontSize: 10, color: COLORS.success, whiteSpace: 'nowrap' }}>auto ✅</span>
+                    <span style={{ fontSize: 10, color: COLORS.success, whiteSpace: 'nowrap' }}>{t('b13_schedule_auto_match')}</span>
                   )}
                 </div>
               );
