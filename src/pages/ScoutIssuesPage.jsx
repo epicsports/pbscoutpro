@@ -9,6 +9,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Loading, EmptyState } from '../components/ui';
 import { useTournaments } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -76,16 +77,14 @@ export default function ScoutIssuesPage() {
 
   if (!uid) {
     return (
-      <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto' }}>
-        <PageHeader back={{ to: '/' }} title={t('scout_issues_title')} />
+      <Screen archetype="detail" padBottom={false} header={<PageHeader back={{ to: '/' }} title={t('scout_issues_title')} />}>
         <EmptyState icon="🔒" text={t('scout_issues_sign_in')} />
-      </div>
+      </Screen>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
-      <PageHeader back={{ to: '/' }} title={t('scout_issues_title')} subtitle={t('scout_issues_subtitle')} />
+    <Screen archetype="detail" header={<PageHeader back={{ to: '/' }} title={t('scout_issues_title')} subtitle={t('scout_issues_subtitle')} />}>
       {loading ? (
         <Loading text={t('loading')} />
       ) : totalIssues === 0 ? (
@@ -121,7 +120,7 @@ export default function ScoutIssuesPage() {
           })}
         </div>
       )}
-    </div>
+    </Screen>
   );
 }
 
