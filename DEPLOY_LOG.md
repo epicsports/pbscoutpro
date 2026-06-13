@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-13 — [POST-NIGHT consolidation] i18n wave 2 (B8 + B10 + B11 + B12) — STEP 4 i18n COVERAGE COMPLETE
+**HEAD `57824afd`.** **App-only.** Tier 1 (machine-proven i18n extraction). Full emulator e2e **49/49 green**. Revert: the four merge commits (B8/B10/B11/B12). Closes the STEP-4 coverage push (audit found ~211 hardcoded strings/28 files; B7–B12 + regression-sweep now cover all identified user-facing surfaces).
+- **B8 imports** (24 keys) — ScheduleImport (EN) + ScheduleCSVImport/CSVImport (PL-origin, keyed pl=Polish/en=English); log-template arrow-fn keys; StatRow `noChange` prop.
+- **B10 analytics** (32 keys) — BallisticsPage (ternary subtitles + status), PlayerStatsPage (PL legends + loading/empty), LayoutAnalyticsPage (table cols), TacticPage (loader/rename/delete, reuses `match_retry`). Domain left: SURV/W/L, channel-semantics label.
+- **B11 admin** (31 keys) — AdminLeagues/Teams/Players + ChildrenOrphanWarning + TeamDuplicateResolution + MoreTabContent super-admin section; `page_n_of_m` arrow-fn.
+- **B12 components** (17 keys) — ScoutTabContent, DrawToolbar (button/aria only, canvas-draw untouched), VisionScan, OCRBunkerDetect, LivePointTracker (PL-origin). API-key placeholders skipped.
+- All: extraction/translation split + EXPECTED_DIFF_REGISTER rows. Dict now 1509 keys/lang, **28 duplicate keys = baseline** (no new dups across all 6 waves). No spec adjustments needed (none asserted these strings). **Owed: Jacek smoke** — imports, ballistics/player-stats/tactic/layout-analytics, admin pages, scout-tab/draw-toolbar po polsku. **i18n remaining = the 28-dup-key dedupe ticket + the EN-hardcode precommit-guard ticket (STEP 4.4); both registered, neither blocks.**
+
 ## 2026-06-13 — [POST-NIGHT consolidation] STEP 3 Quick CTA + i18n wave 1 (B7 + B9 + regression-sweep)
 **HEAD `2d41d88f`.** **App-only.** Tier 1 (regression fix + machine-proven i18n extraction). Full emulator e2e **49/49 green**. Revert: `git revert 2d41d88f` (merge) or the individual merge commits. Brief: `CC_BRIEF_POST_NIGHT_CONSOLIDATION_2026-06-13.md`.
 - **STEP 3** — training Quick › CTA restored in the landscape rail-compact scoreboard (was dropped to a bare chevron; valid in training, removed only in tournaments). +`TRN_TRAIN_REVIEW` fixture + e2e (Quick present in training / absent in tournament).
