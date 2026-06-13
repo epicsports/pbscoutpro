@@ -6,6 +6,7 @@ import { repairMojibake } from '../utils/mojibake';
 import { playerTeams } from '../utils/playerTeams';
 import { useLeagues } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * CSVImport — import/update teams + players from CSV (PBLeagues format).
@@ -118,6 +119,7 @@ function normalizeDivision(raw, allowed) {
 
 // ─── Component ─────────────────────────────────────────────────
 export default function CSVImport({ open, onClose, teams, players, ds }) {
+  const { t } = useLanguage();
   const [step, setStep] = useState('upload');
   const [csvData, setCsvData] = useState(null);
   const [colMap, setColMap] = useState({});
@@ -487,8 +489,8 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             {preview && (
               <>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, background: COLORS.surfaceDark, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <StatRow label="Drużyny" create={preview.newTeams} update={preview.updTeams} />
-                  <StatRow label="Gracze" create={preview.newPlayers} update={preview.updPlayers} />
+                  <StatRow label={t('csv_import_stat_teams')} create={preview.newTeams} update={preview.updTeams} noChange={t('csv_import_no_change')} />
+                  <StatRow label={t('csv_import_stat_players')} create={preview.newPlayers} update={preview.updPlayers} noChange={t('csv_import_no_change')} />
                   {(preview.teamsWithDivision > 0 || preview.collisions > 0) && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
                       <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>Dywizja {league}</span>
@@ -536,15 +538,15 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         {step === 'importing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.text }}>Importowanie {parsed.length} rekordów...</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.text }}>{t('csv_import_importing', parsed.length)}</div>
           </div>
         )}
 
         {step === 'done' && (
           <>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.success }}>✅ Import zakończony</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.success }}>{t('csv_import_done')}</div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim }}>{log.map((l, i) => <div key={i}>{l}</div>)}</div>
-            <Btn variant="accent" onClick={() => { onClose(); reset(); }}>Zamknij</Btn>
+            <Btn variant="accent" onClick={() => { onClose(); reset(); }}>{t('close')}</Btn>
           </>
         )}
       </div>
@@ -568,7 +570,7 @@ function matchPlayer(name, pbliId, teamId, players, nameOnly = false) {
   return players.find(p => p.name.toLowerCase() === name.toLowerCase() && !p.teamId) || null;
 }
 
-function StatRow({ label, create, update }) {
+function StatRow({ label, create, update, noChange = 'bez zmian' }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
       <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>{label}</span>
@@ -576,7 +578,7 @@ function StatRow({ label, create, update }) {
         {create > 0 && <span style={{ color: COLORS.success, fontWeight: 700 }}>+{create} nowych</span>}
         {create > 0 && update > 0 && ', '}
         {update > 0 && <span style={{ color: COLORS.accent, fontWeight: 700 }}>{update} aktualizacji</span>}
-        {!create && !update && <span style={{ color: COLORS.textMuted }}>bez zmian</span>}
+        {!create && !update && <span style={{ color: COLORS.textMuted }}>{noChange}</span>}
       </span>
     </div>
   );
