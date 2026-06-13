@@ -293,6 +293,7 @@ export default function ShotDrawer({
  * canvas surfaces.
  */
 function ShotMenuOverlay({ shot, onClose, onDelete, onToggleKill }) {
+  const { t } = useLanguage(); // own hook — module-level sub-component, not in ShotDrawer's scope
   const ctx = useBaseCanvas();
   if (!shot || !ctx) return null;
   const { canvasSize, zoom, pan, containerRef } = ctx;

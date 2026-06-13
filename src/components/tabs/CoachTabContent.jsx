@@ -11,6 +11,7 @@ import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import * as ds from '../../services/dataService';
+import { useLanguage } from '../../hooks/useLanguage';
 
 /**
  * CoachTabContent — teams with W-L on top, grouped match list below.
@@ -26,6 +27,7 @@ import * as ds from '../../services/dataService';
  * + per-side "tap to scout" lives inside MatchCard.
  */
 export default function CoachTabContent({ tournamentId }) {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { tournaments } = useTournaments();
   const { teams } = useActiveTeams();
