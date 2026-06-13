@@ -1482,6 +1482,21 @@ const T = {
     scouted_layer_collapse:   '⇱ Zwiń',
     /* QuickLogView */
     quicklog_no_players:      'Brak graczy w składzie',
+    /* ─── regression-sweep (2026-06-13) ─── */
+    match_point_open:         'OTWARTE',
+    match_from_label:         'ze strony',
+    match_outcome_no_point:   'Brak punktu',
+    match_outcome_timeout:    'Timeout',
+    match_next_point:         'Następny punkt',
+    match_same_sides:         'Ta sama',
+    match_swap_sides:         'Zamień strony',
+    match_penalties_label:    'Kary',
+    match_overtime_label:     'Dogrywka',
+    scouted_eliminated_label: 'wyeliminowany',
+    scouted_manage_roster:    'Zarządzaj składem',
+    scouted_roster_no_results:'Brak wyników',
+    scouted_empty_roster:     'Pusty skład',
+    quicklog_win_label:       'WYGRANA',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2915,6 +2930,21 @@ const T = {
     scouted_layer_collapse:   '⇱ Collapse',
     /* QuickLogView */
     quicklog_no_players:      'No players in this squad',
+    /* ─── regression-sweep (2026-06-13) ─── */
+    match_point_open:         'OPEN',
+    match_from_label:         'from',
+    match_outcome_no_point:   'No point',
+    match_outcome_timeout:    'Timeout',
+    match_next_point:         'Next point',
+    match_same_sides:         'Same',
+    match_swap_sides:         'Swap sides',
+    match_penalties_label:    'Penalties',
+    match_overtime_label:     'Overtime',
+    scouted_eliminated_label: 'eliminated',
+    scouted_manage_roster:    'Manage roster',
+    scouted_roster_no_results:'No matches',
+    scouted_empty_roster:     'Empty roster',
+    quicklog_win_label:       'WIN',
   },
 };
 

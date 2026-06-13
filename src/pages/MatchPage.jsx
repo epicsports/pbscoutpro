@@ -2228,7 +2228,7 @@ export default function MatchPage() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                           <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>#{idx+1}</span>
                           {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, letterSpacing: '.3px' }}>OT</span>}
-                          {isOpen && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, letterSpacing: '.3px' }}>OPEN</span>}
+                          {isOpen && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, letterSpacing: '.3px' }}>{t('match_point_open')}</span>}
                         </div>
                         <div style={{
                           fontFamily: FONT, fontSize: 14,
@@ -2602,7 +2602,7 @@ export default function MatchPage() {
               cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
               fontFamily: FONT,
             }}>
-            <span style={{ color: COLORS.textDim }}>from</span>
+            <span style={{ color: COLORS.textDim }}>{t('match_from_label')}</span>
             <span style={{ fontWeight: 700, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span>
             <span style={{ color: COLORS.textMuted }}>⇄</span>
           </span>
@@ -2912,7 +2912,7 @@ export default function MatchPage() {
               border: `2px solid ${outcome === 'no_point' ? COLORS.textMuted + '50' : COLORS.border}`,
               background: outcome === 'no_point' ? COLORS.textMuted + '08' : COLORS.surfaceDark,
               fontSize: 15,
-            }}>🚫<span style={{ fontSize: 13, fontFamily: FONT, fontWeight: 600, color: COLORS.textMuted }}>No point</span></div>
+            }}>🚫<span style={{ fontSize: 13, fontFamily: FONT, fontWeight: 600, color: COLORS.textMuted }}>{t('match_outcome_no_point')}</span></div>
           <div onClick={() => setOutcome(outcome === 'timeout' ? null : 'timeout')}
             style={{
               flex: 1, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -2920,24 +2920,24 @@ export default function MatchPage() {
               border: `2px solid ${outcome === 'timeout' ? COLORS.accent + '50' : COLORS.border}`,
               background: outcome === 'timeout' ? COLORS.accent + '08' : COLORS.surfaceDark,
               fontSize: 15,
-            }}>⏱<span style={{ fontSize: 13, fontFamily: FONT, fontWeight: 600, color: outcome === 'timeout' ? COLORS.accent : COLORS.textMuted }}>Timeout</span></div>
+            }}>⏱<span style={{ fontSize: 13, fontFamily: FONT, fontWeight: 600, color: outcome === 'timeout' ? COLORS.accent : COLORS.textMuted }}>{t('match_outcome_timeout')}</span></div>
         </div>
 
         {/* Side change — inline pill */}
         {!editingId && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 2px', marginBottom: SPACE.xl }}>
-            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textDim, fontWeight: 500 }}>Next point</span>
+            <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.textDim, fontWeight: 500 }}>{t('match_next_point')}</span>
             <div style={{ display: 'flex', background: COLORS.surfaceDark, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, padding: 3 }}>
               <div onClick={() => setSideChange(false)} style={{
                 padding: `${SPACE.sm}px ${SPACE.lg}px`, borderRadius: RADIUS.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
                 cursor: 'pointer', color: !sideChange ? COLORS.accent : COLORS.textMuted,
                 background: !sideChange ? COLORS.border : 'transparent',
-              }}>Same</div>
+              }}>{t('match_same_sides')}</div>
               <div onClick={() => setSideChange(true)} style={{
                 padding: `${SPACE.sm}px ${SPACE.lg}px`, borderRadius: RADIUS.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
                 cursor: 'pointer', color: sideChange ? COLORS.accent : COLORS.textMuted,
                 background: sideChange ? COLORS.border : 'transparent',
-              }}>Swap sides</div>
+              }}>{t('match_swap_sides')}</div>
             </div>
           </div>
         )}
@@ -2970,7 +2970,7 @@ export default function MatchPage() {
         {moreInfoOpen && (
           <div style={{ paddingTop: SPACE.md, marginTop: SPACE.md, borderTop: `1px solid ${COLORS.border}20`, display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, fontWeight: 500, minWidth: 65 }}>Penalties</span>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, fontWeight: 500, minWidth: 65 }}>{t('match_penalties_label')}</span>
               <Select value={draftA.penalty} onChange={v => setDraftA(prev => ({ ...prev, penalty: v }))}
                 style={{ flex: 1, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.lg, padding: '10px 12px', fontSize: FONT_SIZE.sm }}>
                 <option value="">{teamA?.name?.slice(0,6)} — none</option>
@@ -2994,7 +2994,7 @@ export default function MatchPage() {
                   transform: isOT ? 'translateX(18px)' : 'translateX(0)',
                 }} />
               </div>
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: isOT ? COLORS.accent : COLORS.textMuted }}>Overtime</span>
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: isOT ? COLORS.accent : COLORS.textMuted }}>{t('match_overtime_label')}</span>
             </div>
             <input value={draftComment} onChange={e => setDraftComment(e.target.value)}
               placeholder={t('match_quick_note_ph')}

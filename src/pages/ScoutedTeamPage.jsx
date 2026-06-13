@@ -1697,7 +1697,7 @@ export default function ScoutedTeamPage() {
                         {mostEliminated.number ? `#${mostEliminated.number} ` : ''}{mostEliminated.name || `Slot ${mostEliminated.slot + 1}`}
                       </span>
                       <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.danger }}>{mostEliminated.pct}%</span>
-                      <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>eliminated</span>
+                      <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>{t('scouted_eliminated_label')}</span>
                       <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.borderLight }}>({mostEliminated.eliminated}/{mostEliminated.played} pts)</span>
                     </div>
                   </Row>
@@ -1894,7 +1894,7 @@ export default function ScoutedTeamPage() {
             <div style={{ width: 32, height: 32, borderRadius: 8, background: COLORS.border,
               display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>👥</div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text }}>Manage roster</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text }}>{t('scouted_manage_roster')}</div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>{roster.length} players · add, remove, mark HERO</div>
             </div>
             <span style={{ color: COLORS.textMuted, transform: showRoster ? 'rotate(90deg)' : 'none', transition: '0.2s' }}><Icons.Chev /></span>
@@ -1910,7 +1910,7 @@ export default function ScoutedTeamPage() {
                   filters={rosterDivOptions.length ? [{ key: 'dyw', label: 'Dywizja', value: rosterDiv, onChange: setRosterDiv, allLabel: 'wszystkie', options: rosterDivOptions }] : []}
                 />
                 {(rosterSearch || rosterDiv) && searchResults.length === 0 && (
-                  <div style={{ marginTop: 6, padding: '8px', textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>No matches</div>
+                  <div style={{ marginTop: 6, padding: '8px', textAlign: 'center', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>{t('scouted_roster_no_results')}</div>
                 )}
                 {searchResults.length > 0 && (
                   <div style={{ marginTop: 6, maxHeight: 160, overflowY: 'auto' }}>
@@ -1961,7 +1961,7 @@ export default function ScoutedTeamPage() {
                   </div>
                 );
               })}
-              {!roster.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 6 }}>Empty roster</div>}
+              {!roster.length && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 6 }}>{t('scouted_empty_roster')}</div>}
               {/* Quick add */}
               <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${COLORS.border}30` }}>
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Add new player:</div>

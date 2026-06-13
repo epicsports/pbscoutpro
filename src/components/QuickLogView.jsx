@@ -924,7 +924,7 @@ function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPla
                 <span style={{
                   fontFamily: FONT, fontSize: 8, fontWeight: 600,
                   color: '#475569', letterSpacing: '0.5px',
-                }}>WIN</span>
+                }}>{t('quicklog_win_label')}</span>
               </div>
               {/* Checkbox circle */}
               <div style={{
