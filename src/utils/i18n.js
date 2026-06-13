@@ -1601,21 +1601,21 @@ const T = {
     bunker_card_custom:             '+ Własna',
     bunker_card_mirror_label:       'Lustro (dodaj symetryczny bunker)',
 
-    /* ─── B8 import flows (extraction — render-identical) ─── */
-    /* ScheduleImport.jsx — EN-origin; both values = original EN string */
-    schedule_import_title:          '📋 Import schedule from image',
-    schedule_import_api_key_label:  'Anthropic API key (saved in browser)',
-    schedule_import_api_key_set:    '✅ API key set',
-    schedule_import_change:         'Change',
-    schedule_import_reading:        'Claude is reading the schedule...',
-    schedule_import_reading_sub:    'This may take a few seconds',
-    schedule_import_tournament_data:'Tournament data',
-    schedule_import_map_teams:      (n) => `Map teams (${n}):`,
-    schedule_import_matches_n:      (n) => `${n} matches to import`,
-    schedule_import_do_import:      (n) => `Import ${n} matches`,
-    schedule_import_importing:      'Importing...',
-    schedule_import_done:           '✅ Import complete',
-    /* ScheduleCSVImport.jsx — PL-origin; both values = original PL string */
+    /* ─── B8 import flows ─────────────────────────────────── */
+    /* ScheduleImport.jsx — EN-origin → pl = Polish translation */
+    schedule_import_title:          '📋 Import harmonogramu ze zdjęcia',
+    schedule_import_api_key_label:  'Klucz Anthropic API (zapisany w przeglądarce)',
+    schedule_import_api_key_set:    '✅ Klucz API ustawiony',
+    schedule_import_change:         'Zmień',
+    schedule_import_reading:        'Claude wczytuje harmonogram...',
+    schedule_import_reading_sub:    'To może chwilę potrwać',
+    schedule_import_tournament_data:'Dane turnieju',
+    schedule_import_map_teams:      (n) => `Mapuj drużyny (${n}):`,
+    schedule_import_matches_n:      (n) => `${n} meczów do importu`,
+    schedule_import_do_import:      (n) => `Importuj ${n} meczów`,
+    schedule_import_importing:      'Importowanie...',
+    schedule_import_done:           '✅ Import zakończony',
+    /* ScheduleCSVImport.jsx — PL-origin → pl = original Polish */
     schedule_csv_import_title:      '📅 Import harmonogramu (CSV)',
     schedule_csv_import_tournament_label: 'Turniej:',
     schedule_csv_import_no_tournaments: 'Brak turniejów z przypisaną ligą. Utwórz turniej najpierw.',
@@ -1624,7 +1624,7 @@ const T = {
     schedule_csv_import_log_saved:  (written, added, tagged, failed) => `✅ Zapisano: ${written} meczów · drużyny dodane: ${added}${tagged ? ` · oznaczone w lidze: ${tagged}` : ''}${failed ? ` · drużyn nie udało się dodać: ${failed}` : ''}`,
     schedule_csv_import_log_skipped:(skipped) => `⚠ Pominięto: ${skipped} meczów (drużyna oznaczona jako skip lub niepowodzenie dodania)`,
     schedule_csv_import_done:       '✅ Import zakończony',
-    /* CSVImport.jsx — PL-origin; both values = original PL string */
+    /* CSVImport.jsx — PL-origin → pl = original Polish */
     csv_import_stat_teams:          'Drużyny',
     csv_import_stat_players:        'Gracze',
     csv_import_no_change:           'bez zmian',
@@ -3183,8 +3183,8 @@ const T = {
     bunker_card_custom:             '+ Custom',
     bunker_card_mirror_label:       'Mirror (add symmetric bunker)',
 
-    /* ─── B8 import flows (extraction — render-identical) ─── */
-    /* ScheduleImport.jsx — EN-origin; both values = original EN string */
+    /* ─── B8 import flows ─────────────────────────────────── */
+    /* ScheduleImport.jsx — EN-origin → en = original English */
     schedule_import_title:          '📋 Import schedule from image',
     schedule_import_api_key_label:  'Anthropic API key (saved in browser)',
     schedule_import_api_key_set:    '✅ API key set',
@@ -3197,21 +3197,21 @@ const T = {
     schedule_import_do_import:      (n) => `Import ${n} matches`,
     schedule_import_importing:      'Importing...',
     schedule_import_done:           '✅ Import complete',
-    /* ScheduleCSVImport.jsx — PL-origin; both values = original PL string */
-    schedule_csv_import_title:      '📅 Import harmonogramu (CSV)',
-    schedule_csv_import_tournament_label: 'Turniej:',
-    schedule_csv_import_no_tournaments: 'Brak turniejów z przypisaną ligą. Utwórz turniej najpierw.',
-    schedule_csv_import_do_import:  (n) => `Zaimportuj ${n} meczów`,
-    schedule_csv_import_importing:  'Importowanie...',
-    schedule_csv_import_log_saved:  (written, added, tagged, failed) => `✅ Zapisano: ${written} meczów · drużyny dodane: ${added}${tagged ? ` · oznaczone w lidze: ${tagged}` : ''}${failed ? ` · drużyn nie udało się dodać: ${failed}` : ''}`,
-    schedule_csv_import_log_skipped:(skipped) => `⚠ Pominięto: ${skipped} meczów (drużyna oznaczona jako skip lub niepowodzenie dodania)`,
-    schedule_csv_import_done:       '✅ Import zakończony',
-    /* CSVImport.jsx — PL-origin; both values = original PL string */
-    csv_import_stat_teams:          'Drużyny',
-    csv_import_stat_players:        'Gracze',
-    csv_import_no_change:           'bez zmian',
-    csv_import_importing:           (n) => `Importowanie ${n} rekordów...`,
-    csv_import_done:                '✅ Import zakończony',
+    /* ScheduleCSVImport.jsx — PL-origin → en = English translation */
+    schedule_csv_import_title:      '📅 Import schedule (CSV)',
+    schedule_csv_import_tournament_label: 'Tournament:',
+    schedule_csv_import_no_tournaments: 'No tournaments with a league assigned. Create a tournament first.',
+    schedule_csv_import_do_import:  (n) => `Import ${n} matches`,
+    schedule_csv_import_importing:  'Importing...',
+    schedule_csv_import_log_saved:  (written, added, tagged, failed) => `✅ Saved: ${written} matches · teams added: ${added}${tagged ? ` · tagged in league: ${tagged}` : ''}${failed ? ` · teams failed: ${failed}` : ''}`,
+    schedule_csv_import_log_skipped:(skipped) => `⚠ Skipped: ${skipped} matches (team marked as skip or failed to add)`,
+    schedule_csv_import_done:       '✅ Import complete',
+    /* CSVImport.jsx — PL-origin → en = English translation */
+    csv_import_stat_teams:          'Teams',
+    csv_import_stat_players:        'Players',
+    csv_import_no_change:           'no changes',
+    csv_import_importing:           (n) => `Importing ${n} records...`,
+    csv_import_done:                '✅ Import complete',
   },
 };
 
