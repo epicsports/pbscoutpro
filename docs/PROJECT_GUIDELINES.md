@@ -479,12 +479,18 @@ immediately after; every Tier-1 DEPLOY_LOG entry MUST carry a revert pointer):
 - **Logic-only** — data / hooks / services / query / build-tooling / docs, full
   emulator e2e green.
 
+**Tier 1.5 — mockup-approved Tier-2 work during an AUTHORIZED autonomous/overnight block** (Jacek ratified 2026-06-13 as DELIBERATE):
+- Work that would normally be Tier 2 (a NEW visual pattern/element) BUT whose design is **already captured in an approved mockup** MAY merge `--no-ff` + deploy after green build/lint/full-e2e **without a pre-merge gate**, ONLY when Jacek has explicitly authorized the block as autonomous ("blanket GO", "bez moich akceptów", overnight run).
+- Validation moves to **Jacek's prod smoke AFTER**, exactly like Tier 1; revert path in the DEPLOY_LOG entry; collect every decision into the block's hand-off DECISION QUEUE rather than pinging.
+- **Boundary:** the mockup must exist and be approved. A novel pattern with NO prior mockup is STILL Tier 2 (hard pre-merge gate) even inside an autonomous block. Tenant-isolation rules still require explicit CONFIRM regardless of block authorization.
+- **Precedent:** §B phase view (mockup-6) + §C nav drawer (mockup-7) shipped under Tier 1.5 on the 2026-06-12→13 night run.
+
 **Tier 2 — branch + explicit pre-merge GO, no exceptions:**
-- Any **NEW visual pattern or element**, or the **first instance of any design**.
+- Any **NEW visual pattern or element**, or the **first instance of any design**, with NO approved mockup.
 - Anything where identity to an approved design is NOT machine-proven.
 - Any brief `[GO GATE]`.
 
-When ambiguous, treat as **Tier 2**. Always STOP regardless of tier on any failing
+When ambiguous, treat as **Tier 2** (or **Tier 1.5** only if an approved mockup exists AND the block is autonomous-authorized). Always STOP regardless of tier on any failing
 build/precommit/e2e (never merge red), hard `[ESCALATE]` conditions (e.g. A4 scout
 entanglement), tenant-isolation rules, or gated-spec contradictions. Firebase-side
 autonomy (admin-SDK reads / `--dry` / indexes) is governed separately by the

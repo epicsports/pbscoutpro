@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MOCKUP — &lt;Screen&gt; primitive: pilot ScoutDetailPage (arc B)</title>
+<!--
+  BASE: scoutdetail-current-snapshot.html (faithful, from the extraction bundle).
+  PURPOSE OF THIS GATE: approve the SHELL STANDARD + API, not a redesign (§116:
+  visual change ~zero by design; pixel-diff vs prod must be ≈0 at phone widths).
+  WHAT <Screen> STANDARDIZES (today: ad-hoc per page):
+    - one shell: <Screen header={<PageHeader/>} archetype="detail"> children
+    - document scroll + sticky header (CURRENT model preserved app-wide — no
+      scroll-model change in arc B)
+    - maxWidth from an ARCHETYPE TIER TABLE (token, not per-page magic number)
+    - body padding/gap from SPACE tokens (16/16, as today)
+    - paddingBottom safe-area-aware (today: magic 80)
+  TIER TABLE (theme.js LAYOUT_TIERS — the actual decision to gate):
+    detail  → 640   (ScoutDetail, PlayerStats portrait, TeamDetail …)
+    list    → 760   (Teams, Players, Trainings — slightly wider on desktop;
+                     fixes the audit's "wasted desktop space" P1 family WITHOUT
+                     redesign: same rows, more room)
+    form    → 560   (wizards/config — narrow reading column)
+    canvas  → n/a   (CanvasRailLayout owns those screens)
+  NOTE list=760: the ONLY deliberate visual delta in the pilot family, and it
+  applies to LIST pages later, not to the ScoutDetail pilot (pilot stays 640).
+-->
+<style>
+  html,body{margin:0;background:#05080f;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e2e8f0;}
+  h1{font-size:18px;margin:24px 24px 4px}
+  .lede{font-size:13px;color:#94a3b8;margin:0 24px 18px;max-width:780px;line-height:1.5}
+  .wrap{display:flex;flex-wrap:wrap;gap:28px;justify-content:center;padding-bottom:40px}
+  .col{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .label{color:#64748b;font-size:12px;max-width:420px;text-align:center}
+  .frame{width:414px;border:1px solid #2a3548;border-radius:18px;overflow:hidden;background:#0a0e17;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .dframe{width:760px;height:520px;border:1px solid #2a3548;border-radius:12px;overflow:hidden;background:#0a0e17;display:flex;justify-content:center;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .screen{min-height:680px;max-width:640px;margin:0 auto;padding-bottom:80px;width:100%}
+  .ph{position:sticky;top:0;background:#111827;border-bottom:1px solid #2a3548}
+  .ph-row{display:flex;align-items:center;gap:8px;padding:12px 16px}
+  .back{width:44px;height:44px;margin-left:-4px;display:flex;align-items:center;justify-content:center;color:#f59e0b}
+  .ttl{font-weight:800;font-size:17px;letter-spacing:-.03em}
+  .sub{font-size:9px;font-weight:600;letter-spacing:.5px;color:#64748b;margin-top:1px}
+  .body{padding:16px;display:flex;flex-direction:column;gap:16px}
+  .summary{background:#0f172a;border:1px solid #2a3548;border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:16px}
+  .kicker{font-size:10px;font-weight:600;color:#64748b;letter-spacing:.4px;text-transform:uppercase}
+  .stat{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:2px}
+  .sec-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .prow{background:#0f172a;border:1px solid #2a3548;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .lab{font-size:11px;color:#8b95a5;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .track{flex:1;height:6px;background:#111827;border-radius:3px;overflow:hidden;max-width:180px}
+  .pct{font-size:11px;font-weight:700;min-width:36px;text-align:right}
+  .note{max-width:780px;color:#94a3b8;font-size:12.5px;line-height:1.65;background:#0d1320;border:1px solid #2a3548;border-radius:12px;padding:14px 16px;margin:0 auto}
+  .note b{color:#e2e8f0}
+  code{background:#111827;border:1px solid #2a3548;border-radius:4px;padding:1px 5px;font-size:11.5px;color:#fbbf24}
+  table{border-collapse:collapse;margin:8px 0}
+  td,th{border:1px solid #2a3548;padding:5px 10px;font-size:12px;text-align:left}
+  th{color:#94a3b8;font-weight:700}
+</style>
+</head>
+<body>
+<h1>&lt;Screen&gt; — pilot na ScoutDetailPage (gate standardu, nie redesignu)</h1>
+<p class="lede">Lewa ramka = pilot na telefonie — <b>celowo nieodróżnialny od prodа</b> (pixel-diff ≈ 0; to jest kryterium akceptacji,
+CC udowodni harnessem z H0). Prawa = desktop: jedyna widoczna różnica całego arc-B-shell to centrowana kolumna wg
+<b>tabeli tierów</b> zamiast per-page magic numbers. Gate'ujesz: API, tabelę tierów, zasadę scrollu.</p>
+
+<div class="wrap">
+  <div class="col">
+    <div class="label">PHONE PORTRAIT — pilot (render identyczny ze snapshotem prodа)</div>
+    <div class="frame">
+      <div class="screen">
+        <div class="ph"><div class="ph-row">
+          <div class="back"><svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div style="flex:1;min-width:0"><div class="ttl">Jacek P.</div><div class="sub">SCOUT PROFILE</div></div>
+        </div></div>
+        <div class="body">
+          <div class="summary">
+            <div style="flex:1"><div class="kicker">Volume</div><div class="stat">47<span style="font-size:13px;font-weight:600;color:#64748b"> pts</span></div><div style="font-size:11px;color:#64748b;margin-top:2px">12 matches · 3 tournaments</div></div>
+            <div style="text-align:right;padding-left:12px;border-left:1px solid #2a3548"><div class="kicker">Quality</div><div class="stat" style="color:#22c55e">82<span style="font-size:13px;font-weight:600">%</span></div><div style="font-size:12px;font-weight:700;color:#22c55e">★★★★<span style="color:#334155">★</span></div></div>
+          </div>
+          <div>
+            <div class="sec-title">Match progression</div>
+            <div class="prow"><span class="lab">Team Alpha</span><div class="track"><div style="height:100%;width:95%;background:#22c55e"></div></div><span class="pct" style="color:#22c55e">95%</span></div>
+            <div class="prow"><span class="lab">Team Bravo</span><div class="track"><div style="height:100%;width:72%;background:#f59e0b"></div></div><span class="pct" style="color:#f59e0b">72%</span></div>
+            <div class="prow"><span class="lab">Team Charlie — Friday prelims</span><div class="track"><div style="height:100%;width:48%;background:#ef4444"></div></div><span class="pct" style="color:#ef4444">48%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="label">DESKTOP — ta sama strona w <code>&lt;Screen archetype="detail"&gt;</code>: kolumna 640 centrowana (jak dziś), tło tokenowe po bokach. Zero redesignu.</div>
+    <div class="dframe">
+      <div class="screen" style="min-height:0">
+        <div class="ph"><div class="ph-row">
+          <div class="back"><svg width="20" height="20" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div style="flex:1;min-width:0"><div class="ttl">Jacek P.</div><div class="sub">SCOUT PROFILE</div></div>
+        </div></div>
+        <div class="body">
+          <div class="summary"><div style="flex:1"><div class="kicker">Volume</div><div class="stat">47</div></div><div style="text-align:right"><div class="kicker">Quality</div><div class="stat" style="color:#22c55e">82%</div></div></div>
+          <div><div class="sec-title">Match progression</div>
+            <div class="prow"><span class="lab">Team Alpha</span><div class="track"><div style="height:100%;width:95%;background:#22c55e"></div></div><span class="pct" style="color:#22c55e">95%</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Co zatwierdza ten gate (3 rzeczy):</b><br>
+    <b>1. API:</b> <code>&lt;Screen archetype="detail|list|form" header={&lt;PageHeader/&gt;}&gt;children&lt;/Screen&gt;</code> —
+    shell daje: document-scroll + sticky header (model scrollu BEZ zmian w całej apce), maxWidth z tabeli tierów,
+    padding/gap z tokenów SPACE, paddingBottom safe-area-aware (koniec magicznego 80).<br>
+    <b>2. Tabela tierów</b> (token <code>LAYOUT_TIERS</code> w theme.js):
+    <table><tr><th>archetyp</th><th>maxWidth</th><th>uwaga</th></tr>
+    <tr><td>detail</td><td>640</td><td>= dziś; pilot bez zmiany</td></tr>
+    <tr><td>list</td><td>760</td><td>jedyna świadoma delta — listy dostają oddech na desktopie (adresuje P1 „wasted space" z audytu bez redesignu); wchodzi dopiero przy migracji listowych ekranów, nie w pilocie</td></tr>
+    <tr><td>form</td><td>560</td><td>wąska kolumna czytania dla wizardów/konfiguracji</td></tr>
+    <tr><td>canvas</td><td>—</td><td>własność CanvasRailLayout</td></tr></table>
+    <b>3. Kryterium done pilota:</b> pixel-diff pilot vs prod = ≈0 na szerokościach telefonu (dowód harnessem H0), pełne e2e zielone,
+    ScoutIssuesPage jako drugi proof zaraz po pilocie. Migracja ~20 ekranów + hex/i18n sweep jadą potem batchami na tym samym dowodzie.
+  </div>
+</div>
+</body>
+</html>
