@@ -7,6 +7,7 @@ import { Btn, Icons } from './ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, bunkerByAbbr } from '../utils/theme';
 import { getBunkerSide, uid } from '../utils/helpers';
 import { STATIC_FLAGS } from '../utils/featureFlags';
+import { useLanguage } from '../hooks/useLanguage';
 
 // ── Vision prompt ──
 function VISION_PROMPT(calibration, doritoSide) {
@@ -148,6 +149,7 @@ function BunkerReviewRow({ bunker, onAccept }) {
 
 // ── Main component ──
 export default function VisionScan({ image, calibration, doritoSide, onComplete, onSkip }) {
+  const { t } = useLanguage();
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState(null);
   const [bunkers, setBunkers] = useState([]);
@@ -276,7 +278,7 @@ export default function VisionScan({ image, calibration, doritoSide, onComplete,
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.danger, marginBottom: SPACE.md }}>
             {error}
           </div>
-          <Btn variant="default" onClick={handleScan}>Retry scan</Btn>
+          <Btn variant="default" onClick={handleScan}>{t('vision_scan_retry')}</Btn>
         </div>
       )}
 

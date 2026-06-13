@@ -1600,6 +1600,32 @@ const T = {
     bunker_card_position_name:      'Nazwa pozycji',
     bunker_card_custom:             '+ Własna',
     bunker_card_mirror_label:       'Lustro (dodaj symetryczny bunker)',
+
+    /* ─── B12 — ScoutTabContent / DrawToolbar / VisionScan / OCRBunkerDetect / LivePointTracker ── */
+    /* ScoutTabContent */
+    scout_tab_new_match:            'New match',
+    scout_tab_home_team:            'Home team',
+    scout_tab_away_team:            'Away team',
+    scout_tab_no_matches_yet:       'No matches yet',
+    scout_tab_add_team:             '+ Add team',
+    scout_tab_add_match:            '+ Add match',
+    scout_tab_add_teams_title:      'Add teams',
+    scout_tab_adding:               'Adding…',
+    scout_tab_add_n_teams:          (n) => n === 1 ? 'Add 1 team' : `Add ${n} teams`,
+    scout_tab_n_selected:           (n) => `${n} selected`,
+    scout_tab_no_eligible_league:   (league) => `No eligible teams for ${league}. Create one in Teams or pick another league.`,
+    scout_tab_no_eligible_all:      'All available teams are already in this tournament.',
+    /* DrawToolbar */
+    draw_toolbar_undo:              'Undo',
+    draw_toolbar_redo:              'Redo',
+    draw_toolbar_eraser:            'Eraser',
+    draw_toolbar_clear_all:         'Clear all',
+    draw_toolbar_clear_confirm_title: 'Clear all drawings?',
+    /* VisionScan */
+    vision_scan_retry:              'Retry scan',
+    /* LivePointTracker — PL-origin: pl value = Polish, en value = English */
+    live_point_in_field:            'w polu',
+    live_point_describe_ph:         'Opisz własnymi słowami…',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -3152,6 +3178,32 @@ const T = {
     bunker_card_position_name:      'Position name',
     bunker_card_custom:             '+ Custom',
     bunker_card_mirror_label:       'Mirror (add symmetric bunker)',
+
+    /* ─── B12 — ScoutTabContent / DrawToolbar / VisionScan / OCRBunkerDetect / LivePointTracker ── */
+    /* ScoutTabContent */
+    scout_tab_new_match:            'New match',
+    scout_tab_home_team:            'Home team',
+    scout_tab_away_team:            'Away team',
+    scout_tab_no_matches_yet:       'No matches yet',
+    scout_tab_add_team:             '+ Add team',
+    scout_tab_add_match:            '+ Add match',
+    scout_tab_add_teams_title:      'Add teams',
+    scout_tab_adding:               'Adding…',
+    scout_tab_add_n_teams:          (n) => n === 1 ? 'Add 1 team' : `Add ${n} teams`,
+    scout_tab_n_selected:           (n) => `${n} selected`,
+    scout_tab_no_eligible_league:   (league) => `No eligible teams for ${league}. Create one in Teams or pick another league.`,
+    scout_tab_no_eligible_all:      'All available teams are already in this tournament.',
+    /* DrawToolbar */
+    draw_toolbar_undo:              'Undo',
+    draw_toolbar_redo:              'Redo',
+    draw_toolbar_eraser:            'Eraser',
+    draw_toolbar_clear_all:         'Clear all',
+    draw_toolbar_clear_confirm_title: 'Clear all drawings?',
+    /* VisionScan */
+    vision_scan_retry:              'Retry scan',
+    /* LivePointTracker — PL-origin: pl value = Polish, en value = English */
+    live_point_in_field:            'in field',
+    live_point_describe_ph:         'Describe in your own words…',
   },
 };
 
