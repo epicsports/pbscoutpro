@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-13 — [arc B] <Screen> shell primitive + pilot (ScoutDetail + ScoutIssues)
+**HEAD `9918bf00`.** **App-only.** Tier 1.5 by-proof (pixel-diff=0). Revert: `git revert 9918bf00`. Shared functional suite **49 green** (pixel gate excluded); **H0 pixel-diff gate 2/2 at maxDiffPixels:0** (isolated, `npm run test:e2e:diff`).
+- New `<Screen archetype=detail|list|form header={…}>` primitive (`src/components/Screen.jsx`) + `LAYOUT_TIERS` token (detail 640 / list 760 / form 560). Standardizes page shell (centered max-width, doc-scroll + sticky header, safe-area bottom pad) WITHOUT restyle.
+- Migrated the two hardcoded-640 pilot pages (ScoutDetailPage `/scouts/:uid`, ScoutIssuesPage `/my-issues`) — byte-identical extraction, diff=0 proven.
+- H0 harness = `toHaveScreenshot` baseline captured pre-migration, compared post; isolated/clean-seed only (page CONTENT drifts under the shared serial suite as test-coach accrues points) → excluded from `test:e2e` via `--grep-invert "pixel-diff"`, run via `test:e2e:diff`.
+- **⚠️ SCOPE FINDING (gates batches 2+):** the inventory (`docs/architecture/ARC_B_SCREEN_MIGRATION.md`) shows only 3 pages are hardcoded-640 (true diff=0); the other ~18 use `R.layout.maxWidth` = full-width on mobile / 768 tablet / 1200 desktop → migrating them to a tier (640/560/760) is **diff=0 on PHONE but a visible DESKTOP narrowing**. So the broad migration is NOT a blanket mechanical sweep — every non-trivial page carries a desktop delta needing the same Jacek eyeball the brief reserved for list-760. **Pilot ratified; mass migration STOPPED pending decision (see DECISION QUEUE).** **Owed: Jacek smoke** — ScoutDetail + ScoutIssues unchanged on phone.
+
 ## 2026-06-13 — [POST-NIGHT consolidation] i18n wave 2 (B8 + B10 + B11 + B12) — STEP 4 i18n COVERAGE COMPLETE
 **HEAD `57824afd`.** **App-only.** Tier 1 (machine-proven i18n extraction). Full emulator e2e **49/49 green**. Revert: the four merge commits (B8/B10/B11/B12). Closes the STEP-4 coverage push (audit found ~211 hardcoded strings/28 files; B7–B12 + regression-sweep now cover all identified user-facing surfaces).
 - **B8 imports** (24 keys) — ScheduleImport (EN) + ScheduleCSVImport/CSVImport (PL-origin, keyed pl=Polish/en=English); log-template arrow-fn keys; StatRow `noChange` prop.

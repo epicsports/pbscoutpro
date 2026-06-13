@@ -51,6 +51,12 @@ Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Jacek GO "I need all of i
 
 ---
 
+## 🧱 ARC B — `<Screen>` migration (2026-06-13) — PILOT SHIPPED, mass migration gated on a decision
+
+Brief: `CC_BRIEF_ARC_B_SCREEN_MIGRATION` (chat). **Pilot SHIPPED** (`9918bf00`, Tier 1.5 by-proof): `<Screen>` primitive + `LAYOUT_TIERS` token + ScoutDetail/ScoutIssues migrated, **H0 pixel-diff=0 proven** (`npm run test:e2e:diff`, isolated). Worklist + finding: `docs/architecture/ARC_B_SCREEN_MIGRATION.md`.
+
+> **🔴 DECISION (Jacek) — gates migration batches 2+.** The inventory found only 3 pages hardcode 640 (true diff=0); the other ~18 use `R.layout.maxWidth` (= 100% mobile / 768 tablet / **1200 desktop**). Migrating them to a tier is **diff=0 on phone but a visible DESKTOP narrowing** (detail 1200→640, form →560, list →760). That IS mockup-5's intent (constrain reading width) — but it's a real desktop change on every non-trivial page, so each batch needs your desktop eyeball, not just the list tier. **Question: ratify the desktop narrowing app-wide (then I batch-migrate with per-batch phone-diff=0 + a desktop register row), or keep current desktop widths (migrate shell only where it's already diff=0)?** Until ruled, only **ScoutRankingPage** (also hardcoded 640, true diff=0) is safe to migrate under the existing proof.
+
 ## 🛠️ POST-NIGHT CONSOLIDATION 2026-06-13 (CC_BRIEF_POST_NIGHT_CONSOLIDATION) — in progress
 
 Same authorized autonomous block. Brief: `docs/briefs/CC_BRIEF_POST_NIGHT_CONSOLIDATION_2026-06-13.md`.
