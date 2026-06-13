@@ -213,7 +213,7 @@ export default function AttendeesEditor({ trainingId, training }) {
       )}
 
       {/* Here */}
-      <SubHeader label={t('here')} count={here.length} color="#22c55e" />
+      <SubHeader label={t('here')} count={here.length} color={COLORS.success} />
       {here.length === 0 ? (
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: `${SPACE.sm}px 0`, textAlign: 'center' }}>
           Tap players below to mark them as here.
@@ -281,7 +281,7 @@ function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
         const isGuest  = v === 'guest';
         const isDanger = v === 'danger';
         const isActive = v === 'active';
-        const accent = isGuest ? COLORS.accent : isDanger ? COLORS.danger : isActive ? '#22c55e' : null;
+        const accent = isGuest ? COLORS.accent : isDanger ? COLORS.danger : isActive ? COLORS.success : null;
         const bg = accent ? `${accent}10` : COLORS.surfaceDark;
         const bd = accent ? `${accent}60` : COLORS.surfaceLight;
         const numCol = accent || COLORS.textDim;

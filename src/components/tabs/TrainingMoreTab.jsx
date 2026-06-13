@@ -438,7 +438,7 @@ function TrainingPendingBadge({ count }) {
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       minWidth: 22, height: 22, padding: '0 6px', marginRight: 4,
       borderRadius: 999,
-      background: COLORS.accent, color: '#000',
+      background: COLORS.accent, color: COLORS.black,
       fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800,
     }}>{count}</span>
   );

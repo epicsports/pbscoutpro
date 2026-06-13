@@ -122,7 +122,7 @@ function Chip({ color, active, onClick, label }) {
         borderRadius: RADIUS.sm,        // 6px — brief spec
         border: '1.5px solid transparent',
         background: active ? color : 'transparent',
-        color: active ? '#fff' : COLORS.textMuted,
+        color: active ? COLORS.white : COLORS.textMuted,
         fontFamily: FONT,
         fontSize: FONT_SIZE.sm,
         fontWeight: 700,

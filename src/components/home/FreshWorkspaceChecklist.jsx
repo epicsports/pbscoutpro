@@ -78,7 +78,7 @@ export function FreshWorkspaceChecklist({ isAdmin, workspaceName, signals, confi
                 padding: '0 14px', borderRadius: 10, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                 fontFamily: FONT, fontSize: 13,
                 ...(isNext
-                  ? { background: COLORS.accent, color: '#0a0e17', fontWeight: 800 }
+                  ? { background: COLORS.accent, color: COLORS.bg, fontWeight: 800 }
                   : { background: 'transparent', border: `1px solid ${COLORS.border}`, color: COLORS.textDim, fontWeight: 600 }),
               }}>{s.cta}</div>
             )}
@@ -142,7 +142,7 @@ export function PlayerClaimCard() {
       <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.55, maxWidth: 280 }}>{t('b4_claim_text')}</div>
       <div role="button" data-testid="b4-claim-cta" onClick={() => navigate('/profile')} style={{
         minHeight: 48, display: 'flex', alignItems: 'center', padding: '0 22px', borderRadius: 12,
-        background: COLORS.accent, color: '#0a0e17', fontFamily: FONT, fontSize: 14, fontWeight: 800,
+        background: COLORS.accent, color: COLORS.bg, fontFamily: FONT, fontSize: 14, fontWeight: 800,
         marginTop: 4, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       }}>{t('b4_claim_cta')}</div>
       <div style={{ fontFamily: FONT, fontSize: 11.5, color: COLORS.textMuted }}>{t('b4_claim_sub')}</div>

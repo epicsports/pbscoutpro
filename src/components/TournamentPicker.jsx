@@ -245,7 +245,7 @@ export function TestBadge() {
     <span style={{
       fontFamily: FONT, fontSize: 10, fontWeight: 700,
       color: COLORS.textMuted, background: COLORS.surfaceLight,
-      border: '1px solid #334155', borderRadius: 3,
+      border: `1px solid ${COLORS.borderLight}`, borderRadius: 3,
       padding: '1px 4px', marginLeft: 4,
       verticalAlign: 'middle',
     }}>TEST</span>

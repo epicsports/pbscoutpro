@@ -480,7 +480,7 @@ export default function LayoutDetailPage() {
             }}>{t('layout_detail_tab_tactics')}</div>
             <div style={{
               width: 26, height: 26, borderRadius: '50%',
-              background: COLORS.accent, color: '#000',
+              background: COLORS.accent, color: COLORS.black,
               fontFamily: FONT, fontSize: 13, fontWeight: 800,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>{(squadCode ? tactics.filter(t => t.squadCode === squadCode) : tactics.filter(t => !t.squadCode)).length}</div>
@@ -1280,7 +1280,7 @@ export default function LayoutDetailPage() {
                       <div key={side} onClick={() => setEditLines(prev => prev.map(x => x.id === ln.id ? { ...x, trackSide: side } : x))}
                         style={{ minHeight: 32, padding: '6px 12px', borderRadius: RADIUS.full, cursor: 'pointer',
                           fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700,
-                          background: on ? COLORS.accent : 'transparent', color: on ? '#000' : COLORS.textMuted,
+                          background: on ? COLORS.accent : 'transparent', color: on ? COLORS.black : COLORS.textMuted,
                           display: 'flex', alignItems: 'center', WebkitTapHighlightColor: 'transparent' }}>{label}</div>
                     );
                   })}

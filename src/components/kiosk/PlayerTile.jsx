@@ -107,7 +107,7 @@ export default function PlayerTile({
         <div style={{
           position: 'absolute',
           top: 8, left: 12,
-          fontSize: 10, color: '#fff', fontWeight: 800,
+          fontSize: 10, color: COLORS.white, fontWeight: 800,
           background: 'rgba(0, 0, 0, 0.4)',
           padding: '3px 7px', borderRadius: 4,
           letterSpacing: 0.4, zIndex: 2,
@@ -121,7 +121,7 @@ export default function PlayerTile({
           position: 'absolute',
           top: 10, right: 10,
           width: 30, height: 30,
-          background: COLORS.success, color: '#fff',
+          background: COLORS.success, color: COLORS.white,
           borderRadius: '50%',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 16, fontWeight: 800,
@@ -136,7 +136,7 @@ export default function PlayerTile({
         flex: '0 0 45%',
         background: player?.photoURL ? `#000 url("${player.photoURL}") center/cover no-repeat` : photoBg,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 48, fontWeight: 900, color: '#fff',
+        fontSize: 48, fontWeight: 900, color: COLORS.white,
         fontFamily: FONT,
       }}>
         {!player?.photoURL && initialLetter}

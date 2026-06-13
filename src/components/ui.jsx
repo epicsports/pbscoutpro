@@ -25,7 +25,7 @@ export function Btn({
   };
   const v = {
     default: { background: COLORS.surfaceLight, color: COLORS.text, borderColor: active ? COLORS.accent : COLORS.border, boxShadow: active ? `0 0 12px ${COLORS.accent}15` : 'none' },
-    accent: { background: COLORS.accentGradient, color: '#000', borderColor: 'transparent', boxShadow: COLORS.accentGlow },
+    accent: { background: COLORS.accentGradient, color: COLORS.black, borderColor: 'transparent', boxShadow: COLORS.accentGlow },
     danger: { background: COLORS.dangerDim, color: '#fca5a5', borderColor: COLORS.danger + '60' },
     ghost: { background: 'transparent', color: COLORS.textDim, borderColor: 'transparent', minHeight: 'auto' },
     success: { background: COLORS.successDim, color: '#86efac', borderColor: COLORS.success + '60' },
@@ -99,7 +99,7 @@ export function LeagueBadge({ league }) {
 const DATA_SOURCE_VARIANTS = {
   'scout':      { bg: 'transparent', color: COLORS.textDim, labelKey: 'data_source_scout' },
   'scout+self': { bg: '#22d3ee15',   color: '#22d3ee',      labelKey: 'data_source_scout_self' },
-  'scout-only': { bg: COLORS.accentA15, color: '#f59e0b',      labelKey: 'data_source_scout_only' },
+  'scout-only': { bg: COLORS.accentA15, color: COLORS.accent,  labelKey: 'data_source_scout_only' },
 };
 export function DataSourcePill({ source, t }) {
   const cfg = DATA_SOURCE_VARIANTS[source];
@@ -228,7 +228,7 @@ export function SwipeDelete({ onDelete, children }) {
         borderRadius: '0 10px 10px 0',
       }}>
         <span onClick={() => { reset(); onDelete(); }}
-          style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: '#fff', cursor: 'pointer' }}>
+          style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.white, cursor: 'pointer' }}>
           {t('delete')}
         </span>
       </div>
@@ -305,7 +305,7 @@ export function ResultBadge({ result }) {
     W: { color: COLORS.success, bg: COLORS.success + '18' },
     L: { color: COLORS.danger, bg: COLORS.danger + '18' },
     D: { color: COLORS.accent, bg: COLORS.accent + '18' },
-    LIVE: { color: '#000', bg: COLORS.accent, shadow: COLORS.accentGlow },
+    LIVE: { color: COLORS.black, bg: COLORS.accent, shadow: COLORS.accentGlow },
     FINAL: { color: COLORS.success, bg: COLORS.success + '15' },
   }[result] || {};
   return (
@@ -339,7 +339,7 @@ export function CoachingStats({ stats }) {
     stats.danger !== null && { label: 'DANGER', value: stats.danger, color: COLORS.danger },
     stats.sajgon !== null && { label: 'SAJGON', value: stats.sajgon, color: COLORS.info },
     { label: 'DISCO', value: stats.disco, color: COLORS.bump },
-    { label: 'ZEEKER', value: stats.zeeker, color: COLORS.zeeker || '#06b6d4' },
+    { label: 'ZEEKER', value: stats.zeeker, color: COLORS.zeeker },
   ].filter(Boolean);
   return (
     <div style={{ display: 'flex', gap: 4, padding: `${SPACE.sm}px ${SPACE.lg}px`, flexWrap: 'wrap' }}>

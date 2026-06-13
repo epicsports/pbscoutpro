@@ -134,7 +134,7 @@ export function LogRow({ row, ordinal, isPending, eventLabel, onMenu }) {
           <div style={{
             fontFamily: FONT, fontSize: 8, fontWeight: 700,
             letterSpacing: 0.5, textTransform: 'uppercase',
-            color: '#64748b', whiteSpace: 'nowrap',
+            color: COLORS.textMuted, whiteSpace: 'nowrap',
           }}>
             {t('logrow_breakout')}
           </div>
@@ -155,7 +155,7 @@ export function LogRow({ row, ordinal, isPending, eventLabel, onMenu }) {
           <div style={{
             fontFamily: FONT, fontSize: 8, fontWeight: 700,
             letterSpacing: 0.5, textTransform: 'uppercase',
-            color: '#64748b', whiteSpace: 'nowrap',
+            color: COLORS.textMuted, whiteSpace: 'nowrap',
           }}>
             {t('logrow_shots')}
           </div>

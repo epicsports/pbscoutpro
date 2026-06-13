@@ -87,7 +87,7 @@ export default function ReasonRadial({ menu, current, onPick, onClose }) {
               zIndex: 42, minWidth: 44, minHeight: 44, padding: '6px 12px', borderRadius: 12,
               display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center',
               background: active ? COLORS.accent : '#0f172aee',
-              color: active ? '#000' : COLORS.text,
+              color: active ? COLORS.black : COLORS.text,
               border: `1.5px solid ${active ? COLORS.accent : COLORS.border}`,
               boxShadow: '0 6px 20px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
               fontFamily: FONT, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',

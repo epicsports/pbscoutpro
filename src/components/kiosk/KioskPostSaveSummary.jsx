@@ -135,7 +135,7 @@ export default function KioskPostSaveSummary() {
         }}>
           {/* Scoreboard */}
           <div style={{
-            background: '#111827',
+            background: COLORS.surface,
             borderRadius: 14, padding: '18px 24px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
@@ -183,7 +183,7 @@ export default function KioskPostSaveSummary() {
           }}>
             <div style={{
               padding: '10px 14px',
-              background: '#111827',
+              background: COLORS.surface,
               borderBottom: `1px solid ${COLORS.border}`,
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
@@ -292,7 +292,7 @@ export default function KioskPostSaveSummary() {
                 style={{
                   height: 88, borderRadius: 16,
                   background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                  color: '#0a0e17', border: 'none',
+                  color: COLORS.bg, border: 'none',
                   cursor: 'pointer',
                   boxShadow: '0 4px 20px rgba(245, 158, 11, 0.25)',
                   display: 'flex', flexDirection: 'column',

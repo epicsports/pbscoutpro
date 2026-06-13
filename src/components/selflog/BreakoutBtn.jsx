@@ -44,7 +44,7 @@ export default function BreakoutBtn({ bunker, doritoSide = 'top', selected, coun
         fontFamily: FONT,
         fontSize: FONT_SIZE.sm,
         fontWeight: 700,
-        color: selected ? '#000' : COLORS.text,
+        color: selected ? COLORS.black : COLORS.text,
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         maxWidth: '100%',
       }}>{name}</span>
