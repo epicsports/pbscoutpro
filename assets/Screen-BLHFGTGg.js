@@ -1,1 +1,0 @@
-import{j as s}from"./vendor-react-CfYiAAKB.js";import{cq as t}from"./index-4s_1Hd3E.js";function c({archetype:e="detail",header:i=null,padBottom:n=!0,style:a,children:o}){const r=t[e]||t.detail;return s.jsxs("div",{style:{minHeight:"100vh",maxWidth:r,margin:"0 auto",...n?{paddingBottom:"calc(80px + env(safe-area-inset-bottom, 0px))"}:null,...a},children:[i,o]})}export{c as S};
