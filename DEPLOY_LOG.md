@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-13 — [arc B + STEP 3] ScoutRanking migration + H2 hex sweep + H3 loaders + EN-literal guard
+**HEAD `bae53829`.** **App + tooling.** Tier 1 / Tier 1.5-by-proof. Functional suite **59 green**; pixel-diff gate **3/3 at maxDiffPixels:0** (`test:e2e:diff`). Revert: the individual merge commits. Autonomous block (Jacek: desktop-narrowing held, everything else full speed).
+- **ScoutRanking → `<Screen detail>`** (3rd hardcoded-640 page; kept at 640 = diff=0 all widths, re-tags to list if the desktop decision ratifies). Pixel-diff=0 proven (baseline stashed pre-migration).
+- **H2 hex→token sweep cont.** — 48 value-exact swaps across 23 component/page files (#000→black, #fff→white, surface/text/status tokens); pixel-identical by construction. STOP-list (alpha forms, canvas-draw, semantic palettes, no-exact-token) in the agent report.
+- **H3 no-eternal-loading rollout** — bounded-wait (12s) + error-state + Retry on LayoutDetailPage, TrainingSetup/Squads/Results, PlayerStatsPage; testids `layout-/training-/player-load-error`; 6 i18n keys; e2e `h3-loader-rollout.spec.js` 10/10. Excluded (one-shot getDoc / list / already-done) noted. **Detail-page eternal-spinner class now fully closed across the app.**
+- **EN-literal precommit guard** (`scripts/lint-ui.js`) — WARN on new hardcoded EN JSX (text + user-facing props; allowlist for acronyms/domain-words/canvas/CSS). Closes the regression gap (precommit caught only Polish before). **Calibration: 69 genuine residual EN literals remain** (component-level + admin spots batches 1–12 didn't reach) → registered as B13. precommit still passes (WARN, not ERROR).
+- i18n dict 1515 keys/lang, **28 dup baseline** (no new). **Owed: Jacek smoke** — swept pages visually identical; invalid layout/training/player URLs → error+Retry (not spinner); `/scouts` ranking unchanged.
+
 ## 2026-06-13 — [arc B] <Screen> shell primitive + pilot (ScoutDetail + ScoutIssues)
 **HEAD `9918bf00`.** **App-only.** Tier 1.5 by-proof (pixel-diff=0). Revert: `git revert 9918bf00`. Shared functional suite **49 green** (pixel gate excluded); **H0 pixel-diff gate 2/2 at maxDiffPixels:0** (isolated, `npm run test:e2e:diff`).
 - New `<Screen archetype=detail|list|form header={…}>` primitive (`src/components/Screen.jsx`) + `LAYOUT_TIERS` token (detail 640 / list 760 / form 560). Standardizes page shell (centered max-width, doc-scroll + sticky header, safe-area bottom pad) WITHOUT restyle.
