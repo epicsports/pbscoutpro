@@ -34,8 +34,112 @@ function walk(dir) {
   return files;
 }
 
+/**
+ * Domain-data words: single-word labels that are identifiers, not prose UI copy.
+ * These are canonical domain/app terms that appear in the UI as-is and are NOT
+ * expected to go through t('key'). Extend this set when the linter flags a
+ * word that is genuinely a domain label rather than user-facing copy.
+ *
+ * Example additions: add 'Standings' if that label is a fixed domain term.
+ */
+const EN_LITERAL_DOMAIN_WORDS = new Set([
+  // Paintball field zones and positions
+  'Snake', 'Dorito', 'Center', 'Break', 'Settle', 'Mid', 'Wire',
+  'Snake50', 'Dorito50', 'Base', 'Doritos', 'Snakes', 'Brick',
+  // Game/match outcomes
+  'Win', 'Loss', 'Draw', 'Timeout', 'OT',
+  // Division / league identifiers (used as labels verbatim)
+  'D1', 'D2', 'D3', 'D4', 'D5', 'NXL', 'PSP', 'NPPL', 'xball', 'Xball',
+  'Pro', 'Semi-Pro', 'Amateur',
+  // App role names (used as labels verbatim in role chips, pickers)
+  'Coach', 'Scout', 'Player', 'Staff', 'Viewer', 'Admin',
+  // App concepts used as section headers / tab labels
+  'Tournament', 'Training', 'Match', 'Home', 'Away', 'Roster',
+  'Divisions', 'Layouts', 'Analytics', 'Insights', 'Counters',
+  'Overview', 'Breakdown', 'Global', 'Details',
+  // Short imperative UI words that are too short to be useful signal
+  // (≤6 chars, single word — these are everywhere; flagging them is too noisy)
+  // NOTE: multi-word forms like "Add player" ARE flagged intentionally.
+  'Add', 'Edit', 'Save', 'Close', 'Back', 'Next', 'Done',
+  'Cancel', 'Delete', 'Remove', 'Reset', 'Clear', 'Search',
+  'Open', 'Close', 'Send', 'Copy', 'Paste', 'Print',
+]);
+
+/**
+ * isLikelyUIEnLiteral — returns true if `val` looks like a user-facing
+ * hardcoded English string that should be going through t('key') instead.
+ *
+ * Precision over recall: we'd rather miss a few than flood with noise.
+ * The domain-word allowlist above handles common single-word UI labels.
+ */
+function isLikelyUIEnLiteral(val) {
+  if (!val || val.length < 2) return false;
+
+  // Strip surrounding whitespace
+  val = val.trim();
+
+  // Skip empties and pure numbers
+  if (!val || /^\d+$/.test(val)) return false;
+
+  // Must contain at least one letter
+  if (!/[A-Za-z]/.test(val)) return false;
+
+  // Skip CSS-like values (px, %, #hex, rgb, var(...)
+  if (/px|%|#[0-9a-fA-F]{3,8}|^rgb|^var\(/.test(val)) return false;
+
+  // Skip URLs, paths, dotted identifiers, email-like patterns
+  if (/^https?:\/\/|^\/|^sk-|@|\.[a-z]{2,4}$/.test(val)) return false;
+
+  // Skip all-caps acronyms / short tokens (≤5 chars like W, L, OT, NXL, HERO, LIVE)
+  if (/^[A-Z0-9_/\-]{1,5}$/.test(val)) return false;
+
+  // Skip single char or punctuation-only
+  if (/^[^A-Za-z0-9]+$/.test(val)) return false;
+
+  // Skip template-literal-looking fragments (${...} only — pure interpolation)
+  if (/^\$\{[^}]+\}$/.test(val)) return false;
+
+  // Lowercase check for camelCase / identifiers (no spaces, starts lowercase = code id)
+  // A true prose label usually has spaces or starts with a capital letter
+  if (!/\s/.test(val) && /^[a-z]/.test(val)) return false;
+
+  const words = val.trim().split(/\s+/);
+
+  // Multi-word: flag if 2+ words (genuine UI prose)
+  if (words.length >= 2) {
+    // Skip if all words are domain words (e.g. "Snake Base", "Dorito 50", "Home Away")
+    const allDomain = words.every(w => EN_LITERAL_DOMAIN_WORDS.has(w) || /^[\d.+\-:→↓↑✅×]+$/.test(w));
+    if (allDomain) return false;
+    // Skip if it looks like a code snippet or JSX expression fragment
+    if (/[{}()=><]/.test(val)) return false;
+    // Skip ternary/comparison fragments that slipped through: "? 1 : bk"
+    if (/^\?|^:/.test(val.trim())) return false;
+    // Skip short 2-word combinations where both are ≤2 chars (avoid "on x" etc.)
+    if (words.length === 2 && words.every(w => w.length <= 2)) return false;
+    return true;
+  }
+
+  // Single word: only flag if it starts with a capital letter AND is ≥4 chars
+  // AND is NOT in the domain-data allowlist
+  if (words.length === 1) {
+    const w = words[0];
+    if (w.length < 4) return false; // ≥4 chars avoids "Add", "Set" etc.
+    if (!/^[A-Z]/.test(w)) return false; // must start uppercase
+    if (EN_LITERAL_DOMAIN_WORDS.has(w)) return false;
+    // Skip known React/JSX prop values that are identifiers
+    if (/^(true|false|null|undefined)$/i.test(w)) return false;
+    // Skip single-word ALL-CAPS (HERO, SURV, etc. — constant/badge labels)
+    if (/^[A-Z]{2,}$/.test(w)) return false;
+    return true;
+  }
+
+  return false;
+}
+
 function check(file, content, lines) {
-  const rel = relative('.', file);
+  // Normalize to forward slashes for cross-platform path matching (Windows
+  // path.relative() returns backslashes; all checks below use forward-slash patterns)
+  const rel = relative('.', file).replace(/\\/g, '/');
   const isUI = rel.includes('ui.jsx');
   const isPage = rel.includes('pages/');
   const isComponent = rel.includes('components/');
@@ -85,6 +189,78 @@ function check(file, content, lines) {
     const polishWords = /['"`](Ładowanie|Sprawdzanie|Przygotowanie|Turniej|Strzały|Pozycja|Rysuj|Narysuj|Zapisz|Usuń|Edytuj|Dodaj|Szukaj|Notatki|Ksywka|Imię|Nazwisko|Drużyna|Gracz)['"`]/;
     if (polishWords.test(line) && !trimmed.startsWith('//')) {
       WARNINGS.push(`${rel}:${ln} — Polish word in UI string — translate to English`);
+    }
+
+    // ── 2b. Hardcoded English literals (i18n regression guard) ──
+    // WARN-LEVEL ONLY — too noisy to block commits, but catches genuine
+    // residual hardcoded EN strings that should go through t('key') instead.
+    //
+    // HEURISTIC: flag user-facing string literals that are either
+    //   (a) JSX text content between tags: >Some Text<
+    //   (b) user-facing string props: placeholder= title= aria-label= label=
+    //       text= subtitle= confirmLabel= header=
+    // that contain 2+ words OR a single capitalized word ≥3 chars, contain a
+    // letter, and are NOT already wrapped in a t(...) call on the same line.
+    //
+    // ALLOWLIST — false-positive suppressors (do NOT gut this to get zero):
+    //   • t( on same line (already i18n'd)
+    //   • All-caps acronyms ≤4 chars: HERO SURV LIVE PRO NXL OT W L etc.
+    //   • Single symbols / emoji / punctuation
+    //   • Hex colours, URLs (http, sk-, /)
+    //   • data-testid / className / key= / id= props
+    //   • CSS-like values (px / % / # / rgb)
+    //   • Numbers only
+    //   • Test/spec files (*.test.* / *.spec.*)
+    //   • Canvas-draw files: src/components/field/** *Canvas* drawStrokes
+    //   • Domain-data words: see EN_LITERAL_DOMAIN_WORDS in isLikelyUIEnLiteral()
+    //   • Lines containing JS comparison operators (ternaries, arrow fns — code not JSX)
+    //
+    // To suppress a legitimate literal (e.g. a canonical domain label), add
+    // it to EN_LITERAL_DOMAIN_WORDS in isLikelyUIEnLiteral() above.
+    if ((isPage || isComponent)) {
+      // Skip canvas-draw files and test files
+      const isCanvasFile = rel.includes('field/') || rel.includes('Canvas') || rel.includes('drawStrokes');
+      const isTestFile = /\.(test|spec)\./.test(rel);
+      if (!isCanvasFile && !isTestFile && !trimmed.startsWith('//') && !trimmed.startsWith('*') && !trimmed.startsWith('/*')) {
+        // Skip if t( appears on same line (already i18n'd or fallback pattern)
+        if (!line.includes('t(')) {
+          // Pattern A: JSX text content >SomeText< (between > and <)
+          // Captures text nodes that are direct string children of JSX elements.
+          // Skip lines with JS ternary/comparison operators that could produce
+          // false matches like "> ak ? 1 : bk <" being parsed as JSX text.
+          const hasJSOp = /[?:=]/.test(trimmed) && /\breturn\b|=>|&&|\|\|/.test(trimmed);
+          if (!hasJSOp) {
+            const jsxTextMatches = line.matchAll(/>\s*([A-Za-z][^<>{}\n]{1,80}?)\s*</g);
+            for (const m of jsxTextMatches) {
+              const val = m[1].trim();
+              if (isLikelyUIEnLiteral(val)) {
+                WARNINGS.push(`${rel}:${ln} — EN literal (JSX text): "${val.substring(0, 60)}" — wrap in t('key')`);
+                break; // one warning per line
+              }
+            }
+          }
+
+          // Pattern B: user-facing string props
+          // placeholder= title= aria-label= label= text= subtitle= confirmLabel= header=
+          // Uses separate patterns for single-quoted and double-quoted to handle
+          // apostrophes in double-quoted values (e.g. "Couldn't load this team")
+          const propNames = '(?:placeholder|title|aria-label|label|text|subtitle|confirmLabel|header)';
+          // Double-quoted values: allow apostrophes inside
+          const propPatternDbl = new RegExp(`${propNames}\\s*=\\s*"([^"]{2,120})"`, 'g');
+          // Single-quoted values: no apostrophes allowed (would break string)
+          const propPatternSgl = new RegExp(`${propNames}\\s*=\\s*'([^']{2,120})'`, 'g');
+          for (const propPattern of [propPatternDbl, propPatternSgl]) {
+            const propMatches = line.matchAll(propPattern);
+            for (const m of propMatches) {
+              const val = m[1].trim();
+              if (isLikelyUIEnLiteral(val)) {
+                WARNINGS.push(`${rel}:${ln} — EN literal (prop): "${val.substring(0, 60)}" — wrap in t('key')`);
+                break; // one warning per line
+              }
+            }
+          }
+        }
+      }
     }
 
     // ── 3. Hardcoded styles ──
