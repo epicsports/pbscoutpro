@@ -51,4 +51,17 @@ test.describe('arc B — <Screen> pilot pixel-diff (detail tier)', () => {
       fullPage: true,
     });
   });
+
+  test('ScoutRankingPage (/scouts) shell is pixel-stable', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    await page.setViewportSize(PHONE);
+    await page.goto('/#/scouts');
+    await dismissNudge(page);
+    await page.waitForTimeout(1500);
+    await expect(page).toHaveScreenshot('scout-ranking-detail.png', {
+      animations: 'disabled',
+      maxDiffPixels: 0,
+      fullPage: true,
+    });
+  });
 });

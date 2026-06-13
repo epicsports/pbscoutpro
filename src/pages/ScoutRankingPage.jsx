@@ -8,6 +8,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Btn, Loading, EmptyState, Select } from '../components/ui';
 import { useTournaments, useLayouts } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -78,9 +79,11 @@ export default function ScoutRankingPage() {
   const names = useUserNames(uids);
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 640, margin: '0 auto', paddingBottom: 80 }}>
-      <PageHeader back={{ to: '/' }} title={t('scout_ranking')} subtitle={t('scout_ranking_sub')} />
-
+    // §arc-B — kept at the DETAIL tier (640) to preserve the current hardcoded
+    // width exactly (diff=0 at all widths). It is semantically a list; if the
+    // desktop list-760 widening is ratified, re-tag archetype="list" then
+    // (itself a desktop-delta change subject to the eyeball gate).
+    <Screen archetype="detail" header={<PageHeader back={{ to: '/' }} title={t('scout_ranking')} subtitle={t('scout_ranking_sub')} />}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: SPACE.sm,
         padding: `${SPACE.md}px ${SPACE.lg}px 0`, flexWrap: 'wrap',
@@ -139,7 +142,7 @@ export default function ScoutRankingPage() {
           })}
         </div>
       )}
-    </div>
+    </Screen>
   );
 }
 
