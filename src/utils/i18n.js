@@ -1425,6 +1425,63 @@ const T = {
     layout_wizard_finish_btn:        'Zakończ →',
     layout_wizard_not_super_body:    'Nowe układy pola są dodawane do wspólnej biblioteki przez administratora platformy. Przejrzyj bibliotekę, aby dodać istniejące pole do swojego workspace\'u.',
     layout_wizard_step_subtitle:     (step, total, label) => `KROK ${step} Z ${total} · ${label}`,
+
+    /* ─── §H1 Batch 4 — Match & scout pages ─────────────── */
+    /* MatchPage — confirm modals */
+    match_end_btn:            'End match',
+    match_end_final_action:   'End match (mark as FINAL)',
+    match_end_title:          'End match',
+    match_end_msg:            'Mark this match as FINAL? No more points can be added.',
+    match_clear_all_title:    'Clear all points?',
+    match_clear_all_msg:      (n) => `Delete all ${n} points from this match? This cannot be undone.`,
+    match_clear_all:          'Clear all',
+    match_clear_all_action:   'Clear all points',
+    match_delete_point_title: 'Delete point?',
+    match_delete_point_msg:   'Match score will be recalculated. This cannot be undone.',
+    match_edit_point:         'Edit point',
+    match_delete_point_n:     (n) => `Delete Point #${n}`,
+    match_delete_title:       'Delete match?',
+    match_delete_msg:         'All scouted points and data for this match will be permanently lost.',
+    match_delete_confirm:     'Delete match',
+    match_delete_action:      'Delete match',
+    /* MatchPage — scoreboard CTAs (arrow composed in JSX; key = word only) */
+    match_scout_cta:          'Scout',
+    match_quick_cta:          'Quick',
+    /* MatchPage — scoreboard point counter */
+    match_point_counter:      (n) => `${n} POINT${n === 1 ? '' : 'S'}`,
+    match_points_section:     (n) => `Points (${n})`,
+    /* MatchPage — editor strings */
+    match_quick_note_ph:      'Quick note (optional)',
+    match_close_bottom:       'Close match (mark as final)',
+    match_unassign:           'Unassign',
+    match_assign_slot:        (label) => `Assign ${label}`,
+    /* MatchPage — error / load states */
+    match_load_error:         'Couldn\'t load this match',
+    match_load_error_sub:     'It may have been removed, or the data didn\'t load. Try again.',
+    match_retry:              'Retry',
+    /* ScoutedTeamPage — load / empty states */
+    scouted_load_error:       'Couldn\'t load this scouted team',
+    scouted_load_error_sub:   'It may have been removed, or the data didn\'t load. Try again.',
+    scouted_loading:          'Loading scouted points...',
+    scouted_no_data:          'No scouted data yet',
+    scouted_no_data_sub:      'Scout points in matches to see insights, stats, shot coverage and counter plan.',
+    scouted_no_matches:       'No matches yet',
+    scouted_no_matches_sub:   'Add a match with this team to start scouting.',
+    scouted_heatmap_expand:   'Tap to expand heatmap',
+    scouted_by:               (name) => ` · Scouted by ${name}`,
+    scouted_no_mid:           'No Mid stage captured yet',
+    /* ScoutedTeamPage — layer/stage rail labels */
+    scouted_layer_stage:      'Stage',
+    scouted_layer_layers:     'Layers',
+    scouted_layer_isolate:    'Isolate',
+    scouted_layer_positions:  '● Positions',
+    scouted_layer_shots:      '⊕ Shots',
+    scouted_layer_replay:     '▶ Replay',
+    scouted_layer_coach_plan: 'Coach plan',
+    scouted_layer_notes:      'Scout notes',
+    scouted_layer_collapse:   '⇱ Collapse',
+    /* QuickLogView */
+    quicklog_no_players:      'No players in this squad',
   },
 
   /* ─────────────────────────────────────────────────────── */
@@ -2801,6 +2858,63 @@ const T = {
     layout_wizard_finish_btn:        'Finish →',
     layout_wizard_not_super_body:    'New field layouts are added to the shared library by the platform admin. Browse the library to add an existing field to your workspace.',
     layout_wizard_step_subtitle:     (step, total, label) => `STEP ${step} OF ${total} · ${label}`,
+
+    /* ─── §H1 Batch 4 — Match & scout pages ─────────────── */
+    /* MatchPage — confirm modals */
+    match_end_btn:            'End match',
+    match_end_final_action:   'End match (mark as FINAL)',
+    match_end_title:          'End match',
+    match_end_msg:            'Mark this match as FINAL? No more points can be added.',
+    match_clear_all_title:    'Clear all points?',
+    match_clear_all_msg:      (n) => `Delete all ${n} points from this match? This cannot be undone.`,
+    match_clear_all:          'Clear all',
+    match_clear_all_action:   'Clear all points',
+    match_delete_point_title: 'Delete point?',
+    match_delete_point_msg:   'Match score will be recalculated. This cannot be undone.',
+    match_edit_point:         'Edit point',
+    match_delete_point_n:     (n) => `Delete Point #${n}`,
+    match_delete_title:       'Delete match?',
+    match_delete_msg:         'All scouted points and data for this match will be permanently lost.',
+    match_delete_confirm:     'Delete match',
+    match_delete_action:      'Delete match',
+    /* MatchPage — scoreboard CTAs (arrow composed in JSX; key = word only) */
+    match_scout_cta:          'Scout',
+    match_quick_cta:          'Quick',
+    /* MatchPage — scoreboard point counter */
+    match_point_counter:      (n) => `${n} POINT${n === 1 ? '' : 'S'}`,
+    match_points_section:     (n) => `Points (${n})`,
+    /* MatchPage — editor strings */
+    match_quick_note_ph:      'Quick note (optional)',
+    match_close_bottom:       'Close match (mark as final)',
+    match_unassign:           'Unassign',
+    match_assign_slot:        (label) => `Assign ${label}`,
+    /* MatchPage — error / load states */
+    match_load_error:         'Couldn\'t load this match',
+    match_load_error_sub:     'It may have been removed, or the data didn\'t load. Try again.',
+    match_retry:              'Retry',
+    /* ScoutedTeamPage — load / empty states */
+    scouted_load_error:       'Couldn\'t load this scouted team',
+    scouted_load_error_sub:   'It may have been removed, or the data didn\'t load. Try again.',
+    scouted_loading:          'Loading scouted points...',
+    scouted_no_data:          'No scouted data yet',
+    scouted_no_data_sub:      'Scout points in matches to see insights, stats, shot coverage and counter plan.',
+    scouted_no_matches:       'No matches yet',
+    scouted_no_matches_sub:   'Add a match with this team to start scouting.',
+    scouted_heatmap_expand:   'Tap to expand heatmap',
+    scouted_by:               (name) => ` · Scouted by ${name}`,
+    scouted_no_mid:           'No Mid stage captured yet',
+    /* ScoutedTeamPage — layer/stage rail labels */
+    scouted_layer_stage:      'Stage',
+    scouted_layer_layers:     'Layers',
+    scouted_layer_isolate:    'Isolate',
+    scouted_layer_positions:  '● Positions',
+    scouted_layer_shots:      '⊕ Shots',
+    scouted_layer_replay:     '▶ Replay',
+    scouted_layer_coach_plan: 'Coach plan',
+    scouted_layer_notes:      'Scout notes',
+    scouted_layer_collapse:   '⇱ Collapse',
+    /* QuickLogView */
+    quicklog_no_players:      'No players in this squad',
   },
 };
 

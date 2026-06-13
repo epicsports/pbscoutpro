@@ -30,7 +30,7 @@ test.describe('team-detail loader', () => {
   test('an invalid match URL shows an error state, not an eternal spinner', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.evaluate(h => { window.location.hash = h; }, `#/tournament/${TRN}/match/does-not-exist`);
-    await expect(page.getByText(/Couldn't load this match/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('match-load-error')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: /Retry/i })).toBeVisible();
   });
 });

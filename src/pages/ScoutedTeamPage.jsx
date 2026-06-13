@@ -659,14 +659,14 @@ export default function ScoutedTeamPage() {
     // Resolved-but-absent OR timed out → explicit error state, never an eternal
     // spinner. (Covers a deleted/invalid scouted-team URL on prod too.)
     return (
-      <div>
+      <div data-testid="scouted-load-error">
         <EmptyState
           icon="⚠️"
-          text="Couldn't load this scouted team"
-          subtitle="It may have been removed, or the data didn't load. Try again."
+          text={t('scouted_load_error')}
+          subtitle={t('scouted_load_error_sub')}
         />
         <div style={{ textAlign: 'center', marginTop: 4 }}>
-          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>{t('match_retry')}</Btn>
         </div>
       </div>
     );
@@ -825,12 +825,12 @@ export default function ScoutedTeamPage() {
           resolve to the active stage. Surface-fill segmented bar (coach idiom).
           Mid is greyed when no point captured it. */}
       <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
-        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>Stage</div>
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>{t('scouted_layer_stage')}</div>
         <SegmentedControl
           items={[
             { key: 'break', label: 'Break' },
             { key: 'settle', label: 'Settle' },
-            { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? 'No Mid stage captured yet' : undefined },
+            { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? t('scouted_no_mid') : undefined },
           ]}
           value={hmPhase}
           onChange={setHmPhase}
@@ -838,7 +838,7 @@ export default function ScoutedTeamPage() {
       </div>
       {/* Subordinate layer toggles — sit beneath the governing mode group.
           Zones are no longer here (intrinsic per mode). */}
-      <div style={{ padding: '10px 16px 0', fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Layers</div>
+      <div style={{ padding: '10px 16px 0', fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>{t('scouted_layer_layers')}</div>
       <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
         <div onClick={() => setHmShowPositions(v => !v)} style={{
           padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
@@ -847,7 +847,7 @@ export default function ScoutedTeamPage() {
           color: hmShowPositions ? COLORS.success : COLORS.textMuted,
           border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
           ...inertWhileReplaying,
-        }}>● Positions</div>
+        }}>{t('scouted_layer_positions')}</div>
         <div onClick={() => setHmShowShots(v => !v)} style={{
           padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
           fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
@@ -855,7 +855,7 @@ export default function ScoutedTeamPage() {
           color: hmShowShots ? COLORS.danger : COLORS.textMuted,
           border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
           ...inertWhileReplaying,
-        }}>⊕ Shots</div>
+        }}>{t('scouted_layer_shots')}</div>
         {/* § Stage 6-lite — Replay toggle. Reuses the layer-pill idiom; amber
             (accent) only while active (playing) per § 27 color discipline.
             Disabled when no Settle/Mid keyframes exist to play. */}
@@ -870,7 +870,7 @@ export default function ScoutedTeamPage() {
             color: replaying ? COLORS.accent : COLORS.textMuted,
             border: `1px solid ${replaying ? `${COLORS.accent}66` : COLORS.border}`,
             opacity: canReplay ? 1 : 0.4,
-          }}>▶ Replay</div>
+          }}>{t('scouted_layer_replay')}</div>
         {/* § OSTRZAŁ — "Strefy" toggle removed: zones are intrinsic per mode now
             (always-on choropleth keyed to hmPhase). */}
         {/* § 78 Stage 2 — annotation layer toggles. Neutral styling (no semantic
@@ -883,7 +883,7 @@ export default function ScoutedTeamPage() {
           color: hmShowCoachPlan ? COLORS.accent : COLORS.textMuted,
           border: `1px solid ${hmShowCoachPlan ? `${COLORS.accent}66` : COLORS.border}`,
           ...inertWhileReplaying,
-        }}>Plan coacha</div>
+        }}>{t('scouted_layer_coach_plan')}</div>
         <div onClick={() => setHmShowAnnotations(v => !v)} style={{
           padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
           fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
@@ -891,7 +891,7 @@ export default function ScoutedTeamPage() {
           color: hmShowAnnotations ? COLORS.accent : COLORS.textMuted,
           border: `1px solid ${hmShowAnnotations ? `${COLORS.accent}66` : COLORS.border}`,
           ...inertWhileReplaying,
-        }}>Notatki scouta</div>
+        }}>{t('scouted_layer_notes')}</div>
         {/* Collapse is a portrait scroll-estate device — meaningless when the
             hero is promoted (§116 Stage 4.2), so it hides in landscape. */}
         {!landscape && (
@@ -900,7 +900,7 @@ export default function ScoutedTeamPage() {
             fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
             background: 'transparent', color: COLORS.textMuted,
             border: `1px solid ${COLORS.border}`,
-          }}>⇱ Collapse</div>
+          }}>{t('scouted_layer_collapse')}</div>
         )}
       </div>
       {/* § OSTRZAŁ B3 — per-player isolation selector. Tap a roster player →
@@ -910,7 +910,7 @@ export default function ScoutedTeamPage() {
           unambiguous. Active chip = amber (selected state). */}
       {roster.length > 0 && (
         <div style={{ display: 'flex', gap: 6, padding: '0 16px 8px', overflowX: 'auto', alignItems: 'center' }}>
-          <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>Isolate</span>
+          <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>{t('scouted_layer_isolate')}</span>
           {roster.map(p => {
             const active = hmSelectedPlayer === p.id;
             return (
@@ -1017,7 +1017,7 @@ export default function ScoutedTeamPage() {
         {heatmapPoints.length > 0 && (() => {
           const c = computeCompleteness(heatmapPoints);
           if (!c) return null;
-          const scoutSuffix = scoutNamesLabel ? ` · Scouted by ${scoutNamesLabel}` : '';
+          const scoutSuffix = scoutNamesLabel ? t('scouted_by', scoutNamesLabel) : '';
 
           // Per-metric quality levels — each has independent thresholds
           // breakPct: positions placed per slot (most critical — base of all analysis)
@@ -1119,7 +1119,7 @@ export default function ScoutedTeamPage() {
         {/* Loading state */}
         {heatmapLoading && (
           <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>
-            Loading scouted points...
+            {t('scouted_loading')}
           </div>
         )}
 
@@ -1130,9 +1130,9 @@ export default function ScoutedTeamPage() {
             background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12,
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No scouted data yet</div>
+            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>{t('scouted_no_data')}</div>
             <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
-              Scout points in matches to see insights, stats, shot coverage and counter plan.
+              {t('scouted_no_data_sub')}
             </div>
           </div>
         )}
@@ -1143,9 +1143,9 @@ export default function ScoutedTeamPage() {
             background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12,
           }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>🏟</div>
-            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>No matches yet</div>
+            <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text, marginBottom: 4 }}>{t('scouted_no_matches')}</div>
             <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, lineHeight: 1.5 }}>
-              Add a match with this team to start scouting.
+              {t('scouted_no_matches_sub')}
             </div>
           </div>
         )}
@@ -1191,7 +1191,7 @@ export default function ScoutedTeamPage() {
                     fontFamily: FONT, fontSize: 10, fontWeight: 600,
                     color: COLORS.textSubtle, textAlign: 'center',
                     background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
-                  }}>Tap to expand heatmap</div>
+                  }}>{t('scouted_heatmap_expand')}</div>
                 </div>
               ) : (
                 <div style={heatmapFullscreen ? {
@@ -1715,7 +1715,7 @@ export default function ScoutedTeamPage() {
                           </div>
                           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: h.unusual ? COLORS.accent : COLORS.textMuted, minWidth: 32, textAlign: 'right' }}>{h.pct}%</span>
                           {h.unusual && (
-                            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, background: COLORS.accentA18, border: `1px solid ${COLORS.accentA30}`, borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>⚡ HIGH</span>
+                            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, background: COLORS.accentA18, border: `1px solid ${COLORS.accentA30}`, borderRadius: 4, padding: '1px 5px', whiteSpace: 'nowrap' }}>{t('signal_high')}</span>
                           )}
                         </div>
                       ))}
@@ -2043,7 +2043,7 @@ export default function ScoutedTeamPage() {
       {/* Delete match — password protected */}
       <ConfirmModal open={!!deleteMatchModal} onClose={() => setDeleteMatchModal(null)}
         title={t('delete_match')} danger confirmLabel={t('delete')}
-        message={`Delete match?`}
+        message={t('match_delete_msg')}
         onConfirm={() => { ds.deleteMatch(tournament.id, deleteMatchModal); setDeleteMatchModal(null); }} />
 
       {/* § 60.6 — Mecz ▾ picker. List of teamMatches sorted newest first. */}
