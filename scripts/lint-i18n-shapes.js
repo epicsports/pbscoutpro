@@ -38,7 +38,7 @@ const ERRORS = [];
 // File shape: `const T = { pl: { … }, en: { … } }`. Keys are indented ≥4 spaces;
 // the `pl:`/`en:` markers are at 2 spaces, so the ≥4 guard skips them.
 function classifyBlocks() {
-  const lines = readFileSync(I18N, 'utf8').split('\n');
+  const lines = readFileSync(I18N, 'utf8').split(/\r?\n/);
   const plStart = lines.findIndex(l => /^\s{2}pl:\s*\{/.test(l));
   const enStart = lines.findIndex(l => /^\s{2}en:\s*\{/.test(l));
   if (plStart === -1 || enStart === -1) {
@@ -90,7 +90,7 @@ const ARGS_RE = /(?<![A-Za-z0-9_$.])t\s*\(\s*(['"])([A-Za-z_]\w*)\1\s*,/g;
 const { pl, en } = classifyBlocks();
 
 for (const file of walk(SRC)) {
-  const lines = readFileSync(file, 'utf8').split('\n');
+  const lines = readFileSync(file, 'utf8').split(/\r?\n/);
   lines.forEach((line, i) => {
     const at = `${relative('.', file)}:${i + 1}`;
     let m;

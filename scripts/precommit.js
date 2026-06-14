@@ -45,6 +45,11 @@ run('UI consistency lint', 'node scripts/lint-ui.js');
 // (sibling to the t()-without-scope discipline) that pixel-diff cannot see.
 run('i18n call-shape vs definition', 'node scripts/lint-i18n-shapes.js');
 
+// 2c. i18n t-scope lint — every t(…) call must have a `t` in scope (AST scope
+// resolution). Closes the "can't find variable t" ReferenceError class from
+// module-level sub-components that don't inherit the main component's useLanguage().
+run('i18n t-scope (no unbound t() calls)', 'node scripts/lint-i18n-tscope.js');
+
 // 3. § 27 Apple HIG nudges (warning-only — baseline has violations)
 // These are INFORMATIONAL. They don't block commits.
 // Real enforcement: docs/REVIEW_CHECKLIST.md self-review by CC.
