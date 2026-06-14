@@ -51,7 +51,9 @@ Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Jacek GO "I need all of i
 
 ---
 
-## 🧱 ARC B — `<Screen>` migration (2026-06-13) — PILOT SHIPPED, mass migration gated on a decision
+## 🧱 ARC B — `<Screen>` tier-migration — ✅ TRACK CLOSED 2026-06-14 (Jacek)
+
+**Tier-migration is DONE: 12 screens + ScoutRanking (+ ScoutDetail/ScoutIssues pilots) migrated to model-C `<Screen>`, all phone+tablet diff=0, desktop-capped, register rows logged. The remaining 6 are EXCLUDED (registered with reasons below) — do NOT force-fit; no per-screen decision pending.** Width-cap for lists/tables (960) confirmed by Jacek; every migrated list screen carries its 960 register row (see EXPECTED_DIFF_REGISTER: list batch `feecf4cb`, members+results `68a86ae1`, admin `dc93601b` — all "DESKTOP ≥1024 caps to 960"; detail screens cap to 640).
 
 Brief: `CC_BRIEF_ARC_B_SCREEN_MIGRATION` (chat). **Pilot SHIPPED** (`9918bf00`, Tier 1.5 by-proof): `<Screen>` primitive + `LAYOUT_TIERS` token + ScoutDetail/ScoutIssues migrated, **H0 pixel-diff=0 proven** (`npm run test:e2e:diff`, isolated). Worklist + finding: `docs/architecture/ARC_B_SCREEN_MIGRATION.md`.
 
@@ -66,13 +68,12 @@ Brief: `CC_BRIEF_ARC_B_SCREEN_MIGRATION` (chat). **Pilot SHIPPED** (`9918bf00`, 
 > ✅ **SHIPPED so far (12/~18):** detail — TeamDetailPage + ProfilePage (`48ac131d`), **UserDetailPage (640)**; list (960) — TeamsPage + PlayersPage + LayoutsPage (`feecf4cb`), MembersPage + TrainingResultsPage (`68a86ae1`), AdminLayouts + AdminLeagues + AdminPlayers + AdminTeams (`dc93601b`). All phone+tablet diff=0, desktop capped, register rows logged.
 > **✅ Super-admin harness UNBLOCKED (`dc93601b`):** super was a deliberate demo-ws non-member (rules-proof) → hit the membership gate, no AppShell. Fix = isolated single-member `admin-ws` + `defaultWorkspace` for super in the seed (demo-ws non-member invariant untouched; admin pages read GLOBAL collections so content is workspace-independent + pixel-deterministic). Harness logs in as `SUPER_ACCOUNT` with `ws: ADMIN_WS`. Reusable for ALL future admin-UI e2e.
 > **✅ Deterministic-wait recipe (UserDetail):** async-loaded detail pages that raced the screenshot wait now use a `data-testid` on the loaded content + a per-page `waitFor` in the harness; any rendered timestamp must come from a FIXED fixture value (super `createdAt` pinned), since the gate reseeds per run. Reusable for any future async-content page.
-> **REMAINING — ⚠ per-page judgment (CC found these wrinkles 2026-06-13; do NOT force-fit):**
->  - **LayoutWizardPage** — outer shell is a `flex:1` child (NO minHeight/maxWidth/margin), rendered inside a wizard host; `<Screen>` would materially change it. Investigate the host first; may not be a standalone `<Screen>` candidate.
->  - **TrainingSquadsPage** — multi-column drag-drop squad BUILDER; form tier 560 would cramp it. It's a wide workspace, not a narrow form → wrong archetype. Either a wider tier or exclude.
->  - **TrainingSetupPage** — "who's here" + form; plausibly form-560 but shares squad context — eyeball width before committing.
->  - **DebugFlagsPage** — bare `<>` fragment, dev-only, low value; wrap last or skip.
->  - **WorkspacesAdminPage** — nested `WorkspaceDetailPanel` with its own `100dvh` shell; untangle before wrapping.
-> **Excluded (canvas/shell, NOT migrated):** MainPage/AppShell, LayoutDetail, Tactic, Hitability, BunkerEditor, Ballistics, MatchPage/ScoutedTeam/PlayerStats (dual portrait/landscape branches — own judgment), LayoutAnalyticsPage (canvas+table hybrid — defer; if migrated, list/960 not detail).
+> **✅ EXCLUDED from tier-migration — the remaining 6 (Jacek ruling 2026-06-14; registered, NOT force-fit):**
+>  - **TrainingSquadsPage → arc D.** Multi-column drag-drop squad BUILDER = a tool-screen, not a form; `<Screen>` tiering is the wrong frame. Belongs to the arc-D tool-screen track, not arc-B.
+>  - **WorkspacesAdminPage, LayoutAnalyticsPage, TrainingSetupPage → arc-B phase 2 "untangle-then-wrap".** Tangled shell/flex (WorkspacesAdmin = nested `WorkspaceDetailPanel` with its own `100dvh`; LayoutAnalytics = canvas+table hybrid; TrainingSetup = shares squad context/flex) — the structure must be rethought BEFORE a `<Screen>` wrap can be clean. Deferred to an arc-B phase-2 pass, each its own ticket.
+>  - **LayoutWizardPage → arc-B phase 2 "untangle-then-wrap"** (the 6th; CC's read — its flagged wrinkle is exactly this class: outer shell is a `flex:1` child inside a wizard host, no standalone shell to wrap until the host is untangled).
+>  - **DebugFlagsPage → skip.** Dev-only, low value; not migrated.
+> **Excluded earlier (canvas/shell, never in scope):** MainPage/AppShell, LayoutDetail, Tactic, Hitability, BunkerEditor, Ballistics, MatchPage/ScoutedTeam/PlayerStats (dual portrait/landscape branches).
 
 > ~~**🔴 DECISION (Jacek) — gates migration batches 2+.**~~ RESOLVED ↑ (model C). The ~18 `R.layout` pages render 100% mobile / 768 tablet / 1200 desktop; a tier (detail 640 / list 760 / form 560) narrows desktop+tablet (phone unchanged, diff=0). **FULL EVIDENCE: `docs/architecture/arc-b-evidence/DECISION_width_matrix.html`** — 4 archetypes × 5 §114 viewports × 3 models (current / fixed-tier / responsive-min). **CC read from the matrix:** (1) phone unaffected; (2) **tablet-portrait (834): fixed-tier AND responsive-min both land at the tier** (e.g. detail 640 vs today's 768 → ~97px side-margins, column "floats") because tier < tablet width — so model (c) does NOT spare the tablet, it only adds a phone gutter; (3) the only way to keep tablet at its current 768 is a **desktop-only cap** (cap 1200→tier at ≥1024, leave tablet 768) — a 4th model not rendered but describable. **So the real choice is 3-way:** (A) tier everywhere (accept tablet narrowing, simplest, consistent reading width), (B) responsive-min (same tablet narrowing + phone gutter), (C) desktop-only cap (tablet keeps 768). Pick one → I batch-migrate the ~18 with per-batch phone-diff=0 + a register row for the desktop/tablet delta. Until ruled, only the hardcoded-640 pages (ScoutDetail/ScoutIssues/ScoutRanking ✅ shipped) are migrated.
 
