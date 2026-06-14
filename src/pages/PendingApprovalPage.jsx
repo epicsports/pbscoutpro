@@ -39,7 +39,7 @@ export default function PendingApprovalPage() {
   };
 
   return (
-    <div style={outer}>
+    <div style={outer} data-testid="pending-approval">
       <div style={card}>
         <div style={{
           fontFamily: FONT, fontSize: 21, fontWeight: 700,

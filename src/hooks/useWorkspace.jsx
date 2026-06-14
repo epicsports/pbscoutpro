@@ -40,6 +40,10 @@ export function WorkspaceProvider({ children }) {
   // True once auto-enter confirms the user belongs to NO workspace (no
   // defaultWorkspace AND no membership) → App shows NoWorkspaceScreen.
   const [noWorkspace, setNoWorkspace] = useState(false);
+  // Set true when the workspace listener can't confirm state (errors past its
+  // retry budget, or never delivers a snapshot). Drives the recovery gate so a
+  // silent listener death never strands a user (the Maks pending-gate bug).
+  const [permissionError, setPermissionError] = useState(false);
 
   // Subscribe to Firebase auth state — tracks the current user regardless of
   // sign-in method (email/password or legacy anonymous).
@@ -69,7 +73,13 @@ export function WorkspaceProvider({ children }) {
     const unsub = onSnapshot(ref, (snap) => {
       if (snap.exists()) setUserProfile({ id: snap.id, ...snap.data() });
       else setUserProfile(null);
-    }, () => { /* permission error — leave as null */ });
+    }, (err) => {
+      // Was a silent swallow. /users/{uid} read is open (auth != null) so a
+      // permission-denied here is unexpected — log it rather than strand the
+      // profile-derived gates with no signal.
+      console.error('[useWorkspace] users/{uid} listener error:', err?.code, err?.message);
+      setUserProfile(null);
+    });
     return () => unsub();
   }, [user?.uid, user?.isAnonymous]);
 
@@ -139,14 +149,56 @@ export function WorkspaceProvider({ children }) {
 
   // Live subscription to workspace doc — ensures userRoles / pendingApprovals /
   // migration state updates propagate without full reload.
+  //
+  // Maks pending-gate bug (CC_BRIEF): this listener previously had NO error
+  // callback and re-ran only on slug change. A transient permission-denied at
+  // attach (e.g. the listener attaching a beat before the self-join membership
+  // write lands) killed it FOREVER — a later admin role-grant then never
+  // propagated and the user was stranded on "poczekaj aż admin". Now: real error
+  // handling + bounded auto-re-attach (self-heals the transient race), and a
+  // confirm-timeout, both surfacing `permissionError` so the gate can recover
+  // instead of hanging silently.
   useEffect(() => {
     if (!workspace?.slug) return;
-    const ref = doc(db, 'workspaces', workspace.slug);
-    const unsub = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) return;
-      setWorkspace(prev => ({ slug: prev?.slug || workspace.slug, ...snap.data() }));
-    });
-    return () => unsub();
+    const slug = workspace.slug;
+    let cancelled = false;
+    let unsub = null;
+    let retries = 0;
+    let confirmTimer = null;
+
+    const attach = () => {
+      unsub = onSnapshot(
+        doc(db, 'workspaces', slug),
+        (snap) => {
+          if (!snap.exists()) return;
+          retries = 0;
+          if (confirmTimer) { clearTimeout(confirmTimer); confirmTimer = null; }
+          setPermissionError(false);
+          setWorkspace(prev => ({ slug: prev?.slug || slug, ...snap.data() }));
+        },
+        (err) => {
+          console.error('[useWorkspace] workspace listener error:', err?.code, err?.message);
+          try { unsub && unsub(); } catch { /* already torn down */ }
+          if (cancelled) return;
+          if (retries < 3) {
+            retries += 1;
+            setTimeout(() => { if (!cancelled) attach(); }, Math.min(1000 * retries, 3000));
+          } else {
+            setPermissionError(true); // persistent → recovery gate, never a silent hang
+          }
+        },
+      );
+    };
+    attach();
+    // Backstop: if NO snapshot (success OR error) confirms within 12s, surface
+    // recovery rather than an indefinite gate/spinner.
+    confirmTimer = setTimeout(() => { if (!cancelled) setPermissionError(true); }, 12000);
+
+    return () => {
+      cancelled = true;
+      if (confirmTimer) clearTimeout(confirmTimer);
+      try { unsub && unsub(); } catch { /* already torn down */ }
+    };
   }, [workspace?.slug]);
 
   // Migration trigger — admins only, runs once per workspace lifetime.
@@ -553,7 +605,7 @@ export function WorkspaceProvider({ children }) {
 
   return (
     <WorkspaceContext.Provider value={{
-      workspace, loading, error, noWorkspace, enterWorkspace, leaveWorkspace, setActiveWorkspace,
+      workspace, loading, error, noWorkspace, permissionError, enterWorkspace, leaveWorkspace, setActiveWorkspace,
       user, userReady, signOutUser,
       basePath: workspace ? `workspaces/${workspace.slug}` : null,
       // § 38 multi-role API + § 49 unified auth:

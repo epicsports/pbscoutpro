@@ -97,6 +97,13 @@ const BASE_LAYOUT = 'base-demo';
 // Admin-UI <Screen>-migration harness: super's OWN isolated workspace so the app
 // shell renders (membership-gated). Separate from demo-ws — non-member invariant holds.
 const ADMIN_WS = 'admin-ws';
+// Maks pending-gate repro (CC_BRIEF Maks permission-gate): a PENDING member —
+// in members[] + pendingApprovals, userRoles[uid]=[] (no role) → hits the
+// "poczekaj aż admin" gate. linkSkippedAt so onboarding doesn't interpose first.
+// admin = super (grants via isSuperAdmin, no membership needed). Isolated ws.
+const UID_PENDING = 'test-pending';
+const EMAIL_PENDING = 'pending@test.local';
+const PENDING_WS = 'pending-ws';
 // A3 regression — a plain coach member (not adminUid, not super) used ONLY by the
 // self-leave spec (so removing them never affects other specs).
 const UID_LEAVER = 'test-leaver';
@@ -169,7 +176,7 @@ const rosterPad = Array.from({ length: 40 }, (_, i) => ({
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER, UID_PENDING]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -179,6 +186,7 @@ async function main() {
   // Platform super_admin — NOT a demo-ws member (proves base writes ride
   // globalRole, not workspace membership).
   await auth.createUser({ uid: UID_SUPER, email: EMAIL_SUPER, password: PASSWORD, displayName: 'Super Admin', emailVerified: true });
+  await auth.createUser({ uid: UID_PENDING, email: EMAIL_PENDING, password: PASSWORD, displayName: 'Pending User', emailVerified: true });
   // A3 self-leave regression — a plain coach member.
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
   // § read-volume C 2 — second-tenant member (other-ws only).
@@ -218,6 +226,12 @@ async function main() {
     // and the migration-diff gate reseeds per run — a live `now` would change that
     // row every run → flaky pixel diff. Fixed epoch keeps user-detail deterministic.
     defaultWorkspace: ADMIN_WS, linkSkippedAt: now, createdAt: 1700000000000,
+  });
+  // Maks pending-gate repro — pending member's /users doc. linkSkippedAt so the
+  // PBLeagues onboarding gate doesn't interpose before the pending-approval gate.
+  batch.set(db.doc(`users/${UID_PENDING}`), {
+    email: EMAIL_PENDING, displayName: 'Pending User', defaultWorkspace: PENDING_WS,
+    linkSkippedAt: now, createdAt: now,
   });
   // A3 leaver — /users doc (leaveWorkspaceSelf reads it for the super-admin guard).
   batch.set(db.doc(`users/${UID_LEAVER}`), {
@@ -331,6 +345,22 @@ async function main() {
     adminUid: UID_SUPER,
     rolesVersion: 2,
     migrationReviewedAt: admin.firestore.Timestamp.now(), // nudge not under test
+    createdAt: now,
+  });
+
+  // 3f. Maks pending-gate repro — pending member is in members[] + pendingApprovals
+  //     with an EMPTY role array (→ isPendingApproval true → "poczekaj aż admin").
+  //     adminUid = super (grants the role in the e2e via isSuperAdmin, no membership
+  //     needed). userRoles[uid]=[] (defined-but-empty) lands the EXISTING-MEMBER
+  //     auto-enter path → pending gate, no first-ever membership write.
+  batch.set(db.doc(`workspaces/${PENDING_WS}`), {
+    name: 'Pending WS',
+    members: [UID_PENDING],
+    userRoles: { [UID_PENDING]: [] },
+    pendingApprovals: [UID_PENDING],
+    adminUid: UID_SUPER,
+    rolesVersion: 2,
+    migrationReviewedAt: admin.firestore.Timestamp.now(),
     createdAt: now,
   });
 
