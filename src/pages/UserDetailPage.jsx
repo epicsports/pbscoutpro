@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import PageHeader from '../components/PageHeader';
+import Screen from '../components/Screen';
 import { Btn, ConfirmModal, Loading } from '../components/ui';
 import RoleChips from '../components/settings/RoleChips';
 import LinkProfileModal from '../components/settings/LinkProfileModal';
@@ -195,13 +196,17 @@ export default function UserDetailPage() {
   const isDisabled = profile?.disabled === true;
 
   return (
-    <div style={{ background: COLORS.bg, minHeight: '100dvh', paddingBottom: 80 }}>
-      <PageHeader
-        back={{ to: '/settings/members' }}
-        title={displayName}
-        subtitle={profile?.email || uid.slice(0, 12)}
-      />
-
+    <Screen
+      archetype="detail"
+      style={{ background: COLORS.bg, minHeight: '100dvh' }}
+      header={
+        <PageHeader
+          back={{ to: '/settings/members' }}
+          title={displayName}
+          subtitle={profile?.email || uid.slice(0, 12)}
+        />
+      }
+    >
       {isDisabled && (
         <DisabledBanner
           t={t}
@@ -210,7 +215,7 @@ export default function UserDetailPage() {
         />
       )}
 
-      <div style={{
+      <div data-testid="user-detail-loaded" style={{
         padding: `${SPACE.md}px ${SPACE.lg}px`,
         display: 'flex', flexDirection: 'column', gap: SPACE.lg,
         maxWidth: 720, margin: '0 auto',
@@ -388,7 +393,7 @@ export default function UserDetailPage() {
           : (t('user_global_role_revoke_btn') || 'Revoke')}
         onConfirm={handleGlobalRoleChange}
       />
-    </div>
+    </Screen>
   );
 }
 

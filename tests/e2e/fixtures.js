@@ -19,6 +19,7 @@ export const INVITE_EXPIRED = 'expiredtokenseeded01';
 // § 96 layout-globalization (Stage 4): a platform super_admin (NOT a member) +
 // a seeded global base layout with a demo-ws overlay.
 export const SUPER_ACCOUNT = { email: 'super@test.local', password: 'test1234' };
+export const UID_SUPER = 'test-super';
 export const BASE_LAYOUT = 'base-demo';
 // Admin-UI <Screen>-migration harness: super's isolated workspace (clears the
 // membership gate so AppShell + /admin/* render). NOT demo-ws.
