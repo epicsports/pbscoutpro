@@ -214,7 +214,10 @@ async function main() {
   // linkSkippedAt so the PBLeagues onboarding gate never interposes.
   batch.set(db.doc(`users/${UID_SUPER}`), {
     email: EMAIL_SUPER, displayName: 'Super Admin', globalRole: 'super_admin',
-    defaultWorkspace: ADMIN_WS, linkSkippedAt: now, createdAt: now,
+    // FIXED createdAt (not `now`): UserDetailPage renders "Dołączył {createdAt}",
+    // and the migration-diff gate reseeds per run — a live `now` would change that
+    // row every run → flaky pixel diff. Fixed epoch keeps user-detail deterministic.
+    defaultWorkspace: ADMIN_WS, linkSkippedAt: now, createdAt: 1700000000000,
   });
   // A3 leaver — /users doc (leaveWorkspaceSelf reads it for the super-admin guard).
   batch.set(db.doc(`users/${UID_LEAVER}`), {

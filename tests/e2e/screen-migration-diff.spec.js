@@ -6,7 +6,7 @@
 // (run via test:e2e:migrationdiff), excluded from the shared suite.
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, SUPER_ACCOUNT, WS, ADMIN_WS, TEAM_A, TRN_TRAIN_REVIEW } from './fixtures.js';
+import { TEST_ACCOUNT, SUPER_ACCOUNT, UID_SUPER, WS, ADMIN_WS, TEAM_A, TRN_TRAIN_REVIEW } from './fixtures.js';
 
 const PHONE = { width: 414, height: 896 };
 const TABLET = { width: 768, height: 1024 };
@@ -18,11 +18,15 @@ const PAGES = [
   { name: 'teams', url: '/#/teams' },
   { name: 'players', url: '/#/players' },
   { name: 'layouts', url: '/#/layouts' },
-  // batch 3 — members + results (list 960). user-detail deferred: 68px content
-  // noise (async profile load) made phone+tablet diff non-zero — needs a
-  // deterministic wait/mask before it can prove 0; flagged in NEXT_TASKS.
+  // batch 3 — members + results (list 960).
   { name: 'members', url: '/#/settings/members' },
   { name: 'training-results', url: `/#/training/${TRN_TRAIN_REVIEW}/results` },
+  // user-detail (detail 640): super_admin viewing a user (self). The async
+  // getDoc(profile) load previously raced the 1500ms wait → 68px noise; now gated
+  // on the `user-detail-loaded` testid (waitFor) so the loaded state is captured
+  // deterministically. Inner content keeps its 720 cap below desktop (so phone +
+  // tablet are unchanged); only desktop caps to the detail tier (640).
+  { name: 'user-detail', url: `/#/settings/members/${UID_SUPER}`, account: SUPER_ACCOUNT, ws: ADMIN_WS, waitFor: '[data-testid="user-detail-loaded"]' },
   // admin batch — super_admin reach. The app shell is membership-gated, so super
   // enters its OWN isolated workspace (ADMIN_WS); the pages read GLOBAL collections
   // so content is workspace-independent (pixel-deterministic). AdminLayouts = clean
@@ -47,6 +51,7 @@ for (const p of PAGES) {
       await page.setViewportSize(vp);
       await page.goto(p.url);
       await dismissNudge(page);
+      if (p.waitFor) await page.locator(p.waitFor).first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {});
       await page.waitForTimeout(1500);
       await expect(page).toHaveScreenshot(`${p.name}-${vpName}.png`, {
         animations: 'disabled', maxDiffPixels: 0, fullPage: true,
