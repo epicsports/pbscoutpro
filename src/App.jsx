@@ -60,7 +60,7 @@ const PlayerPerformanceTrackerPage = lazy(() => import('./pages/PlayerPerformanc
 
 function AppRoutes() {
   const {
-    workspace, loading, error, noWorkspace,
+    workspace, loading, error, noWorkspace, permissionError,
     basePath, user, userReady, signOutUser,
     roles, isAdmin, isPendingApproval, linkedPlayer, userProfile,
   } = useWorkspace();
@@ -86,6 +86,11 @@ function AppRoutes() {
   // into the invited workspace. Failure → InviteErrorScreen.
   if (inviteError) return <InviteErrorScreen code={inviteError} onSignOut={signOutUser} />;
   if (inviteRedeeming) return <Loading text="Joining workspace…" />;
+  // Maks pending-gate bug — never strand a user on a silent permission-listener
+  // death. When the workspace listener can't confirm state (errors past its retry
+  // budget, or no snapshot within the backstop window), show an explicit recovery
+  // screen with retry instead of an indefinite gate/spinner.
+  if (permissionError) return <PermissionErrorScreen onSignOut={signOutUser} />;
   // Retire team-code gate (2026-04-24). WorkspaceProvider auto-enters the
   // user's default workspace as soon as user + userProfile resolve. Until
   // that write lands we show a spinner; if the write fails we surface the
@@ -305,6 +310,56 @@ function AutoEnterErrorScreen({ error, onSignOut }) {
             fontFamily: FONT, fontSize: 15, fontWeight: 700,
             padding: '12px 24px', minHeight: 48, borderRadius: 10,
             background: COLORS.accent, color: '#000', border: 'none',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+          }}
+        >{t('sign_out') || 'Wyloguj się'}</button>
+      </div>
+    </div>
+  );
+}
+
+// PermissionErrorScreen — the no-eternal-loading recovery for the permission
+// gate (Maks bug). Shown when the workspace listener can't confirm state (silent
+// death past retries, or no snapshot in time). Retry re-attaches via a clean
+// reload; sign-out is the escape. Never an indefinite "poczekaj".
+function PermissionErrorScreen({ onSignOut }) {
+  const { t } = useLanguage();
+  return (
+    <div data-testid="permission-error" style={{
+      minHeight: '100dvh', background: COLORS.bg,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 24,
+    }}>
+      <div style={{
+        maxWidth: 420, width: '100%',
+        background: '#0f172a', border: `1px solid ${COLORS.danger}55`, borderRadius: 16,
+        padding: 28, textAlign: 'center',
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>⚠️</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 20, fontWeight: 700,
+          color: COLORS.danger, marginBottom: 8,
+        }}>{t('permission_check_failed_title')}</div>
+        <div style={{
+          fontFamily: FONT, fontSize: 13, color: COLORS.textDim, marginBottom: 20,
+          lineHeight: 1.5,
+        }}>{t('permission_check_failed_body')}</div>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            fontFamily: FONT, fontSize: 15, fontWeight: 700,
+            padding: '12px 24px', minHeight: 48, borderRadius: 10,
+            background: COLORS.accent, color: '#000', border: 'none',
+            cursor: 'pointer', WebkitTapHighlightColor: 'transparent', marginBottom: 10,
+          }}
+        >{t('permission_check_failed_retry')}</button>
+        <button
+          onClick={onSignOut}
+          style={{
+            display: 'block', margin: '0 auto',
+            fontFamily: FONT, fontSize: 14, fontWeight: 600,
+            padding: '10px 20px', minHeight: 44, borderRadius: 10,
+            background: 'transparent', color: COLORS.textDim, border: `1px solid ${COLORS.border}`,
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
         >{t('sign_out') || 'Wyloguj się'}</button>

@@ -43,6 +43,11 @@ export function installTestBridge() {
       return { id: ref.id, index };
     },
 
+    // Maks pending-gate repro — admin grants a role to a pending member (the
+    // exact updateUserRoles path UserDetailPage/MemberCard use). The granting
+    // page must be signed in as an admin/super of `slug`.
+    grantRole: (slug, uid, roles) => ds.updateUserRoles(slug, uid, roles),
+
     endMatchAndMerge: (tid, mid) => ds.endMatchAndMerge(tid, mid),
     getPoints: (tid, mid) => ds.getMatchPointsOnce(tid, mid),
 

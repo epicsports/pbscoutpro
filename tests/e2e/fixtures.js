@@ -21,6 +21,12 @@ export const INVITE_EXPIRED = 'expiredtokenseeded01';
 export const SUPER_ACCOUNT = { email: 'super@test.local', password: 'test1234' };
 export const UID_SUPER = 'test-super';
 export const BASE_LAYOUT = 'base-demo';
+
+// Maks pending-gate repro: a PENDING member (in members[], empty roles) of an
+// isolated workspace whose admin is super (grants the role in-test).
+export const PENDING_ACCOUNT = { email: 'pending@test.local', password: 'test1234' };
+export const UID_PENDING = 'test-pending';
+export const PENDING_WS = 'pending-ws';
 // Admin-UI <Screen>-migration harness: super's isolated workspace (clears the
 // membership gate so AppShell + /admin/* render). NOT demo-ws.
 export const ADMIN_WS = 'admin-ws';
