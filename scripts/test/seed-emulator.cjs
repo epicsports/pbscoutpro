@@ -104,6 +104,13 @@ const ADMIN_WS = 'admin-ws';
 const UID_PENDING = 'test-pending';
 const EMAIL_PENDING = 'pending@test.local';
 const PENDING_WS = 'pending-ws';
+// Invite register-flow repro (Maks #3): a seeded UNREDEEMED invite + its target
+// workspace, so an e2e can open #/invite/{token} → "Załóż konto" → register and
+// verify the new account gets ASSOCIATED (members + role), not stranded on
+// NoWorkspaceScreen. The registered account's email is deleted each seed run.
+const INVITE_WS = 'invite-ws';
+const INVITE_SIGNUP_TOKEN = 'invitetokenseededsignup01';
+const INVITE_SIGNUP_EMAIL = 'invite-signup@test.local';
 // A3 regression — a plain coach member (not adminUid, not super) used ONLY by the
 // self-leave spec (so removing them never affects other specs).
 const UID_LEAVER = 'test-leaver';
@@ -187,6 +194,9 @@ async function main() {
   // globalRole, not workspace membership).
   await auth.createUser({ uid: UID_SUPER, email: EMAIL_SUPER, password: PASSWORD, displayName: 'Super Admin', emailVerified: true });
   await auth.createUser({ uid: UID_PENDING, email: EMAIL_PENDING, password: PASSWORD, displayName: 'Pending User', emailVerified: true });
+  // Invite register-flow repro — the e2e REGISTERS this email; delete any prior
+  // run's account (uid is random, so delete by email) for idempotency.
+  try { const u = await auth.getUserByEmail(INVITE_SIGNUP_EMAIL); await auth.deleteUser(u.uid); } catch (_) { /* not present */ }
   // A3 self-leave regression — a plain coach member.
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
   // § read-volume C 2 — second-tenant member (other-ws only).
@@ -362,6 +372,18 @@ async function main() {
     rolesVersion: 2,
     migrationReviewedAt: admin.firestore.Timestamp.now(),
     createdAt: now,
+  });
+
+  // Invite register-flow repro — empty target workspace + an unredeemed invite.
+  // members: [] (a list, so the invite-grant rule's `uid in members` is provable).
+  batch.set(db.doc(`workspaces/${INVITE_WS}`), {
+    name: 'Invite WS', members: [], userRoles: {}, adminUid: UID_SUPER,
+    rolesVersion: 2, migrationReviewedAt: admin.firestore.Timestamp.now(), createdAt: now,
+  });
+  batch.set(db.doc(`invites/${INVITE_SIGNUP_TOKEN}`), {
+    workspaceSlug: INVITE_WS, role: 'coach', createdBy: UID_SUPER,
+    createdAt: now, expiresAt: now + 365 * 24 * 60 * 60 * 1000,
+    redeemedBy: null, redeemedAt: null,
   });
 
   // 4. Global teams + players (usePlayers/useTeams read global ∪ workspace).

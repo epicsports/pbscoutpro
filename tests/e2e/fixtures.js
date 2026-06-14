@@ -27,6 +27,12 @@ export const BASE_LAYOUT = 'base-demo';
 export const PENDING_ACCOUNT = { email: 'pending@test.local', password: 'test1234' };
 export const UID_PENDING = 'test-pending';
 export const PENDING_WS = 'pending-ws';
+
+// Invite register-flow repro (Maks #3): an unredeemed invite + its target ws.
+// The e2e registers INVITE_SIGNUP_EMAIL (deleted each seed run for idempotency).
+export const INVITE_WS = 'invite-ws';
+export const INVITE_SIGNUP_TOKEN = 'invitetokenseededsignup01';
+export const INVITE_SIGNUP_EMAIL = 'invite-signup@test.local';
 // Admin-UI <Screen>-migration harness: super's isolated workspace (clears the
 // membership gate so AppShell + /admin/* render). NOT demo-ws.
 export const ADMIN_WS = 'admin-ws';
