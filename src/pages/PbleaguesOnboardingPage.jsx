@@ -22,7 +22,7 @@
  * self-claim flow (§ 49.8 Path A). pbliIdFull is not written — admin can
  * fill it in Členkowie if needed.
  */
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ExternalLink } from 'lucide-react';
 import { Btn } from '../components/ui';
 import LinkProfileModal from '../components/settings/LinkProfileModal';
@@ -30,7 +30,6 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useLanguage } from '../hooks/useLanguage';
 import { usePlayers } from '../hooks/useFirestore';
-import { useUserWorkspaces } from '../hooks/useUserWorkspaces';
 import * as ds from '../services/dataService';
 import { onPlayerLinked } from '../services/playerPerformanceTrackerService';
 
@@ -45,18 +44,17 @@ export default function PbleaguesOnboardingPage() {
   const { t } = useLanguage();
   const { user, signOutUser } = useWorkspace();
   const { players } = usePlayers();
-  // § 85 B2 (c) — workspace-scoped self-claim picker. The rules-side
-  // `isMember(resource.data.ownerWorkspaceId)` carve-out already enforces
-  // this on writes; client-side filter aligns the UI so users only see
-  // claimable candidates (defense in depth + cleaner UX). Cross-workspace
-  // players are intentionally hidden — admin paths bypass this filter.
-  const { workspaces: userWorkspaces } = useUserWorkspaces();
-  const claimablePlayers = useMemo(() => {
-    if (!players?.length) return [];
-    const mySlugs = new Set((userWorkspaces || []).map(w => w.slug || w.id).filter(Boolean));
-    if (mySlugs.size === 0) return [];
-    return players.filter(p => p.ownerWorkspaceId && mySlugs.has(p.ownerWorkspaceId));
-  }, [players, userWorkspaces]);
+  // Self-claim picker shows the FULL global player catalog (Jacek 2026-06-14):
+  // a user matching their profile must see the whole DB, not just their own
+  // workspace's players. The §85 workspace-scoped filter was hiding everyone
+  // when the user's workspace owned none of the candidate profiles (and emptied
+  // entirely when useUserWorkspaces hadn't resolved). /players read is open
+  // (auth != null), so this is rules-safe. matchPlayers() shows the unlinked
+  // roster on empty query + searches all on a query.
+  // NOTE: the §85 self-link WRITE carve-out still gates claims to
+  // isMember(ownerWorkspaceId) — claiming a profile owned by another workspace
+  // would be denied (own-workspace profiles claim fine). If cross-workspace
+  // self-claim is needed, that's a separate §85 rules change (Jacek CONFIRM).
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   // § 84 B2-hotfix — single watchdog ref so re-entrant link attempts share it.
@@ -254,7 +252,7 @@ export default function PbleaguesOnboardingPage() {
       <LinkProfileModal
         open={true}
         onClose={handleSkip}
-        players={claimablePlayers}
+        players={players}
         currentLinkedPlayer={null}
         onSelect={handleSelect}
         busy={busy}
