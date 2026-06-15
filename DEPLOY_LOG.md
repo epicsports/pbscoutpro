@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-15 — [FIX] createEmailInvite idempotent — admin re-send no longer 403s
+**HEAD `7f4a0f40`** (merge of `fix/invite-resend-idempotent`). **App + e2e, NO rules change.** Tier 1 (logic-only). CI green (`27566695736`); app auto-deployed (deploy.yml). Revert: `git revert 7f4a0f40`.
+- **Symptom (Jacek):** creating an email invite for `biuro@epicsports.pl` → "insufficient or missing permissions".
+- **Root cause (verified empirically — fail-first returned `ERR:permission-denied`):** `createEmailInvite` used `setDoc` (overwrite); biuro's invite already existed (pending), so the write was an **UPDATE**, and the `/invites` rules grant updates ONLY to the invitee's own self-claim, never to an admin re-issuing → 403.
+- **Fix:** `createEmailInvite` skips the write when an invite for that email already exists (re-send is a no-op on the doc; the caller still re-sends the email-link). No rules change. Does NOT change an existing invite's role/ws (re-issue-with-change would need an admin-update rule branch — deferred).
+- **e2e:** `invite-resend.spec.js` (admin re-sends to a seeded already-pending address → ok). Fail-first proven RED→GREEN. Suite 72/0.
+- **Note for biuro:** the invite already exists + pending; with the already-member self-claim fix (`b81fc558`, deployed) **biuro self-heals on login** — no new invite needed. This fix just stops the re-send button from erroring.
+
 ## 2026-06-15 — [FIX] Self-claim grants role to an already-member (empty roles) — biuro unblocked
 **HEAD `b81fc558`** (merge of `fix/invite-already-member-claim`). **App + rules + e2e.** Tier 1 logic + rules CONFIRM (Jacek GO 2026-06-15). **CI GREEN** (branch run `27554557207`). `firebase deploy --only firestore:rules` released; app auto-deployed (deploy.yml). Revert: `git revert b81fc558` + redeploy prior rules.
 - **Symptom (Jacek STEP-0):** `invites/biuro@epicsports.pl` stuck `pending` — self-claim never fired live, even though the email-invite onboarding shipped earlier today.
