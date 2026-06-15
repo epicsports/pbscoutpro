@@ -138,6 +138,14 @@ const UID_BULK1 = 'test-bulk1';
 const EMAIL_BULK1 = 'bulk1@test.local';
 const UID_BULK2 = 'test-bulk2';
 const EMAIL_BULK2 = 'bulk2@test.local';
+// Already-member self-claim (2026-06-15, biuro repro): a member of a ws with EMPTY
+// roles (the old pending-approval state) who ALSO has a PENDING email-invite for
+// that ws. On login the self-claim must GRANT the invited role even though they're
+// already in members[] (the old rule's `!(uid in members)` denied this → biuro
+// stranded). emailVerified + linkSkippedAt so post-claim they reach the app.
+const PCLAIM_WS = 'pclaim-ws';
+const UID_PCLAIM = 'test-pclaim';
+const EMAIL_PCLAIM = 'pclaim@test.local';
 // A3 regression — a plain coach member (not adminUid, not super) used ONLY by the
 // self-leave spec (so removing them never affects other specs).
 const UID_LEAVER = 'test-leaver';
@@ -210,7 +218,7 @@ const rosterPad = Array.from({ length: 40 }, (_, i) => ({
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER, UID_PENDING, UID_SPLIT, UID_CLAIMEE, UID_BULK1, UID_BULK2]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER, UID_PENDING, UID_SPLIT, UID_CLAIMEE, UID_BULK1, UID_BULK2, UID_PCLAIM]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -232,6 +240,8 @@ async function main() {
   // Bulk email-invite proof — two verified invitees, no membership yet.
   await auth.createUser({ uid: UID_BULK1, email: EMAIL_BULK1, password: PASSWORD, displayName: 'Bulk One', emailVerified: true });
   await auth.createUser({ uid: UID_BULK2, email: EMAIL_BULK2, password: PASSWORD, displayName: 'Bulk Two', emailVerified: true });
+  // Already-member self-claim (biuro repro) — verified, member with empty roles.
+  await auth.createUser({ uid: UID_PCLAIM, email: EMAIL_PCLAIM, password: PASSWORD, displayName: 'Pending Claim', emailVerified: true });
   // A3 self-leave regression — a plain coach member.
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
   // § read-volume C 2 — second-tenant member (other-ws only).
@@ -288,6 +298,12 @@ async function main() {
   // Email-keyed self-claim repro — claimee has NO defaultWorkspace + NO membership.
   batch.set(db.doc(`users/${UID_CLAIMEE}`), {
     email: EMAIL_CLAIMEE, displayName: 'Claimee', linkSkippedAt: now, createdAt: now,
+  });
+  // Already-member self-claim (biuro repro) — empty roles on /users, linkSkippedAt
+  // so the gate skips onboarding and lands on the pending-approval branch UNTIL the
+  // self-claim grants the role from the pending email-invite.
+  batch.set(db.doc(`users/${UID_PCLAIM}`), {
+    email: EMAIL_PCLAIM, displayName: 'Pending Claim', roles: [], defaultWorkspace: PCLAIM_WS, linkSkippedAt: now, createdAt: now,
   });
   // Bulk email-invite proof — verified invitees, linkSkippedAt so they land in the
   // app (nav-ball) post-claim. No defaultWorkspace, roles empty (claim writes ws.userRoles).
@@ -463,6 +479,18 @@ async function main() {
   });
   batch.set(db.doc(`invites/${EMAIL_CLAIMEE}`), {
     workspaceSlug: CLAIM_WS, role: 'coach', email: EMAIL_CLAIMEE,
+    invitedBy: UID_SUPER, status: 'pending', createdAt: now,
+  });
+  // Already-member self-claim (biuro repro) — pclaim is in members[] with EMPTY
+  // roles + in pendingApprovals (the old pending-approval state) AND has a PENDING
+  // email-invite. The self-claim must grant the invited role despite membership.
+  batch.set(db.doc(`workspaces/${PCLAIM_WS}`), {
+    name: 'Pending Claim WS', members: [UID_PCLAIM], userRoles: { [UID_PCLAIM]: [] },
+    pendingApprovals: [UID_PCLAIM], adminUid: UID_SUPER, rolesVersion: 2,
+    migrationReviewedAt: admin.firestore.Timestamp.now(), createdAt: now,
+  });
+  batch.set(db.doc(`invites/${EMAIL_PCLAIM}`), {
+    workspaceSlug: PCLAIM_WS, role: 'coach', email: EMAIL_PCLAIM,
     invitedBy: UID_SUPER, status: 'pending', createdAt: now,
   });
   // Bulk email-invite proof — shared target ws + two PENDING email-invites.

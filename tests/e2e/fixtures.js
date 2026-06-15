@@ -43,6 +43,10 @@ export const CLAIM_WS = 'claim-ws';
 export const BULK1_ACCOUNT = { email: 'bulk1@test.local', password: 'test1234' };
 export const BULK2_ACCOUNT = { email: 'bulk2@test.local', password: 'test1234' };
 export const BULK_WS = 'bulk-ws';
+// Already-member self-claim (biuro repro): a member with EMPTY roles + a pending
+// email-invite → on login the self-claim grants the invited role despite membership.
+export const PCLAIM_ACCOUNT = { email: 'pclaim@test.local', password: 'test1234' };
+export const PCLAIM_WS = 'pclaim-ws';
 // Email-link end-to-end: admin sends an email invite to this address; the e2e
 // retrieves the link from the Auth emulator + completes it in a fresh context.
 // The account is created via signInWithEmailLink (deleted each seed run).
