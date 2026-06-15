@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useRef } from 'react';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp, arrayUnion, collection, query, where, getDocs } from 'firebase/firestore';
-import { db, auth, ensureAuth, subscribeAuth, logout as fbLogout } from '../services/firebase';
+import { db, auth, ensureAuth, subscribeAuth, logout as fbLogout, isEmailSignInLink } from '../services/firebase';
 import {
   getOrCreateUserProfile,
   migrateWorkspaceRoles,
@@ -568,6 +568,12 @@ export function WorkspaceProvider({ children }) {
     if (workspace) return;
     if (!user?.uid || user.isAnonymous) return;
     if (!userProfile) return; // wait for /users/{uid} to load
+    // The email-link express-reg page owns the session until it replaces the URL
+    // with `#/` (sign-in happens BEFORE set-password). Auto-entering mid-flow
+    // attempts the rules-denied legacy first-entry write (throws) and races the
+    // self-claim's reload → loops the invitee back to the confirm step
+    // (2026-06-15). Defer until the express-reg flow hands off.
+    if (isEmailSignInLink()) return;
     if (autoEnterInFlightRef.current) return;
     autoEnterInFlightRef.current = true;
     autoEnterDefaultWorkspace().finally(() => {

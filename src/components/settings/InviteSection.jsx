@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import * as ds from '../../services/dataService';
+import { sendInviteEmailLink } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { Btn } from '../ui';
@@ -22,6 +23,29 @@ export default function InviteSection({ slug, roles }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
+  const [email, setEmail] = useState('');
+  const [emailSentTo, setEmailSentTo] = useState(null);
+  const [emailBusy, setEmailBusy] = useState(false);
+
+  // Email-keyed invite (durable, browser-agnostic): record invites/{email} +
+  // Firebase emails the sign-in link. The invitee sets a password on the linked
+  // screen, then self-claims this workspace on login — no token to lose.
+  const sendEmail = async () => {
+    const addr = email.trim().toLowerCase();
+    if (emailBusy || !addr) return;
+    setEmailBusy(true); setError(null); setEmailSentTo(null);
+    try {
+      await ds.createEmailInvite(slug, role, addr);
+      await sendInviteEmailLink(addr);
+      setEmailSentTo(addr);
+      setEmail('');
+    } catch (e) {
+      console.error('email invite failed:', e);
+      setError(e?.message || 'Failed to send email invite');
+    } finally {
+      setEmailBusy(false);
+    }
+  };
 
   const generate = async () => {
     if (busy) return;
@@ -67,7 +91,30 @@ export default function InviteSection({ slug, roles }) {
         </div>
       )}
 
-      <Btn variant="accent" size="lg" onClick={generate} disabled={busy} style={{ width: '100%' }}>
+      {/* Primary: email-keyed invite (durable). */}
+      <input
+        type="email" autoComplete="off" inputMode="email"
+        placeholder={t('invite_email_ph') || 'E-mail zawodnika'}
+        value={email} onChange={(e) => setEmail(e.target.value)}
+        style={{
+          width: '100%', boxSizing: 'border-box', minHeight: TOUCH.minTarget,
+          padding: `${SPACE.xs}px ${SPACE.md}px`, borderRadius: RADIUS.md,
+          background: COLORS.bg, border: `1px solid ${COLORS.border}`, color: COLORS.text,
+          fontFamily: FONT, fontSize: FONT_SIZE.sm,
+        }}
+      />
+      <Btn variant="accent" size="lg" onClick={sendEmail} disabled={emailBusy || !email.trim()} style={{ width: '100%' }}>
+        {emailBusy ? (t('loading') || 'Loading…') : (t('invite_send_email') || 'Wyślij zaproszenie e-mailem')}
+      </Btn>
+
+      {emailSentTo && (
+        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.success }}>
+          {(t('invite_email_sent') || 'Zaproszenie wysłane na')} {emailSentTo}
+        </div>
+      )}
+
+      {/* Fallback: anonymous open-link (token) — for when no email is known. */}
+      <Btn variant="default" size="md" onClick={generate} disabled={busy} style={{ width: '100%' }}>
         {busy ? (t('loading') || 'Loading…') : (t('invite_generate') || 'Generate invite link')}
       </Btn>
 

@@ -331,6 +331,29 @@ service cloud.firestore {
                          == [inviteData(request.resource.data.lastRedeemedInviteToken).role]
                       && request.resource.data.userRoles.diff(resource.data.userRoles)
                            .affectedKeys().hasOnly([request.auth.uid])
+                    )
+                    || (
+                      // Email-keyed self-claim (durable association, no backend):
+                      // the invitee self-adds to members with the invite's role,
+                      // validated against invites/{authEmail} (the committed,
+                      // still-pending email-invite this batch is claiming). Keyed
+                      // on the auth email → works in any browser, no token.
+                      // ⚠ TENANT-ISOLATION PREDICATE — prod deploy needs Jacek CONFIRM.
+                      request.auth != null
+                      && request.auth.token.email_verified == true
+                      && !(request.auth.uid in resource.data.members)
+                      && request.auth.uid in request.resource.data.members
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['members', 'userRoles', 'lastAccess', 'lastClaimedInviteEmail'])
+                      && request.resource.data.lastClaimedInviteEmail is string
+                      && request.resource.data.lastClaimedInviteEmail == request.auth.token.email.lower()
+                      && exists(/databases/$(database)/documents/invites/$(request.resource.data.lastClaimedInviteEmail))
+                      && inviteData(request.resource.data.lastClaimedInviteEmail).workspaceSlug == slug
+                      && inviteData(request.resource.data.lastClaimedInviteEmail).get('status', null) == 'pending'
+                      && request.resource.data.userRoles[request.auth.uid]
+                         == [inviteData(request.resource.data.lastClaimedInviteEmail).role]
+                      && request.resource.data.userRoles.diff(resource.data.userRoles)
+                           .affectedKeys().hasOnly([request.auth.uid])
                     );
 
       allow delete: if isAdmin(slug);
@@ -522,6 +545,19 @@ service cloud.firestore {
                     && request.resource.data.redeemedBy == request.auth.uid
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['redeemedBy', 'redeemedAt']);
+      // Email-keyed claim (durable association, no backend): the invitee whose
+      // authed email matches this email-invite (doc id == email == auth email)
+      // marks it claimed-by-self, once. The matching workspace membership write
+      // is gated separately by the email-self-claim branch on /workspaces.
+      // ⚠ TENANT-ISOLATION-ADJACENT — prod rules deploy needs Jacek CONFIRM.
+      allow update: if request.auth != null
+                    && request.auth.token.email_verified == true
+                    && resource.data.get('status', null) == 'pending'
+                    && resource.data.get('email', '') == request.auth.token.email.lower()
+                    && request.resource.data.status == 'claimed'
+                    && request.resource.data.claimedBy == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status', 'claimedBy', 'claimedAt']);
     }
 
     // ─── /meta/ (global app metadata) ──

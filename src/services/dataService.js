@@ -2667,6 +2667,70 @@ export async function redeemInvite(token, uid) {
   return { slug, role };
 }
 
+// ── Email-keyed invites (durable association on Spark — no backend) ──────────
+// The token open-link (above) loses association across a browser hop (in-app
+// browser → Safari). Email-keyed invites key association on the user's EMAIL,
+// which is identical in every browser, so a player can click the link anywhere,
+// set a password, open the PWA in any browser, and self-claim on login.
+// `invites/{normalizedEmail}` shares the /invites collection with token docs;
+// email docs use `status` (pending|claimed), token docs use `redeemedBy`.
+const normEmail = (e) => String(e || '').trim().toLowerCase();
+
+// Admin creates an email-keyed invite (doc id = normalized email). Rules gate
+// create to a workspace admin / super_admin (non-admin role for ws-admins).
+export async function createEmailInvite(slug, role, email) {
+  const key = normEmail(email);
+  if (!key) throw new Error('INVITE_EMAIL_REQUIRED');
+  await setDoc(doc(db, 'invites', key), {
+    workspaceSlug: slug,
+    role,
+    email: key,
+    invitedBy: auth.currentUser?.uid || null,
+    status: 'pending',
+    createdAt: serverTimestamp(),
+  });
+  return { email: key };
+}
+
+// Self-claim on login: if a pending invite exists for the authed user's email,
+// write their own membership + role and mark the invite claimed. Idempotent
+// (no-op if no pending invite). Keyed on email → browser-agnostic. The workspace
+// write rides the email-self-claim rules branch (lastClaimedInviteEmail anchor).
+export async function claimEmailInvite(email, uid) {
+  const key = normEmail(email);
+  if (!key || !uid) return null;
+  const ref = doc(db, 'invites', key);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const inv = snap.data();
+  if (inv.status !== 'pending') return null; // already claimed / not an email invite
+  const slug = inv.workspaceSlug;
+  const role = inv.role;
+  if (!slug || !role) return null;
+  const batch = writeBatch(db);
+  batch.update(ref, { status: 'claimed', claimedBy: uid, claimedAt: serverTimestamp() });
+  batch.set(doc(db, 'workspaces', slug), {
+    members: arrayUnion(uid),
+    userRoles: { [uid]: [role] },
+    lastAccess: serverTimestamp(),
+    lastClaimedInviteEmail: key,
+  }, { merge: true });
+  await batch.commit();
+  return { slug, role };
+}
+
+// Live list of a workspace's EMAIL-keyed invites (admin "Zaproszenia" view).
+// Filters to email-keyed docs (have an `email` field); token open-links are
+// excluded. Read rule = any authed user, so the query is allowed.
+export function subscribeWorkspaceEmailInvites(slug, cb) {
+  const q = query(collection(db, 'invites'), where('workspaceSlug', '==', slug));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.email)),
+    (err) => { console.warn('[invites] subscribe failed:', err?.code || err?.message); cb([]); },
+  );
+}
+
 export async function updateUserRoles(wsSlug, targetUid, roles) {
   return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,

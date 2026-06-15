@@ -122,6 +122,22 @@ const WS_SPLIT_ROLES = 'split-zzz-roles-ws';  // holds the granted roles
 const INVITE_WS = 'invite-ws';
 const INVITE_SIGNUP_TOKEN = 'invitetokenseededsignup01';
 const INVITE_SIGNUP_EMAIL = 'invite-signup@test.local';
+// Email-keyed self-claim repro (durable invite, no backend): a user with NO
+// membership + NO invite token, but a PENDING invites/{email} → on login the app
+// self-claims membership purely from the email. claimee carries linkSkippedAt so
+// post-claim they land in the app (nav-ball), not the onboarding gate.
+const UID_CLAIMEE = 'test-claimee';
+const EMAIL_CLAIMEE = 'claimee@test.local';
+const CLAIM_WS = 'claim-ws';
+// Bulk email-invite proof (STEP 3, 2026-06-15): TWO invitees with PENDING invites
+// to a shared workspace both self-claim on login — proves the multi-account
+// activation window (the class that stranded Maks + 3) doesn't cross-contaminate.
+// emailVerified + linkSkippedAt so they land in the app (nav-ball), like claimee.
+const BULK_WS = 'bulk-ws';
+const UID_BULK1 = 'test-bulk1';
+const EMAIL_BULK1 = 'bulk1@test.local';
+const UID_BULK2 = 'test-bulk2';
+const EMAIL_BULK2 = 'bulk2@test.local';
 // A3 regression — a plain coach member (not adminUid, not super) used ONLY by the
 // self-leave spec (so removing them never affects other specs).
 const UID_LEAVER = 'test-leaver';
@@ -194,7 +210,7 @@ const rosterPad = Array.from({ length: 40 }, (_, i) => ({
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER, UID_PENDING, UID_SPLIT]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER, UID_PENDING, UID_SPLIT, UID_CLAIMEE, UID_BULK1, UID_BULK2]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -210,6 +226,12 @@ async function main() {
   // Invite register-flow repro — the e2e REGISTERS this email; delete any prior
   // run's account (uid is random, so delete by email) for idempotency.
   try { const u = await auth.getUserByEmail(INVITE_SIGNUP_EMAIL); await auth.deleteUser(u.uid); } catch (_) { /* not present */ }
+  // Email-link e2e creates this account via signInWithEmailLink — delete by email.
+  try { const u = await auth.getUserByEmail('newinvite@test.local'); await auth.deleteUser(u.uid); } catch (_) { /* not present */ }
+  await auth.createUser({ uid: UID_CLAIMEE, email: EMAIL_CLAIMEE, password: PASSWORD, displayName: 'Claimee', emailVerified: true });
+  // Bulk email-invite proof — two verified invitees, no membership yet.
+  await auth.createUser({ uid: UID_BULK1, email: EMAIL_BULK1, password: PASSWORD, displayName: 'Bulk One', emailVerified: true });
+  await auth.createUser({ uid: UID_BULK2, email: EMAIL_BULK2, password: PASSWORD, displayName: 'Bulk Two', emailVerified: true });
   // A3 self-leave regression — a plain coach member.
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
   // § read-volume C 2 — second-tenant member (other-ws only).
@@ -262,6 +284,18 @@ async function main() {
   // users/{uid}.roles. Mirrors getOrCreateUserProfile's non-bootstrap default.
   batch.set(db.doc(`users/${UID_SPLIT}`), {
     email: EMAIL_SPLIT, displayName: 'Split Member', roles: [], linkSkippedAt: now, createdAt: now,
+  });
+  // Email-keyed self-claim repro — claimee has NO defaultWorkspace + NO membership.
+  batch.set(db.doc(`users/${UID_CLAIMEE}`), {
+    email: EMAIL_CLAIMEE, displayName: 'Claimee', linkSkippedAt: now, createdAt: now,
+  });
+  // Bulk email-invite proof — verified invitees, linkSkippedAt so they land in the
+  // app (nav-ball) post-claim. No defaultWorkspace, roles empty (claim writes ws.userRoles).
+  batch.set(db.doc(`users/${UID_BULK1}`), {
+    email: EMAIL_BULK1, displayName: 'Bulk One', roles: [], linkSkippedAt: now, createdAt: now,
+  });
+  batch.set(db.doc(`users/${UID_BULK2}`), {
+    email: EMAIL_BULK2, displayName: 'Bulk Two', roles: [], linkSkippedAt: now, createdAt: now,
   });
   // A3 leaver — /users doc (leaveWorkspaceSelf reads it for the super-admin guard).
   batch.set(db.doc(`users/${UID_LEAVER}`), {
@@ -420,6 +454,35 @@ async function main() {
     workspaceSlug: INVITE_WS, role: 'coach', createdBy: UID_SUPER,
     createdAt: now, expiresAt: now + 365 * 24 * 60 * 60 * 1000,
     redeemedBy: null, redeemedAt: null,
+  });
+
+  // Email-keyed self-claim repro — empty target ws + a PENDING email-invite.
+  batch.set(db.doc(`workspaces/${CLAIM_WS}`), {
+    name: 'Claim WS', members: [], userRoles: {}, adminUid: UID_SUPER,
+    rolesVersion: 2, migrationReviewedAt: admin.firestore.Timestamp.now(), createdAt: now,
+  });
+  batch.set(db.doc(`invites/${EMAIL_CLAIMEE}`), {
+    workspaceSlug: CLAIM_WS, role: 'coach', email: EMAIL_CLAIMEE,
+    invitedBy: UID_SUPER, status: 'pending', createdAt: now,
+  });
+  // Bulk email-invite proof — shared target ws + two PENDING email-invites.
+  batch.set(db.doc(`workspaces/${BULK_WS}`), {
+    name: 'Bulk WS', members: [], userRoles: {}, adminUid: UID_SUPER,
+    rolesVersion: 2, migrationReviewedAt: admin.firestore.Timestamp.now(), createdAt: now,
+  });
+  batch.set(db.doc(`invites/${EMAIL_BULK1}`), {
+    workspaceSlug: BULK_WS, role: 'coach', email: EMAIL_BULK1,
+    invitedBy: UID_SUPER, status: 'pending', createdAt: now,
+  });
+  batch.set(db.doc(`invites/${EMAIL_BULK2}`), {
+    workspaceSlug: BULK_WS, role: 'scout', email: EMAIL_BULK2,
+    invitedBy: UID_SUPER, status: 'pending', createdAt: now,
+  });
+  // Part 3 admin pending-invites view — a never-claimed email invite on ADMIN_WS
+  // (super's own ws) so the e2e can assert the "Zaproszenia e-mail" list renders.
+  batch.set(db.doc('invites/adminview@test.local'), {
+    workspaceSlug: ADMIN_WS, role: 'scout', email: 'adminview@test.local',
+    invitedBy: UID_SUPER, status: 'pending', createdAt: now,
   });
 
   // 4. Global teams + players (usePlayers/useTeams read global ∪ workspace).

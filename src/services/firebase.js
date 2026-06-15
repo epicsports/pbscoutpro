@@ -7,6 +7,8 @@ import {
   getAuth, onAuthStateChanged, connectAuthEmulator,
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   signOut, updateProfile, sendPasswordResetEmail,
+  sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
+  updatePassword,
 } from 'firebase/auth';
 
 // E2E / local-testing flag. ONLY true when Vite is started with
@@ -132,6 +134,52 @@ export async function logout() {
 
 export function subscribeAuth(cb) {
   return onAuthStateChanged(auth, cb);
+}
+
+// ── Email-link (passwordless) invite flow — Spark-native, no backend ────────
+// Firebase emails the sign-in link itself (Auth email-link template; works on
+// Spark, no Cloud Function). The link returns to the app, where the invitee
+// completes sign-in (account created here) + sets a password (express reg).
+// Requires the Email-link provider enabled + authorized domains in the console.
+const EMAIL_FOR_SIGNIN_KEY = 'pb_email_for_signin';
+
+// The return URL the email link points back to (the app root). Same-origin so
+// the authorized-domains check passes.
+function inviteActionUrl() {
+  return `${window.location.origin}${import.meta.env.BASE_URL || '/'}`;
+}
+
+export async function sendInviteEmailLink(email) {
+  const url = inviteActionUrl();
+  await sendSignInLinkToEmail(auth, email, { url, handleCodeInApp: true });
+  // Remember the email on THIS device so completion can skip the prompt when the
+  // link is opened in the same browser; cross-device completion prompts instead.
+  try { localStorage.setItem(EMAIL_FOR_SIGNIN_KEY, email); } catch { /* private mode */ }
+}
+
+export function isEmailSignInLink(href = window.location.href) {
+  return isSignInWithEmailLink(auth, href);
+}
+
+export function getStoredSignInEmail() {
+  try { return localStorage.getItem(EMAIL_FOR_SIGNIN_KEY) || ''; } catch { return ''; }
+}
+
+// Complete email-link sign-in (creates the account if new). `email` must match
+// the invited address; on a different device the app asks the user to enter it.
+export async function completeEmailLinkSignIn(email, href = window.location.href) {
+  const cred = await signInWithEmailLink(auth, email, href);
+  try { localStorage.removeItem(EMAIL_FOR_SIGNIN_KEY); } catch { /* ignore */ }
+  return cred.user;
+}
+
+// Express registration: set a password (+ optional display name) on the freshly
+// email-link-signed-in account so the player can log in normally afterwards.
+export async function setPasswordAndName(password, displayName) {
+  if (!auth.currentUser) throw new Error('NO_CURRENT_USER');
+  await updatePassword(auth.currentUser, password);
+  if (displayName) { try { await updateProfile(auth.currentUser, { displayName }); } catch {} }
+  return auth.currentUser;
 }
 
 export default app;

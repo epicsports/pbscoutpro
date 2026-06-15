@@ -11,6 +11,8 @@ import { reloadOnceForStaleChunk, isStaleChunkError } from './utils/staleChunkRe
 import { Loading } from './components/ui';
 import { useLanguage } from './hooks/useLanguage';
 import LoginPage from './pages/LoginPage';
+import EmailLinkSetupPage from './pages/EmailLinkSetupPage';
+import { isEmailSignInLink } from './services/firebase';
 import ReviewRolesModal from './components/ReviewRolesModal';
 import RouteGuard from './components/RouteGuard';
 import { ViewAsProvider } from './contexts/ViewAsContext';
@@ -73,6 +75,11 @@ function AppRoutes() {
   }, [basePath]);
 
   if (loading || !userReady) return <Loading text="Checking session..." />;
+  // Email-link invite (durable association): the URL is a Firebase email sign-in
+  // link → run the express-registration flow (complete sign-in + set password)
+  // BEFORE the login gate (this flow creates the account). After it replaces the
+  // URL with the app root, the email-keyed self-claim associates the workspace.
+  if (isEmailSignInLink()) return <EmailLinkSetupPage />;
   // No Firebase user at all → show email/password login. Anonymous users
   // (legacy sessions that already passed through the retired team-code
   // gate) are allowed through.

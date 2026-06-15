@@ -8,11 +8,13 @@
  *
  * Role transfer is launched from MemberCard menu → RoleTransferModal.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Screen from '../components/Screen';
-import { EmptyState } from '../components/ui';
+import { Btn, EmptyState } from '../components/ui';
+import * as ds from '../services/dataService';
+import { sendInviteEmailLink } from '../services/firebase';
 import PendingMemberCard from '../components/settings/PendingMemberCard';
 import MemberCard from '../components/settings/MemberCard';
 import InviteSection from '../components/settings/InviteSection';
@@ -33,6 +35,18 @@ export default function MembersPage() {
   const { players } = usePlayers();
   const { teams } = useActiveTeams();
   const [transferTarget, setTransferTarget] = useState(null);
+  // Email-keyed invites for this workspace (Part 3 — pending/claimed visibility +
+  // resend; the manual safety net when auto-claim doesn't fire).
+  const [emailInvites, setEmailInvites] = useState([]);
+  const [resentTo, setResentTo] = useState(null);
+  useEffect(() => {
+    if (!workspace?.slug) return undefined;
+    return ds.subscribeWorkspaceEmailInvites(workspace.slug, setEmailInvites);
+  }, [workspace?.slug]);
+  const resendInvite = async (email) => {
+    try { await sendInviteEmailLink(email); setResentTo(email); setTimeout(() => setResentTo(null), 2500); }
+    catch (e) { console.error('resend invite failed:', e?.code || e?.message); }
+  };
 
   // Build uid → linkedPlayer map for O(1) lookup in both card lists.
   const linkedByUid = useMemo(() => {
@@ -151,6 +165,37 @@ export default function MembersPage() {
             <InviteSection slug={workspace.slug} roles={['coach', 'scout', 'player']} />
           </div>
         </section>
+
+        {/* ─── Email invites (Part 3) — sent invites + status + resend ─── */}
+        {emailInvites.length > 0 && (
+          <section data-testid="email-invites-section">
+            <SectionHeader label={t('invite_pending_header') || 'Zaproszenia e-mail'} count={emailInvites.length} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs, marginTop: SPACE.sm }}>
+              {emailInvites.map(inv => {
+                const claimed = inv.status === 'claimed';
+                return (
+                  <div key={inv.id} style={{
+                    display: 'flex', alignItems: 'center', gap: SPACE.sm,
+                    padding: `${SPACE.sm}px ${SPACE.md}px`, borderRadius: 10,
+                    background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.email}</div>
+                      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
+                        {t(`role_${inv.role}`) || inv.role} · {claimed ? (t('invite_status_claimed') || 'dołączył') : (t('invite_status_pending') || 'wysłane')}
+                      </div>
+                    </div>
+                    {!claimed && (
+                      <Btn variant="default" size="sm" onClick={() => resendInvite(inv.email)}>
+                        {resentTo === inv.email ? (t('invite_resent') || 'Wysłano') : (t('invite_resend') || 'Wyślij ponownie')}
+                      </Btn>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ─── Pending approvals ─── */}
         {pendingUids.length > 0 && (
