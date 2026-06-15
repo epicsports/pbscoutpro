@@ -51,5 +51,24 @@ Super-admin "Zaproszenia / oczekujące" view listing the `invites` collection (p
 ## 8. Recovery (parallel stopgap — NOT the fix)
 The currently-stuck accounts get a one-off local admin-SDK association (Jacek sends `{UID→workspace→role}` + GO; --live write). Recovery ≠ durable fix.
 
+## 9. Jacek's chosen flow (2026-06-15) + Spark feasibility — RATIFIED DIRECTION
+
+Jacek: switch to email. Flow: players give their email → admin enters it → a link is auto-generated for that email and **emailed** → invitee clicks → lands on a **set-password / express-registration** screen → on confirm the account is **activated** (+ associated).
+
+**Spark-native realization = Firebase Email-Link (passwordless) sign-in** (all client-callable, no backend, free on Spark; the app has none of it today — only `sendPasswordResetEmail`):
+1. **Admin enters email + role** → write `invites/{normalizedEmail}` = `{ workspaceSlug, role, invitedBy, status:'pending', createdAt }` (Firestore) **and** call `sendSignInLinkToEmail(email, { url: <appUrl>, handleCodeInApp:true })` — Firebase emails the magic link (Auth email-link template). The admin's own session is unaffected.
+2. **Invitee clicks the emailed link** → app detects `isSignInWithEmailLink` → `signInWithEmailLink(email, link)` → **the Auth account is created here** (passwordless). The app then shows a **"set password"** screen (`updatePassword` + `updateProfile` displayName) = the express registration → "activated."
+3. **Self-claim on login** (email-keyed, §3) → reads `invites/{authEmail}` → writes own membership. Browser-agnostic — works even if the email is opened on the phone in a different browser (email-link prompts for the email when not in the originating device's localStorage).
+
+**⚠️ One nuance vs Jacek's mental model:** on Spark the **Auth account can't be minted when the admin types the email** (a client can't create another user without switching its own session; no Admin SDK in prod). What the admin's action creates is the **invite record + the emailed link**; the **account is created when the invitee clicks the link + sets a password**. Same end-to-end outcome (admin enters email → invitee gets link → sets password → activated → associated), just the account-creation instant is at invitee-click. Confirm this is acceptable (it's the only Spark-viable shape).
+
+**Requires (build + Jacek console):**
+- Firebase Console (Jacek): enable **Email link (passwordless)** sign-in provider; configure the sign-in email template + **authorized domains** (the GitHub Pages origin). Without this `sendSignInLinkToEmail` won't send.
+- Code (Opus brief → CC build): invite-by-email admin UI; `sendSignInLinkToEmail` wiring; email-link completion + set-password screen; email-keyed self-claim on login; admin "pending invites" view.
+- **Rules (CONFIRM):** `invites/{email}` read/claim keyed on `auth.token.email`; the self-claim workspace membership write (tenant-isolation predicate). Draft in §4.
+- Keep the legacy token open-link path in parallel (back-compat), additive.
+
+**Size:** this is a multi-part feature (auth-flow + UI + rules + console) → an Opus build brief, not an autonomous one-shot. CC has the discovery + plan; awaiting the brief + Jacek's console enablement + rules CONFIRM.
+
 ---
-**Bottom line:** today's invites are token-keyed open links; the token can't cross the in-app-browser→Safari hop. The durable Spark fix is **email-keyed invites + self-claim on login** (browser-agnostic), gated behind a CONFIRM'd rules change — but it **requires collecting the invitee email at invite time** (UI change). Awaiting Opus ratification + Jacek's answers to §6 before building.
+**Bottom line:** Jacek's email-first flow is Spark-viable via Firebase **email-link sign-in** + **email-keyed self-claim** — browser-agnostic, no backend. Nuance: the account is created at invitee-click (not admin-entry); admin-entry creates the invite + sends the link. Needs an Opus build brief, a Firebase-console email-link enablement (Jacek), and a CONFIRM'd rules change before it ships.
