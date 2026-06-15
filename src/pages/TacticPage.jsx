@@ -6,7 +6,7 @@
  * Same interaction model as MatchPage scouting editor:
  * full-height canvas, floating toolbar on player tap, drag-to-bump, ShotDrawer.
  */
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDevice } from '../hooks/useDevice';
 
@@ -21,6 +21,34 @@ import { useLayouts, useLayoutTactics, useTournaments, useTactics } from '../hoo
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, SPACE, responsive } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
+// § 64 / § 77 canonical drawing stack — the same components ScoutedTeamPage +
+// MatchPage use. TacticPage was the last bespoke-freehand holdout (ITEM-1 unify).
+import DrawingOverlay from '../components/canvas/DrawingOverlay';
+import DrawToolbar from '../components/canvas/DrawToolbar';
+import { STROKE_COLORS, STROKE_SIZES, strokesToFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
+
+// Normalize freehandStrokes from any stored shape to the canonical
+// { color, size, pts:[{x,y}] }. Handles the LEGACY points-only shape
+// (bare `[{x,y},...]` arrays, or `{"0":[...]}`) the bespoke tool wrote — wraps
+// them in amber/medium so existing tactic drawings survive the unify (the
+// discovery's "defaults amber/width when absent"). Drops <2-point strokes.
+function normalizeFreehandStrokes(raw) {
+  if (!raw) return [];
+  const values = Array.isArray(raw)
+    ? raw
+    : (typeof raw === 'object'
+        ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k])
+        : []);
+  return values
+    .map((v) => {
+      if (v && Array.isArray(v.pts)) return v; // already canonical
+      // legacy points-only → amber + THIN (3px) to match the old bespoke
+      // lineWidth=3, so existing drawings keep their weight under the new renderer.
+      if (Array.isArray(v)) return { color: STROKE_COLORS[0].value, size: STROKE_SIZES.thin, pts: v };
+      return null;
+    })
+    .filter(s => s && Array.isArray(s.pts) && s.pts.length >= 2);
+}
 
 export default function TacticPage() {
   const { t } = useLanguage();
@@ -81,9 +109,13 @@ export default function TacticPage() {
   const [loaded, setLoaded] = useState(false);
   const [drawMode, setDrawMode] = useState(false);
   const [freehandStrokes, setFreehandStrokes] = useState([]);
-  const freehandCanvasRef = useRef(null);
-  const isDrawingRef = useRef(false);
-  const currentStrokeRef = useRef([]);
+  // Shared-stack draw state (mirrors ScoutedTeamPage's coach-plan): in-progress
+  // stroke + redo stack + the toolbar's color / size / eraser selection.
+  const [freehandCurrent, setFreehandCurrent] = useState(null);
+  const [freehandRedo, setFreehandRedo] = useState([]);
+  const [drawColor, setDrawColor] = useState(STROKE_COLORS[0].value);
+  const [drawSizeKey, setDrawSizeKey] = useState('medium');
+  const [drawEraser, setDrawEraser] = useState(false);
 
   // ── Load from Firestore (handles old steps[] and new flat format) ──
   useEffect(() => {
@@ -125,78 +157,12 @@ export default function TacticPage() {
       setObstacleShots(ds.quickShotsFromFirestore(s.obstacleShots));
     }
     setNewName(tactic.name || '');
-    // Deserialize freehandStrokes from Firestore object { "0": [...], "1": [...] } back to array
-    const rawStrokes = tactic.freehandStrokes;
-    if (Array.isArray(rawStrokes)) {
-      setFreehandStrokes(rawStrokes);
-    } else if (rawStrokes && typeof rawStrokes === 'object') {
-      const keys = Object.keys(rawStrokes).sort((a, b) => Number(a) - Number(b));
-      setFreehandStrokes(keys.map(k => rawStrokes[k]));
-    } else {
-      setFreehandStrokes([]);
-    }
+    // Freehand strokes → canonical { color, size, pts } (legacy points-only wrapped).
+    setFreehandStrokes(normalizeFreehandStrokes(tactic.freehandStrokes));
+    setFreehandRedo([]);
+    setFreehandCurrent(null);
     setLoaded(true);
   }, [tactic?.id]);
-
-  // ── Freehand canvas sizing + redraw ──
-  const strokesRef = useRef(freehandStrokes);
-  strokesRef.current = freehandStrokes;
-  const redrawStrokes = () => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas || !canvas.width || !canvas.height) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const allStrokes = [...(strokesRef.current || [])];
-    // Also draw the in-progress stroke if still drawing
-    if (currentStrokeRef.current.length > 1) {
-      allStrokes.push(currentStrokeRef.current);
-    }
-    allStrokes.forEach(stroke => {
-      if (!stroke || stroke.length < 2) return;
-      ctx.beginPath();
-      ctx.moveTo(stroke[0].x * canvas.width, stroke[0].y * canvas.height);
-      for (let i = 1; i < stroke.length; i++) {
-        ctx.lineTo(stroke[i].x * canvas.width, stroke[i].y * canvas.height);
-      }
-      ctx.strokeStyle = COLORS.accent;
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.stroke();
-    });
-  };
-
-  // Resize canvas to match parent — ONLY when dimensions actually change
-  const canvasSizeRef = useRef({ w: 0, h: 0 });
-  useEffect(() => {
-    const canvas = freehandCanvasRef.current;
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    if (!parent) return;
-    let resizeTimeout = null;
-    const ro = new ResizeObserver(() => {
-      // Debounce to avoid clearing canvas during React re-renders
-      clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(() => {
-        const w = parent.clientWidth;
-        const h = parent.clientHeight;
-        if (w < 1 || h < 1) return;
-        if (canvasSizeRef.current.w !== w || canvasSizeRef.current.h !== h) {
-          canvasSizeRef.current = { w, h };
-          canvas.width = w;
-          canvas.height = h;
-        }
-        redrawStrokes();
-      }, 50);
-    });
-    ro.observe(parent);
-    return () => { ro.disconnect(); clearTimeout(resizeTimeout); };
-  }, []);
-
-  // Redraw when strokes change (after adding a new stroke)
-  useEffect(() => {
-    redrawStrokes();
-  }, [freehandStrokes]);
 
   // ── Dirty check ──
   const isDirty = useMemo(() => {
@@ -206,12 +172,7 @@ export default function TacticPage() {
     const origBumps = tactic.bumps || tactic.steps?.[0]?.bumps || [null, null, null, null, null];
     const origBumpShots = tactic.bumpShots || [[], [], [], [], []];
     const origRunners = tactic.runners || [false, false, false, false, false];
-    const origStrokes = (() => {
-      const raw = tactic.freehandStrokes;
-      if (Array.isArray(raw)) return raw;
-      if (raw && typeof raw === 'object') return Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k]);
-      return [];
-    })();
+    const origStrokes = normalizeFreehandStrokes(tactic.freehandStrokes);
     const origQuickShots = ds.quickShotsFromFirestore(tactic.quickShots ?? tactic.steps?.[0]?.quickShots);
     const origObstacleShots = ds.quickShotsFromFirestore(tactic.obstacleShots ?? tactic.steps?.[0]?.obstacleShots);
     return JSON.stringify(players) !== JSON.stringify(origPlayers)
@@ -228,13 +189,7 @@ export default function TacticPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Firestore doesn't allow nested arrays — serialize strokes as object { "0": [...], "1": [...] }
-      const strokesToFirestore = (strokes) => {
-        if (!strokes?.length) return null;
-        const o = {};
-        strokes.forEach((s, i) => { o[String(i)] = s; });
-        return o;
-      };
+      // Canonical { color, size, pts } → Firestore (no nested arrays, § 9).
       const data = { players, shots: ds.shotsToFirestore(shots), bumpShots: ds.shotsToFirestore(bumpShots), bumps, runners, quickShots: ds.quickShotsToFirestore(quickShots), obstacleShots: ds.quickShotsToFirestore(obstacleShots), freehandStrokes: strokesToFirestore(freehandStrokes) };
       if (isLayoutMode) {
         await ds.updateLayoutTactic(layoutId, tacticId, data);
@@ -250,6 +205,49 @@ export default function TacticPage() {
       setSaving(false);
     }
   };
+
+  // ── Freehand draw handlers (shared DrawingOverlay stack via InteractiveCanvas's
+  //    BaseCanvas draw-arbiter — 1-finger draw / 2-finger zoom). `pos` is a 0..1
+  //    field coord. Eraser radius / dims mirror ScoutedTeamPage's coach plan. ──
+  const handleDrawStart = (pos) => {
+    if (drawEraser) {
+      setFreehandStrokes(prev => eraseAcrossStrokes(prev, pos, STROKE_SIZES[drawSizeKey] * 2, 1000, 500));
+      setFreehandRedo([]);
+      return;
+    }
+    setFreehandCurrent({ color: drawColor, size: STROKE_SIZES[drawSizeKey], pts: [pos] });
+  };
+  const handleDrawMove = (pos) => {
+    if (drawEraser) {
+      setFreehandStrokes(prev => eraseAcrossStrokes(prev, pos, STROKE_SIZES[drawSizeKey] * 2, 1000, 500));
+      return;
+    }
+    setFreehandCurrent(prev => (prev ? { ...prev, pts: [...prev.pts, pos] } : prev));
+  };
+  const handleDrawEnd = () => {
+    if (drawEraser) return;
+    setFreehandCurrent(prev => {
+      if (!prev || prev.pts.length < 2) return null;
+      setFreehandStrokes(p => [...p, prev]);
+      setFreehandRedo([]);
+      return null;
+    });
+  };
+  const handleDrawAbort = () => setFreehandCurrent(null);
+  const handleDrawUndo = () => setFreehandStrokes(prev => {
+    if (prev.length === 0) return prev;
+    const last = prev[prev.length - 1];
+    setFreehandRedo(r => [...r, last]);
+    return prev.slice(0, -1);
+  });
+  const handleDrawRedo = () => setFreehandRedo(prev => {
+    if (prev.length === 0) return prev;
+    const last = prev[prev.length - 1];
+    setFreehandStrokes(s => [...s, last]);
+    return prev.slice(0, -1);
+  });
+  const handleDrawClear = () => { setFreehandStrokes([]); setFreehandRedo([]); };
+  const exitDrawMode = () => { setFreehandCurrent(null); setDrawEraser(false); setDrawMode(false); };
 
   // ── Rename ──
   const handleRename = async () => {
@@ -443,7 +441,7 @@ export default function TacticPage() {
   }
 
   return (
-    <div style={{
+    <div data-testid="tactic-loaded" style={{
       height: '100dvh', maxWidth: immersive ? '100%' : (R.layout.maxWidth || 640), margin: '0 auto',
       display: 'flex', flexDirection: 'column', overflow: 'hidden',
     }}>
@@ -500,65 +498,37 @@ export default function TacticPage() {
           fieldCalibration={field.fieldCalibration}
           discoLine={0}
           zeekerLine={0}
-        />
-        {/* Freehand drawing overlay */}
-        <canvas
-          ref={(el) => {
-            freehandCanvasRef.current = el;
-            if (el && el.parentElement && canvasSizeRef.current.w === 0) {
-              el.width = el.parentElement.clientWidth;
-              el.height = el.parentElement.clientHeight;
-              canvasSizeRef.current = { w: el.width, h: el.height };
-            }
-          }}
-          style={{
-            position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-            touchAction: 'none',
-            pointerEvents: drawMode ? 'auto' : 'none',
-            cursor: drawMode ? 'crosshair' : 'default',
-          }}
-          onPointerDown={(e) => {
-            if (!drawMode) return;
-            isDrawingRef.current = true;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width;
-            const y = (e.clientY - rect.top) / rect.height;
-            currentStrokeRef.current = [{ x, y }];
-            e.currentTarget.setPointerCapture(e.pointerId);
-          }}
-          onPointerMove={(e) => {
-            if (!isDrawingRef.current) return;
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width;
-            const y = (e.clientY - rect.top) / rect.height;
-            currentStrokeRef.current.push({ x, y });
-            // Draw live stroke
-            const canvas = freehandCanvasRef.current;
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const pts = currentStrokeRef.current;
-            if (pts.length < 2) return;
-            const p1 = pts[pts.length - 2], p2 = pts[pts.length - 1];
-            ctx.beginPath();
-            ctx.moveTo(p1.x * canvas.width, p1.y * canvas.height);
-            ctx.lineTo(p2.x * canvas.width, p2.y * canvas.height);
-            ctx.strokeStyle = COLORS.accent;
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-          }}
-          onPointerUp={() => {
-            if (!isDrawingRef.current) return;
-            isDrawingRef.current = false;
-            if (currentStrokeRef.current.length > 1) {
-              const newStroke = [...currentStrokeRef.current];
-              // Update ref immediately so any redraw (e.g. from ResizeObserver) has the data
-              strokesRef.current = [...strokesRef.current, newStroke];
-              setFreehandStrokes(strokesRef.current);
-            }
-            currentStrokeRef.current = [];
-          }}
-        />
+          drawMode={drawMode}
+          onDrawStart={handleDrawStart}
+          onDrawMove={handleDrawMove}
+          onDrawEnd={handleDrawEnd}
+          onDrawAbort={handleDrawAbort}
+        >
+          {/* Canonical freehand layer — renders inside the BaseCanvas frame
+              (zoom/pan aware) only while drawing; saved strokes paint via the
+              field render path on load. */}
+          {drawMode && <DrawingOverlay strokes={freehandStrokes} currentStroke={freehandCurrent} />}
+        </InteractiveCanvas>
+        {/* Freehand toolbar (shared) — floats over the canvas while drawing.
+            colors / sizes / eraser / undo-redo / clear; Done exits draw mode (the
+            tactic Save button persists the strokes with everything else). */}
+        {drawMode && (
+          <DrawToolbar
+            color={drawColor}
+            onColorChange={setDrawColor}
+            sizeKey={drawSizeKey}
+            onSizeChange={setDrawSizeKey}
+            eraserActive={drawEraser}
+            onEraserToggle={setDrawEraser}
+            canUndo={freehandStrokes.length > 0}
+            canRedo={freehandRedo.length > 0}
+            hasStrokes={freehandStrokes.length > 0}
+            onUndo={handleDrawUndo}
+            onRedo={handleDrawRedo}
+            onClear={handleDrawClear}
+            onDone={exitDrawMode}
+          />
+        )}
         <QuickShotPanel
           visible={quickShotPlayer != null}
           playerIndex={quickShotPlayer}
@@ -592,11 +562,13 @@ export default function TacticPage() {
         <div style={{
           position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8, zIndex: 50,
         }}>
-          <Btn variant={drawMode ? 'accent' : 'default'}
-            style={{ background: drawMode ? undefined : COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '10px 14px', fontSize: FONT_SIZE.sm }}
-            onClick={() => setDrawMode(v => !v)}>
+          {!drawMode && (
+          <Btn variant="default"
+            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '10px 14px', fontSize: FONT_SIZE.sm }}
+            onClick={() => setDrawMode(true)}>
             ✏️
           </Btn>
+          )}
           <Btn variant={savedFlash ? 'default' : 'accent'}
             style={{ padding: '10px 20px', fontSize: FONT_SIZE.sm, fontWeight: 700,
               backdropFilter: 'blur(8px)',
@@ -618,11 +590,13 @@ export default function TacticPage() {
         paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
         display: 'flex', gap: SPACE.sm,
       }}>
-        <Btn variant={drawMode ? 'accent' : 'default'}
+        {!drawMode && (
+        <Btn variant="default"
           style={{ minWidth: 52, padding: '14px 16px', fontSize: FONT_SIZE.base, fontWeight: 700 }}
-          onClick={() => setDrawMode(v => !v)}>
+          onClick={() => setDrawMode(true)}>
           ✏️
         </Btn>
+        )}
         <Btn variant={savedFlash ? 'default' : 'accent'}
           style={{ flex: 1, padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700,
             ...(savedFlash ? { background: COLORS.success + '20', borderColor: COLORS.success, color: COLORS.success } : {}),
@@ -659,11 +633,7 @@ export default function TacticPage() {
       {/* ═══ ACTION SHEET ═══ */}
       <ActionSheet open={menuOpen} onClose={() => setMenuOpen(false)} actions={[
         { label: 'Rename', onPress: () => { setNewName(tactic.name || ''); setRenameModal(true); } },
-        ...(freehandStrokes.length > 0 ? [{ label: 'Clear drawings', onPress: () => {
-          setFreehandStrokes([]);
-          const canvas = freehandCanvasRef.current;
-          if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        }}] : []),
+        ...(freehandStrokes.length > 0 ? [{ label: 'Clear drawings', onPress: handleDrawClear }] : []),
         { label: 'Print', onPress: () => window.print() },
         { separator: true },
         { label: t('tactic_delete_action'), danger: true, onPress: () => setDeleteModal(true) },

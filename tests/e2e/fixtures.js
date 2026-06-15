@@ -95,6 +95,10 @@ export const TRN_OTHER = 'trn-other';
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';
 export const LAYOUT = 'lay-demo';
+// ITEM-1 drawing unify — a tactic with LEGACY points-only freehandStrokes; must
+// load + render on the unified DrawingOverlay stack (no data loss).
+export const TACTIC_LEGACY = 'tac-legacy';
+export const tacticLegacyUrl = `#/tournament/${TRN}/tactic/${TACTIC_LEGACY}`;
 // § 112 Hitability responsive — a TRAINING (useTrainings reads `trainings`, not
 // `tournaments`) + a config with ONE target linked to ONE position at a KNOWN
 // normalized position, so a track-mode tap auto-attributes (count == taps).

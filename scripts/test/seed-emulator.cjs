@@ -60,6 +60,11 @@ const UID_B4PLAYER = 'test-b4player';
 const EMAIL_B4PLAYER = 'b4player@test.local';
 const LAYOUT = 'lay-demo';
 const TRN = 'trn-demo';
+// ITEM-1 drawing unify — a tournament tactic carrying LEGACY points-only
+// freehandStrokes (`{"0":[{x,y},...]}`, the bespoke pre-unify shape). The
+// TacticPage normalizer must wrap these as canonical {color,size,pts} so the
+// drawing survives the shared-stack swap (no data loss on the page render).
+const TACTIC_LEGACY = 'tac-legacy';
 const MATCH = 'mat-demo';     // #2 single-coach log-a-point
 const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge (isolated)
 // § 112 Hitability responsive — dedicated training + config node/target ids.
@@ -579,6 +584,14 @@ async function main() {
   });
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/scouted/${TEAM_B}`), {
     teamId: TEAM_B, name: 'Team Bravo', league: 'NXL', division: 'PRO', roster: rosterB.map(p => p.id),
+  });
+  // ITEM-1 — tactic with LEGACY points-only freehand (bespoke pre-unify shape).
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/tactics/${TACTIC_LEGACY}`), {
+    name: 'Legacy Draw', players: [null, null, null, null, null],
+    bumps: [null, null, null, null, null],
+    runners: [false, false, false, false, false],
+    freehandStrokes: { '0': [{ x: 0.2, y: 0.3 }, { x: 0.5, y: 0.4 }, { x: 0.7, y: 0.6 }] },
+    createdAt: now,
   });
   // #4 — a scouted doc for Team Alpha (PRO) whose roster is BLOATED with DIV1
   // (Charlie) players → cross-division bleed. repairScoutedRostersForTournament
