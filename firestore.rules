@@ -341,7 +341,14 @@ service cloud.firestore {
                       // ⚠ TENANT-ISOLATION PREDICATE — prod deploy needs Jacek CONFIRM.
                       request.auth != null
                       && request.auth.token.email_verified == true
-                      && !(request.auth.uid in resource.data.members)
+                      // Claimant must currently have NO role: a FRESH non-member
+                      // (userRoles[uid] absent → []) OR an already-member stuck in
+                      // pending-approval (userRoles[uid] == [], e.g. biuro joined via
+                      // the old self-join before the invite existed). Either way the
+                      // claim GRANTS the invited role; it can never overwrite an
+                      // existing non-empty role (the userRoles[uid] == [invite.role]
+                      // + own-key-diff guards below bound the result exactly).
+                      && resource.data.userRoles.get(request.auth.uid, []) == []
                       && request.auth.uid in request.resource.data.members
                       && request.resource.data.diff(resource.data).affectedKeys()
                          .hasOnly(['members', 'userRoles', 'lastAccess', 'lastClaimedInviteEmail'])

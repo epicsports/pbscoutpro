@@ -12,8 +12,9 @@
  */
 import React, { useEffect, useState } from 'react';
 import {
-  completeEmailLinkSignIn, getStoredSignInEmail, setPasswordAndName,
+  auth, completeEmailLinkSignIn, getStoredSignInEmail, setPasswordAndName,
 } from '../services/firebase';
+import { claimEmailInvite } from '../services/dataService';
 import { useLanguage } from '../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, TOUCH } from '../utils/theme';
 
@@ -55,7 +56,19 @@ export default function EmailLinkSetupPage() {
     setStep('saving');
     try {
       await setPasswordAndName(password, displayName.trim());
-      // Drop the email-link params + reload into the app; the self-claim runs.
+      // Claim the email-invite NOW, at activation — write membership+role before
+      // we hand off, rather than relying on the post-reload background effect
+      // (which is gated off while this email-link page owns the session). The link
+      // sign-in set email_verified=true so the self-claim rule passes. Best-effort:
+      // a failure here still hands off — the gated background self-claim retries on
+      // the #/ load, and the admin pending view is the safety net.
+      const u = auth.currentUser;
+      if (u?.email) {
+        try { await claimEmailInvite(u.email, u.uid); }
+        catch (err) { console.warn('[invite] activation self-claim failed (retries on load):', err?.code || err?.message); }
+      }
+      // Drop the email-link params + reload into the app; auto-enter resolves the
+      // freshly-written membership (or the background self-claim retries).
       window.location.replace(`${import.meta.env.BASE_URL || '/'}#/`);
     } catch (e2) {
       console.error('Set password failed:', e2?.code || e2?.message);
