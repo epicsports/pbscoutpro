@@ -51,6 +51,14 @@ Super-admin "Zaproszenia / oczekujące" view listing the `invites` collection (p
 ## 8. Recovery (parallel stopgap — NOT the fix)
 The currently-stuck accounts get a one-off local admin-SDK association (Jacek sends `{UID→workspace→role}` + GO; --live write). Recovery ≠ durable fix.
 
+### 8.1 Source-of-truth strand — RESOLVED 2026-06-15 (HEAD `4ddbf0b2`)
+Live data (Maks `maks090105`): role granted in `ranger1996.userRoles=[coach,scout,player]`, in `members`, `rolesVersion:2`; `users/{uid}` `roles` empty, `defaultWorkspace` null, `linkSkippedAt` set — yet stuck on "poczekaj na admina".
+- **Source of truth = `workspace.userRoles[uid]`** (NOT `users/{uid}.roles`). `useWorkspace.roles` → `getRolesForUser` reads it; `isPendingApproval` reads it; the `users/{uid}.roles` fallback is tab-visibility only, never the gate. `linkSkippedAt` already bypasses the profile-link onboarding (App.jsx:137) → **profile-linking is already decoupled from access.**
+- **Why grant doesn't sync `users/{uid}`:** the `/users/{uid}` self-update rule allows only `['displayName','email','linkSkippedAt']`; `roles`/`defaultWorkspace` are write-once-at-create / admin-SDK-only. So neither admin nor user can client-sync `users/{uid}` on grant — "sync both stores" is rules-blocked.
+- **The real strand = ENTRY, not the store:** with `defaultWorkspace` null, `autoEnter` falls back to the `members array-contains` query and entered `docs[0]` (doc-ID order). For a >1-membership user that can be an empty-roles ws → PendingApproval, despite another ws holding the roles.
+- **Fix (option a):** `autoEnterDefaultWorkspace` prefers a membership with non-empty `userRoles[uid]` (fallback to `docs[0]` only if none) → `userRoles` authoritative for entry too. No rules change. e2e `role-source-of-truth.spec.js` (fail-first RED→GREEN).
+- **Maks specifically was single-membership** → the fix is prevention, not his cause; his strand was a **stale PWA bundle** (pre-2026-06-14 STEP-9/listener fixes). Recovered by stamping `users/{uid}.defaultWorkspace=ranger1996` (admin-SDK, robust across all bundles). `scripts/diag/{recover-stuck-user,stranded-accounts-audit,ranger-membership-read}.cjs`.
+
 ## 9. Jacek's chosen flow (2026-06-15) + Spark feasibility — RATIFIED DIRECTION
 
 Jacek: switch to email. Flow: players give their email → admin enters it → a link is auto-generated for that email and **emailed** → invitee clicks → lands on a **set-password / express-registration** screen → on confirm the account is **activated** (+ associated).

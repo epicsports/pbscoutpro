@@ -10,6 +10,11 @@
 
 ---
 
+## 2026-06-15 — [DONE] userRoles authoritative for workspace ENTRY (source-of-truth strand) ✅ SHIPPED (HEAD `4ddbf0b2`)
+Ranger strand (Maks): granted roles in `ranger1996.userRoles` but stranded on "poczekaj na admina". STEP-1 verdict: gate already reads `workspace.userRoles` (authoritative) + `linkSkippedAt` already decouples profile-linking; the gap was **entry** — `autoEnter` (defaultWorkspace null) picked `docs[0]` by doc-ID, which for multi-membership can be an empty-roles ws. Fix: prefer a role-bearing membership. Tier 1, no rules change; e2e `role-source-of-truth.spec.js` (fail-first). DEPLOY_LOG 2026-06-15.
+- **OPEN — owed:** (a) Jacek GO to **batch-stamp 3 more stranded accounts** (tymek.parczewski@gmail.com, test2@test.com, rangerplayer@test.pl) via `scripts/diag/recover-stuck-user.cjs --live`; (b) **`biuro@epicsports.pl`** is member of ranger1996 with **empty roles** → needs an admin role GRANT (not a stamp); (c) Maks prod smoke (relogin/cold-open PWA); (d) **`feat/email-invite-association` stays HELD** — rebase onto this main, then green `email-link-invite` (remaining failure = distinct auto-enter throw in the express-reg path).
+- **Deferred (Jacek):** `defaultWorkspace` in the `/users/{uid}` self-update rule allow-list (persists the auto-enter stamp) — not load-bearing; rules-change deferred.
+
 ## 🌙 Overnight 2026-06-11→12 — `CC_BRIEF_OVERNIGHT` ✅ SHIPPED to prod (HEAD `14755d22`, 2026-06-12)
 
 Brief: `docs/briefs/CC_BRIEF_OVERNIGHT_2026-06-11.md`. Jacek GO "I need all of it on prod to test it" → merge train + deploy; full emulator e2e **28/28 green**. **Owed: Jacek prod smoke** (DEPLOY_LOG 2026-06-12).
