@@ -351,7 +351,23 @@ export async function getCatalogVersion() {
 // bump by default; bulk callers (CSV) pass { bump: false } and bump ONCE at the end.
 // Purely personal/routing writes (self-link `linkedUid`, workspace logo) must NOT bump.
 export async function bumpCatalogVersion() {
-  return setDoc(doc(db, 'meta', 'catalogVersion'), { version: Date.now(), updatedAt: serverTimestamp() }, { merge: true });
+  // Best-effort cache-invalidation hint. /meta is super_admin-write-only, so a
+  // NON-super edit path — a linked player self-editing their roster identity via
+  // /profile (§85), or a workspace_admin editing a player — legitimately can't bump
+  // it. Swallow that one denial so the (already-committed) edit doesn't surface a
+  // false "save failed"; a super edit still bumps, non-super edits rely on the
+  // normal catalog cache TTL / the next super write. (2026-06-15: Maks, a non-super
+  // linked player, saw "nie mogę zapisać profilu" because updatePlayer awaited this
+  // bump AFTER the player doc had already saved → the bump's permission-denied threw.)
+  try {
+    await setDoc(doc(db, 'meta', 'catalogVersion'), { version: Date.now(), updatedAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    if (e?.code === 'permission-denied' || e?.code === 'PERMISSION_DENIED') {
+      console.warn('[catalog] version bump skipped (non-super edit path):', e.code);
+      return;
+    }
+    throw e;
+  }
 }
 // One-shot GLOBAL-only catalog reads (replace the dual full-collection
 // onSnapshot in usePlayers/useTeams). Global is complete (fully twinned;

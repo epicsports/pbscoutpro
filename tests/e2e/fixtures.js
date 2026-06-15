@@ -47,6 +47,10 @@ export const BULK_WS = 'bulk-ws';
 // email-invite → on login the self-claim grants the invited role despite membership.
 export const PCLAIM_ACCOUNT = { email: 'pclaim@test.local', password: 'test1234' };
 export const PCLAIM_WS = 'pclaim-ws';
+// §85 player self-edit (Maks repro): a non-super player linked to a player they own
+// edits their roster identity → must not throw on the super-only catalog bump.
+export const SELFEDIT_ACCOUNT = { email: 'selfedit@test.local', password: 'test1234' };
+export const PLAYER_SELFEDIT = 'p-selfedit';
 // Email-link end-to-end: admin sends an email invite to this address; the e2e
 // retrieves the link from the Auth emulator + completes it in a fresh context.
 // The account is created via signInWithEmailLink (deleted each seed run).
