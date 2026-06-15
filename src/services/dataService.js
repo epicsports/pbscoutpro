@@ -2719,6 +2719,18 @@ export async function claimEmailInvite(email, uid) {
   return { slug, role };
 }
 
+// Live list of a workspace's EMAIL-keyed invites (admin "Zaproszenia" view).
+// Filters to email-keyed docs (have an `email` field); token open-links are
+// excluded. Read rule = any authed user, so the query is allowed.
+export function subscribeWorkspaceEmailInvites(slug, cb) {
+  const q = query(collection(db, 'invites'), where('workspaceSlug', '==', slug));
+  return onSnapshot(
+    q,
+    (snap) => cb(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(i => i.email)),
+    (err) => { console.warn('[invites] subscribe failed:', err?.code || err?.message); cb([]); },
+  );
+}
+
 export async function updateUserRoles(wsSlug, targetUid, roles) {
   return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,

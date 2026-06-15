@@ -445,6 +445,12 @@ async function main() {
     workspaceSlug: CLAIM_WS, role: 'coach', email: EMAIL_CLAIMEE,
     invitedBy: UID_SUPER, status: 'pending', createdAt: now,
   });
+  // Part 3 admin pending-invites view — a never-claimed email invite on ADMIN_WS
+  // (super's own ws) so the e2e can assert the "Zaproszenia e-mail" list renders.
+  batch.set(db.doc('invites/adminview@test.local'), {
+    workspaceSlug: ADMIN_WS, role: 'scout', email: 'adminview@test.local',
+    invitedBy: UID_SUPER, status: 'pending', createdAt: now,
+  });
 
   // 4. Global teams + players (usePlayers/useTeams read global ∪ workspace).
   batch.set(db.doc(`teams/${TEAM_A}`), { name: 'Team Alpha', ownerWorkspaceId: WS, leagues: ['NXL'], divisions: { NXL: 'PRO' } });
