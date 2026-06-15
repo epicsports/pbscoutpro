@@ -29,9 +29,33 @@ export function useInviteRedemption() {
   const [redeeming, setRedeeming] = useState(false);
   const [error, setError] = useState(null);
   const doneRef = useRef(false);
+  const emailDoneRef = useRef(false);
 
   // Capture once on mount — runs before auth resolves; token survives LoginPage.
   useEffect(() => { captureTokenFromHash(); }, []);
+
+  // Email-keyed self-claim — runs on EVERY login (self-recovering, browser-
+  // agnostic). If a pending invites/{authEmail} exists, claim membership + role.
+  // No token / no localStorage dependency → survives the in-app-browser → Safari
+  // hop that the token path cannot. Idempotent no-op when there's no invite.
+  useEffect(() => {
+    if (emailDoneRef.current) return;
+    if (!userReady) return;
+    const email = user?.email;
+    if (!user?.uid || user.isAnonymous || !email) return;
+    emailDoneRef.current = true;
+    ds.claimEmailInvite(email, user.uid)
+      .then((res) => {
+        if (!res?.slug) return;
+        // Reload (not setActiveWorkspace): membership was just written, but an
+        // immediate getDoc races read-after-write. A fresh load lets auto-enter
+        // resolve the new membership cleanly via its members-query. Show the
+        // joining state through the reload.
+        setRedeeming(true);
+        window.location.reload();
+      })
+      .catch((e) => { console.warn('[invite] email self-claim failed:', e?.code || e?.message); });
+  }, [user?.uid, user?.isAnonymous, user?.email, userReady, setActiveWorkspace]);
 
   useEffect(() => {
     if (doneRef.current) return;

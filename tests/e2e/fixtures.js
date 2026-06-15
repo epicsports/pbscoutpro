@@ -33,6 +33,11 @@ export const PENDING_WS = 'pending-ws';
 export const INVITE_WS = 'invite-ws';
 export const INVITE_SIGNUP_TOKEN = 'invitetokenseededsignup01';
 export const INVITE_SIGNUP_EMAIL = 'invite-signup@test.local';
+
+// Email-keyed self-claim: a user with a pending invites/{email} but NO token /
+// NO membership → self-claims on login (browser-agnostic durable fix).
+export const CLAIMEE_ACCOUNT = { email: 'claimee@test.local', password: 'test1234' };
+export const CLAIM_WS = 'claim-ws';
 // Admin-UI <Screen>-migration harness: super's isolated workspace (clears the
 // membership gate so AppShell + /admin/* render). NOT demo-ws.
 export const ADMIN_WS = 'admin-ws';
