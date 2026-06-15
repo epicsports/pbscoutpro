@@ -24,3 +24,4 @@ playwright-report/
 scripts/reviewers/screenshots/
 scripts/reviewers/*-report.md
 .claude/worktrees/
+scripts/diag/*.local.json

@@ -37,6 +37,14 @@ export const INVITE_SIGNUP_EMAIL = 'invite-signup@test.local';
 // membership gate so AppShell + /admin/* render). NOT demo-ws.
 export const ADMIN_WS = 'admin-ws';
 
+// Role source-of-truth strand (2026-06-15): member of two workspaces — empty
+// roles in one (slug sorts first), granted roles in the other. users/{uid}.roles
+// empty, defaultWorkspace null, linkSkippedAt set. Must auto-enter the
+// ROLE-BEARING workspace, not strand on pending-approval.
+export const SPLIT_ACCOUNT = { email: 'split@test.local', password: 'test1234' };
+export const WS_SPLIT_ROLES = 'split-zzz-roles-ws';
+export const WS_SPLIT_EMPTY = 'split-aaa-empty-ws';
+
 // A3 self-leave regression — a plain coach member used only by the leave spec.
 export const LEAVER_ACCOUNT = { email: 'leaver@test.local', password: 'test1234' };
 export const UID_LEAVER = 'test-leaver';

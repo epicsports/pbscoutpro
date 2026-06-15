@@ -398,8 +398,28 @@ export function WorkspaceProvider({ children }) {
           collection(db, 'workspaces'),
           where('members', 'array-contains', user.uid),
         ));
-        if (memberSnap.size === 1) { slug = memberSnap.docs[0].id; stampSingle = true; }
-        else if (memberSnap.size > 1) { slug = memberSnap.docs[0].id; }
+        if (memberSnap.size >= 1) {
+          // userRoles is the authoritative ACCESS store (§ 49 / § 63.3): the gate
+          // (`roles` + `isPendingApproval`) reads workspace.userRoles[uid], so
+          // ENTRY must target it too. A member of >1 workspace was previously
+          // dropped onto docs[0] (doc-ID order) — which can be a workspace where
+          // their role is still EMPTY → stranded on PendingApproval even though
+          // ANOTHER workspace already holds their granted roles (the ranger1996
+          // source-of-truth strand, 2026-06-15: roles present in one ws,
+          // users/{uid}.roles empty, defaultWorkspace null, linkSkippedAt set).
+          // Prefer a workspace where userRoles[uid] is non-empty; fall back to the
+          // first only if none carry roles yet (genuine all-pending case).
+          const docs = memberSnap.docs;
+          const withRoles = docs.filter((d) => {
+            const r = d.data()?.userRoles?.[user.uid];
+            return Array.isArray(r) && r.length > 0;
+          });
+          slug = (withRoles[0] || docs[0]).id;
+          // Stamp defaultWorkspace only when the target is unambiguous (a single
+          // membership, or a single role-bearing one) so a genuinely multi-ws user
+          // isn't pinned to an arbitrary default.
+          if (docs.length === 1 || withRoles.length === 1) stampSingle = true;
+        }
       } catch (e) { console.warn('Membership resolve failed:', e?.code || e?.message); }
     }
     if (!slug) { setNoWorkspace(true); return false; }
