@@ -25,7 +25,7 @@ function captureTokenFromHash() {
 }
 
 export function useInviteRedemption() {
-  const { user, userReady, setActiveWorkspace } = useWorkspace();
+  const { user, userReady } = useWorkspace();
   const [redeeming, setRedeeming] = useState(false);
   const [error, setError] = useState(null);
   const doneRef = useRef(false);
@@ -55,7 +55,7 @@ export function useInviteRedemption() {
         window.location.reload();
       })
       .catch((e) => { console.warn('[invite] email self-claim failed:', e?.code || e?.message); });
-  }, [user?.uid, user?.isAnonymous, user?.email, userReady, setActiveWorkspace]);
+  }, [user?.uid, user?.isAnonymous, user?.email, userReady]);
 
   useEffect(() => {
     if (doneRef.current) return;
@@ -67,16 +67,21 @@ export function useInviteRedemption() {
     doneRef.current = true;
     setRedeeming(true);
     ds.redeemInvite(token, user.uid)
-      .then(({ slug }) => {
+      .then(() => {
         try { localStorage.removeItem(STASH_KEY); } catch { /* ignore */ }
-        setActiveWorkspace(slug); // persists active + reloads into the workspace
+        // Reload (not setActiveWorkspace): membership was just written; an
+        // immediate getDoc races read-after-write (esp. under the added login
+        // concurrency of the email self-claim effect) and would strand the user
+        // on "Joining workspace…". A fresh load lets auto-enter resolve the new
+        // membership via its members-query — race-free, same as the email path.
+        window.location.reload();
       })
       .catch((e) => {
         try { localStorage.removeItem(STASH_KEY); } catch { /* ignore */ }
         setRedeeming(false);
         setError(e?.message || 'INVITE_ERROR');
       });
-  }, [user?.uid, user?.isAnonymous, userReady, setActiveWorkspace]);
+  }, [user?.uid, user?.isAnonymous, userReady]);
 
   return { inviteRedeeming: redeeming, inviteError: error };
 }

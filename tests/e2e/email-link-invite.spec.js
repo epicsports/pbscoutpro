@@ -44,12 +44,14 @@ test('email-link invite: admin sends → invitee (fresh context) sets password �
     await pageU.goto(link);
     await expect(pageU.getByTestId('email-link-setup')).toBeVisible({ timeout: 30000 });
 
-    // Fresh context → no stored email → confirm it, then set a password.
+    // Fresh context → no stored email → the setup page always shows the
+    // confirm-email step. Wait for the field (it appears after the brief
+    // 'completing' step), fill it, continue. (A racy isVisible() check skipped
+    // the fill when run before the step rendered.)
     const emailField = pageU.locator('input[type="email"]');
-    if (await emailField.isVisible().catch(() => false)) {
-      await emailField.fill(NEWINVITE_EMAIL);
-      await pageU.getByRole('button', { name: /Dalej|Continue/ }).click();
-    }
+    await emailField.waitFor({ state: 'visible', timeout: 15000 });
+    await emailField.fill(NEWINVITE_EMAIL);
+    await pageU.getByRole('button', { name: /Dalej|Continue/ }).click();
     await pageU.locator('input[autocomplete="name"]').fill('New Player');
     await pageU.locator('input[type="password"]').first().fill('test1234');
     await pageU.locator('input[type="password"]').nth(1).fill('test1234');
