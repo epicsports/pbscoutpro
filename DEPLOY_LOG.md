@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-15 — [FEATURE] TacticPage adopts the shared drawing stack (ITEM-1 drawing-tools unify)
+**HEAD `4ae31cfc`** (merge of `feat/tactic-drawing-overlay-unify`). **App + e2e, NO rules change.** Tier 1 pure-UI propagation (per `docs/architecture/DRAWING_TOOLS_UNIFICATION_DISCOVERY.md`; Jacek GO on ITEM-1). CI green (`67030f93`); app auto-deployed. Revert: `git revert 4ae31cfc`.
+- **What:** TacticPage was the last bespoke-freehand holdout. It now uses the canonical `DrawingOverlay` + `DrawToolbar` + `drawStrokes` stack (the same one ScoutedTeamPage + MatchPage use) via InteractiveCanvas's BaseCanvas draw-arbiter (1-finger draw / 2-finger zoom). Gains 5 colors / 3 sizes / eraser / undo-redo / clear (was hardcoded amber, fixed width, no eraser/undo). Deleted the bespoke overlay `<canvas>`, raw pointer handlers, `redrawStrokes`, ResizeObserver, inline serializer.
+- **Data models stay SEPARATE by design** — `tactic.freehandStrokes` (a play-object field) vs `scouted.annotations` (a per-team annotation blob). Only the COMPONENT unified; no persistence merge, no `--live` migration.
+- **Legacy compat:** old points-only strokes (`{"0":[{x,y},...]}`) are normalized to canonical `{color,size,pts}` (amber + **thin**, matching the old 3px line) so existing tactic drawings survive — no data loss.
+- **⚠ VISIBLE CHANGE (smoke this):** existing freehand now renders via **perfect-freehand** (smoother/tapered outline-fill) instead of simple polylines — the same look as coach-summary draws (approved). Bolder/rounder than before but same weight (thin). **Owed: Jacek smoke** — open a tactic with an existing drawing → confirm the new render is acceptable; draw a new stroke (colors/sizes/eraser/undo) → Save → reload persists. If the legacy render looks off, revert is one command.
+- **Orthogonal ticket registered (NOT done):** tactics two-store consolidation (layout-level vs tournament-level `tactics`, dual hooks/CRUD, `freehandStrokes` missing from `addLayoutTactic`) — real debt, independent of this, sized separately in NEXT_TASKS.
+- **e2e:** `tactic-drawing.spec.js` — a tactic with legacy points-only freehand loads on the unified stack + the toolbar wires in (Done appears). Suite 74/0. (Full draw-gesture rides the proven BaseCanvas arbiter, identical to ScoutedTeam — not re-simulated.)
+
 ## 2026-06-15 — [FIX] Player self-edit no longer fails on the super-only catalog bump (Maks)
 **HEAD `db8d4fc2`** (merge of `fix/player-self-edit-catalog-bump`). **App + e2e, NO rules change.** Tier 1 (logic-only). CI green (`3a7ec341`); app auto-deployed. Revert: `git revert db8d4fc2`.
 - **Symptom (Jacek/Maks):** "nie mogę zapisać profilu po edycji" — a linked player editing their roster identity on /profile fails.
