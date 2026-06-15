@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-15 — [FIX] Player self-edit no longer fails on the super-only catalog bump (Maks)
+**HEAD `db8d4fc2`** (merge of `fix/player-self-edit-catalog-bump`). **App + e2e, NO rules change.** Tier 1 (logic-only). CI green (`3a7ec341`); app auto-deployed. Revert: `git revert db8d4fc2`.
+- **Symptom (Jacek/Maks):** "nie mogę zapisać profilu po edycji" — a linked player editing their roster identity on /profile fails.
+- **Diagnosis (admin-SDK read + fail-first, verified):** Maks IS linked (player `RYRhq5od23oXOCcVAfJA`, owned by ranger1996, linkedUid=Maks, member) → the §85 self-edit write to `players/{id}` is PERMITTED. But `updatePlayer` then awaits `bumpCatalogVersion()`, which writes `/meta/catalogVersion` = **super-admin-write-only**. A non-super edit can't write `/meta` → the bump threw AFTER the player doc had already saved → false "save failed" (the edit actually persisted). Same latent bug hit ANY non-super edit path (player self-edit + workspace_admin editing a player).
+- **Should a player edit their profile? YES** (§85 carve-out: name/nickname/number/age/favoriteBunker/nationality). The rule already allowed it; only the catalog bump broke it.
+- **Fix:** `bumpCatalogVersion` swallows `permission-denied` (best-effort cache hint — super edits still bump; non-super rely on cache TTL / next super write). No rules change.
+- **e2e:** `player-self-edit.spec.js` (non-super linked player self-edits → ok). Fail-first proven RED (`ERR:permission-denied`) → GREEN. Suite 73/0. Isolated `selfedit-ws` + dedicated linked player fixture.
+- **Owed: Jacek smoke** — Maks edits his profile → saves cleanly (no error). His earlier edits likely already persisted server-side (the player write succeeded; only the bump threw).
+
 ## 2026-06-15 — [FIX] createEmailInvite idempotent — admin re-send no longer 403s
 **HEAD `7f4a0f40`** (merge of `fix/invite-resend-idempotent`). **App + e2e, NO rules change.** Tier 1 (logic-only). CI green (`27566695736`); app auto-deployed (deploy.yml). Revert: `git revert 7f4a0f40`.
 - **Symptom (Jacek):** creating an email invite for `biuro@epicsports.pl` → "insufficient or missing permissions".
