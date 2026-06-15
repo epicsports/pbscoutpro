@@ -10,9 +10,9 @@
 
 ---
 
-## 2026-06-15 — [DONE] Durable email-link invite onboarding ✅ SHIPPED (HEAD `a8ed9cad`) — ONBOARDING ARC CLOSED
-Email-link (passwordless) express-reg + email-keyed self-claim, rebased onto the source-of-truth fix. #166 fixed (defer self-claim/auto-enter while `isEmailSignInLink()` — the express-reg page owns the session until it hands off to `#/`). Verified-email tenant-isolation rules DEPLOYED (Jacek CONFIRM). CI green on GitHub Actions; app auto-deployed (e2e-gated). e2e: cross-context express-reg + no-token self-claim + bulk (2 invitees) + admin pending view. DEPLOY_LOG + EXPECTED_DIFF 2026-06-15.
-- **OWED — Jacek (manual, by design):** (a) grant **`biuro@epicsports.pl`** a role from the app (Members → assign) — proves in-app grant→entry post-fix; report if it doesn't land them in. (b) **Smoke:** Maks + Tymek cold-open → in ranger1996; one fresh email invite end-to-end in a different browser than clicked.
+## 2026-06-15 — [DONE] Durable email-link invite onboarding ✅ SHIPPED (HEAD `a8ed9cad` + fix `b81fc558`) — ONBOARDING ARC CLOSED
+Email-link (passwordless) express-reg + email-keyed self-claim, rebased onto the source-of-truth fix. #166 fixed (defer self-claim/auto-enter while `isEmailSignInLink()` — the express-reg page owns the session until it hands off to `#/`). Follow-up fix `b81fc558`: self-claim now grants a role to an **already-member with empty roles** (biuro repro — rule clause `!(uid in members)` → `userRoles.get(uid,[])==[]`) + explicit activation claim in EmailLinkSetupPage. Verified-email tenant-isolation rules DEPLOYED (Jacek CONFIRM ×2). CI green; app auto-deployed. e2e: cross-context express-reg + no-token self-claim + bulk (2) + already-member claim + admin pending view (suite 71/0). DEPLOY_LOG + EXPECTED_DIFF 2026-06-15.
+- **OWED — Jacek smoke (manual):** (a) **`biuro@epicsports.pl`** relogin → should self-heal into ranger1996 as coach (background self-claim now permitted by the rule — NO manual grant needed; if it doesn't land them in, real bug → report). (b) Maks + Tymek cold-open → in ranger1996; one fresh email invite end-to-end in a different browser than clicked.
 - **NEXT (arc backlog resumes):** 3 tier-2 gates · arc-B width migration · ITEM-1 drawing-tools unification (discovery-first) · ITEM-2 folded-rail opponent controls · i18n/UI sweeps.
 
 ## 2026-06-15 — [DONE] userRoles authoritative for workspace ENTRY (source-of-truth strand) ✅ SHIPPED (HEAD `4ddbf0b2`)
