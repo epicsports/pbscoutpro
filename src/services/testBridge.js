@@ -47,6 +47,11 @@ export function installTestBridge() {
     // exact updateUserRoles path UserDetailPage/MemberCard use). The granting
     // page must be signed in as an admin/super of `slug`.
     grantRole: (slug, uid, roles) => ds.updateUserRoles(slug, uid, roles),
+    // §85 player self-edit (ProfilePage "Dane gracza") — a linked player edits
+    // their own roster identity via the REAL updatePlayer path (default bump=true,
+    // so this exercises the catalog-bump best-effort fix: a non-super self-edit
+    // must NOT throw on the super-only /meta bump).
+    editLinkedPlayer: (id, patch) => ds.updatePlayer(id, patch),
     // Email-keyed invite (durable): record invites/{email} + send the email-link.
     sendEmailInvite: async (slug, role, email) => {
       await ds.createEmailInvite(slug, role, email);
