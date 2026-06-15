@@ -38,6 +38,11 @@ export const INVITE_SIGNUP_EMAIL = 'invite-signup@test.local';
 // NO membership → self-claims on login (browser-agnostic durable fix).
 export const CLAIMEE_ACCOUNT = { email: 'claimee@test.local', password: 'test1234' };
 export const CLAIM_WS = 'claim-ws';
+// Bulk email-invite proof (STEP 3): two verified invitees with pending invites to
+// a shared workspace; both self-claim on login (the multi-account window).
+export const BULK1_ACCOUNT = { email: 'bulk1@test.local', password: 'test1234' };
+export const BULK2_ACCOUNT = { email: 'bulk2@test.local', password: 'test1234' };
+export const BULK_WS = 'bulk-ws';
 // Email-link end-to-end: admin sends an email invite to this address; the e2e
 // retrieves the link from the Auth emulator + completes it in a fresh context.
 // The account is created via signInWithEmailLink (deleted each seed run).

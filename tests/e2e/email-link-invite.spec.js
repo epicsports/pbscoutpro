@@ -51,6 +51,10 @@ test('email-link invite: admin sends → invitee (fresh context) sets password �
     const emailField = pageU.locator('input[type="email"]');
     await emailField.waitFor({ state: 'visible', timeout: 15000 });
     await emailField.fill(NEWINVITE_EMAIL);
+    // Assert the controlled state registered BEFORE clicking — the submit button
+    // is disabled while email is empty, so clicking before the value lands would
+    // hang on Playwright's actionability wait (the earlier flake).
+    await expect(emailField).toHaveValue(NEWINVITE_EMAIL, { timeout: 5000 });
     await pageU.getByRole('button', { name: /Dalej|Continue/ }).click();
     await pageU.locator('input[autocomplete="name"]').fill('New Player');
     await pageU.locator('input[type="password"]').first().fill('test1234');

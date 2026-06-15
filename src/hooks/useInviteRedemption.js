@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import * as ds from '../services/dataService';
 import { useWorkspace } from './useWorkspace';
+import { isEmailSignInLink } from '../services/firebase';
 
 // Model B invite redemption (Stage 2). The magic link is `#/invite/{token}`,
 // but the app's gate layer renders BEFORE the HashRouter mounts, so the token
@@ -41,6 +42,12 @@ export function useInviteRedemption() {
   useEffect(() => {
     if (emailDoneRef.current) return;
     if (!userReady) return;
+    // While the email-link express-reg page owns the session (sign-in happens
+    // BEFORE set-password), defer the self-claim: claiming + reload() mid-flow
+    // reloads the still-active email-link URL → loops the invitee back to the
+    // empty confirm step (2026-06-15). EmailLinkSetupPage replaces the URL with
+    // `#/` on activation; the self-claim then runs cleanly on that fresh load.
+    if (isEmailSignInLink()) return;
     const email = user?.email;
     if (!user?.uid || user.isAnonymous || !email) return;
     emailDoneRef.current = true;
@@ -60,6 +67,7 @@ export function useInviteRedemption() {
   useEffect(() => {
     if (doneRef.current) return;
     if (!userReady) return;
+    if (isEmailSignInLink()) return; // defer until express-reg hands off to `#/`
     let token = null;
     try { token = localStorage.getItem(STASH_KEY); } catch { /* ignore */ }
     if (!token) return;
