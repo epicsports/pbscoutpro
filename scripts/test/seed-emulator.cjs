@@ -104,6 +104,17 @@ const ADMIN_WS = 'admin-ws';
 const UID_PENDING = 'test-pending';
 const EMAIL_PENDING = 'pending@test.local';
 const PENDING_WS = 'pending-ws';
+// Role source-of-truth strand (2026-06-15): a member of TWO workspaces — one
+// where userRoles[uid] is still EMPTY (slug sorts FIRST, so it is docs[0] for the
+// array-contains query), and one where the admin already granted roles (slug
+// sorts later). users/{uid}.roles empty, defaultWorkspace null, linkSkippedAt set
+// — the exact ranger1996 live shape. The old auto-enter picked docs[0] (empty) →
+// PendingApproval even though the granted ws held the roles; the fix enters the
+// role-bearing ws (userRoles authoritative for entry, not just for the gate).
+const UID_SPLIT = 'test-split';
+const EMAIL_SPLIT = 'split@test.local';
+const WS_SPLIT_EMPTY = 'split-aaa-empty-ws';  // sorts first → old code's docs[0]
+const WS_SPLIT_ROLES = 'split-zzz-roles-ws';  // holds the granted roles
 // Invite register-flow repro (Maks #3): a seeded UNREDEEMED invite + its target
 // workspace, so an e2e can open #/invite/{token} → "Załóż konto" → register and
 // verify the new account gets ASSOCIATED (members + role), not stranded on
@@ -183,7 +194,7 @@ const rosterPad = Array.from({ length: 40 }, (_, i) => ({
 
 async function main() {
   // 1. Auth users (delete-then-create for idempotency).
-  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER, UID_PENDING]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
+  for (const uid of [UID, UID2, UID3, UID_NEW1, UID_NEW2, UID_SUPER, UID_LEAVER, UID_OTHER, UID_B4ADMIN, UID_B4SCOUT, UID_B4PLAYER, UID_NAV, UID_VIEWER, UID_PENDING, UID_SPLIT]) { try { await auth.deleteUser(uid); } catch (_) { /* not present */ } }
   await auth.createUser({ uid: UID, email: EMAIL, password: PASSWORD, displayName: 'Test Coach', emailVerified: true });
   await auth.createUser({ uid: UID2, email: EMAIL2, password: PASSWORD, displayName: 'Test Coach 2', emailVerified: true });
   await auth.createUser({ uid: UID3, email: EMAIL3, password: PASSWORD, displayName: 'Test Coach 3', emailVerified: true });
@@ -194,6 +205,8 @@ async function main() {
   // globalRole, not workspace membership).
   await auth.createUser({ uid: UID_SUPER, email: EMAIL_SUPER, password: PASSWORD, displayName: 'Super Admin', emailVerified: true });
   await auth.createUser({ uid: UID_PENDING, email: EMAIL_PENDING, password: PASSWORD, displayName: 'Pending User', emailVerified: true });
+  // Role source-of-truth strand — member of two workspaces (empty-roles + granted).
+  await auth.createUser({ uid: UID_SPLIT, email: EMAIL_SPLIT, password: PASSWORD, displayName: 'Split Member', emailVerified: true });
   // Invite register-flow repro — the e2e REGISTERS this email; delete any prior
   // run's account (uid is random, so delete by email) for idempotency.
   try { const u = await auth.getUserByEmail(INVITE_SIGNUP_EMAIL); await auth.deleteUser(u.uid); } catch (_) { /* not present */ }
@@ -242,6 +255,13 @@ async function main() {
   batch.set(db.doc(`users/${UID_PENDING}`), {
     email: EMAIL_PENDING, displayName: 'Pending User', defaultWorkspace: PENDING_WS,
     linkSkippedAt: now, createdAt: now,
+  });
+  // Role source-of-truth strand — roles EMPTY on /users, defaultWorkspace null
+  // (omitted), linkSkippedAt set (profile-link skipped). The authoritative roles
+  // live in WS_SPLIT_ROLES.userRoles; the gate + auto-enter must read THAT, not
+  // users/{uid}.roles. Mirrors getOrCreateUserProfile's non-bootstrap default.
+  batch.set(db.doc(`users/${UID_SPLIT}`), {
+    email: EMAIL_SPLIT, displayName: 'Split Member', roles: [], linkSkippedAt: now, createdAt: now,
   });
   // A3 leaver — /users doc (leaveWorkspaceSelf reads it for the super-admin guard).
   batch.set(db.doc(`users/${UID_LEAVER}`), {
@@ -372,6 +392,22 @@ async function main() {
     rolesVersion: 2,
     migrationReviewedAt: admin.firestore.Timestamp.now(),
     createdAt: now,
+  });
+
+  // Role source-of-truth strand — member of BOTH. The empty-roles ws sorts FIRST
+  // by slug (split-aaa-…) so it is docs[0] for the array-contains query (what the
+  // old auto-enter wrongly entered → PendingApproval); the role-bearing ws sorts
+  // later (split-zzz-…). The fix enters the one where userRoles[uid] is non-empty.
+  batch.set(db.doc(`workspaces/${WS_SPLIT_EMPTY}`), {
+    name: 'Split Empty WS', members: [UID_SPLIT], userRoles: { [UID_SPLIT]: [] },
+    pendingApprovals: [UID_SPLIT], adminUid: UID_SUPER, rolesVersion: 2,
+    migrationReviewedAt: admin.firestore.Timestamp.now(), createdAt: now,
+  });
+  batch.set(db.doc(`workspaces/${WS_SPLIT_ROLES}`), {
+    name: 'Split Roles WS', members: [UID_SPLIT],
+    userRoles: { [UID_SPLIT]: ['coach', 'scout', 'player'] },
+    adminUid: UID_SUPER, rolesVersion: 2,
+    migrationReviewedAt: admin.firestore.Timestamp.now(), createdAt: now,
   });
 
   // Invite register-flow repro — empty target workspace + an unredeemed invite.
