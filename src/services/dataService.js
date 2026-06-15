@@ -2681,7 +2681,19 @@ const normEmail = (e) => String(e || '').trim().toLowerCase();
 export async function createEmailInvite(slug, role, email) {
   const key = normEmail(email);
   if (!key) throw new Error('INVITE_EMAIL_REQUIRED');
-  await setDoc(doc(db, 'invites', key), {
+  const ref = doc(db, 'invites', key);
+  // Idempotent: if an invite for this email already exists, DON'T overwrite it.
+  // `setDoc` on an existing doc is an UPDATE, and the /invites rules grant updates
+  // ONLY to the invitee's own self-claim — never to an admin — so a re-send 403s
+  // ("insufficient permissions"). Re-sending is a no-op on the doc; the caller
+  // (sendInviteEmailLink) still re-sends the email-link. (2026-06-15: Jacek hit
+  // this re-inviting biuro@epicsports.pl, whose pending invite already existed.)
+  // NOTE: this intentionally does NOT change the role/ws of an existing invite —
+  // re-issuing with a different role would need an admin-update rule branch
+  // (deferred); resend keeps the original invite intact.
+  const snap = await getDoc(ref);
+  if (snap.exists()) return { email: key, existing: true };
+  await setDoc(ref, {
     workspaceSlug: slug,
     role,
     email: key,
