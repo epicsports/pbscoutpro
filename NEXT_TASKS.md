@@ -10,9 +10,15 @@
 
 ---
 
+## 2026-06-15 — [DONE] Durable email-link invite onboarding ✅ SHIPPED (HEAD `a8ed9cad`) — ONBOARDING ARC CLOSED
+Email-link (passwordless) express-reg + email-keyed self-claim, rebased onto the source-of-truth fix. #166 fixed (defer self-claim/auto-enter while `isEmailSignInLink()` — the express-reg page owns the session until it hands off to `#/`). Verified-email tenant-isolation rules DEPLOYED (Jacek CONFIRM). CI green on GitHub Actions; app auto-deployed (e2e-gated). e2e: cross-context express-reg + no-token self-claim + bulk (2 invitees) + admin pending view. DEPLOY_LOG + EXPECTED_DIFF 2026-06-15.
+- **OWED — Jacek (manual, by design):** (a) grant **`biuro@epicsports.pl`** a role from the app (Members → assign) — proves in-app grant→entry post-fix; report if it doesn't land them in. (b) **Smoke:** Maks + Tymek cold-open → in ranger1996; one fresh email invite end-to-end in a different browser than clicked.
+- **NEXT (arc backlog resumes):** 3 tier-2 gates · arc-B width migration · ITEM-1 drawing-tools unification (discovery-first) · ITEM-2 folded-rail opponent controls · i18n/UI sweeps.
+
 ## 2026-06-15 — [DONE] userRoles authoritative for workspace ENTRY (source-of-truth strand) ✅ SHIPPED (HEAD `4ddbf0b2`)
 Ranger strand (Maks): granted roles in `ranger1996.userRoles` but stranded on "poczekaj na admina". STEP-1 verdict: gate already reads `workspace.userRoles` (authoritative) + `linkSkippedAt` already decouples profile-linking; the gap was **entry** — `autoEnter` (defaultWorkspace null) picked `docs[0]` by doc-ID, which for multi-membership can be an empty-roles ws. Fix: prefer a role-bearing membership. Tier 1, no rules change; e2e `role-source-of-truth.spec.js` (fail-first). DEPLOY_LOG 2026-06-15.
-- **OPEN — owed:** (a) Jacek GO to **batch-stamp 3 more stranded accounts** (tymek.parczewski@gmail.com, test2@test.com, rangerplayer@test.pl) via `scripts/diag/recover-stuck-user.cjs --live`; (b) **`biuro@epicsports.pl`** is member of ranger1996 with **empty roles** → needs an admin role GRANT (not a stamp); (c) Maks prod smoke (relogin/cold-open PWA); (d) **`feat/email-invite-association` stays HELD** — rebase onto this main, then green `email-link-invite` (remaining failure = distinct auto-enter throw in the express-reg path).
+- **DONE:** (a) batch-stamped Maks + 3 stranded accounts (tymek/test2/rangerplayer) via `scripts/diag/recover-stuck-user.cjs --live` — audit re-run shows 0 stampable remaining; (d) email-invite branch rebased + shipped (`a8ed9cad`, above).
+- **STILL OPEN:** (b) **`biuro@epicsports.pl`** (member of ranger1996, empty roles) needs an admin role GRANT — folded into the email-invite STEP-5 owed; (c) Maks/Tymek prod smoke.
 - **Deferred (Jacek):** `defaultWorkspace` in the `/users/{uid}` self-update rule allow-list (persists the auto-enter stamp) — not load-bearing; rules-change deferred.
 
 ## 🌙 Overnight 2026-06-11→12 — `CC_BRIEF_OVERNIGHT` ✅ SHIPPED to prod (HEAD `14755d22`, 2026-06-12)
