@@ -38,6 +38,10 @@ export const INVITE_SIGNUP_EMAIL = 'invite-signup@test.local';
 // NO membership → self-claims on login (browser-agnostic durable fix).
 export const CLAIMEE_ACCOUNT = { email: 'claimee@test.local', password: 'test1234' };
 export const CLAIM_WS = 'claim-ws';
+// Email-link end-to-end: admin sends an email invite to this address; the e2e
+// retrieves the link from the Auth emulator + completes it in a fresh context.
+// The account is created via signInWithEmailLink (deleted each seed run).
+export const NEWINVITE_EMAIL = 'newinvite@test.local';
 // Admin-UI <Screen>-migration harness: super's isolated workspace (clears the
 // membership gate so AppShell + /admin/* render). NOT demo-ws.
 export const ADMIN_WS = 'admin-ws';

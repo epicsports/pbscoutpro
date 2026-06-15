@@ -11,7 +11,7 @@
  * workspace), which is set once login auto-enters the seeded workspace.
  */
 
-import { auth, db } from './firebase';
+import { auth, db, sendInviteEmailLink } from './firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, getDocs, setDoc, collection, collectionGroup, query, where, increment, arrayUnion, waitForPendingWrites } from 'firebase/firestore';
 import * as ds from './dataService';
@@ -47,6 +47,12 @@ export function installTestBridge() {
     // exact updateUserRoles path UserDetailPage/MemberCard use). The granting
     // page must be signed in as an admin/super of `slug`.
     grantRole: (slug, uid, roles) => ds.updateUserRoles(slug, uid, roles),
+    // Email-keyed invite (durable): record invites/{email} + send the email-link.
+    sendEmailInvite: async (slug, role, email) => {
+      await ds.createEmailInvite(slug, role, email);
+      await sendInviteEmailLink(email);
+      return true;
+    },
 
     endMatchAndMerge: (tid, mid) => ds.endMatchAndMerge(tid, mid),
     getPoints: (tid, mid) => ds.getMatchPointsOnce(tid, mid),

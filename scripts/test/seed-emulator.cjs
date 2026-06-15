@@ -217,6 +217,8 @@ async function main() {
   // Invite register-flow repro — the e2e REGISTERS this email; delete any prior
   // run's account (uid is random, so delete by email) for idempotency.
   try { const u = await auth.getUserByEmail(INVITE_SIGNUP_EMAIL); await auth.deleteUser(u.uid); } catch (_) { /* not present */ }
+  // Email-link e2e creates this account via signInWithEmailLink — delete by email.
+  try { const u = await auth.getUserByEmail('newinvite@test.local'); await auth.deleteUser(u.uid); } catch (_) { /* not present */ }
   await auth.createUser({ uid: UID_CLAIMEE, email: EMAIL_CLAIMEE, password: PASSWORD, displayName: 'Claimee', emailVerified: true });
   // A3 self-leave regression — a plain coach member.
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
