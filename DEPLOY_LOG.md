@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-16 — [MIGRATION/--live] Player dedup Item 3 — merged 13 obvious duplicates (Jacek GO)
+**Firestore --live (Hard-ESCALATE, explicit Jacek GO 2026-06-16) — global `/players` only, NO rules/app change.** `scripts/migration/player_dedup_migration.cjs --live`.
+- **Audit (--dry first):** 2592 players · 13 OBVIOUS (pbliId + pbliId-less twin) · **0 pbliId-collisions** (primary key already held) · 61 namesakes (different pbliId = distinct real people — LEFT) · 4 ambiguous.
+- **Merged the 13 obvious:** survivor = the pbliId doc; absorbed the pbliId-less twin via `mergePlayers` semantics — scalar backfill where survivor empty, teams-union, `survivor.aliasIds += absorbed.id` (so legacy `point.assignments[]` still resolve), DELETE absorbed, then bump `meta/catalogVersion`. **Backup written first** (`player_dedup_backup.2026-06-16.json`, gitignored — catalog PII).
+- **Verified:** re-audit → 2592→**2579** players, OBVIOUS 13→**0**, collisions 0, namesakes 61 + ambiguous 4 untouched. Rollback: the backup JSON has each {survivor, absorbed} pair.
+- **Item 2 (bespoke reconcile UI): SKIPPED** (Jacek) — the data (4 ambiguous, 61 leave-alone) made it over-engineering; the 4 go through the existing AdminPlayersPage `MergePlayersModal` if/when desired. **Player-dedup brief COMPLETE** (prevention live + existing obvious cleaned).
+
 ## 2026-06-16 — [FEATURE] Player dedup Item 1 — import-prevention (pbliId claim / ambiguous-flag)
 **App + e2e, NO rules change.** Tier-2 (identity), Jacek GO. Item 1 of `docs/briefs/CC_BRIEF_PLAYER_DEDUP.md`.
 - **Fix:** the player CSV import (`CSVImport.jsx`) no longer creates a duplicate when a row HAS a pbliId but no pbliId-match and a **pbliId-less namesake exists on a different team**. New `src/utils/playerImportDedup.js` (`resolvePbliImport`, pure) decides: **exactly one exact-name pbliId-less doc → CLAIM** (stamp pbliId + append team); **2+ or a different-pbliId namesake → FLAG** (create + log a "super-admin to merge" warning in the import report); **none → create**. Terminal for the pbliId case (never falls into the old team-scoped name-path that re-created dups). Conservative threshold (auto-claim only the single unambiguous case — identity = high blast radius).

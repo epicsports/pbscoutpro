@@ -102,6 +102,10 @@ const mask = (s) => (s && s.length > 8 ? `${s.slice(0, 4)}…${s.slice(-3)}` : s
     await db.collection('players').doc(a.id).delete();
     merged++;
   }
-  console.log(`[LIVE] merged ${merged} obvious duplicate(s). Ambiguous (${ambiguous.length}) left for reconcile.`);
+  // Cache-invalidation hint (mirrors dataService.bumpCatalogVersion) so clients drop
+  // the deleted docs from their cached catalog on next load.
+  await db.doc('meta/catalogVersion').set(
+    { version: Date.now(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  console.log(`[LIVE] merged ${merged} obvious duplicate(s) + bumped catalogVersion. Ambiguous (${ambiguous.length}) left for reconcile.`);
   process.exit(0);
 })().catch(e => { console.error('ERR', e); process.exit(1); });
