@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-16 — [FEATURE] Field View shell — clean additive API (Phase A + foundation + contract thickening)
+**HEAD `8e8a3885`** (merge of the clean-API cut `e05921ef` from `feat/field-view-shell-phase-a`). **App-only, NO rules change.** Tier-2 archetype, but this cut is **behavior-preserving / pixel-diff 27/27** (Jacek GO to ship the clean API; the wired view is gated separately). App auto-deploys on main push (e2e-gated). Revert: `git revert 8e8a3885`.
+- **What shipped (all OPT-IN, no view consumes it yet → identical prior DOM):**
+  - `CanvasRailLayout` additive slots `phaseControl` / `fieldTools` / `primaryAction` (null for every current view) + `collapsed.pins` (semantic layer pins, tap=toggle-in-place, coexist with `tabs`).
+  - `FieldPhaseControl.jsx` — one kind-driven floating phase composite (`capture` hosts the PaT "E" black-box §8; `setup`/`capture` no ▶; `coach`/`review` ▶; `filter` optional; `null` nothing).
+  - `RailZones.jsx` — `RailZone` / `RailToggleList` (incl. `perTeam` A|B) / `RailItemList`; scope reuses `SegmentedControl`.
+  - `fieldViewConfig.js` — per-view descriptor single source of truth (all 10 views).
+  - Docs: canonical mockup `docs/mockups/fieldview_matrix.html`, `BOUNDARY_FIELDVIEW_TIMELINE.md`, `CC_BRIEF_FIELDVIEW_SHELL_BUILD.md`, `FIELD_VIEW_GLUE_ASSESSMENT.md`.
+- **Verification:** build + precommit green; existing 4 rail-views (matchreview/playerstats/scoutedteam/hitability rail specs) behavior-unchanged; **27/27 `<Screen>` pixel-diff stable** (the slots are null → no rendered delta).
+- **NOT in this ship (on `feat/field-view-shell-phase-a`, pending Jacek tablet smoke):** the ScoutedTeam reference wiring (`d5a67999`) — the first view that actually consumes the slots + the tap-accuracy-across-collapse e2e. Glue measured LOW (state→props only). Wiring Scout-point + Match-review follows after the smoke GO.
+
 ## 2026-06-16 — [CHORE] Polish-string lint refine (dev-tooling, no app change)
 **HEAD `fefcbc7c`** (merge of `chore/lint-polish-rule-refine`). Lint-only; WARNING-level; no app/bundle change (auto-redeploy is a no-op same-bundle). CI green (`cae91441`).
 - The `lint-ui.js` "Polish string detected" rule scanned `i18n.js` (884 dictionary PL values) + t()-fallback lines (189) = ~94% false positives. Now skips both (mirrors the EN-literal rule 2b) → warnings 1141 → **63 genuine** bare-hardcoded-Polish UI strings = a clean i18n worklist (CSVImport/ScheduleCSVImport/PlayerStats lead).
