@@ -24,9 +24,13 @@ import { Btn } from '../ui';
  * Pass `isLandscape` to override (tests); omit to self-determine.
  *
  * COLLAPSE = SHELL-LEVEL MECHANISM, DECLARATIVE PAGE DATA (§116). Pages pass only
- * `collapsed = { tabs: [{ key, icon, active, onSelect }], count: { value, label }|null,
- * onBack }` — they implement NO collapse logic. `tabs` mirror the rail's own tabs;
- * tapping one calls `onSelect` (page switches its tab) and opens the overlay.
+ * `collapsed = { tabs: [{ key, icon, active, onSelect }], pins: [{ key, icon, on, onToggle, label }],
+ * count: { value, label }|null, onBack }` — they implement NO collapse logic.
+ *   - `tabs` mirror the rail's own tabs; tapping one calls `onSelect` (page switches its
+ *     tab) and OPENS the overlay (switch semantics).
+ *   - `pins` (GAP D) are semantic LAYER pins; tapping one calls `onToggle` and TOGGLES the
+ *     layer IN PLACE (no overlay) — the most-used layers stay reachable while collapsed.
+ *     `on` → amber active. tabs + pins coexist; a view supplies whichever it declares.
  *
  * COORDINATE GUARDRAIL (do not break): the `artifact` MUST be a canvas that sizes from
  * its OWN container via ResizeObserver. This layout sizes the artifact's BOX from CSS;
@@ -118,7 +122,7 @@ function useViewportLandscape() {
 }
 
 function CollapsedStrip({ collapsed, side, onOpen }) {
-  const { tabs = [], count = null, onBack = null } = collapsed || {};
+  const { tabs = [], pins = [], count = null, onBack = null } = collapsed || {};
   const btn = (active) => ({
     width: 44, height: 44, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
     borderRadius: 10, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 17, flexShrink: 0,
@@ -127,6 +131,9 @@ function CollapsedStrip({ collapsed, side, onOpen }) {
     border: `1px solid ${active ? COLORS.accent : 'transparent'}`,
   });
   const divider = <div style={{ width: 24, borderTop: `1px solid ${COLORS.border}`, margin: '3px 0', flexShrink: 0 }} />;
+  // A tab-less page still needs the generic expand affordance UNLESS it pins layers
+  // (pins make the rail content reachable without the overlay).
+  const needsExpand = tabs.length === 0 && pins.length === 0;
   return (
     <div key="strip" style={{
       width: STRIP_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -137,16 +144,24 @@ function CollapsedStrip({ collapsed, side, onOpen }) {
         <div role="button" aria-label="Back" data-testid="rail-strip-back" onClick={onBack}
           style={{ ...btn(false), color: COLORS.accent, fontSize: 22 }}>‹</div>
       )}
-      {onBack && (tabs.length > 0 || true) && divider}
+      {onBack && divider}
+      {/* TABS — tap switches the rail's tab AND opens the overlay (switch semantics). */}
       {tabs.map(tb => (
         <div key={tb.key} role="button" aria-pressed={!!tb.active} title={tb.label || tb.key}
           data-testid={`rail-strip-tab-${tb.key}`}
           onClick={() => { tb.onSelect && tb.onSelect(tb.key); onOpen(); }}
           style={btn(tb.active)}>{tb.icon}</div>
       ))}
-      {/* Tab-less pages (e.g. PlayerStats) get a generic expand affordance so the
-          rail/report panel is still reachable when collapsed. */}
-      {tabs.length === 0 && (
+      {/* PINS (GAP D) — semantic LAYER pins: tap TOGGLES the layer in place (no overlay),
+          so the most-used layers stay reachable when collapsed. `on` → amber active. */}
+      {pins.length > 0 && tabs.length > 0 && divider}
+      {pins.map(pn => (
+        <div key={pn.key} role="switch" aria-checked={!!pn.on} title={pn.label || pn.key}
+          data-testid={`rail-strip-pin-${pn.key}`}
+          onClick={() => pn.onToggle && pn.onToggle(pn.key, !pn.on)}
+          style={btn(!!pn.on)}>{pn.icon}</div>
+      ))}
+      {needsExpand && (
         <div role="button" aria-label="Open panel" data-testid="rail-strip-expand"
           onClick={onOpen} style={btn(false)}>☰</div>
       )}

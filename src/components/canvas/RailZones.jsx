@@ -33,32 +33,72 @@ export function RailZone({ label, children, last = false, style }) {
   );
 }
 
+/** TeamChip — a compact ≥44px A|B toggle (GAP F). Team color is SEMANTIC here (whose
+ * data: A=red, B=blue) — distinct from the dropped layer-tone (GAP E). On → team-color
+ * fill; off → muted outline. */
+function TeamChip({ letter, color, on, onToggle, layerKey }) {
+  return (
+    <div role="switch" aria-checked={!!on} aria-label={`${layerKey} ${letter}`}
+      data-testid={`rail-toggle-${layerKey}-${letter.toLowerCase()}`}
+      onClick={() => onToggle && onToggle(!on)}
+      style={{
+        minWidth: 44, minHeight: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent', userSelect: 'none',
+        fontFamily: FONT, fontSize: 13, fontWeight: 800,
+      }}>
+      <span style={{
+        minWidth: 30, height: 26, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: on ? color : 'transparent', color: on ? '#fff' : COLORS.textMuted,
+        border: `1.5px solid ${on ? color : COLORS.border}`, transition: 'all 0.12s',
+      }}>{letter}</span>
+    </div>
+  );
+}
+
 /**
  * RailToggleList — full-width on/off LIST (mockup `.tgl` rows). NOT wrapped pills.
- * items: [{ key, icon?, label, on, onToggle, disabled? }]. The ROW is the ≥44px tap
- * target; the switch is the visual state. On → amber icon + amber track (§27 amber =
- * interactive/active only).
+ * items: [{ key, icon?, label, on, onToggle, disabled? }] — single switch (on → amber).
+ * GAP F per-team variant: [{ key, icon?, label, perTeam: true, a:{on,onToggle}, b:{on,onToggle} }]
+ *   → one layer row, two compact A|B toggles on the right (A=red, B=blue; team color is
+ *   semantic = whose data). Used by the two-team scouting views.
+ * §27: amber = interactive/active only; no layer-tone (GAP E). Row is the tap context.
  */
 export function RailToggleList({ items = [] }) {
   return (
     <div role="group">
       {items.map((it, i) => {
+        const perTeam = !!it.perTeam;
         const on = !!it.on;
         const disabled = !!it.disabled;
+        const rowStyle = {
+          display: 'flex', alignItems: 'center', gap: 9, minHeight: TOUCH.minTarget,
+          padding: '4px 0', borderTop: i === 0 ? 'none' : `1px solid ${COLORS.border}44`,
+          opacity: disabled ? 0.4 : 1, WebkitTapHighlightColor: 'transparent', userSelect: 'none',
+        };
+        const iconEl = it.icon != null && (
+          <span style={{ width: 16, textAlign: 'center', flexShrink: 0, fontStyle: 'normal',
+            fontSize: 14, color: (perTeam ? (it.a?.on || it.b?.on) : on) ? COLORS.accent : COLORS.textDim }}>{it.icon}</span>
+        );
+
+        if (perTeam) {
+          return (
+            <div key={it.key} style={rowStyle}>
+              {iconEl}
+              <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 500, color: COLORS.text }}>{it.label}</span>
+              <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                <TeamChip letter="A" color={COLORS.A} on={it.a?.on} onToggle={it.a?.onToggle} layerKey={it.key} />
+                <TeamChip letter="B" color={COLORS.B} on={it.b?.on} onToggle={it.b?.onToggle} layerKey={it.key} />
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div key={it.key} role="switch" aria-checked={on} aria-label={it.label}
             data-testid={`rail-toggle-${it.key}`}
             onClick={disabled ? undefined : () => it.onToggle && it.onToggle(it.key, !on)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 9, minHeight: TOUCH.minTarget,
-              padding: '4px 0', cursor: disabled ? 'default' : 'pointer',
-              borderTop: i === 0 ? 'none' : `1px solid ${COLORS.border}44`,
-              opacity: disabled ? 0.4 : 1, WebkitTapHighlightColor: 'transparent', userSelect: 'none',
-            }}>
-            {it.icon != null && (
-              <span style={{ width: 16, textAlign: 'center', flexShrink: 0, fontStyle: 'normal',
-                fontSize: 14, color: on ? COLORS.accent : COLORS.textDim }}>{it.icon}</span>
-            )}
+            style={{ ...rowStyle, cursor: disabled ? 'default' : 'pointer' }}>
+            {iconEl}
             <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 500,
               color: on ? COLORS.text : COLORS.textMuted }}>{it.label}</span>
             {/* iOS-style switch (real scale) */}

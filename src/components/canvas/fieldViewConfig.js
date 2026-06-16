@@ -58,7 +58,7 @@ export const FIELD_VIEWS = {
   },
   'scouted-team': {
     phaseControl: 'coach',            // coach read-bar + ▶
-    primaryAction: 'save',            // Save (coach notes)
+    primaryAction: null,              // GAP B: NO discrete save — coach plan auto-persists on draw-done
     pinned: ['positions', 'coachPlan', 'notes'],
     railZones: [
       { type: 'scope', key: 'scope' },
