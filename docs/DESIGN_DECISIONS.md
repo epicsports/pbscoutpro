@@ -9584,3 +9584,43 @@ PlayerStats landscape pattern — hero = the screen's primary canvas/heatmap; ra
 sections in original order (scrolling); portrait untouched; any portrait-only expand-modal trigger
 removed in landscape — is approved **as the archetype** and applies as-is to **ScoutedTeam** and
 **MatchPage (review mode)** without separate design gates.
+
+## 117. Reads Mini — in-app game "Take a Break" + global leaderboard (LOCKED 2026-06-17)
+
+> Spec for a Game&Watch-style catch game shipped into the app, with a global arcade
+> leaderboard. Brief: `CC_BRIEF` (Opus, 2026-06-17). Staged: STAGE 1 docs (this) → Jacek
+> GO → STAGE 2 build → STAGE 3 App Check (separate GO). PRE-FLIGHT (Opus): no Reads-Mini
+> game / game-leaderboard exists in repo or history — net-new. STEP 0 (CC, verified live):
+> all infra assumptions HOLD (see §117.5).
+
+### 117.0 Locked decisions
+| # | Decision |
+|---|---|
+| Entry point | A menu item at the **very bottom of the side nav drawer**, label **"Take a Break"**, icon = the Reads brand mark (amber dot + seam). Tap → opens the game. |
+| What | Game&Watch catch game. **4 vertical lanes; amber paintballs fall straight down**; a catcher (open karton) slides **left/right** across the 4 lanes. |
+| Controls | `◄ ►` buttons · tap a lane to snap · keyboard `←/→`. Move = ±1 lane, clamped 0–3. |
+| Rules | 3 misses = game over. Speed ramps with score. **Game A** = 3 of 4 lanes (inactive lane tracks misses); **Game B** = all 4, faster/denser. Misses reset at 200 & 500. Flash at each ×100. Score 0–9999 (7-seg). |
+| Visual | **amber-LCD** on `#0a0e17`, accent `#f59e0b`, segment "ghost" aesthetic. Balls = Reads amber dot + seam; 2 decorative conveyors + feeders. Catcher = amber open-box glyph. **Art slots** (background/feeders/conveyors/catcher/ball/splat) so hand-drawn art can replace layers later without touching mechanics. |
+| Arcade layer | Welcome = **attract loop** cycling title card (logo + "Make the read." + HI + Game A/B + "Press Start") ↔ **HIGH SCORES** table. New personal best → **3-letter initials entry**. |
+| Ranking | **ONE global leaderboard**, best score per account. Spark, **NO Cloud Functions**. `leaderboards/readsMini/scores/{uid}`. Public label = **arcade initials** (no real name → no PII/GDPR). |
+| Anti-cheat | Security rules (uid-scoped, int, ≤9999, monotonic, 5s cooldown) **+ App Check** (app-wide → STAGE 3). |
+| Audio | 60s seamless loop (`sky-catcher-loop60.m4a`) bg music + synthesized WebAudio SFX. Music on first in-game gesture; **respects iOS silent switch**. Music + SFX mute toggles. |
+| Tech | Single self-contained React feature, **pure DOM/CSS + SVG — no canvas, no game engine, no new dep**. Inline `theme.js` styles, Lucide chrome. Container-query sizing, pointer events, `dt`-accumulator tick. `prefers-reduced-motion` fallback. **Lazy own chunk**, NOT in `vendor-react`. Portrait + landscape. |
+
+### 117.A Play spec (baseline `reads-mini-v1.html`)
+Game-space SVG `viewBox = 320×200`. Lanes x `[53,124,196,267]`; fall steps y `[50,75,100,125,150]` (`STEPS=5`, `CATCH=4`); catcher at `[LANE[c],160]`, splat at `[…,174]`. Top dressing: 2 feeders + 2 animated conveyors (lanes 0–1 / 2–3, y≈34) + ghost grid (faint amber at all 4×5).
+Difficulty: `A {f0:520,fm:205,fk:4,s0:1150,sm:540,sk:5}` · `B {f0:400,fm:175,fk:4,s0:830,sm:440,sk:5}`; `fallInterval=max(fm,f0-score*fk)`, `spawnInterval=max(sm,s0-score*sk)`.
+Tick mechanics: `inactiveLane()` (A only) = `min(misses,3)`; spawn random active lane with no ball at `step≤1`; `fallTick` step++ all, `step>CATCH`→miss+remove, then `tryCatch`; `tryCatch` (also on every move) any ball at `step==CATCH` in catcher lane → score++, remove, `afterScore`; `afterScore` score%100==0→flash, score==200||500→misses=0; `miss(lane)`→splat+misses++, ≥3→over. 7-seg digit map per brief. States: attract→playing→over→(initials if PB)→attract.
+
+### 117.B Leaderboard schema + rules
+`leaderboards/readsMini/scores/{uid}` doc `{ uid, initials:"ABC", score:<int 0..9999>, mode:"A"|"B", createdAt, updatedAt }`. Read: top-25 `orderBy('score','desc')` (single-field → **auto-indexed, no composite index**). Write: own doc only; create requires valid initials `[A-Z]{3}` + score int 0–9999 + createdAt==updatedAt==request.time; update requires monotonic (`score > resource.score`) + 5s cooldown; delete denied. HI = top row. (Full rule block in the brief §2.1.) **DEPLOY RULES BEFORE CODE.**
+
+### 117.C Audio
+60s seamless loop `sky-catcher-loop60.m4a` (AAC, iOS-safe; `.opus` optional lighter) → bg music, set `audio.src` directly (avoid `<source>` child iOS quirk), `loop`, lazy with the game chunk, placed in `public/sounds/` (NOT precached — globPatterns excludes .m4a → browser HTTP cache handles repeats). SFX synthesized WebAudio: catch 880→1318Hz · miss 150Hz saw · over 440→330→247→196Hz · blip 660Hz. AudioContext on first in-game gesture. Music starts on first gesture; **iOS silent switch respected** (silence on silent = correct). Music + SFX mute toggles (default on).
+
+### 117.5 STEP 0 findings (CC, verified live 2026-06-17 — all assumptions HOLD)
+1. **Menu bottom:** new `MoreSection` immediately before the drawer brand footer (`NavDrawer.jsx:110-119`), after the ADMIN section, in `MoreTabContent.jsx` + `TrainingMoreTab.jsx`; `MoreItem isLast`. 2. **Brand icon:** inline SVG (amber circle + seam) in `ReadsBallButton` (`NavDrawer.jsx:132-160`) — extract a small `ReadsIcon` or reuse; no external asset. 3. **Routing:** all pages `React.lazy()` + `<Suspense>` (`App.jsx:28-62`); add a lazy `/break` route — app code chunks freely (manualChunks touches node_modules only). 4. **theme:** `COLORS.bg/surface/accent(#f59e0b)/text/textMuted/border` all present (`theme.js:18-72`). 5. **Firestore:** Spark — `firebase.json` has NO functions block; v2 rules idiom; rules deploy MANUAL (`firebase deploy --only firestore:rules`). 6. **Auth:** `request.auth.uid` for every signed-in user. 7. **Code-split:** `vite.config.js:87-112` manualChunks = node_modules only → the game + audio get their own async chunk, NOT vendor-react. 8. **Audio asset:** `public/sounds/`; .m4a not in workbox globPatterns (max-cache default 2MB) → not precached, browser HTTP cache. 9. **App Check:** NOT configured (STAGE 3 introduces reCAPTCHA v3 web App Check — app-wide enforcement, separate GO).
+
+### 117.6 Deliberate exceptions (flagged)
+- **Global leaderboard crosses workspace isolation BY DESIGN.** Every tenant's players compete on one board (`leaderboards/readsMini`, top-level, read=any-signed-in). This is the single intentional break of the per-workspace isolation model — recreational, no scouting data.
+- **Arcade initials, NOT real names — chosen to avoid public PII.** The public label is a 3-letter arcade tag; no `displayName`, so no `GDPR_DATA_MAP` entry needed. (Real-name labels would require consent + a GDPR map entry — out of scope.)
