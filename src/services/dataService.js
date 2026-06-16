@@ -1596,6 +1596,10 @@ export async function addLayoutTactic(layoutId, data) {
     shots: shotsToFirestore(data.shots),
     bumps: data.bumps || [null, null, null, null, null],
     myTeamId: data.myTeamId || null,
+    // Field-shape drift fix (2026-06-16): was MISSING here, so duplicating a layout
+    // tactic via LayoutDetailPage.duplicateTactic silently dropped its freehand
+    // drawing (addTactic already wrote it; only this layout-create path lost it).
+    freehandStrokes: data.freehandStrokes || null,
     createdAt: serverTimestamp(),
   });
 }
@@ -1617,6 +1621,12 @@ export function subscribeTactics(tid, cb) {
 export async function addTactic(tid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'tactics'), {
     name: data.name, myTeamScoutedId: data.myTeamScoutedId || null,
+    // Symmetry with addLayoutTactic (2026-06-16) — write the play fields too so a
+    // tournament tactic created with players/shots/bumps round-trips (TacticPage
+    // already defaults missing fields, so this is additive/back-compat).
+    players: data.players || [null, null, null, null, null],
+    shots: data.shots ? shotsToFirestore(data.shots) : {},
+    bumps: data.bumps || [null, null, null, null, null],
     steps: data.steps || [], freehandStrokes: data.freehandStrokes || null,
     createdAt: serverTimestamp(),
   });
