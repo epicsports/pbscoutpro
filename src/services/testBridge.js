@@ -102,6 +102,10 @@ export function installTestBridge() {
     repairRosters: (tid, league) => ds.repairScoutedRostersForTournament(tid, league),
     readScouted: (slug, tid, sid) =>
       getDoc(doc(db, 'workspaces', slug, 'tournaments', tid, 'scouted', sid)).then(s => (s.exists() ? s.data() : null)),
+    // Test-only: restore/patch a scouted doc (used to RESTORE annotations after the
+    // ScoutedTeam tap-accuracy draw so the shared serial emulator state isn't contaminated).
+    writeScouted: (slug, tid, sid, patch) =>
+      setDoc(doc(db, 'workspaces', slug, 'tournaments', tid, 'scouted', sid), patch, { merge: true }),
 
     // ── UAT #5 stats kills — real aggregation (buildPlayerPointsFromMatch →
     //    computePlayerStats), the same path PlayerStatsPage uses ──
