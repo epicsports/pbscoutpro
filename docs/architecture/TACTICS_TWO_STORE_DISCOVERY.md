@@ -31,7 +31,12 @@
 Layout tactics = coach playbook, reusable, travel with the OVERLAY (not the global base; "19 across ranger"). § 97.5 explicitly lists "tactics stores to consolidate (layout-overlay primary; retire the parallel `/tournaments/{tid}/tactics`)". So consolidation toward the layout-overlay store is the ratified DIRECTION.
 
 ## 6. Consolidation options (analysis — Tier-2, needs GO)
-**PROD AUDIT (admin-SDK read, 2026-06-16):** `collectionGroup('tactics')` = 54 total → layout-store **21**, tournament-store **9** (ranger1996, across 5 tournaments), other **24** (a third `tactics` path — likely `layouts/{id}/tactics` global or legacy; investigate at brief time). **Tournament store is NON-empty (9 real docs) → Option A is Tier-2** (needs a `--live` migrate+backfill, not a free path-retire).
+**PROD AUDIT (admin-SDK read, 2026-06-16):** `collectionGroup('tactics')` = 54 total. It's actually a **THREE-store** situation, not two:
+- `layoutOverlays/{id}/tactics` = **21** — the live layout store (read by `subscribeLayoutTactics`).
+- `tournaments/{tid}/tactics` = **9** (ranger1996, 5 tournaments) — the live tournament store (read by `subscribeTactics`).
+- `layouts/{id}/tactics` = **24** (ranger1996) — a THIRD path with **NO reader in the current code** (dataService only subscribes to the two above). Almost certainly **ORPHANED legacy** (pre-`layoutOverlays`-split). Verify at brief time; likely a cleanup-delete (super-admin, after confirming no reader + a backup), not a migrate.
+
+**Tournament store is NON-empty (9 real docs) → Option A is Tier-2** (`--live` migrate+backfill). The consolidation brief must also decide the fate of the 24 orphaned `layouts/{id}/tactics` (cleanup vs migrate).
 - **Option A (recommended, matches § 97.5):** single layout-overlay store + optional `tournamentId` tag; unify CRUD + hook. **Tier-2** — `--live` migrate the 9 tournament-store docs (set `tournamentId`, move to overlay path) + backfill + rollback window + emulator e2e. Opus brief + Jacek GO.
 - **Option B:** keep two stores, unify the writer layer (one CRUD wrapper, fixes drift) — Tier-1 but leaves the dual-store debt.
 - **Pre-req for either:** an admin-SDK read counting docs under `tournaments/*/tactics/` (autonomous) to decide A's tier.

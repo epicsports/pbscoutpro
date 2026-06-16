@@ -1,5 +1,10 @@
 # Deploy Log
 
+## 2026-06-16 — [CHORE] Polish-string lint refine (dev-tooling, no app change)
+**HEAD `fefcbc7c`** (merge of `chore/lint-polish-rule-refine`). Lint-only; WARNING-level; no app/bundle change (auto-redeploy is a no-op same-bundle). CI green (`cae91441`).
+- The `lint-ui.js` "Polish string detected" rule scanned `i18n.js` (884 dictionary PL values) + t()-fallback lines (189) = ~94% false positives. Now skips both (mirrors the EN-literal rule 2b) → warnings 1141 → **63 genuine** bare-hardcoded-Polish UI strings = a clean i18n worklist (CSVImport/ScheduleCSVImport/PlayerStats lead).
+- **Audit addendum (read-only):** the tactics stores are actually **THREE** — `layoutOverlays/.../tactics` (21, live), `tournaments/.../tactics` (9, live), and **`layouts/{id}/tactics` (24, NO reader → orphaned legacy)**. The consolidation brief must handle all three (the 24 likely a super-admin cleanup-delete). See `docs/architecture/TACTICS_TWO_STORE_DISCOVERY.md`.
+
 ## 2026-06-16 — [FIX] addLayoutTactic preserves freehandStrokes (tactics field-shape drift)
 **HEAD `96809879`** (merge of `fix/tactic-freehand-drift`). **App + e2e + discovery doc, NO rules change.** Tier 1 (night autonomy). CI green (`81f472b9`); app auto-deployed. Revert: `git revert 96809879`.
 - **Bug (found by the two-store discovery):** `addLayoutTactic` was MISSING `freehandStrokes` from its written field shape, so creating/**duplicating** a layout tactic with a drawing silently dropped it (`LayoutDetailPage.duplicateTactic` passes it; the writer discarded it). `addTactic` (tournament) already wrote it — only the layout-create path lost it. Surfaced + made visible by the ITEM-1 drawing unify (`4ae31cfc`).
