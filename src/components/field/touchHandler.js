@@ -124,7 +124,7 @@ export function createTouchHandler(opts) {
   };
 
   const findPlayer = (pos) => {
-    const { canvasSize, players } = stateRef.current;
+    const { canvasSize, players = [] } = stateRef.current;
     const { w, h } = canvasSize;
     for (let i = players.length - 1; i >= 0; i--) {
       if (!players[i]) continue;
@@ -169,7 +169,7 @@ export function createTouchHandler(opts) {
     }
     e.preventDefault();
     const {
-      zoom, pan, canvasSize, editable, mode, players, selectedPlayer,
+      zoom, pan, canvasSize, editable, mode, players = [], selectedPlayer,
       layoutEditMode, bunkers, calibrationMode, calibrationData,
       editDangerPoints, editSajgonPoints, editBigMovePoints,
       onPlacePlayer, onSelectPlayer, onPlaceShot, onDeleteShot,
@@ -401,7 +401,7 @@ export function createTouchHandler(opts) {
     if (usedTouchRef.current && e.type === 'mousemove') return;
     e.preventDefault();
     const {
-      zoom, pan, canvasSize, editable, mode, players,
+      zoom, pan, canvasSize, editable, mode, players = [],
       layoutEditMode, bunkers, calibrationMode,
       onMovePlayer, onCalibrationMove, onBunkerMove, onBunkerLabelOffset,
       drawMode, onDrawMove,
@@ -571,7 +571,7 @@ export function createTouchHandler(opts) {
       return;
     }
     const {
-      canvasSize, mode, players, selectedPlayer,
+      canvasSize, mode, players = [], selectedPlayer,
       toolbarPlayer, toolbarItems, bunkers,
       showVisibility,
       onPlacePlayer, onPlaceShot, onDeleteShot, onToolbarAction,
