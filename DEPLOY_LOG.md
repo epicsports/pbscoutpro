@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-16 — [FEATURE] Match-review wired to the Field View shell (2nd daily-driver — LIVE for smoke)
+**App + e2e, NO rules change.** Tier-2 (shell), shipped to prod for tablet smoke (no preview infra). Decision-driven: §B phase row REPLACED by floating FieldPhaseControl; capture stays bespoke (own brief).
+- **Landscape review (`#/tournament/<id>/match/<id>`):** phase control now FLOATS top-right on the field (FieldPhaseControl kind='review' — Break/Settle/Mid + ▶), the §B in-rail row is portrait-only; per-team layers → a **Layers rail zone with A|B toggles** (GAP F: Positions [A][B], Shots [A][B]); **End match floats bottom-right** as a danger primaryAction (was ⋮-only — ⋮ keeps it too); collapsed strip pins Positions/Shots (toggle both teams). Portrait unchanged (keeps the inline §B row + inline End match).
+- **Capture (Scout-point) NOT migrated** — it isn't on CanvasRailLayout (bespoke flow); ratified as its own structural migration brief later (highest-risk). Field View shell now covers 2/3 daily-drivers (ScoutedTeam + Match-review); the 6 non-rail views + Tactic remain Phase C.
+- **Verified:** full functional e2e 77/0 (phase-view updated for the floating phase/End-match), matchreview/scoutedteam rail + rail-collapse green, 27/27 `<Screen>` pixel-diff stable, build + precommit green.
+
 ## 2026-06-16 — [FIX] Field View smoke fixes (Rysuj beside phase + rail-expand) + touchHandler crash guard
 **HEADs `25547dba` (field-view) + `8912998c` (touch).** App + e2e, NO rules change. Tier-1.
 - **Smoke fix 1 — Rysuj overlapped the phase switcher:** the draw entry was still ScoutedTeam's own top-right chip colliding with the shell `phaseControl`. Now a proper **fieldTool icon beside the phase bar** (FieldFrame lays phase + tools in ONE horizontal row per mockup `.fld-top`); the chip stays for portrait only.
