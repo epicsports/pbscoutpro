@@ -13,6 +13,8 @@ import Screen from '../components/Screen';
 import { Btn, SectionTitle, EmptyState, SkeletonList, Modal, Icons, LeagueBadge, YearBadge } from '../components/ui';
 import { useLayouts, useBaseLayouts } from '../hooks/useFirestore';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
+import { useViewAs } from '../hooks/useViewAs';
+import { canEditTactics } from '../utils/roleUtils';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, TOUCH, SPACE, responsive } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
@@ -25,6 +27,11 @@ export default function LayoutsPage() {
   const { layouts, loading } = useLayouts();
   const { bases, loading: basesLoading } = useBaseLayouts();
   const isSuper = useIsSuperAdmin();
+  // Playbooks framing (CC_BRIEF_PLAYBOOKS): a coach (canEditTactics, not admin) sees
+  // the SAME library framed as "playbooks to plan on", not admin "layout config".
+  // Uses effectiveRoles/effectiveIsAdmin so view-as=coach shows the coach framing.
+  const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const coachView = !effectiveIsAdmin && canEditTactics(effectiveRoles);
 
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [adding, setAdding] = useState(null);   // baseId mid-add
@@ -43,7 +50,9 @@ export default function LayoutsPage() {
 
   return (
     <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
-      header={<PageHeader back={{ to: '/' }} title={t('layouts_label')} subtitle={t('layouts_subtitle')} />}>
+      header={<PageHeader back={{ to: '/' }}
+        title={coachView ? t('playbooks_title') : t('layouts_label')}
+        subtitle={coachView ? t('playbooks_subtitle') : t('layouts_subtitle')} />}>
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64, display: 'flex', flexDirection: 'column', gap: R.layout.gap }}>
 
         <SectionTitle>
