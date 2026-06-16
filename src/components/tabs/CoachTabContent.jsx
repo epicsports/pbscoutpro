@@ -7,7 +7,6 @@ import MatchCard from '../MatchCard';
 import TeamBadge from '../TeamBadge';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
-import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { computeTeamRecords } from '../../utils/teamStats';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import * as ds from '../../services/dataService';
@@ -67,70 +66,9 @@ export default function CoachTabContent({ tournamentId }) {
     }
   };
 
-  // § 83 B3 — admin-gated repair for over-broad scouted rosters. Mirrors the
-  // repair-divisions pattern above, but visibility is role-gated (not symptom-
-  // gated) because the over-broad-roster shape isn't cheaply detectable from
-  // the client side without walking points. Idempotent — safe to re-run.
-  const isSuperAdmin = useIsSuperAdmin();
-  const [repairingRosters, setRepairingRosters] = useState(false);
-  const [rostersRepairResult, setRostersRepairResult] = useState(null);
-  // Inline floating toast — mirrors WizardShell's saveToast pattern.
-  // Auto-dismiss after 5s (longer than save toast's 2.5s so the summary
-  // numbers are readable). Idempotent-aware wording set on completion.
-  const [repairToast, setRepairToast] = useState(null);
-  // D7 — the box is state-aware: once a repair has run, the tournament carries
-  // `rostersRepairedAt` and the box collapses to "OK · last repair: X" (expand
-  // to re-run). No persisted stamp yet → the full call-to-action box.
-  const [repairOpen, setRepairOpen] = useState(false);
-  useEffect(() => {
-    if (!repairToast) return;
-    const tm = setTimeout(() => setRepairToast(null), 5000);
-    return () => clearTimeout(tm);
-  }, [repairToast]);
-  const runRepairRosters = async () => {
-    if (repairingRosters || !tournamentId) return;
-    setRepairingRosters(true);
-    setRostersRepairResult(null);
-    try {
-      // § fix (B3 repair hang) — race against a timeout so the button can NEVER
-      // stick on "Repairing…" forever (the prior symptom). On timeout the catch
-      // below surfaces the existing red error box + toast instead of a dead UI.
-      const report = await Promise.race([
-        ds.repairScoutedRostersForTournament(tournamentId, tournament?.league, { players }),
-        new Promise((_, reject) => setTimeout(
-          () => reject(new Error('Timed out — read limit or slow connection. Try again.')),
-          45000,
-        )),
-      ]);
-      setRostersRepairResult(report);
-      // Wording branches on whether anything actually changed (idempotent run).
-      const failedN = report.failures?.length || 0;
-      // B26 — a swallowed stamp failure is WHY the box stayed permanently visible
-      // ("repair did nothing"): the narrowing ran but the OK-marker never saved, so
-      // the box never collapsed. Surface it explicitly so it's not silent.
-      if (report.stampError) {
-        setRepairToast({
-          type: 'error',
-          msg: `Rosters repaired (${report.updated} updated) but the OK-marker couldn't save: ${report.stampError}`,
-        });
-      } else if ((report.updated || 0) === 0 && failedN === 0) {
-        setRepairToast({
-          type: 'success',
-          msg: `No rosters needed updating (${report.scanned} scanned, all already narrow)`,
-        });
-      } else {
-        setRepairToast({
-          type: 'success',
-          msg: `Repaired: ${report.updated} updated, ${report.unchanged} unchanged${failedN ? `, ${failedN} failed` : ''}`,
-        });
-      }
-    } catch (e) {
-      setRostersRepairResult({ error: e.message });
-      setRepairToast({ type: 'error', msg: `Error: ${e.message}` });
-    } finally {
-      setRepairingRosters(false);
-    }
-  };
+  // § 83 B3 roster-repair UI RETIRED (B26 close, 2026-06-16) — its state/handler/toast
+  // were removed with the render box (see the render-site note). The narrowing fn lives
+  // on in dataService; the real fix is docs/briefs/CC_BRIEF_PLAYER_DEDUP.md.
 
   const records = useMemo(() => computeTeamRecords(matches, scouted), [matches, scouted]);
 
@@ -285,78 +223,13 @@ export default function CoachTabContent({ tournamentId }) {
             )}
           </div>
         )}
-        {/* § 83 B3 — admin-only roster narrowing repair. Not auto-gated on a
-            client-detectable symptom (over-broad rosters render fine — they
-            just include too many players); kept role-gated so regular users
-            never see it. Idempotent — safe re-runs. */}
-        {isSuperAdmin && !loading && scouted.length > 0 && (() => {
-          const lastTs = tournament?.rostersRepairedAt?.ts;
-          const lastMs = lastTs?.toMillis ? lastTs.toMillis() : (lastTs?.seconds ? lastTs.seconds * 1000 : null);
-          const lastWhen = lastMs
-            ? (() => { const d = new Date(lastMs); return `${d.toLocaleDateString()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; })()
-            : null;
-          // Healthy + idle (a repair has run, not expanded, nothing in-flight or
-          // just-finished) → collapse to a single "OK · last repair" row.
-          const collapsedHealthy = !!lastMs && !repairOpen && !repairingRosters && !rostersRepairResult;
-          return (
-          <div style={{
-            marginTop: SPACE.sm, padding: SPACE.md,
-            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-            borderRadius: RADIUS.lg,
-          }}>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: SPACE.sm, letterSpacing: 0.5 }}>
-              ADMIN · B3 ROSTER REPAIR
-            </div>
-            {collapsedHealthy ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
-                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.success }}>✓ OK</span>
-                <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>Last repair: {lastWhen}</span>
-                <Btn variant="ghost" size="sm" onClick={() => setRepairOpen(true)}>Repair again</Btn>
-              </div>
-            ) : (
-            <>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginBottom: SPACE.sm }}>
-              Narrows scouted rosters to the team&apos;s division. Preserves any player already assigned in existing points so the picker keeps resolving names.
-            </div>
-            {lastWhen && (
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: SPACE.sm }}>
-                Last repair: {lastWhen}
-              </div>
-            )}
-            <Btn variant="default" onClick={runRepairRosters} disabled={repairingRosters} style={{ width: '100%' }}>
-              {repairingRosters ? 'Repairing…' : 'Repair scouted rosters'}
-            </Btn>
-            {rostersRepairResult && !rostersRepairResult.error && (
-              <div style={{
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.text,
-                marginTop: SPACE.sm, padding: '8px 12px',
-                background: `${COLORS.success}10`,
-                border: `1px solid ${COLORS.success}30`,
-                borderRadius: RADIUS.sm,
-                fontWeight: 500,
-              }}>
-                Scanned {rostersRepairResult.scanned} · updated <strong>{rostersRepairResult.updated}</strong> · unchanged {rostersRepairResult.unchanged}
-                {rostersRepairResult.skippedNoTeam ? ` · orphan ${rostersRepairResult.skippedNoTeam}` : ''}
-                {rostersRepairResult.failures?.length ? ` · failed ${rostersRepairResult.failures.length}` : ''}
-              </div>
-            )}
-            {rostersRepairResult?.error && (
-              <div style={{
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.danger,
-                marginTop: SPACE.sm, padding: '8px 12px',
-                background: `${COLORS.danger}10`,
-                border: `1px solid ${COLORS.danger}30`,
-                borderRadius: RADIUS.sm,
-                fontWeight: 600,
-              }}>
-                Error: {rostersRepairResult.error}
-              </div>
-            )}
-            </>
-            )}
-          </div>
-          );
-        })()}
+        {/* § 83 B3 roster-repair box RETIRED (B26 close, 2026-06-16). It permanently
+            occupied the super-admin coach screen, couldn't reliably self-collapse, and —
+            per the 2026-06-16 investigation — MISFRAMED the real problem: scouted-roster
+            "duplicates" are a player-IDENTITY issue (pbliId-as-primary-key dedup), not
+            roster narrowing. The narrowing fn (repairScoutedRostersForTournament) stays in
+            dataService (non-destructive, e2e-covered) for dev/admin use. Real work:
+            docs/briefs/CC_BRIEF_PLAYER_DEDUP.md. */}
         {!loading && divisionScouted.length > 0 && visibleScouted.length === 0 && (
           <div style={{ padding: SPACE.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>
             No teams match “{teamSearch}”.
@@ -443,30 +316,7 @@ export default function CoachTabContent({ tournamentId }) {
         )}
       </div>
 
-      {/* B3 repair completion toast — mirrors WizardShell's saveToast
-          pattern. Fixed-position, auto-dismiss after 5s, color-coded.
-          Mounted here as a sibling so the floating toast renders above
-          the rest of the page chrome. */}
-      {repairToast && (
-        <div style={{
-          position: 'fixed',
-          left: '50%', transform: 'translateX(-50%)',
-          bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
-          maxWidth: 420, width: 'calc(100% - 32px)',
-          padding: '12px 16px',
-          background: COLORS.surface,
-          border: `1px solid ${repairToast.type === 'error' ? COLORS.danger : COLORS.success}80`,
-          borderRadius: RADIUS.lg,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          color: repairToast.type === 'error' ? COLORS.danger : COLORS.text,
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-          textAlign: 'center',
-          zIndex: 50,
-          pointerEvents: 'none',
-        }}>
-          {repairToast.msg}
-        </div>
-      )}
+      {/* B3 roster-repair toast removed with the box (B26 close, 2026-06-16). */}
     </div>
   );
 }

@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-16 — [FIX/CLOSE] B26 closed — retire the misframed roster-repair box + author the dedup brief
+**App (CoachTabContent box removal) + doc.** Tier-1 (UI removal, non-destructive, no rules change).
+- **B26 investigation verdict:** all framed suspects ruled out — `tournament` is a LIVE `useTournaments()` subscription (a persisted stamp WOULD collapse the box); `isScout → isCoach → isAdmin → isSuperAdmin` (rules:53) so a super-admin's stamp write is PERMITTED; super correctly saw the `isSuperAdmin` box. The box MISFRAMED the real issue.
+- **Real problem (Jacek):** scouted-roster "duplicates" are **player-identity** dups (same first+last, one with `pbliId` / one without) — `pbliId` is the primary key; multi-team is normal. Root cause = `CSVImport.jsx` Path 2 (`:375-409`) creating a 2nd doc when a pbliId row's exact name matches a pbliId-less doc on a *different* team. NOT roster narrowing.
+- **Done:** RETIRED the permanent §83 B3 super-admin roster-repair box from `CoachTabContent` (box + state + handler + toast + `useIsSuperAdmin` import). The narrowing fn (`repairScoutedRostersForTournament`) stays in dataService (non-destructive orphan-preserving union; `roster-division.spec` still covers it, incl. the new `stampError` field). Authored `docs/briefs/CC_BRIEF_PLAYER_DEDUP.md` (policy: obvious→auto-claim, ambiguous→flag super-admin via MergePlayersModal; needs GO + threshold ratified).
+- Build green.
+
 ## 2026-06-16 — [DOC/CANON] Field View archetypes ratified — Phase C CLOSED
 **Doc-only** (`docs/architecture/FIELD_VIEW_ARCHETYPES.md` new). Jacek ratified TWO legitimate field-view archetypes — a deliberate design choice, NOT debt:
 - **RAIL-NATIVE** (`CanvasRailLayout` + shell slots) — review/coach/scout/stats: Match-review, ScoutedTeam, PlayerStats, Hitability (the family is now consistent).
