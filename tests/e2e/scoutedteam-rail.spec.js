@@ -64,6 +64,11 @@ test.describe('Stage 4.2 — ScoutedTeam landscape rail', () => {
     // GAP D — semantic layer pins in the strip.
     const posPin = page.getByTestId('rail-strip-pin-positions');
     await expect(posPin).toBeVisible();
+    // Smoke-fix regressions (2026-06-16): rail-EXPAND (☰) must stay present WITH pins
+    // (pins toggle layers only; scope/isolate/report need the overlay), and the draw tool
+    // sits in the field-corner cluster BESIDE the phase bar (not a separate overlapping chip).
+    await expect(page.getByTestId('rail-strip-expand')).toBeVisible();
+    await expect(page.getByTestId('field-corner-controls').getByTestId('fv-tool-draw')).toBeVisible();
     // A pin TOGGLES in place (aria-checked flips) — it does NOT open the overlay (≠ tabs).
     const before = await posPin.getAttribute('aria-checked');
     await posPin.click();

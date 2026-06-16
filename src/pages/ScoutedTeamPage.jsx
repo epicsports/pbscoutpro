@@ -764,58 +764,56 @@ export default function ScoutedTeamPage() {
     </HeatmapCanvas>
   );
 
-  // Overlay chrome that rides the CANVAS (absolute-positioned) in both branches.
-  const heatmapChromeEl = (
-    <>
-      {/* § 78 2a — "✏ Rysuj" entry chip, BOTH orientations (ScoutedTeam is not
-          a scouting surface — landscape-only gate from Match per § 77 does NOT
-          apply here). Only visible on the expanded heatmap; miniature (110px)
-          stays read-only. */}
-      {!coachDrawMode && (
-        <div
-          role="button" aria-label="Rysuj plan coacha"
-          onClick={enterCoachDrawMode}
-          style={{
-            position: 'absolute', top: 8, right: 8, zIndex: 35,
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            minHeight: 36, padding: '0 12px', borderRadius: 18,
-            background: 'rgba(15, 23, 42, 0.85)',
-            border: `1px solid ${COLORS.border}`,
-            color: COLORS.text,
-            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-            backdropFilter: 'blur(8px)',
-            cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-          }}
-        >
-          <Pencil size={16} strokeWidth={2.25} /> Rysuj
-        </div>
-      )}
-      {coachDrawMode && (
-        <DrawToolbar
-          color={coachColor}
-          onColorChange={setCoachColor}
-          sizeKey={coachSizeKey}
-          onSizeChange={setCoachSizeKey}
-          eraserActive={coachEraser}
-          onEraserToggle={setCoachEraser}
-          canUndo={coachStrokes.length > 0}
-          canRedo={coachRedo.length > 0}
-          hasStrokes={coachStrokes.length > 0}
-          onUndo={handleCoachUndo}
-          onRedo={handleCoachRedo}
-          onClear={handleCoachClear}
-          onDone={exitCoachDrawMode}
-        />
-      )}
-    </>
-  );
+  // § 78 2a — "✏ Rysuj" entry chip (PORTRAIT only — in landscape the draw entry is a
+  // fieldTool beside the phase bar, see fvFieldToolsEl). Only on the expanded heatmap.
+  const coachRysujChipEl = !coachDrawMode ? (
+    <div
+      role="button" aria-label="Rysuj plan coacha"
+      onClick={enterCoachDrawMode}
+      style={{
+        position: 'absolute', top: 8, right: 8, zIndex: 35,
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        minHeight: 36, padding: '0 12px', borderRadius: 18,
+        background: 'rgba(15, 23, 42, 0.85)',
+        border: `1px solid ${COLORS.border}`,
+        color: COLORS.text,
+        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
+        backdropFilter: 'blur(8px)',
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      <Pencil size={16} strokeWidth={2.25} /> Rysuj
+    </div>
+  ) : null;
 
-  // §116 Stage 4.2 — the landscape HERO: canvas + chrome in a relative box
-  // (CanvasRailLayout's aspect box drives the size; the canvas self-refits).
+  // The draw toolbar (draw mode) — rides the canvas in BOTH orientations.
+  const coachDrawToolbarEl = coachDrawMode ? (
+    <DrawToolbar
+      color={coachColor}
+      onColorChange={setCoachColor}
+      sizeKey={coachSizeKey}
+      onSizeChange={setCoachSizeKey}
+      eraserActive={coachEraser}
+      onEraserToggle={setCoachEraser}
+      canUndo={coachStrokes.length > 0}
+      canRedo={coachRedo.length > 0}
+      hasStrokes={coachStrokes.length > 0}
+      onUndo={handleCoachUndo}
+      onRedo={handleCoachRedo}
+      onClear={handleCoachClear}
+      onDone={exitCoachDrawMode}
+    />
+  ) : null;
+
+  // Overlay chrome that rides the CANVAS — PORTRAIT path (chip + toolbar).
+  const heatmapChromeEl = (<>{coachRysujChipEl}{coachDrawToolbarEl}</>);
+
+  // §116 Stage 4.2 — the landscape HERO: canvas + ONLY the draw toolbar (the Rysuj
+  // entry is a fieldTool beside the phase bar, not an overlapping top-right chip).
   const heatmapHeroEl = (
     <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0 }}>
       {heatmapCanvasEl}
-      {heatmapChromeEl}
+      {coachDrawToolbarEl}
     </div>
   );
 
@@ -2184,6 +2182,20 @@ export default function ScoutedTeamPage() {
     { key: 'coachPlan', icon: FIELD_LAYERS.coachPlan.icon, label: t('scouted_layer_coach_plan'), on: hmShowCoachPlan, onToggle: () => setHmShowCoachPlan(v => !v) },
     { key: 'notes', icon: FIELD_LAYERS.notes.icon, label: t('scouted_layer_notes'), on: hmShowAnnotations, onToggle: () => setHmShowAnnotations(v => !v) },
   ];
+  // fieldTools — the draw entry as an ICON beside the phase bar (landscape; the toolbar
+  // replaces it on the field in draw mode). Mockup `.f-btn`, real-scale ≥44px tap target.
+  const fvFieldToolsEl = !coachDrawMode ? (
+    <div role="button" aria-label="Rysuj plan coacha" data-testid="fv-tool-draw"
+      onClick={enterCoachDrawMode}
+      style={{
+        minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(13,17,23,0.92)', border: `1px solid ${COLORS.border}`, borderRadius: 8,
+        color: COLORS.text, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        backdropFilter: 'blur(8px)',
+      }}>
+      <Pencil size={18} strokeWidth={2.25} />
+    </div>
+  ) : null;
 
   // §116 Stage 4.2 — LANDSCAPE (hero available): the heatmap is the HERO, the
   // report column (sections) is the rail BY REFERENCE. The view controls now live
@@ -2200,6 +2212,7 @@ export default function ScoutedTeamPage() {
           header={pageHeaderEl}
           artifact={heatmapHeroEl}
           phaseControl={fvPhaseControlEl}
+          fieldTools={fvFieldToolsEl}
           rail={<>{fvControlZonesEl}{columnEl}</>}
           collapsed={{ tabs: [], pins: fvPins, count: null, onBack: () => navigate('/') }}
         />

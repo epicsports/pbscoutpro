@@ -72,9 +72,11 @@ function FieldFrame({ artifact, phaseControl, fieldTools, primaryAction, landsca
     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', minWidth: 0 }}>
       {artifact}
       {(phaseControl || fieldTools) && (
+        // mockup `.fld-top`: phase + tools share ONE horizontal row, anchored
+        // top-right (phase left, tools right) — NOT stacked.
         <div data-testid="field-corner-controls" style={{
           position: 'absolute', top: 8, right: 8, zIndex: 4,
-          display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8,
+          display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
           pointerEvents: 'none', // empty corner keeps passing taps to the canvas
         }}>
           {phaseControl && <div data-testid="field-phase-control" style={{ pointerEvents: 'auto' }}>{phaseControl}</div>}
@@ -131,9 +133,11 @@ function CollapsedStrip({ collapsed, side, onOpen }) {
     border: `1px solid ${active ? COLORS.accent : 'transparent'}`,
   });
   const divider = <div style={{ width: 24, borderTop: `1px solid ${COLORS.border}`, margin: '3px 0', flexShrink: 0 }} />;
-  // A tab-less page still needs the generic expand affordance UNLESS it pins layers
-  // (pins make the rail content reachable without the overlay).
-  const needsExpand = tabs.length === 0 && pins.length === 0;
+  // The generic expand (☰) opens the overlay = the FULL rail. Pins are a quick-toggle
+  // SUBSET (layers only) — they do NOT open the overlay, so the rest of the rail (scope /
+  // isolate / report column) stays unreachable without ☰. So expand shows whenever there
+  // are no TABS (tabs open the overlay on tap); pins never substitute for it.
+  const needsExpand = tabs.length === 0;
   return (
     <div key="strip" style={{
       width: STRIP_W, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -161,6 +165,7 @@ function CollapsedStrip({ collapsed, side, onOpen }) {
           onClick={() => pn.onToggle && pn.onToggle(pn.key, !pn.on)}
           style={btn(!!pn.on)}>{pn.icon}</div>
       ))}
+      {needsExpand && pins.length > 0 && divider}
       {needsExpand && (
         <div role="button" aria-label="Open panel" data-testid="rail-strip-expand"
           onClick={onOpen} style={btn(false)}>☰</div>
