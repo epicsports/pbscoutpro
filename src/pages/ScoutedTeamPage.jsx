@@ -23,6 +23,9 @@ import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canva
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
+import { RailZone, RailToggleList, RailItemList } from '../components/canvas/RailZones';
+import FieldPhaseControl from '../components/canvas/FieldPhaseControl';
+import { FIELD_LAYERS } from '../components/canvas/fieldViewConfig';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 import SearchFilterPanel from '../components/SearchFilterPanel';
 import { matchEntity, playerInDivision, playerDivisionSet } from '../utils/entityFilters';
@@ -1156,12 +1159,10 @@ export default function ScoutedTeamPage() {
             §116 Stage 4.2: in landscape the canvas is the page HERO (promoted
             out of the column), so this section keeps only the view controls at
             their original position in the rail. */}
-        {teamMatches.length > 0 && landscape && heroAvailable && (
-          <>
-            <SectionHeader>{t('section_heatmap')}</SectionHeader>
-            <div style={{ margin: '0 0 4px' }}>{heatmapControlsEl}</div>
-          </>
-        )}
+        {/* Field View shell: in landscape the heatmap controls (Stage/Layers/Isolate)
+            moved OUT of the column — Stage+▶ → floating phaseControl, Layers/Isolate →
+            structured rail zones (fvControlZonesEl, rendered above this column). So the
+            column shows only the coach REPORT sections here. */}
         {teamMatches.length > 0 && !(landscape && heroAvailable) && (
           <>
             <SectionHeader>{t('section_heatmap')}</SectionHeader>
@@ -2139,10 +2140,56 @@ export default function ScoutedTeamPage() {
     </>
   );
 
+  // ── Field View shell wiring (reference impl, 'scouted-team' descriptor) ──
+  // STATE→PROPS binding only (the thickened contract carries the structure). The
+  // draw entry stays the existing floating "Rysuj" chip (heatmapChromeEl) + §81
+  // fullscreen is landscape-suppressed, so fieldTools is null here.
+  const fvPhaseControlEl = (
+    <FieldPhaseControl
+      kind="coach"
+      phases={[
+        { key: 'break', label: 'Break' },
+        { key: 'settle', label: 'Settle' },
+        { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? t('scouted_no_mid') : undefined },
+      ]}
+      phase={hmPhase} onPhase={setHmPhase}
+      done={{ break: true, settle: canReplay, mid: hasMid }}
+      canReplay={canReplay} replaying={replaying}
+      onReplay={() => setHmReplay(v => !v)}
+    />
+  );
+  const fvLayerItems = [
+    { key: 'positions', icon: FIELD_LAYERS.positions.icon, label: t('scouted_layer_positions'), on: hmShowPositions, onToggle: () => setHmShowPositions(v => !v), disabled: replaying },
+    { key: 'shots', icon: FIELD_LAYERS.shots.icon, label: t('scouted_layer_shots'), on: hmShowShots, onToggle: () => setHmShowShots(v => !v), disabled: replaying },
+    { key: 'coachPlan', icon: FIELD_LAYERS.coachPlan.icon, label: t('scouted_layer_coach_plan'), on: hmShowCoachPlan, onToggle: () => setHmShowCoachPlan(v => !v), disabled: replaying },
+    { key: 'notes', icon: FIELD_LAYERS.notes.icon, label: t('scouted_layer_notes'), on: hmShowAnnotations, onToggle: () => setHmShowAnnotations(v => !v), disabled: replaying },
+  ];
+  const fvIsolateItems = roster.map(p => ({
+    key: p.id, label: p.name || `#${p.number}`,
+    avatar: p.number != null ? String(p.number) : '•', accent: p.playerColor || undefined,
+    active: hmSelectedPlayer === p.id,
+    onSelect: () => setHmSelectedPlayer(hmSelectedPlayer === p.id ? null : p.id),
+  }));
+  const fvControlZonesEl = (
+    <>
+      <RailZone label="Scope">{scopePillsEl}</RailZone>
+      <RailZone label={t('scouted_layer_layers')}><RailToggleList items={fvLayerItems} /></RailZone>
+      {roster.length > 0 && (
+        <RailZone label={t('scouted_layer_isolate')} last><RailItemList items={fvIsolateItems} /></RailZone>
+      )}
+    </>
+  );
+  const fvPins = [
+    { key: 'positions', icon: FIELD_LAYERS.positions.icon, label: t('scouted_layer_positions'), on: hmShowPositions, onToggle: () => setHmShowPositions(v => !v) },
+    { key: 'coachPlan', icon: FIELD_LAYERS.coachPlan.icon, label: t('scouted_layer_coach_plan'), on: hmShowCoachPlan, onToggle: () => setHmShowCoachPlan(v => !v) },
+    { key: 'notes', icon: FIELD_LAYERS.notes.icon, label: t('scouted_layer_notes'), on: hmShowAnnotations, onToggle: () => setHmShowAnnotations(v => !v) },
+  ];
+
   // §116 Stage 4.2 — LANDSCAPE (hero available): the heatmap is the HERO, the
-  // report column (scope pills + sections) is the rail BY REFERENCE. Collapses
-  // to the §116 strip on cramped tablet-landscape. The §81 fullscreen overlay
-  // trigger is landscape-suppressed (the hero is already maximized).
+  // report column (sections) is the rail BY REFERENCE. The view controls now live
+  // in structured rail zones (scope/layers/isolate) + the floating phaseControl;
+  // primaryAction is null (coach plan auto-persists on draw-done, GAP B). Collapses
+  // to the §116 strip on cramped tablet-landscape, pinning the most-used layers.
   if (landscape && heroAvailable) {
     return (
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
@@ -2152,8 +2199,9 @@ export default function ScoutedTeamPage() {
           railMin={200}
           header={pageHeaderEl}
           artifact={heatmapHeroEl}
-          rail={<>{scopePillsEl}{columnEl}</>}
-          collapsed={{ tabs: [], count: null, onBack: () => navigate('/') }}
+          phaseControl={fvPhaseControlEl}
+          rail={<>{fvControlZonesEl}{columnEl}</>}
+          collapsed={{ tabs: [], pins: fvPins, count: null, onBack: () => navigate('/') }}
         />
         {modalsEl}
       </div>
