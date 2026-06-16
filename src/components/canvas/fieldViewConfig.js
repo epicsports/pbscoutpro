@@ -10,7 +10,8 @@
  * while the page owns data binding.
  *
  *   phaseControl kind: 'capture' (PaT "E", no ▶) | 'review' (full + ▶) | 'coach' (read-bar + ▶)
- *                      | 'filter' (optional) | null (none — Konfig)  ← enum-agnostic per D4/§8
+ *                      | 'setup' (pick-a-phase-to-edit, NO ▶ transport) | 'filter' (optional)
+ *                      | null (none — Konfig)  ← enum-agnostic per D4/§8
  *   primaryAction kind: 'save' (amber) | 'end' (danger) | 'mode' (mode-dependent) | null
  *   railZones: ordered list of { type: 'scope'|'layers'|'isolate'|'status'|'tabs', key }
  *   pinned: collapsed-strip semantic LAYER/TOOL keys (phaseControl + primaryAction stay
@@ -29,7 +30,7 @@ export const FIELD_LAYERS = {
   shooter:     { icon: '◦', label: 'Shooter' },
   visibility:  { icon: '◠', label: 'Visibility' },
   coachPlan:   { icon: '✎', label: 'Coach plan' },
-  notes:       { icon: '☰', label: 'Notes' },
+  notes:       { icon: '▭', label: 'Notes' },   // not ☰ — collides with the strip's generic expand
   place:       { icon: '✛', label: 'Place' },
   sourceFilter:{ icon: '⒡', label: 'Source' },
 };
@@ -74,11 +75,14 @@ export const FIELD_VIEWS = {
       { type: 'layers', key: 'layers' },
     ],
   },
-  'heatmap': {                        // TrainingResults + match heatmap summary
-    phaseControl: 'review',           // ▶ replay
+  'training-results': {               // the ONLY generic-heatmap view (FIX 3: no separate
+                                      // "match heatmap summary" exists — the match heatmap
+                                      // IS 'match-review'; the coach aggregate IS 'scouted-team').
+    phaseControl: 'review',           // ▶ replay per brief table — but whether training drills
+                                      // have a replay axis at all is a Phase-C wiring confirm.
     primaryAction: null,              // review — nothing to commit
     pinned: ['sourceFilter'],
-    railZones: [{ type: 'scope', key: 'sourceFilter' }],
+    railZones: [{ type: 'scope', key: 'sourceFilter' }],   // all/scout/coach/player
   },
   'layout-analytics': {
     phaseControl: 'filter',           // optional filter
@@ -111,7 +115,7 @@ export const FIELD_VIEWS = {
     railZones: [{ type: 'layers', key: 'layers' }],
   },
   'tactic': {                         // migrated LAST; SHELL only, internals untouched
-    phaseControl: 'review',           // full (per-phase setup)
+    phaseControl: 'setup',            // pick-a-phase-to-PLACE-positions — NO ▶ (nothing to replay)
     primaryAction: 'save',            // Save
     pinned: ['players', 'coachPlan'],
     railZones: [{ type: 'layers', key: 'layers' }],
