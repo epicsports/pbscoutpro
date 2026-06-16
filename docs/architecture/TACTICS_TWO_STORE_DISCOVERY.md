@@ -66,3 +66,10 @@ _Pairs with DESIGN_DECISIONS § 96 / § 97.5 + the ITEM-1 drawing-unify (`4ae31c
 4. DELETE the `layouts/{id}/tactics` subcollections under a GO'd brief — this is the "later cleanup" the migration script anticipated.
 
 _Anchors: `dataService.js:1584-1611` (live) · `git show 5de2b438:…:223-228` (orphan shape) · `67b95df5` (writer retargeted) · `46497d3a` + `scripts/migration/phase_96_layout_globalization.cjs:64-72,137` (copy-not-move)._
+
+### 8.1 Per-doc coverage check (read-only, 2026-06-16) — `scripts/diag/tactic-orphan-coverage.cjs`
+`collectionGroup('tactics')` census + per-orphan id-twin lookup (zero writes). Census confirmed: **24** orphan · **21** layoutOverlays-live · **9** tournament-live. Twin check of the 24:
+- **19 DELETE-able** — same-id twin present at `layoutOverlays/{lid}/tactics/{tid}` (the §96 STAGE-3 `--dry` "19 copied"; content already live, safe to delete from the orphan path).
+- **5 FLIPS-TO-MIGRATE** — no twin (created on the old path AFTER STAGE-3; the 24−19=5 drift). Must `copySub`-by-id forward, then delete. Across 3 layouts: `AH6dEG1yZcZFc5lap3uQ` (×2) · `OajoxCMTnf1eK5wDV1Ji` (×1) · `kwamYyvZ7th8WYLTHokJ` (×2).
+
+→ DELETE-brief = migrate the 5 (trivial, subset shape, no key remap) → backup all 24 → delete all 24. (layoutOverlays = 21 = 19 copied + 2 created natively, consistent.)
