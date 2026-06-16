@@ -4,6 +4,7 @@ import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
 import { repairMojibake } from '../utils/mojibake';
 import { playerTeams } from '../utils/playerTeams';
+import { resolvePbliImport } from '../utils/playerImportDedup';
 import { useLeagues } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { useLanguage } from '../hooks/useLanguage';
@@ -312,7 +313,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         }
       }
 
-      let created = 0, updated = 0, skipped = 0, appended = 0;
+      let created = 0, updated = 0, skipped = 0, appended = 0, claimed = 0, flagged = 0;
       // § 72 — accumulates teams[] across rows so a player appearing in
       // multiple rows of one CSV doesn't lose earlier appends to a stale snapshot.
       const liveTeams = new Map(); // playerId → teams[] (live during this import)
@@ -369,7 +370,46 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             }
             continue; // pbliId match is authoritative — done with this row
           }
-          // no pbliId match → fall through to the name-path / create-new
+          // No pbliId match, but this row HAS a pbliId. The team-scoped name-path
+          // below (no-pbliId rows only) would create a SECOND doc when a pbliId-LESS
+          // namesake lives on a different team — the duplicate bug (CC_BRIEF_PLAYER_DEDUP).
+          // Resolve by EXACT name: claim a lone pbliId-less namesake, else flag for a
+          // super-admin to reconcile. Terminal for the pbliId case (always `continue`).
+          const dd = resolvePbliImport(r.player, players);
+          if (dd.action === 'claim') {
+            const tgt = players.find(p => p.id === dd.targetId);
+            const cur = liveTeams.get(tgt.id) || playerTeams(tgt);
+            const upd = { pbliId: r.pbliId };
+            if (teamId && !cur.includes(teamId)) upd.teams = [...cur, teamId];
+            if (r.nickname && r.nickname !== tgt.nickname) upd.nickname = r.nickname;
+            if (r.number && r.number !== tgt.number) upd.number = r.number;
+            if (r.role && r.role !== tgt.role) upd.role = r.role;
+            if (r.playerClass && r.playerClass !== tgt.playerClass) upd.playerClass = r.playerClass;
+            if (r.nationality && r.nationality !== tgt.nationality) upd.nationality = r.nationality;
+            if (r.photoURL && r.photoURL !== tgt.photoURL) upd.photoURL = r.photoURL;
+            if (r.age && Number(r.age) && Number(r.age) !== tgt.age) upd.age = Number(r.age);
+            await ds.updatePlayer(tgt.id, upd, { bump: false });
+            if (upd.teams) liveTeams.set(tgt.id, upd.teams);
+            claimed++;
+            importLog.push(`🔗 ${r.player} — pbliId przypisany do istniejącego gracza bez pbliId (claim)`);
+            continue;
+          }
+          if (dd.action === 'flag') {
+            flagged++;
+            importLog.push(`⚠ ${r.player} — możliwy duplikat (${dd.candidateIds.length} pasujących imion); utworzono nowy gracz — super-admin do scalenia (MergePlayersModal)`);
+          }
+          // 'flag' or 'create' → create a NEW doc here WITH the pbliId, so it's recorded
+          // and we never fall into the team-scoped name-path (which would re-create dups).
+          await ds.addPlayer({
+            name: r.player, nickname: r.nickname || '', number: r.number || '',
+            teamId: teamId || null, teams: teamId ? [teamId] : [],
+            role: r.role || 'player',
+            playerClass: r.playerClass || null, nationality: r.nationality || null,
+            pbliId: r.pbliId || null, photoURL: r.photoURL || null,
+            age: r.age ? Number(r.age) : null,
+          }, { bump: false });
+          created++;
+          continue;
         }
 
         // Name-path — UNCHANGED (within-team name dedup; § 72 keeps this as
@@ -408,7 +448,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
           created++;
         }
       }
-      importLog.push(`✅ Players: ${created} nowych, ${updated} zaktualizowanych, ${appended} dołączonych, ${skipped} bez zmian`);
+      importLog.push(`✅ Players: ${created} nowych, ${updated} zaktualizowanych, ${appended} dołączonych, ${claimed} claim (pbliId), ${flagged} do scalenia, ${skipped} bez zmian`);
       importLog.push(`✅ Teams: ${uniqueTeams.length} total · ${teamsWithDivisionWritten} z dywizją ${league}`);
       // Catalog changed → bump the version marker once so clients refresh their
       // cached catalog on next load (bulk import bumps once here, not per row).

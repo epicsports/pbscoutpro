@@ -16,11 +16,15 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, getDocs, setDoc, collection, collectionGroup, query, where, increment, arrayUnion, waitForPendingWrites } from 'firebase/firestore';
 import * as ds from './dataService';
 import { buildPlayerPointsFromMatch, computePlayerStats } from '../utils/playerStats';
+import { resolvePbliImport } from '../utils/playerImportDedup';
 
 export function installTestBridge() {
   if (typeof window === 'undefined') return;
   window.__pbtest = {
     signIn: (email, password) => signInWithEmailAndPassword(auth, email, password),
+    // Pure dedup resolver (CC_BRIEF_PLAYER_DEDUP) — exposed for deterministic e2e
+    // coverage of the identity-critical claim/flag/create decision (no Firestore).
+    resolvePbliImport: (rowName, players) => resolvePbliImport(rowName, players),
 
     // Pin the dataService base path on THIS module instance. App sets it via
     // its own setBasePath on the main graph; the dynamically-imported bridge can

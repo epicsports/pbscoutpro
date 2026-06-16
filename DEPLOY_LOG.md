@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-16 — [FEATURE] Player dedup Item 1 — import-prevention (pbliId claim / ambiguous-flag)
+**App + e2e, NO rules change.** Tier-2 (identity), Jacek GO. Item 1 of `docs/briefs/CC_BRIEF_PLAYER_DEDUP.md`.
+- **Fix:** the player CSV import (`CSVImport.jsx`) no longer creates a duplicate when a row HAS a pbliId but no pbliId-match and a **pbliId-less namesake exists on a different team**. New `src/utils/playerImportDedup.js` (`resolvePbliImport`, pure) decides: **exactly one exact-name pbliId-less doc → CLAIM** (stamp pbliId + append team); **2+ or a different-pbliId namesake → FLAG** (create + log a "super-admin to merge" warning in the import report); **none → create**. Terminal for the pbliId case (never falls into the old team-scoped name-path that re-created dups). Conservative threshold (auto-claim only the single unambiguous case — identity = high blast radius).
+- **NOT yet (Items 2-3, follow-on):** persistent reconcile queue + super-admin surface (flags currently surface in the import log for manual `MergePlayersModal` merge) · migration for existing dups. Both GO-gated; migration `--live` = Hard-ESCALATE.
+- **e2e:** `player-dedup.spec.js` — resolver covers all 4 decisions (create / claim / flag-different-pbliId / flag-2+) + case/whitespace-insensitive name match (deterministic, via bridge). `roster-division` unaffected. build + precommit green.
+
 ## 2026-06-16 — [FIX/CLOSE] B26 closed — retire the misframed roster-repair box + author the dedup brief
 **App (CoachTabContent box removal) + doc.** Tier-1 (UI removal, non-destructive, no rules change).
 - **B26 investigation verdict:** all framed suspects ruled out — `tournament` is a LIVE `useTournaments()` subscription (a persisted stamp WOULD collapse the box); `isScout → isCoach → isAdmin → isSuperAdmin` (rules:53) so a super-admin's stamp write is PERMITTED; super correctly saw the `isSuperAdmin` box. The box MISFRAMED the real issue.
