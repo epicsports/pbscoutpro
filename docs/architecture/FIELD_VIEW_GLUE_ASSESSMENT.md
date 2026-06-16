@@ -52,3 +52,27 @@ ScoutedTeam wired clean + shipped (glue LOW, as predicted). But the MatchPage st
 - `pins`: per-team layers don't map to single-icon strip pins cleanly (4 toggles) — pin combined Positions/Shots (toggle both teams) or skip.
 
 **Verdict:** stopped before editing — per the established discipline (Jacek validated "right to stop rather than brute-force"). Both decisions are Jacek/Opus calls touching the two most fragile/polished flows. Recommended sequencing: (a) Match-review first IF the §B-row→FieldPhaseControl replacement is approved (else keep §B row in-slot); (b) Scout-point capture as its OWN migration brief (structural, highest-risk, Tactic-tier caution).
+
+---
+
+## §3 — Phase C triage (2026-06-16, read-only) — the 6 "non-rail views" are NOT uniform
+
+After ScoutedTeam + Match-review shipped, started Phase C. Reading the 6 candidates shows "migrate all 6 onto CanvasRailLayout" doesn't hold — the rail archetype needs (a) a canvas HERO **and** (b) rail-worthy controls. Several lack one:
+
+| View | Canvas-primary? | Existing rail content | Verdict |
+|---|---|---|---|
+| **TrainingResults** | ❌ NO — it's a scrolling **results dashboard** (heatmap is ONE section among overrides/bunker-breakdown/matchup-history) | n/a | **Not a rail view — keep as dashboard.** Force-fitting (heatmap=hero) breaks the report. |
+| **BunkerEditor** | yes | none — bare canvas + bottom-sheet naming + save bar | **Thin wrap** — empty rail unless the naming bottom-sheet is redesigned INTO the rail. Low shell value (collapse only). super-gated. |
+| **Ballistics** | yes | none — canvas + a status line (Shooter/Visibility are inherent state, NOT toggles) | **Thin wrap** — near-empty rail. + carries the FieldCanvas→InteractiveCanvas swap (DPR change). Low shell value. |
+| **LayoutDetail (Konfig)** | yes | **YES** — config mode bar (Names/Zones/Lines) + view toggles (labels/half/lines/zones) + tactics list | **Real candidate** (most value) — but complex (immersive edge-tabs, zone/line editing). |
+| **LayoutAnalytics** | yes | scope pills + density | **Candidate** — but flagged "tangled, untangle-then-wrap" (NEXT_TASKS arc-B). |
+| **Tactic** | yes | toolbar + draw + player setup | **Candidate, LAST** (fragile, shell-only). |
+
+**Recommended Phase C scope (reshaped):**
+1. **Drop TrainingResults** from the rail set — it's a dashboard; leave as-is.
+2. **LayoutDetail** = the genuinely-valuable migration (real rail content). Do it next (its own careful pass — immersive tabs).
+3. **LayoutAnalytics** — after untangling (per the arc-B note).
+4. **Tactic** — LAST, shell-only.
+5. **BunkerEditor + Ballistics** = LOW priority — thin/near-empty rails; the shell only buys them collapse-consistency. Decide whether they're worth wrapping at all (and Ballistics' contract "layers" + BunkerEditor's "rail naming" would have to be BUILT, not wired). Ballistics also carries the FieldCanvas deletion (canvas-unify residual).
+
+**Stopped before editing** (no clean mechanical migration exists; brute-forcing a dashboard/empty-rail wrap would be actively wrong). Scope decision owed: confirm the reshaped set + order.
