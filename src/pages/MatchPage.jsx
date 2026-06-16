@@ -10,6 +10,9 @@ import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
+import { RailZone, RailToggleList } from '../components/canvas/RailZones';
+import FieldPhaseControl from '../components/canvas/FieldPhaseControl';
+import { FIELD_LAYERS } from '../components/canvas/fieldViewConfig';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
@@ -2107,6 +2110,10 @@ export default function MatchPage() {
               pins. Settle/Mid disable when the CURRENT scope (aggregate or
               previewed point) has no such keyframes (B2). Amber only on the
               active/playing element (§27). */}
+          {/* Portrait-only: in landscape the phase row + per-team toggle move to the
+              floating phaseControl (mrPhaseControlEl) + the structured layers rail zone
+              (mrLayerZoneEl). */}
+          {!(landscape && heroAvailable) && (<>
           <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', alignItems: 'stretch', gap: 6 }}>
             <div
               data-testid="phase-play"
@@ -2165,6 +2172,7 @@ export default function MatchPage() {
             visibility={hmVisibility}
             onChange={setHmVisibility}
           />
+          </>)}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
             {/* §B B6 — preview discoverability: the section label carries the
@@ -2505,6 +2513,47 @@ export default function MatchPage() {
       </>
     );
 
+    // ── Field View shell wiring (Match-review; decisions 2026-06-16: replace the §B
+    // phase row with FieldPhaseControl). State→props only; portrait keeps the §B row. ──
+    const mrPhaseControlEl = (
+      <FieldPhaseControl
+        kind="review"
+        phases={[
+          { key: 'break', label: t('phase_break') },
+          { key: 'settle', label: t('phase_settle'), disabled: !hasSettleStage },
+          { key: 'mid', label: t('phase_mid'), disabled: !hasMidStage },
+        ]}
+        phase={(phasePlaying && canReplay) ? (replayStage || 'break') : phasePin}
+        onPhase={pinPhase}
+        done={{ break: true, settle: hasSettleStage, mid: hasMidStage }}
+        canReplay={canReplay}
+        replaying={phasePlaying && canReplay}
+        onReplay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
+      />
+    );
+    const mkTeamToggle = (team, layer) => ({
+      on: hmVisibility[team][layer],
+      onToggle: (next) => setHmVisibility(v => ({ ...v, [team]: { ...v[team], [layer]: next } })),
+    });
+    const mrLayerItems = [
+      { key: 'positions', icon: FIELD_LAYERS.positions.icon, label: FIELD_LAYERS.positions.label, perTeam: true, a: mkTeamToggle('teamA', 'positions'), b: mkTeamToggle('teamB', 'positions') },
+      { key: 'shots', icon: FIELD_LAYERS.shots.icon, label: FIELD_LAYERS.shots.label, perTeam: true, a: mkTeamToggle('teamA', 'shots'), b: mkTeamToggle('teamB', 'shots') },
+    ];
+    const mrLayerZoneEl = (
+      <RailZone label="Layers"><RailToggleList items={mrLayerItems} /></RailZone>
+    );
+    // Strip pins toggle BOTH teams for a layer (per-team granularity stays in the overlay).
+    const mkPinToggle = (layer) => (_k, next) => setHmVisibility(v => ({
+      teamA: { ...v.teamA, [layer]: next }, teamB: { ...v.teamB, [layer]: next },
+    }));
+    const mrPins = [
+      { key: 'positions', icon: FIELD_LAYERS.positions.icon, label: FIELD_LAYERS.positions.label, on: hmVisibility.teamA.positions || hmVisibility.teamB.positions, onToggle: mkPinToggle('positions') },
+      { key: 'shots', icon: FIELD_LAYERS.shots.icon, label: FIELD_LAYERS.shots.label, on: hmVisibility.teamA.shots || hmVisibility.teamB.shots, onToggle: mkPinToggle('shots') },
+    ];
+    const mrPrimaryAction = (!isClosed && !isViewer)
+      ? { label: t('match_end_btn'), onClick: () => closeMatchConfirm.ask(true), variant: 'danger', testId: 'rail-primary-end' }
+      : null;
+
     // §116 Stage 4.3 — LANDSCAPE (field image available): the review heatmap is
     // the HERO; scoreboard + points column + sticky actions are the rail BY
     // REFERENCE. Collapses to the §116 strip on cramped tablet-landscape.
@@ -2517,8 +2566,10 @@ export default function MatchPage() {
             railMin={200}
             header={reviewHeaderEl}
             artifact={reviewHeatmapEl}
-            rail={<>{renderScoreboard(true)}{reviewColumnEl}{renderStickyActions(true)}</>}
-            collapsed={{ tabs: [], count: null, onBack: () => navigate(backToParent) }}
+            phaseControl={mrPhaseControlEl}
+            primaryAction={mrPrimaryAction}
+            rail={<>{renderScoreboard(true)}{mrLayerZoneEl}{reviewColumnEl}{renderStickyActions(true)}</>}
+            collapsed={{ tabs: [], pins: mrPins, count: null, onBack: () => navigate(backToParent) }}
           />
           {reviewModalsEl}
         </div>

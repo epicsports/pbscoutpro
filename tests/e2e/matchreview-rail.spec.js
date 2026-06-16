@@ -45,4 +45,26 @@ test.describe('Stage 4.3 — MatchPage review landscape rail', () => {
     const pBox2 = await canvas.boundingBox();
     expect(pBox2.height).toBeLessThan(PORTRAIT.height * 0.7);
   });
+
+  // Field View shell (Match-review): the §B phase row → floating FieldPhaseControl
+  // (kind='review'), per-team A|B layer toggles (GAP F), combined strip pins, and the
+  // rail-expand affordance. Review heatmap is view-only → the canvas tap-accuracy guardrail
+  // is covered by rail-collapse.spec.js (same shell collapse path).
+  test('tablet-collapse: review shell — floating phase, per-team A|B layers, pins, expand', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    await page.setViewportSize(TABLET_LS);
+    await page.goto('/' + url);
+    await expect(page.getByTestId('rail-strip-back')).toBeVisible({ timeout: 20000 });
+    // phaseControl (review kind) floats ON the field — present even when collapsed.
+    await expect(page.getByTestId('field-phase')).toBeVisible();
+    // GAP D — combined layer pins + the expand affordance (pins don't replace it).
+    await expect(page.getByTestId('rail-strip-pin-positions')).toBeVisible();
+    await expect(page.getByTestId('rail-strip-pin-shots')).toBeVisible();
+    await expect(page.getByTestId('rail-strip-expand')).toBeVisible();
+    // GAP F — open the rail → one Positions row with TWO compact A|B toggles (two-team view).
+    await page.getByTestId('rail-strip-expand').click();
+    await expect(page.getByTestId('rail-overlay-panel')).toBeVisible();
+    await expect(page.getByTestId('rail-toggle-positions-a')).toBeVisible();
+    await expect(page.getByTestId('rail-toggle-positions-b')).toBeVisible();
+  });
 });

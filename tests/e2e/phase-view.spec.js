@@ -136,20 +136,25 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await expect(page.getByTestId('phase-seg-break')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('landscape rail: phase row present, End match only via ⋮; portrait keeps inline', async ({ page }) => {
+  test('landscape: phase + End match FLOAT (Field View shell); portrait keeps the §B row inline', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await openReview(page, PHONE_LS);
 
-    // Rail carries the phase row + compact scoreboard; inline End match gone.
-    await expect(page.getByTestId('phase-play')).toBeVisible();
+    // Field View shell (2026-06-16): in landscape the §B phase row is REPLACED by the
+    // floating FieldPhaseControl, and End match is a floating danger primaryAction — both
+    // ride the field (zero rail height). The in-rail §B row is portrait-only now.
+    await expect(page.getByTestId('field-phase')).toBeVisible();
+    await expect(page.getByTestId('phase-play')).toHaveCount(0);       // old in-rail row gone in landscape
     await expect(page.getByTestId('review-scoreboard')).toBeVisible();
     await expect(page.getByTestId('end-match-inline')).toHaveCount(0);
-    // ⋮ ActionSheet still carries End match.
+    await expect(page.getByTestId('rail-primary-end')).toBeVisible();  // End match floats (danger)
+    // ⋮ ActionSheet still carries End match too.
     await page.getByTestId('match-menu-btn').click();
     await expect(page.getByTestId('end-match-final-action')).toBeVisible();
 
-    // Portrait keeps the inline destructive button.
+    // Portrait keeps the inline §B phase row + inline destructive button (unchanged).
     await openReview(page, PORTRAIT);
+    await expect(page.getByTestId('phase-play')).toBeVisible();
     await expect(page.getByTestId('end-match-inline')).toBeVisible();
   });
 
