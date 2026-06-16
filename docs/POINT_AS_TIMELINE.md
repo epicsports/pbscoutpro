@@ -1,6 +1,7 @@
 # Point as Timeline ("Punkt jako Oś czasu") — Workstream Charter & Backlog
 
-> **Status:** FINALIZED — Stage 0 ground-truth (CC 2026-06-02) + decisions **D1–D3 LOCKED 2026-06-02**.
+> **Status:** FINALIZED — Stage 0 ground-truth (CC 2026-06-02) + decisions **D1–D3 LOCKED 2026-06-02**;
+> **D4 (full phase axis + naming) RATIFIED 2026-06-16**; Field View shell boundary drawn (§8).
 > v2 (2026-06-02): folded in Jacek's detailed phase/UX description. Lives in repo as
 > `docs/POINT_AS_TIMELINE.md`. **Single reference** for this workstream — read first; don't re-invent.
 
@@ -44,6 +45,21 @@ Stage 2.** Stage 2 reuses ONLY the canonical draw.
   replay. NOT pure snapshot-chaining; NOT replacing `homeData/awayData`.
 - **D3 — Self-log/kiosk are NOT prerequisites → Stage 7.** Scout-side timeline self-contained.
 > **Consequence:** scout-side (Stages 2–6) does NOT depend on events A/B/C (→ Stage 7).
+- **D4 — Full phase axis reserved + named (RATIFIED 2026-06-16, Jacek GO).** The phase ENUM is the full ordered
+  set **`[preBreakout, breakout, settle, mid, endgame]`**, with **`inplay` = mid+endgame** as a derived group.
+  **`alive`/`dead` = PLAYER STATUS, a separate dimension — NOT a phase** (corrects the death-taxonomy conflation).
+  - **Capture today is a SUBSET** (Break/Settle/Mid + End). D4 widens the *model namespace*, NOT the capture UI.
+    Building Pre-Breakout/Endgame capture is OUT of scope here — D4 only reserves the addressable phases so future
+    view-side features (e.g. Pre-Breakout→Breakout movement animation, fuller replay) have a phase to attach to.
+  - **Additive, near-zero migration (CC-verified 2026-06-16 against the persisted shape):** the only stage literals
+    ever persisted in `point.timeline[]` are `'settle'`/`'mid'` (`MatchPage.jsx:1263` `STAGE_ORDER`, write/rehydrate
+    `:1531`; merge `dataService.js:1133`) — **D4 keeps both names verbatim**. `'break'` is NEVER a `timeline[]`
+    literal (it's keyframe #0 = `homeData/awayData`, transient capture-UI state only), so `break→breakout` is a
+    UI-constant rename, not a data migration. `preBreakout`/`endgame` are net-new optional keyframes. → existing
+    Break/Settle/Mid keyframes stay valid; readers tolerate phases they don't render.
+  - **Naming-lock rationale = forward-correctness, not migration-avoidance:** locking now means any future explicit
+    Break keyframe writes `stage:'breakout'` from day one (avoids a later `break`/`breakout` literal split).
+  - **Shell-agnostic:** the Field View `phaseControl` slot is enum-agnostic, so widening the enum needs no shell change.
 
 ## 3. Target spine (per D2, refined with Jacek's phase/UX model 2026-06-02)
 **Stages = bounded keyframes** (the keyframe-per-stage realization of D2; continuous timestamped delta-events
@@ -157,3 +173,26 @@ events A/B/C + PPT picker + claim flow = Stage 7 cluster (NOT a blocker for 2–
 - **P2:** 4 (typed moves) → 5 (time axis) → 6 (scrubber).
 - **P3:** 7 (self-log/kiosk/observations + events A/B/C) → 8 (analytics).
 - **Cross-cutting (any time):** offline-write durability discovery (unverified; own reliability check).
+
+## 8. Boundary — Field View shell ⟷ Point-as-Timeline (2026-06-16, Jacek nod)
+The Field View shell (Opus, new) and this workstream both touch "game phase." The line, so neither redesigns the other:
+
+**Point-as-Timeline OWNS (Field View does NOT redesign):** the capture-side phase MODEL (stage-keyframes per §3
++ D4 enum); storage (`point.timeline[]` additive keyframes keyed by `slotIds`; Break = kf#0 = `homeData/awayData`);
+the scout-capture **"E"** stage-switcher (`50b925f0`, merged top bar — start-side pill LEFT + E mini-timeline RIGHT,
+one row, vertical rejected); the reason radial (Settle/Mid only) + per-stage notes/drawings via the ONE canonical draw.
+
+**Field View shell OWNS (Opus):** the SHELL around the canvas (rail / collapsed-strip / pinned-semantic / focus,
+unified across all 10 field views — only 4/10 on CanvasRailLayout today); the LAYER model (show/hide
+players/shots/zones/bunkers/heatmap/drawings + per-view defaults + semantic pinning); the 3 drawing-persistence
+targets as a contract (scoutNotes=`updateAnnotations` / coachNotes=`updateScoutedTeam` / tacticNotes=`updateLayoutTactic`).
+
+**The seam — `phaseControl` is a black-box SLOT** the shell HOSTS but does NOT define:
+- Scout-point (capture) view → slot = the Point-as-Timeline **"E"** switcher. Field View does NOT reimplement it.
+- Coach views (Match-review, ScoutedTeam) → slot = the coach read-mode phase bar (DISTINCT from "E" per §3).
+- Config-only views (LayoutDetail) → `phaseControl: null` (slot empty).
+- Field View defines the slot's position/size/behavior across rail vs collapsed-strip vs focus — NOT the phase enum it carries.
+
+**Folds into the Field View shell build brief (not separate tickets):** ITEM-2 folded-rail opponent controls;
+ScoutedTeam-vs-Match phase-language unification; canvas-unify residual (Ballistics→InteractiveCanvas, FieldCanvas
+delete, DPR correctness — same gate). These are SUBSETS of the shell. (Cross-ref `FIELD_VIEW_INVENTORY.md`.)
