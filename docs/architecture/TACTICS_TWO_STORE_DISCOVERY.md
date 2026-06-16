@@ -47,3 +47,22 @@ Layout tactics = coach playbook, reusable, travel with the OVERLAY (not the glob
 3. **Opus brief:** Option A (retire the tournament store per § 97.5) once the count is known.
 
 _Pairs with DESIGN_DECISIONS § 96 / § 97.5 + the ITEM-1 drawing-unify (`4ae31cfc`)._
+
+---
+
+## 8. Orphan verdict — `layouts/{id}/tactics` (24 docs) — code+git diagnosis 2026-06-16 (TRACK 2)
+
+**VERDICT: DEAD legacy → DELETE (super-admin, GO'd). NOT a migrate** — copies already exist at the live path. This answers §6's "cleanup vs migrate" open question.
+
+- **Schema:** orphan shape (`name / myTeamId / steps / freehandStrokes / createdAt`, from `git show 5de2b438:src/services/dataService.js:223-228`) is a strict **subset** of today's `layoutOverlays` `addLayoutTactic` shape (`name/squadCode/players/shots/bumps/myTeamId/freehandStrokes/createdAt`). Old `steps` is the precursor to `players/shots/bumps`. Same store, earlier schema — not a distinct data class.
+- **Write-path history:** `layouts/{id}/tactics` was the sole layout-tactics path through v0.11.0 (`5de2b438`). Commit **`67b95df5`** ("§96 STAGE 1", 2026-05-31) retargeted **all four CRUD fns in one diff** (`subscribe/add/update/deleteLayoutTactic`) → `layoutOverlays/{id}/tactics`. **Since `67b95df5`, zero code reads or writes the old path.** Writer fully removed (not dormant); the only surviving `'layouts'` refs (`dataService.js:395, 2044, 2180`) are base-doc geometry `getDoc`s, never the subcollection.
+- **Copies already exist:** commit **`46497d3a`** ("§96 STAGE 3") ran `phase_96_layout_globalization.cjs`, whose `copySub()` (lines 64-72) does `dstCol.doc(d.id).set(d.data())` — copy-by-id, full shape, doc-id preserved — and **explicitly does NOT delete the source** (lines 15-16, 137: "legacy `/layouts` docs NOT deleted (rollback safety) — a later cleanup removes them once verified"). The 24 orphans **are** those rollback-safety copies. Their content lives at `layoutOverlays/{id}/tactics` under the same ids.
+- **Count drift (19 copied vs 24 source vs 21 live):** verify at execution time — any of the 24 with NO id-match under `layoutOverlays` was created on the old path post-STAGE-3 and flips to MIGRATE (trivial: same `copySub` by-id, shape is a clean subset, no key remap).
+
+**Proposed plan (do NOT execute — Jacek + Opus decide; `--live` DELETE = Hard ESCALATE / task-GO per Firebase policy):**
+1. (autonomous read) per-doc id-coverage check: each `layouts/{id}/tactics/{tid}` has a same-id twin at `layoutOverlays/{id}/tactics/{tid}`. Expect full coverage.
+2. any uncovered subset → MIGRATE forward first (`copySub` by-id).
+3. JSON backup of all 24 (reuse `phase_90_2b3_dry_backup.cjs` pattern).
+4. DELETE the `layouts/{id}/tactics` subcollections under a GO'd brief — this is the "later cleanup" the migration script anticipated.
+
+_Anchors: `dataService.js:1584-1611` (live) · `git show 5de2b438:…:223-228` (orphan shape) · `67b95df5` (writer retargeted) · `46497d3a` + `scripts/migration/phase_96_layout_globalization.cjs:64-72,137` (copy-not-move)._
