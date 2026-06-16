@@ -178,17 +178,26 @@ function check(file, content, lines) {
     }
 
     // ── 2. Polish strings ──
-    // Check for Polish diacritics in JSX strings (not comments)
-    if (/['"`][^'"`]*[ąęóśźżćńłĄĘÓŚŹŻĆŃŁ][^'"`]*['"`]/.test(line)) {
-      // Exclude comments
-      if (!trimmed.startsWith('//') && !trimmed.startsWith('*') && !trimmed.startsWith('/*')) {
-        WARNINGS.push(`${rel}:${ln} — Polish string detected — translate to English`);
+    // Flag BARE hardcoded Polish in UI source (should go through t('key')). Skip:
+    //   • i18n.js — it IS the dictionary; its `pl:` block values are correctly
+    //     Polish (was 884 false positives, the bulk of the noise).
+    //   • lines containing `t(` — a `t('k') || 'Polski'` FALLBACK is intentional
+    //     (renders only if the key is missing), not debt (was 189 false positives).
+    //   • comments.
+    // Mirrors the EN-literal rule (2b) allowlist; leaves the real ~68-string debt.
+    const isI18nDict = rel.includes('utils/i18n.js');
+    const isComment = trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*');
+    const isFallback = line.includes('t(');
+    if (!isI18nDict && !isComment && !isFallback) {
+      // Polish diacritics in a string literal
+      if (/['"`][^'"`]*[ąęóśźżćńłĄĘÓŚŹŻĆŃŁ][^'"`]*['"`]/.test(line)) {
+        WARNINGS.push(`${rel}:${ln} — Polish string detected — wrap in t('key')`);
       }
-    }
-    // Common Polish words that don't have diacritics
-    const polishWords = /['"`](Ładowanie|Sprawdzanie|Przygotowanie|Turniej|Strzały|Pozycja|Rysuj|Narysuj|Zapisz|Usuń|Edytuj|Dodaj|Szukaj|Notatki|Ksywka|Imię|Nazwisko|Drużyna|Gracz)['"`]/;
-    if (polishWords.test(line) && !trimmed.startsWith('//')) {
-      WARNINGS.push(`${rel}:${ln} — Polish word in UI string — translate to English`);
+      // Common Polish words without diacritics
+      const polishWords = /['"`](Ładowanie|Sprawdzanie|Przygotowanie|Turniej|Strzały|Pozycja|Rysuj|Narysuj|Zapisz|Usuń|Edytuj|Dodaj|Szukaj|Notatki|Ksywka|Imię|Nazwisko|Drużyna|Gracz)['"`]/;
+      if (polishWords.test(line)) {
+        WARNINGS.push(`${rel}:${ln} — Polish word in UI string — wrap in t('key')`);
+      }
     }
 
     // ── 2b. Hardcoded English literals (i18n regression guard) ──
