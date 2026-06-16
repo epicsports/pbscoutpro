@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Field View — pełna matryca (widoki × proporcje)</title>
+<style>
+  :root{
+    --bg:#0a0e17;--surface:#111827;--surfaceLight:#1a2234;--surfaceBar:#0d1117;
+    --surfaceDark:#0f172a;--border:#2a3548;--accent:#f59e0b;--text:#e2e8f0;
+    --textDim:#94a3b8;--textSubtle:#8b95a5;--textMuted:#64748b;
+    --A:#ef4444;--B:#3b82f6;--green:#22c55e;--A_light:#f87171;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif;background:var(--bg);color:var(--text);padding:20px;line-height:1.4}
+  h1{font-size:19px;font-weight:600;margin-bottom:4px}
+  h2{font-size:15px;font-weight:600;margin:26px 0 2px;color:var(--accent);border-top:1px solid var(--border);padding-top:18px}
+  .sub{font-size:13px;color:var(--textDim);margin-bottom:6px}
+  .ctx{font-size:11px;color:var(--textSubtle);margin-bottom:12px}
+  .colh{font-size:10px;color:var(--textDim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;font-weight:600}
+  .grid{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+  .cell{display:flex;flex-direction:column}
+  .frame{display:flex;background:var(--bg);border:1px solid #1b2740;border-radius:9px;overflow:hidden;position:relative}
+  .rail{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+  .canvas-area{flex:1;display:flex;flex-direction:column;min-width:0}
+  .r-hdr{padding:7px 9px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .r-back{color:var(--accent);font-size:15px}
+  .r-title{font-size:10px;font-weight:600;line-height:1.15}
+  .r-titlesub{font-size:8px;color:var(--textDim);text-transform:uppercase;letter-spacing:0.3px}
+  .zone{padding:7px 9px;border-bottom:1px solid var(--border)}
+  .zone-h{font-size:8px;color:var(--textSubtle);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px}
+  .seg{display:flex;background:var(--surfaceDark);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+  .seg span{flex:1;text-align:center;font-size:9px;padding:4px 0;color:var(--textMuted)}
+  .seg .act{background:var(--surfaceLight);color:var(--accent);font-weight:600}
+  .tgl{display:flex;align-items:center;padding:5px 0;font-size:10px;color:var(--text);border-bottom:1px solid rgba(42,53,72,.4)}
+  .tgl:last-child{border-bottom:none}
+  .tgl .ic{width:14px;text-align:center;margin-right:6px;font-style:normal;color:var(--textDim)}
+  .tgl .sw{margin-left:auto;width:26px;height:15px;border-radius:8px;background:var(--border);position:relative;flex-shrink:0}
+  .tgl.on .sw{background:var(--accent)}
+  .tgl .sw::after{content:'';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff}
+  .tgl.on .sw::after{left:13px}
+  .tgl.on .ic{color:var(--accent)} .tgl.off{color:var(--textMuted)}
+  .field{flex:1;background:var(--surfaceDark);position:relative;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--textMuted)}
+  .fld-top{position:absolute;top:6px;right:6px;display:flex;gap:4px;align-items:center}
+  .f-phase{display:flex;align-items:center;background:rgba(13,17,23,.92);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+  .f-phase span{font-size:9px;padding:3px 6px;color:var(--textMuted)}
+  .f-phase .act{background:var(--surfaceLight);color:var(--accent);font-weight:600}
+  .f-phase .done{color:var(--green)}
+  .f-phase .play{padding:3px 5px;color:var(--accent);font-size:9px;border-left:1px solid var(--border)}
+  .f-btn{width:24px;height:22px;background:rgba(13,17,23,.92);border:1px solid var(--border);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text)}
+  /* primary action — floating bottom-right in landscape */
+  .f-primary{position:absolute;bottom:6px;right:6px;background:var(--accent);color:var(--bg);font-size:10px;font-weight:700;padding:7px 13px;border-radius:8px;display:flex;align-items:center;gap:4px}
+  .f-primary.danger{background:transparent;color:var(--A_light);border:1px solid var(--A)}
+  .strip{width:48px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:5px 0;gap:4px;flex-shrink:0}
+  .sbtn{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border-radius:8px;font-size:15px;color:var(--textDim)}
+  .sbtn.on-g{color:var(--green)} .sbtn.on-r{color:var(--A_light)} .sbtn.on-a{color:var(--accent)}
+  .sdiv{width:20px;border-top:1px solid var(--border);margin:2px 0}
+  /* portrait bottom bar */
+  .p-primary{padding:8px;background:var(--accent);color:var(--bg);font-size:11px;font-weight:700;text-align:center;flex-shrink:0}
+  .p-primary.danger{background:transparent;color:var(--A_light);border-top:1px solid var(--A)}
+  .pills{display:flex;flex-wrap:wrap;gap:4px;padding:2px 9px 6px}
+  .pill{font-size:9px;padding:2px 7px;border-radius:9px;border:1px solid var(--border);color:var(--textDim)}
+  .pill.on-g{color:var(--green);border-color:var(--green)} .pill.on-r{color:var(--A_light);border-color:var(--A)} .pill.on-a{color:var(--accent);border-color:var(--accent)}
+  .legend{margin-top:24px;padding:12px 15px;background:var(--surface);border:1px solid var(--border);border-radius:9px;font-size:12px;line-height:1.7}
+</style></head>
+<body>
+<h1>Field View — pełna matryca: widoki × proporcje</h1>
+<p class="sub">4 widoki, każdy w 3 stanach: <b>rozwinięty landscape</b> · <b>zwinięty landscape</b> · <b>portrait</b>. <code style="background:var(--surfaceLight);padding:1px 5px;border-radius:4px;color:var(--accent);font-size:11px">primaryAction</code>: floating w landscape (nie zabiera wysokości), pasek na dole w portrait.</p>
+
+<!-- ===== SCOUT PUNKTU ===== -->
+<h2>① Scouting punktu — primary: ✓ Save point</h2>
+<p class="ctx">capture-faza (Break) · pinned: Positions/Shots/Ustaw · primaryAction = Save point</p>
+<div class="grid">
+  <div class="cell"><div class="colh">Rozwinięty landscape</div>
+    <div class="frame" style="height:210px;width:330px">
+      <div class="rail" style="width:140px">
+        <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">Scouting Toulouse</div><div class="r-titlesub">vs Spa · LIVE</div></div></div>
+        <div class="zone"><div class="zone-h">Start</div><div class="seg"><span class="act">from LEFT ⇄</span></div></div>
+        <div class="zone" style="border-bottom:none"><div class="zone-h">Warstwy</div>
+          <div class="tgl on"><span class="ic">◉</span>Positions<span class="sw"></span></div>
+          <div class="tgl on"><span class="ic">◎</span>Shots<span class="sw"></span></div>
+          <div class="tgl on"><span class="ic">◇</span>Bunkry<span class="sw"></span></div>
+        </div>
+      </div>
+      <div class="canvas-area"><div class="field">pole (capture)
+        <div class="fld-top"><div class="f-phase"><span class="act">B</span><span>S</span><span>M</span></div><div class="f-btn">✎</div><div class="f-btn">⛶</div></div>
+        <div class="f-primary">✓ Save point</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Zwinięty landscape</div>
+    <div class="frame" style="height:210px;width:230px">
+      <div class="strip"><div class="sbtn">‹</div><div class="sdiv"></div><div class="sbtn on-g">◉</div><div class="sbtn on-r">◎</div><div class="sbtn">✛</div><div style="margin-top:auto"><div class="sbtn">⋯</div></div></div>
+      <div class="canvas-area"><div class="field">pole
+        <div class="fld-top"><div class="f-phase"><span class="act">B</span><span>S</span><span>M</span></div><div class="f-btn">✎</div><div class="f-btn">⛶</div></div>
+        <div class="f-primary">✓ Save</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Portrait</div>
+    <div class="frame" style="flex-direction:column;height:280px;width:170px">
+      <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">Scouting Toulouse</div><div class="r-titlesub">vs Spa · 1:0</div></div></div>
+      <div style="display:flex;align-items:center;padding:4px 9px;gap:5px;border-bottom:1px solid var(--border);font-size:9px"><span style="color:var(--textSubtle)">from LEFT ⇄</span><span style="margin-left:auto;color:var(--accent)">●B</span><span style="color:var(--textMuted)">S</span><span style="color:var(--textMuted)">M</span></div>
+      <div class="field" style="flex:1">pole<div class="fld-top"><div class="f-btn">✎</div><div class="f-btn">⛶</div></div></div>
+      <div style="font-size:9px;color:var(--textDim);padding:4px 9px;border-top:1px solid var(--border)">● 0/5 · Jaillard · Chanard…</div>
+      <div class="p-primary">✓ Save point</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== HEATMAPA ===== -->
+<h2>② Podsumowanie meczu (heatmapa) — primary: brak (review)</h2>
+<p class="ctx">review-faza z ▶ replay · pinned: Positions/Shots · brak primaryAction (oglądasz, nie kończysz)</p>
+<div class="grid">
+  <div class="cell"><div class="colh">Rozwinięty landscape</div>
+    <div class="frame" style="height:210px;width:330px">
+      <div class="rail" style="width:140px">
+        <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">Punkt 4 · Ranger</div><div class="r-titlesub">match review</div></div></div>
+        <div class="zone" style="border-bottom:none"><div class="zone-h">Warstwy</div>
+          <div class="tgl on"><span class="ic">◉</span>Positions<span class="sw"></span></div>
+          <div class="tgl on"><span class="ic">◎</span>Shots<span class="sw"></span></div>
+          <div class="tgl off"><span class="ic">↗</span>Kierunki<span class="sw"></span></div>
+          <div class="tgl off"><span class="ic">╱</span>Linie<span class="sw"></span></div>
+        </div>
+      </div>
+      <div class="canvas-area"><div class="field">heatmapa
+        <div class="fld-top"><div class="f-phase"><span class="done">B</span><span class="act">S</span><span>M</span><span class="play">▶</span></div><div class="f-btn">✎</div><div class="f-btn">⛶</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Zwinięty landscape</div>
+    <div class="frame" style="height:210px;width:230px">
+      <div class="strip"><div class="sbtn">‹</div><div class="sdiv"></div><div class="sbtn on-g">◉</div><div class="sbtn on-r">◎</div><div style="margin-top:auto"><div class="sbtn">⋯</div></div></div>
+      <div class="canvas-area"><div class="field">heatmapa
+        <div class="fld-top"><div class="f-phase"><span class="done">B</span><span class="act">S</span><span>M</span><span class="play">▶</span></div><div class="f-btn">✎</div><div class="f-btn">⛶</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Portrait</div>
+    <div class="frame" style="flex-direction:column;height:280px;width:170px">
+      <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">Punkt 4 · Ranger</div><div class="r-titlesub">review</div></div></div>
+      <div class="field" style="flex:1.3">heatmapa<div class="fld-top"><div class="f-phase"><span class="done">B</span><span class="act">S</span><span>M</span><span class="play">▶</span></div></div><div style="position:absolute;top:6px;left:6px;display:flex;gap:4px"><div class="f-btn">✎</div><div class="f-btn">⛶</div></div></div>
+      <div class="zone" style="border-bottom:none"><div class="zone-h">Warstwy</div><div class="pills"><span class="pill on-g">●Positions</span><span class="pill on-r">⊕Shots</span><span class="pill">↗Kierunki</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== BALLISTICS ===== -->
+<h2>③ Ballistics — primary: brak (query)</h2>
+<p class="ctx">faza opcjonalna bez ▶ · pinned: Shooter/Widoczność · brak primaryAction</p>
+<div class="grid">
+  <div class="cell"><div class="colh">Rozwinięty landscape</div>
+    <div class="frame" style="height:200px;width:330px">
+      <div class="rail" style="width:140px">
+        <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">Ballistics</div><div class="r-titlesub">tap · from-bunker</div></div></div>
+        <div class="zone" style="border-bottom:none"><div class="zone-h">Warstwy</div>
+          <div class="tgl on"><span class="ic">◦</span>Shooter<span class="sw"></span></div>
+          <div class="tgl on"><span class="ic">◠</span>Widoczność<span class="sw"></span></div>
+          <div class="tgl on"><span class="ic">◇</span>Bunkry<span class="sw"></span></div>
+        </div>
+      </div>
+      <div class="canvas-area"><div class="field">tor lotu
+        <div class="fld-top"><div class="f-phase"><span class="act">B</span><span>S</span><span>M</span></div><div class="f-btn">⛶</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Zwinięty landscape</div>
+    <div class="frame" style="height:200px;width:230px">
+      <div class="strip"><div class="sbtn">‹</div><div class="sdiv"></div><div class="sbtn on-a">◦</div><div class="sbtn on-g">◠</div><div style="margin-top:auto"><div class="sbtn">⋯</div></div></div>
+      <div class="canvas-area"><div class="field">tor lotu
+        <div class="fld-top"><div class="f-phase"><span class="act">B</span><span>S</span><span>M</span></div><div class="f-btn">⛶</div></div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Portrait</div>
+    <div class="frame" style="flex-direction:column;height:280px;width:170px">
+      <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">Ballistics</div><div class="r-titlesub">tap · status: ready</div></div></div>
+      <div class="field" style="flex:1.3">tor lotu<div class="fld-top"><div class="f-phase"><span class="act">B</span><span>S</span><span>M</span></div><div class="f-btn">⛶</div></div></div>
+      <div class="zone" style="border-bottom:none"><div class="zone-h">Warstwy</div><div class="pills"><span class="pill on-a">◦Shooter</span><span class="pill on-g">◠Widoczność</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== KONFIG ===== -->
+<h2>④ Konfiguracja layoutu — primary: ✓ Save (edycja)</h2>
+<p class="ctx">brak fazy (geometria) · pinned: Labels/Strefy/Linie · primaryAction = Save (po edycji)</p>
+<div class="grid">
+  <div class="cell"><div class="colh">Rozwinięty landscape</div>
+    <div class="frame" style="height:200px;width:330px">
+      <div class="rail" style="width:140px">
+        <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">British Invitational</div><div class="r-titlesub">konfiguracja</div></div></div>
+        <div class="zone" style="border-bottom:none"><div class="zone-h">Warstwy</div>
+          <div class="tgl on"><span class="ic">A</span>Labels<span class="sw"></span></div>
+          <div class="tgl on"><span class="ic">▢</span>Strefy<span class="sw"></span></div>
+          <div class="tgl off"><span class="ic">╱</span>Linie<span class="sw"></span></div>
+        </div>
+      </div>
+      <div class="canvas-area"><div class="field">edycja geometrii
+        <div class="fld-top"><div class="f-btn">✎</div><div class="f-btn">⛶</div></div>
+        <div class="f-primary">✓ Save</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Zwinięty landscape</div>
+    <div class="frame" style="height:200px;width:230px">
+      <div class="strip"><div class="sbtn">‹</div><div class="sdiv"></div><div class="sbtn on-a">A</div><div class="sbtn on-g">▢</div><div class="sbtn">╱</div><div style="margin-top:auto"><div class="sbtn">⋯</div></div></div>
+      <div class="canvas-area"><div class="field">edycja
+        <div class="fld-top"><div class="f-btn">✎</div><div class="f-btn">⛶</div></div>
+        <div class="f-primary">✓ Save</div>
+      </div></div>
+    </div>
+  </div>
+  <div class="cell"><div class="colh">Portrait</div>
+    <div class="frame" style="flex-direction:column;height:280px;width:170px">
+      <div class="r-hdr"><span class="r-back">‹</span><div><div class="r-title">British Invitational</div><div class="r-titlesub">konfiguracja</div></div></div>
+      <div class="field" style="flex:1">edycja geometrii<div class="fld-top"><div class="f-btn">✎</div><div class="f-btn">⛶</div></div></div>
+      <div class="zone"><div class="zone-h">Warstwy</div><div class="pills"><span class="pill on-a">A Labels</span><span class="pill on-g">▢ Strefy</span><span class="pill">╱ Linie</span></div></div>
+      <div class="p-primary">✓ Save</div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <b style="color:var(--accent)">primaryAction — czwarty slot kontraktu (opcjonalny, deklarowany):</b><br>
+  • <b>Landscape</b> (rozwinięty + zwinięty) → floating amber w prawym dolnym rogu pola = <b>zero zabranej wysokości</b> (jak faza w prawym górnym).<br>
+  • <b>Portrait</b> → pasek pełnej szerokości na dole, jak macie dziś (Save point).<br>
+  • <b>Nie każdy widok ma</b>: Scout=Save point · Konfig=Save · Heatmapa/Ballistics=brak (review/query). Widok deklaruje albo nie.<br>
+  • Wariant <b>danger</b> (End match) = obrys czerwony zamiast wypełnienia amber.<br>
+  Pełen kontrakt = 4 sloty: rail · phaseControl (róg góra) · field-tools (róg góra) · primaryAction (róg dół / pasek portrait).
+</div>
+</body></html>
