@@ -76,3 +76,22 @@ After ScoutedTeam + Match-review shipped, started Phase C. Reading the 6 candida
 5. **BunkerEditor + Ballistics** = LOW priority — thin/near-empty rails; the shell only buys them collapse-consistency. Decide whether they're worth wrapping at all (and Ballistics' contract "layers" + BunkerEditor's "rail naming" would have to be BUILT, not wired). Ballistics also carries the FieldCanvas deletion (canvas-unify residual).
 
 **Stopped before editing** (no clean mechanical migration exists; brute-forcing a dashboard/empty-rail wrap would be actively wrong). Scope decision owed: confirm the reshaped set + order.
+
+---
+
+## §4 — Phase C resolution (2026-06-16): the mechanical wiring is DONE
+
+Reading PlayerStats + Hitability (the other two CanvasRailLayout views) closes the loop:
+
+- **PlayerStats** — on CanvasRailLayout already; `<HeatmapCanvas showPositions showShots={false}>` is HARDCODED, no phase/scope/layer state. **Nothing to wire** — already shell-compliant (rail = report column, generic-expand collapse). The contract's "phaseControl + scope/layers" are aspirational features that don't exist.
+- **Hitability** — already populates `collapsed.tabs` (config/track/sum); no layer toggles or phase. **Already shell-compliant.**
+
+**So the Field View shell's MECHANICAL wiring is complete for its natural family (the 4 rail-native views):**
+- Match-review ✅ wired · ScoutedTeam ✅ wired · PlayerStats ✅ already-compliant (no controls) · Hitability ✅ already-compliant (tabs).
+
+**Everything else needs a decision or is low/no value (NOT clean wires):**
+- **LayoutDetail + Tactic** — use the §76 IMMERSIVE landscape archetype (`useLandscapeMode`: hidden header + floating edge-tabs + fullscreen canvas + 2s-debounce auto-save), NOT the rail. Migrating = REPLACING immersive with rail+collapse. **Opus archetype decision:** is the rail meant to supplant §76 immersive for editor views, or is immersive a valid sibling archetype? (The shell unified the review/coach/scout/stats family; editor views may legitimately differ.)
+- **BunkerEditor + Ballistics** — plain pages, no rail content (canvas + status/save). Thin/empty-rail wraps — low value; their contract "layers" would have to be BUILT.
+- **TrainingResults** — dashboard, not a rail view.
+
+**Conclusion:** the shell archetype + the 2 wireable daily-drivers are shipped; the rail-native family is consistent. Further "Phase C" is an Opus archetype call (immersive vs rail for editors) + optional low-value wraps — NOT mechanical CC work. Recommend pausing Phase C here pending the archetype ruling.
