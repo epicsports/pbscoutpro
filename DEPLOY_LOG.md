@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-16 — [FIX] Field View smoke fixes (Rysuj beside phase + rail-expand) + touchHandler crash guard
+**HEADs `25547dba` (field-view) + `8912998c` (touch).** App + e2e, NO rules change. Tier-1.
+- **Smoke fix 1 — Rysuj overlapped the phase switcher:** the draw entry was still ScoutedTeam's own top-right chip colliding with the shell `phaseControl`. Now a proper **fieldTool icon beside the phase bar** (FieldFrame lays phase + tools in ONE horizontal row per mockup `.fld-top`); the chip stays for portrait only.
+- **Smoke fix 2 — missing rail-expand (☰):** `needsExpand` wrongly hid it when `pins` exist. Pins toggle layers in place; scope/isolate/report still need the overlay → ☰ shows whenever there are no tabs. e2e locks both (`rail-strip-expand` + draw-tool-in-corner).
+- **Prod crash guard (Sentry, pre-existing):** `TypeError players.filter` at `touchHandler.handleMove:460` (+ `:226/:390/:617`) — a BaseCanvas/InteractiveCanvas consumer reached the handler with `players` undefined. Default `players=[]` at the 4 destructure sites; no behavior change when it's an array. Unrelated to the Field View work (that path uses HeatmapCanvas).
+- Verified: build + precommit + scoutedteam-rail (incl. tap-accuracy across collapse) + rail-collapse green.
+
 ## 2026-06-16 — [FEATURE] ScoutedTeam wired to the Field View shell (reference impl — LIVE for tablet smoke)
 **HEAD = merge of `feat/field-view-shell-phase-a` (`d5a67999`).** **App + e2e, NO rules change.** First view consuming the shell slots; deployed to prod so Jacek can smoke on a tablet (no branch-preview infra). Revert: `git revert -m 1 <merge>`.
 - **Visible change (landscape ScoutedTeam, `#/tournament/<id>/team/<id>`):** the view controls moved into the structured rail — **Scope** zone (existing pills) · **Layers** toggle-list (Positions/Shots/Coach plan/Notes) · **Isolate** roster list — plus a **floating coach phase bar (Break/Settle/Mid) + ▶ replay** top-right ON the field, and on cramped tablet-landscape the rail collapses to the strip **pinning the layers** (phase + field stay put). `primaryAction` null (coach plan auto-persists on draw-done). Portrait unchanged.
