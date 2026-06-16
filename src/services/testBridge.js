@@ -47,6 +47,15 @@ export function installTestBridge() {
     // exact updateUserRoles path UserDetailPage/MemberCard use). The granting
     // page must be signed in as an admin/super of `slug`.
     grantRole: (slug, uid, roles) => ds.updateUserRoles(slug, uid, roles),
+    // Layout-tactic freehand round-trip — create a layout tactic WITH freehand via
+    // the real addLayoutTactic, read it back, report whether freehandStrokes
+    // survived (the field-shape drift bug dropped it on create/duplicate).
+    layoutTacticFreehandRoundtrip: async (layoutId, strokes) => {
+      const ref = await ds.addLayoutTactic(layoutId, { name: 'Freehand RT', freehandStrokes: strokes });
+      const snap = await getDoc(ref);
+      const d = snap.exists() ? snap.data() : null;
+      return { id: ref.id, hasFreehand: !!(d && d.freehandStrokes) };
+    },
     // §85 player self-edit (ProfilePage "Dane gracza") — a linked player edits
     // their own roster identity via the REAL updatePlayer path (default bump=true,
     // so this exercises the catalog-bump best-effort fix: a non-super self-edit
