@@ -36,3 +36,19 @@ The mechanical zones (isolate; layers-as-list) map fine. But **phaseControl, pri
 5. **GAP E — `RailToggleList` item `tone`:** optional per-item color (green/red) + an `inert` flag, so established layer semantics survive and the replay-inert coupling threads cleanly. (Or Jacek rules: drop rail colors, keep them only on the strip pins per the mockup.)
 
 After (1)-(5), wiring ScoutedTeam → Scout-point → Match-review is mostly mechanical (state→props), and the source-of-truth promise holds. **Awaiting Opus/Jacek ratification of the thickened contract before wiring** (this is a contract/architecture call, not CC's to make unilaterally — and it's exactly the signal Jacek asked to surface).
+
+---
+
+## §2 — MatchPage wiring finding (2026-06-16, post-ScoutedTeam) — NEITHER view is a mechanical wire
+
+ScoutedTeam wired clean + shipped (glue LOW, as predicted). But the MatchPage structural map (read-only) shows the brief's "wire 2 & 3 mechanically" premise does NOT hold for MatchPage — both touch approved/fragile UI:
+
+**Scout-point (capture) — NOT on CanvasRailLayout at all.** Capture is a bespoke stacked layout (portrait) + landscape floating controls (`MatchPage.jsx:2540–3119`). It already has the slot-EQUIVALENTS as bespoke floating chrome: the "E" + start-side merged bar (`2579–2610`, PaT §8 black box), a "Save point" button (`2815`/`2625`), draw chip + FullscreenToggle (`2636`, `2708`). Giving it the formal shell = **migrating the most fragile capture flow onto `CanvasRailLayout`** (roster grid, place/shoot/bump tools, save bottom-sheet, the immersive controls) — a structural migration, NOT a mechanical state→props wire. **Decision owed:** migrate capture onto the rail, or leave it bespoke (it already has the controls; the §8 "E" is PaT-owned regardless)?
+
+**Match-review — on CanvasRailLayout (`2514`), but the slots replace recently-shipped approved UI:**
+- `phaseControl`: review already has a polished **§B phase row** (`2110–2160`: ▶/Pause + animated icon segments Break/Settle/Mid, `phasePin`/`phasePlaying`/`replayStage`). The shell slot would **replace it with the simpler `FieldPhaseControl` and relocate it floating** on the field — a redesign of approved UI, not a mechanical move. **Decision owed:** replace with `FieldPhaseControl`, or keep the §B row (relocate as-is into the slot)?
+- `layers`: `PerTeamHeatmapToggle` (`hmVisibility` teamA/teamB positions+shots) already does per-team A/B — converting to `RailToggleList perTeam` is cosmetic/mechanical (the one safe piece).
+- `primaryAction`: 'end' (End match, danger) maps cleanly; unlock/relock stay in the rail/menu.
+- `pins`: per-team layers don't map to single-icon strip pins cleanly (4 toggles) — pin combined Positions/Shots (toggle both teams) or skip.
+
+**Verdict:** stopped before editing — per the established discipline (Jacek validated "right to stop rather than brute-force"). Both decisions are Jacek/Opus calls touching the two most fragile/polished flows. Recommended sequencing: (a) Match-review first IF the §B-row→FieldPhaseControl replacement is approved (else keep §B row in-slot); (b) Scout-point capture as its OWN migration brief (structural, highest-risk, Tactic-tier caution).
