@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-16 — [DOC/CANON] Field View archetypes ratified — Phase C CLOSED
+**Doc-only** (`docs/architecture/FIELD_VIEW_ARCHETYPES.md` new). Jacek ratified TWO legitimate field-view archetypes — a deliberate design choice, NOT debt:
+- **RAIL-NATIVE** (`CanvasRailLayout` + shell slots) — review/coach/scout/stats: Match-review, ScoutedTeam, PlayerStats, Hitability (the family is now consistent).
+- **§76 IMMERSIVE** (`useLandscapeMode`) — EDITORS: LayoutDetail, Tactic (full canvas, floating edge-tabs, auto-save). **Editors do NOT migrate to rail** — immersive is their correct frame.
+- Not field views: BunkerEditor/Ballistics (plain/query, no rail) · TrainingResults (dashboard).
+- The canon carries the decision rule for any NEW field view + the anti-pattern (don't force editors/dashboards onto the rail). **Phase C closed.** Scout-point capture = a separate future structural brief (not now).
+
 ## 2026-06-16 — [FEATURE] Match-review wired to the Field View shell (2nd daily-driver — LIVE for smoke)
 **App + e2e, NO rules change.** Tier-2 (shell), shipped to prod for tablet smoke (no preview infra). Decision-driven: §B phase row REPLACED by floating FieldPhaseControl; capture stays bespoke (own brief).
 - **Landscape review (`#/tournament/<id>/match/<id>`):** phase control now FLOATS top-right on the field (FieldPhaseControl kind='review' — Break/Settle/Mid + ▶), the §B in-rail row is portrait-only; per-team layers → a **Layers rail zone with A|B toggles** (GAP F: Positions [A][B], Shots [A][B]); **End match floats bottom-right** as a danger primaryAction (was ⋮-only — ⋮ keeps it too); collapsed strip pins Positions/Shots (toggle both teams). Portrait unchanged (keeps the inline §B row + inline End match).
