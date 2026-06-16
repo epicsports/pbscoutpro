@@ -10,7 +10,7 @@ import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
-import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils';
+import { hasAnyRole, getRolesForUser, ADMIN_EMAILS, canEditTactics } from '../../utils/roleUtils';
 import ViewAsPill from '../ViewAsPill';
 
 /**
@@ -119,6 +119,13 @@ export default function TrainingMoreTab({
           <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
           <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
           <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} isLast />
+        </MoreSection>
+      )}
+
+      {/* PLAYBOOKS — coach-framed door to the layout library (canEditTactics; no scout). */}
+      {canEditTactics(effectiveRoles) && (
+        <MoreSection title={t('playbooks_label')}>
+          <MoreItem icon="📖" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} isLast />
         </MoreSection>
       )}
 

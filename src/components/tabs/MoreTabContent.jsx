@@ -6,7 +6,7 @@ import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { leagueDisplayName } from '../../hooks/useLeagues';
-import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils';
+import { hasAnyRole, getRolesForUser, ADMIN_EMAILS, canEditTactics } from '../../utils/roleUtils';
 import ViewAsPill from '../ViewAsPill';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { ConfirmModal } from '../ui';
@@ -80,6 +80,15 @@ export default function MoreTabContent({
           <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
           <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
           <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} isLast />
+        </MoreSection>
+      )}
+
+      {/* PLAYBOOKS — coach-framed door to the SAME layout library (access already
+          exists via ZARZĄDZAJ; this is discoverability/branding per the Playbooks
+          brief). Gated canEditTactics(admin|coach) — hidden from scout. */}
+      {canEditTactics(effectiveRoles) && (
+        <MoreSection title={t('playbooks_label')}>
+          <MoreItem icon="📖" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} isLast />
         </MoreSection>
       )}
 
