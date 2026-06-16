@@ -7,7 +7,7 @@ import { useViewAs } from '../../hooks/useViewAs';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { leagueDisplayName } from '../../hooks/useLeagues';
 import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils';
-import ViewAsPlaceholder from '../ViewAsPlaceholder';
+import ViewAsPill from '../ViewAsPill';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import { ConfirmModal } from '../ui';
 import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
@@ -121,10 +121,13 @@ export default function MoreTabContent({
         )}
       </MoreSection>
 
-      {/* 6. ADMIN — view-as placeholder + feature flags. Workspace-admin. */}
+      {/* 6. ADMIN — view-as (real switcher, re-enabled) + feature flags. Workspace-admin.
+          ViewAsPill is the ENTRY (visible when not impersonating); the floating
+          ViewAsIndicator (App root) is the always-visible EXIT + role-switcher during
+          impersonation (gated on realIsAdmin), so the escape never disappears. */}
       {effectiveIsAdmin && (
         <MoreSection title={t('admin_section') || 'Admin'}>
-          <ViewAsPlaceholder />
+          <ViewAsPill />
           <MoreItem
             icon="🚩"
             label={t('feature_flags_label') || 'Feature flags'}

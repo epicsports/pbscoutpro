@@ -11,7 +11,7 @@ import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { hasAnyRole, getRolesForUser, ADMIN_EMAILS } from '../../utils/roleUtils';
-import ViewAsPlaceholder from '../ViewAsPlaceholder';
+import ViewAsPill from '../ViewAsPill';
 
 /**
  * Training More tab — Apple HIG–inspired hierarchy.
@@ -157,10 +157,10 @@ export default function TrainingMoreTab({
         )}
       </MoreSection>
 
-      {/* 6. ADMIN — view-as placeholder + feature flags (admin only). */}
+      {/* 6. ADMIN — view-as (real switcher, re-enabled) + feature flags (admin only). */}
       {isAdmin && (
         <MoreSection title={t('admin_section') || 'Admin'}>
-          <ViewAsPlaceholder />
+          <ViewAsPill />
           <MoreItem
             icon="🚩"
             label={t('feature_flags_label') || 'Feature flags'}

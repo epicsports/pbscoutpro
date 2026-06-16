@@ -62,10 +62,10 @@ export function MoreSection({ title, tone = 'default', children }) {
   );
 }
 
-export function MoreItem({ icon, label, sub, onClick, danger, accent, isLast, rightSlot }) {
+export function MoreItem({ icon, label, sub, onClick, danger, accent, isLast, rightSlot, testId }) {
   const labelColor = danger ? COLORS.danger : accent ? COLORS.accent : COLORS.text;
   return (
-    <div onClick={onClick} style={{
+    <div onClick={onClick} data-testid={testId} style={{
       display: 'flex', alignItems: 'center', gap: 14,
       padding: '14px 16px', minHeight: 52,
       cursor: onClick ? 'pointer' : 'default',

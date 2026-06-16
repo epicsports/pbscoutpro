@@ -31,6 +31,7 @@ export default function ViewAsPill() {
     <>
       <MoreItem
         icon="👁"
+        testId="viewas-pill"
         label={t('view_as_pill_label')}
         sub={isImpersonating ? activeText : undefined}
         onClick={() => setOpen(true)}
