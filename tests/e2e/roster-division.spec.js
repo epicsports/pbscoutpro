@@ -25,6 +25,12 @@ test.describe('#4 roster division-correctness', () => {
       // Run the real division-narrowing repair.
       const res = await page.evaluate(a => window.__pbtest.repairRosters(a.t, a.league), { t: TRN, league: 'NXL' });
       expect(res.updated).toBeGreaterThanOrEqual(1);
+      // B26 — the `rostersRepairedAt` stamp is the coach box's ONLY collapse signal.
+      // It must persist (no stampError) or the box stays permanently visible. Assert
+      // the instrumented field is present + falsy on a successful run (regression guard
+      // for the silent-stamp-failure class that left the box stuck in prod).
+      expect(res).toHaveProperty('stampError');
+      expect(res.stampError).toBeFalsy();
 
       // After: PRO ids kept, DIV1 (Charlie) ids dropped — no bleed.
       const after = await page.evaluate(a => window.__pbtest.readScouted(a.s, a.t, a.sid), { s: WS, t: TRN, sid: SCT_BLEED });

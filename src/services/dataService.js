@@ -946,11 +946,19 @@ export async function repairScoutedRostersForTournament(tid, league, preloaded =
   // §C/D7 — stamp the tournament so the coach B3 box can show a state-aware
   // "OK · last repair: X" without walking points (the over-broad-roster shape
   // has no cheap client-side health signal). Non-fatal: the repair already ran.
+  // B26 (2026-06-16): the stamp is the box's ONLY collapse signal — if it fails
+  // silently, the box is permanent forever. So no longer swallowed: capture +
+  // SURFACE the error (returned as `stampError`, shown in the repair toast) so a
+  // failed stamp is visible, not invisible. The roster narrowing already committed.
+  let stampError = null;
   try {
     await updateDoc(tournamentRef, {
       rostersRepairedAt: { ts: serverTimestamp(), byUid: auth.currentUser?.uid || null },
     });
-  } catch (_) { /* stamp is best-effort; the roster narrowing already committed */ }
+  } catch (e) {
+    stampError = e?.code || e?.message || String(e);
+    console.warn('[repairRosters] rostersRepairedAt stamp FAILED — box will not collapse:', e);
+  }
 
   return {
     scanned: scoutedSnap.size,
@@ -958,6 +966,7 @@ export async function repairScoutedRostersForTournament(tid, league, preloaded =
     unchanged,
     skippedNoTeam,
     failures,
+    stampError,
   };
 }
 

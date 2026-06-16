@@ -105,7 +105,15 @@ export default function CoachTabContent({ tournamentId }) {
       setRostersRepairResult(report);
       // Wording branches on whether anything actually changed (idempotent run).
       const failedN = report.failures?.length || 0;
-      if ((report.updated || 0) === 0 && failedN === 0) {
+      // B26 — a swallowed stamp failure is WHY the box stayed permanently visible
+      // ("repair did nothing"): the narrowing ran but the OK-marker never saved, so
+      // the box never collapsed. Surface it explicitly so it's not silent.
+      if (report.stampError) {
+        setRepairToast({
+          type: 'error',
+          msg: `Rosters repaired (${report.updated} updated) but the OK-marker couldn't save: ${report.stampError}`,
+        });
+      } else if ((report.updated || 0) === 0 && failedN === 0) {
         setRepairToast({
           type: 'success',
           msg: `No rosters needed updating (${report.scanned} scanned, all already narrow)`,
