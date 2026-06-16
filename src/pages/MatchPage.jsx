@@ -2758,7 +2758,7 @@ export default function MatchPage() {
               (portrait + portrait-FS = scouting + view-only respectively). */}
           {isLandscape && !drawMode && (
             <div
-              role="button" aria-label="Rysuj"
+              role="button" aria-label={t('draw_aria')}
               onClick={enterDrawMode}
               style={{
                 position: 'absolute', top: 8, right: 8, zIndex: 35,

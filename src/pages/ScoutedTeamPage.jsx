@@ -768,7 +768,7 @@ export default function ScoutedTeamPage() {
   // fieldTool beside the phase bar, see fvFieldToolsEl). Only on the expanded heatmap.
   const coachRysujChipEl = !coachDrawMode ? (
     <div
-      role="button" aria-label="Rysuj plan coacha"
+      role="button" aria-label={t('draw_coach_plan_aria')}
       onClick={enterCoachDrawMode}
       style={{
         position: 'absolute', top: 8, right: 8, zIndex: 35,
@@ -2185,7 +2185,7 @@ export default function ScoutedTeamPage() {
   // fieldTools — the draw entry as an ICON beside the phase bar (landscape; the toolbar
   // replaces it on the field in draw mode). Mockup `.f-btn`, real-scale ≥44px tap target.
   const fvFieldToolsEl = !coachDrawMode ? (
-    <div role="button" aria-label="Rysuj plan coacha" data-testid="fv-tool-draw"
+    <div role="button" aria-label={t('draw_coach_plan_aria')} data-testid="fv-tool-draw"
       onClick={enterCoachDrawMode}
       style={{
         minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
