@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-16 — [FEATURE] ScoutedTeam wired to the Field View shell (reference impl — LIVE for tablet smoke)
+**HEAD = merge of `feat/field-view-shell-phase-a` (`d5a67999`).** **App + e2e, NO rules change.** First view consuming the shell slots; deployed to prod so Jacek can smoke on a tablet (no branch-preview infra). Revert: `git revert -m 1 <merge>`.
+- **Visible change (landscape ScoutedTeam, `#/tournament/<id>/team/<id>`):** the view controls moved into the structured rail — **Scope** zone (existing pills) · **Layers** toggle-list (Positions/Shots/Coach plan/Notes) · **Isolate** roster list — plus a **floating coach phase bar (Break/Settle/Mid) + ▶ replay** top-right ON the field, and on cramped tablet-landscape the rail collapses to the strip **pinning the layers** (phase + field stay put). `primaryAction` null (coach plan auto-persists on draw-done). Portrait unchanged.
+- **Glue measured LOW** — state→props only (`+59/−11`, ~38 binding lines, 0 bespoke components/logic). Confirms the thickened contract; Scout-point + Match-review will be mechanical.
+- **e2e:** `scoutedteam-rail` extended — shell elements + pins toggle-in-place + **tap-accuracy across collapse** (coach-draw at canvas center while collapsed persists a stroke in the central normalized band → tap transform survived §116 collapse). + unwired matchreview/playerstats clean; 27/27 `<Screen>` pixel-diff stable; build + precommit green.
+- **⏭ NEXT (pending Jacek smoke verdict):** 👍 → wire Scout-point + Match-review; else adjust the reference render first.
+
 ## 2026-06-16 — [FEATURE] Field View shell — clean additive API (Phase A + foundation + contract thickening)
 **HEAD `8e8a3885`** (merge of the clean-API cut `e05921ef` from `feat/field-view-shell-phase-a`). **App-only, NO rules change.** Tier-2 archetype, but this cut is **behavior-preserving / pixel-diff 27/27** (Jacek GO to ship the clean API; the wired view is gated separately). App auto-deploys on main push (e2e-gated). Revert: `git revert 8e8a3885`.
 - **What shipped (all OPT-IN, no view consumes it yet → identical prior DOM):**
