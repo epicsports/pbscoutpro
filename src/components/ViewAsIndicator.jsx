@@ -40,6 +40,7 @@ export default function ViewAsIndicator() {
       }} />
       <div
         onClick={() => setDropdownOpen(true)}
+        data-testid="viewas-indicator"
         style={{
           position: 'fixed',
           bottom: 'calc(76px + env(safe-area-inset-bottom, 0px))',
@@ -61,6 +62,7 @@ export default function ViewAsIndicator() {
         <span
           onClick={(e) => { e.stopPropagation(); exitImpersonation(); }}
           role="button"
+          data-testid="viewas-exit"
           aria-label={t('b13_exit_impersonation')}
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',

@@ -1,0 +1,12 @@
+<svg width="820" height="312" viewBox="0 0 820 312" xmlns="http://www.w3.org/2000/svg" role="img">
+<title>Reads — cover Facebook</title>
+<desc>Lockup reads z kropka ze szwem i deskryptorem Paintball Intelligence na ciemnym tle, z taglinem Make the read po prawej i pozioma linia szwu jako motywem.</desc>
+<rect x="0" y="0" width="820" height="312" fill="#0a0e17"/>
+<line x1="0" y1="156" x2="248" y2="156" stroke="#1f2937" stroke-width="1"/>
+<line x1="572" y1="156" x2="820" y2="156" stroke="#1f2937" stroke-width="1"/>
+<text x="288" y="172" font-family="-apple-system, system-ui, sans-serif" font-size="70" font-weight="500" letter-spacing="-2" fill="#f8fafc" textLength="190" lengthAdjust="spacing">reads</text>
+<circle cx="505" cy="154" r="9" fill="#f59e0b"/>
+<rect x="494" y="152.9" width="22" height="2.2" fill="#0a0e17"/>
+<text x="288" y="210" font-family="-apple-system, system-ui, sans-serif" font-size="11" fill="#7d8a9c" textLength="226" lengthAdjust="spacing">PAINTBALL INTELLIGENCE</text>
+<text x="410" y="262" text-anchor="middle" font-family="-apple-system, system-ui, sans-serif" font-size="14" letter-spacing="1" fill="#475569">Make the read.</text>
+</svg>

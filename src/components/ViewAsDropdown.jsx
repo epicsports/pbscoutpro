@@ -20,6 +20,7 @@ export default function ViewAsDropdown({ open, onClose }) {
 
   const roleActions = ROLES.map(role => ({
     label: t(`view_as_role_${role}`),
+    testId: `viewas-role-${role}`,
     onPress: () => {
       if (role === 'player') {
         setPickerOpen(true);
@@ -33,7 +34,7 @@ export default function ViewAsDropdown({ open, onClose }) {
     ? [
         ...roleActions,
         { separator: true },
-        { label: t('view_as_exit'), onPress: () => exitImpersonation(), danger: true },
+        { label: t('view_as_exit'), testId: 'viewas-exit-action', onPress: () => exitImpersonation(), danger: true },
       ]
     : roleActions;
 

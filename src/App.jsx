@@ -16,6 +16,7 @@ import { isEmailSignInLink } from './services/firebase';
 import ReviewRolesModal from './components/ReviewRolesModal';
 import RouteGuard from './components/RouteGuard';
 import { ViewAsProvider } from './contexts/ViewAsContext';
+import ViewAsIndicator from './components/ViewAsIndicator';
 import { useViewAs } from './hooks/useViewAs';
 import { useIsSuperAdmin } from './hooks/useIsSuperAdmin';
 import { KioskProvider } from './contexts/KioskContext';
@@ -197,6 +198,11 @@ function AppRoutes() {
           </Routes>
         </Suspense>
         <OfflineBanner />
+        {/* Persistent, non-dismissable impersonation exit (§38.5 / CC_BRIEF_VIEWAS_REENABLE):
+            top amber strip + bottom-right pill with × → exitImpersonation. Visible whenever
+            an admin is impersonating — the escape hatch whose ABSENCE got view-as disabled in
+            2026-04-24. Renders null when not impersonating. */}
+        <ViewAsIndicator />
         <ReviewRolesModal />
         <BlockedRouteToast />
         {/* § 55 KIOSK overlays — full-screen, self-gate by
