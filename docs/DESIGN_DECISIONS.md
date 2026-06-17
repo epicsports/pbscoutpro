@@ -9630,3 +9630,30 @@ Tick mechanics: `inactiveLane()` (A only) = `min(misses,3)`; spawn random active
 ### 117.6 Deliberate exceptions (flagged)
 - **Global leaderboard crosses workspace isolation BY DESIGN.** Every tenant's players compete on one board (`leaderboards/readsMini`, top-level, read=any-signed-in). This is the single intentional break of the per-workspace isolation model — recreational, no scouting data.
 - **Arcade initials, NOT real names — chosen to avoid public PII.** The public label is a 3-letter arcade tag; no `displayName`, so no `GDPR_DATA_MAP` entry needed. (Real-name labels would require consent + a GDPR map entry — out of scope.)
+
+## 118. Field View rail — independent collapse + whole-rail scroll (2026-06-17)
+
+ScoutedTeam landscape (and any future rail-native Field View) hosts its control zones
+(Scope / Layers / Isolate) AND the coach report column (Breakouts / Shooting / elim-reasons
+/ …) in the residual rail (or, when §116 collapses, the ☰ overlay). Two decisions lock the
+model:
+
+1. **Every `RailZone` is INDEPENDENTLY collapsible** (single-owner `useState` per zone;
+   `collapsible` / `defaultCollapsed` / `headerExtra`). It is **NOT an accordion** — this is
+   the control-panel model (Figma/IDE side panels): coaches set multiple control groups open
+   at once, and a collapse-others rule fights that + makes the report column jump on every
+   header tap. `headerExtra` surfaces the active state while folded (Isolate → active player;
+   Layers → active-layer count pill) so folding never hides that a group is engaged.
+
+2. **The rail scrolls as ONE unit** (zones + report column inside a single `overflowY:auto`
+   wrapper). The report column is **content-height** in the rail (`flex:0 0 auto`) and the
+   page scroller (`flex:1, overflowY:auto`) in PORTRAIT. This removes the expand→squeeze
+   regression (Jacek, tablet): previously the report column was `flex:1` *sharing* the rail's
+   fixed height with the zones, so expanding a zone (esp. the 14-player Isolate) starved the
+   report to a sliver. Now expanding any zone just grows the rail's scroll length. The §116
+   collapsed-strip ☰ overlay renders the same `rail` → same one-unit scroll.
+
+3. **Rail width is RESIDUAL + §116 auto-collapse to a 56px strip.** DECISION: **no
+   user-resizable / draggable rail** — touch-first device class + field-is-hero model.
+   Deferred-if-needed: discrete snap presets (swap `railMin`) on tablet; a draggable divider
+   only under `pointer:fine` if a desktop/mouse surface ever ships.
