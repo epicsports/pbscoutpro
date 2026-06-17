@@ -73,3 +73,8 @@ _Anchors: `dataService.js:1584-1611` (live) · `git show 5de2b438:…:223-228` (
 - **5 FLIPS-TO-MIGRATE** — no twin (created on the old path AFTER STAGE-3; the 24−19=5 drift). Must `copySub`-by-id forward, then delete. Across 3 layouts: `AH6dEG1yZcZFc5lap3uQ` (×2) · `OajoxCMTnf1eK5wDV1Ji` (×1) · `kwamYyvZ7th8WYLTHokJ` (×2).
 
 → DELETE-brief = migrate the 5 (trivial, subset shape, no key remap) → backup all 24 → delete all 24. (layoutOverlays = 21 = 19 copied + 2 created natively, consistent.)
+
+### 8.2 OP2 EXECUTED — `--live` 2026-06-17 (Jacek GO)
+**DONE.** `scripts/migration/tactics_orphan_cleanup.cjs --live`. Coverage stable vs §8.1 (no drift). Backup all 24 (outside-repo, gitignored) → migrated the 5 stranded (twins verified) → deleted all 24. **Final census: `layouts/tactics` 0 · `layoutOverlays` 26 (21+5) · `tournaments` 9 (untouched).** No code/rules/deploy (dead path, no reader). The 5 migrated tactics now surface on 3 ranger1996 layouts (intentional recovery; reversible via backup). Detail: DEPLOY_LOG 2026-06-17.
+
+**OP1 STILL OPEN** — retire the tournament-tactics store (`tournaments/{tid}/tactics`, 9 live). This is code+data (live reader `subscribeTactics` + `addTactic` + TacticPage tournament route + per-doc layout resolution), NOT a pure data migration. Needs the brief's exact reader-migration + target-layout rules before execution.
