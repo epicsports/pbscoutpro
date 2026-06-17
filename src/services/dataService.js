@@ -3177,25 +3177,7 @@ export async function getReadsMiniMyScore(uid) {
 // is chosen client-side so each path matches its rule (createdAt set once;
 // monotonic + cooldown enforced server-side on update).
 export async function submitReadsMiniScore(uid, { initials, score, mode }) {
-  if (!uid) return false;
-  const clean = String(initials || '').toUpperCase().slice(0, 3);
-  if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
-  const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
-  const ref = doc(db, 'leaderboards', READS_MINI_BOARD, 'scores', uid);
-  const existing = await getDoc(ref);
-  if (!existing.exists()) {
-    await setDoc(ref, {
-      uid, initials: clean, score: safe, mode: mode === 'B' ? 'B' : 'A',
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
-    return true;
-  }
-  if (safe <= (existing.data().score || 0)) return false;
-  await updateDoc(ref, {
-    initials: clean, score: safe, mode: mode === 'B' ? 'B' : 'A',
-    updatedAt: serverTimestamp(),
-  });
-  return true;
+  return _submitArcadeScore(READS_MINI_BOARD, uid, { initials, score, mode });
 }
 
 // ─── Reads Snake global leaderboard (§119) ─────────────────────────────────
@@ -3222,22 +3204,7 @@ export async function getReadsSnakeMyScore(uid) {
 // ['A','B']` (§117 schema). Single-mode Snake carries a constant `mode:'A'` to
 // satisfy that rule verbatim — vestigial here, but keeps "no rules change" true.
 export async function submitReadsSnakeScore(uid, { initials, score }) {
-  if (!uid) return false;
-  const clean = String(initials || '').toUpperCase().slice(0, 3);
-  if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
-  const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
-  const ref = doc(db, 'leaderboards', READS_SNAKE_BOARD, 'scores', uid);
-  const existing = await getDoc(ref);
-  if (!existing.exists()) {
-    await setDoc(ref, {
-      uid, initials: clean, score: safe, mode: 'A',
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
-    return true;
-  }
-  if (safe <= (existing.data().score || 0)) return false;
-  await updateDoc(ref, { initials: clean, score: safe, mode: 'A', updatedAt: serverTimestamp() });
-  return true;
+  return _submitArcadeScore(READS_SNAKE_BOARD, uid, { initials, score, mode: 'A' });
 }
 
 // ─── Reads Invaders global leaderboard (§120) ──────────────────────────────
@@ -3260,23 +3227,7 @@ export async function getReadsInvadersMyScore(uid) {
 }
 
 export async function submitReadsInvadersScore(uid, { initials, score, mode }) {
-  if (!uid) return false;
-  const clean = String(initials || '').toUpperCase().slice(0, 3);
-  if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
-  const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
-  const m = mode === 'B' ? 'B' : 'A';
-  const ref = doc(db, 'leaderboards', READS_INVADERS_BOARD, 'scores', uid);
-  const existing = await getDoc(ref);
-  if (!existing.exists()) {
-    await setDoc(ref, {
-      uid, initials: clean, score: safe, mode: m,
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
-    return true;
-  }
-  if (safe <= (existing.data().score || 0)) return false;
-  await updateDoc(ref, { initials: clean, score: safe, mode: m, updatedAt: serverTimestamp() });
-  return true;
+  return _submitArcadeScore(READS_INVADERS_BOARD, uid, { initials, score, mode });
 }
 
 // ─── Reads Lunar Lander global leaderboard (§121) ──────────────────────────
@@ -3299,22 +3250,7 @@ export async function getReadsLanderMyScore(uid) {
 }
 
 export async function submitReadsLanderScore(uid, { initials, score }) {
-  if (!uid) return false;
-  const clean = String(initials || '').toUpperCase().slice(0, 3);
-  if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
-  const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
-  const ref = doc(db, 'leaderboards', READS_LANDER_BOARD, 'scores', uid);
-  const existing = await getDoc(ref);
-  if (!existing.exists()) {
-    await setDoc(ref, {
-      uid, initials: clean, score: safe, mode: 'A',
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
-    return true;
-  }
-  if (safe <= (existing.data().score || 0)) return false;
-  await updateDoc(ref, { initials: clean, score: safe, mode: 'A', updatedAt: serverTimestamp() });
-  return true;
+  return _submitArcadeScore(READS_LANDER_BOARD, uid, { initials, score, mode: 'A' });
 }
 
 // ─── Read Warrior global leaderboard (§122) ────────────────────────────────
@@ -3337,20 +3273,45 @@ export async function getReadWarriorMyScore(uid) {
 }
 
 export async function submitReadWarriorScore(uid, { initials, score }) {
+  return _submitArcadeScore(READ_WARRIOR_BOARD, uid, { initials, score, mode: 'A' });
+}
+
+// ─── Shared arcade-score core + per-account "one place" mirror (§122.1) ─────
+// All 5 games' submit fns delegate here: the canonical per-game board write
+// (create vs update, monotonic, 0..9999, [A-Z]{3}, mode A|B) — behaviour is
+// IDENTICAL to the prior per-game fns — PLUS a best-effort mirror of the new
+// best into ONE account doc `users/{uid}/appState/arcade` (keyed by board id),
+// so a player's bests across all games live in one place (existing owner-only
+// appState rule, no rules change). The mirror is fire-safe: a failure NEVER
+// breaks the leaderboard submit. Boards stay the source of truth for top-25.
+async function _submitArcadeScore(board, uid, { initials, score, mode }) {
   if (!uid) return false;
   const clean = String(initials || '').toUpperCase().slice(0, 3);
   if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
   const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
-  const ref = doc(db, 'leaderboards', READ_WARRIOR_BOARD, 'scores', uid);
+  const m = mode === 'B' ? 'B' : 'A';
+  const ref = doc(db, 'leaderboards', board, 'scores', uid);
   const existing = await getDoc(ref);
+  let updated;
   if (!existing.exists()) {
-    await setDoc(ref, {
-      uid, initials: clean, score: safe, mode: 'A',
-      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
-    return true;
+    await setDoc(ref, { uid, initials: clean, score: safe, mode: m, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    updated = true;
+  } else if (safe > (existing.data().score || 0)) {
+    await updateDoc(ref, { initials: clean, score: safe, mode: m, updatedAt: serverTimestamp() });
+    updated = true;
+  } else {
+    updated = false;
   }
-  if (safe <= (existing.data().score || 0)) return false;
-  await updateDoc(ref, { initials: clean, score: safe, mode: 'A', updatedAt: serverTimestamp() });
-  return true;
+  if (updated) {
+    // Best-effort account mirror — never throws into the submit path.
+    try { await setDoc(doc(db, 'users', uid, 'appState', 'arcade'), { [board]: { score: safe, initials: clean, updatedAt: serverTimestamp() } }, { merge: true }); } catch {}
+  }
+  return updated;
+}
+
+// Read a player's consolidated arcade bests ({ [board]: {score, initials} }).
+// One round-trip for a future "my arcade" view; degrades to {} if unavailable.
+export async function getArcadeBests(uid) {
+  if (!uid) return {};
+  try { const snap = await getDoc(doc(db, 'users', uid, 'appState', 'arcade')); return snap.exists() ? snap.data() : {}; } catch { return {}; }
 }

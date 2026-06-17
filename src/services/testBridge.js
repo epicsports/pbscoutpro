@@ -230,5 +230,8 @@ export function installTestBridge() {
       doc(db, 'leaderboards', 'readWarrior', 'scores', otherUid),
       { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
     ),
+
+    // §122.1 consolidated account mirror — all games' bests in one place.
+    arcadeBests: () => ds.getArcadeBests(auth.currentUser.uid),
   };
 }

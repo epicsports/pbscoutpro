@@ -16,6 +16,7 @@ import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import RoadEvents from '../utils/RoadEvents';
+import { NO_SELECT, ARCADE_BTN } from '../components/arcade/ArcadeButton';
 
 const W = 360, H = 640;
 // Amber-phosphor palette — named constants (no scattered literals). AMBER lit /
@@ -72,7 +73,7 @@ export default function ReadWarriorPage() {
     const MUS = { bpm: 132, lead: [69, 72, 76, 72, 65, 69, 72, 69, 72, 76, 79, 76, 67, 71, 74, 71], bass: [45, 0, 45, 0, 41, 0, 41, 0, 48, 0, 48, 0, 43, 0, 43, 0] };
     const Audio = {
       ctx: null, on: true, master: null, music: null, sfxG: null, engG: null, engO: null, next: 0, step: 0,
-      ensure() { if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; } const C = window.AudioContext || window.webkitAudioContext; if (!C) return; this.ctx = new C(); this.master = this.ctx.createGain(); this.master.gain.value = this.on ? 1 : 0; this.master.connect(this.ctx.destination); this.music = this.ctx.createGain(); this.music.gain.value = 0.5; this.music.connect(this.master); this.sfxG = this.ctx.createGain(); this.sfxG.gain.value = 0.9; this.sfxG.connect(this.master); this.engG = this.ctx.createGain(); this.engG.gain.value = 0; this.engG.connect(this.master); this.engO = this.ctx.createOscillator(); this.engO.type = 'square'; this.engO.frequency.value = 80; this.engO.connect(this.engG); this.engO.start(); this.next = this.ctx.currentTime + 0.1; this.step = 0; },
+      ensure() { if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); if (!this.ctx.__pbUnlocked) { this.ctx.__pbUnlocked = true; try { const b = this.ctx.createBuffer(1, 1, 22050); const s = this.ctx.createBufferSource(); s.buffer = b; s.connect(this.ctx.destination); s.start(0); } catch {} } return; } const C = window.AudioContext || window.webkitAudioContext; if (!C) return; this.ctx = new C(); this.__pbUnlocked = true; this.master = this.ctx.createGain(); this.master.gain.value = this.on ? 1 : 0; this.master.connect(this.ctx.destination); this.music = this.ctx.createGain(); this.music.gain.value = 0.5; this.music.connect(this.master); this.sfxG = this.ctx.createGain(); this.sfxG.gain.value = 0.9; this.sfxG.connect(this.master); this.engG = this.ctx.createGain(); this.engG.gain.value = 0; this.engG.connect(this.master); this.engO = this.ctx.createOscillator(); this.engO.type = 'square'; this.engO.frequency.value = 80; this.engO.connect(this.engG); this.engO.start(); this.next = this.ctx.currentTime + 0.1; this.step = 0; },
       note(f, tt, dur, vol, dest) { const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.setValueAtTime(f, tt); g.gain.setValueAtTime(0, tt); g.gain.setValueAtTime(vol, tt + 0.002); g.gain.setValueAtTime(vol, tt + dur * 0.8); g.gain.setValueAtTime(0, tt + dur * 0.85); o.connect(g).connect(dest); o.start(tt); o.stop(tt + dur + 0.02); },
       sweep(f0, f1, dur, vol) { if (!this.ctx || !this.on) return; const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.type = 'square'; o.frequency.setValueAtTime(f0, c.currentTime); o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), c.currentTime + dur); g.gain.setValueAtTime(vol, c.currentTime); g.gain.setValueAtTime(vol, c.currentTime + dur * 0.8); g.gain.linearRampToValueAtTime(0, c.currentTime + dur); o.connect(g).connect(this.sfxG); o.start(); o.stop(c.currentTime + dur + 0.02); },
       beep(f, dur, vol) { if (!this.ctx || !this.on) return; this.note(f, this.ctx.currentTime, dur, vol, this.sfxG); },
@@ -266,7 +267,7 @@ export default function ReadWarriorPage() {
 
   return (
     <div data-testid="read-warrior"
-      style={{ position: 'fixed', inset: 0, background: COLORS.bg, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: ON, overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      style={{ position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: ON, overflow: 'hidden', ...NO_SELECT, paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* Chrome bar — brand mark KEPT (faithful render) + back + sound */}
       <div style={{ width: '100%', maxWidth: 380, display: 'flex', alignItems: 'center', gap: SPACE.sm, padding: `${SPACE.sm}px ${SPACE.md}px`, boxSizing: 'border-box' }}>
         <div role="button" aria-label={t('read_warrior_back') || 'Back'} data-testid="read-warrior-back" onClick={() => navigate('/break')}
@@ -324,5 +325,5 @@ export default function ReadWarriorPage() {
   );
 }
 
-const ctrlBtn = (flex) => ({ flex, height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.surface, color: '#fbbf24', border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.lg, cursor: 'pointer', fontSize: 24, fontWeight: 700, WebkitTapHighlightColor: 'transparent', touchAction: 'none' });
-const iniBtn = { minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.surface, color: '#fbbf24', border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.md, cursor: 'pointer' };
+const ctrlBtn = (flex) => ({ ...ARCADE_BTN, flex, height: 64, fontSize: 24, fontWeight: 700 });
+const iniBtn = { ...ARCADE_BTN, minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, borderRadius: RADIUS.md };

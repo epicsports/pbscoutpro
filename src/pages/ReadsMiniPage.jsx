@@ -11,6 +11,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
+import { NO_SELECT, ARCADE_BTN } from '../components/arcade/ArcadeButton';
 
 // ─── Play-field geometry (§117.A) ──────────────────────────────────────────
 const VB_W = 320, VB_H = 200;
@@ -100,6 +101,8 @@ function makeAudio() {
   const ensureCtx = () => {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { ctx = null; } }
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    // iOS WebAudio unlock — one silent buffer inside the first gesture.
+    if (ctx && !ctx.__pbUnlocked) { ctx.__pbUnlocked = true; try { const b = ctx.createBuffer(1, 1, 22050); const s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0); } catch {} }
     return ctx;
   };
   const tone = (steps, type = 'sine') => {
@@ -388,7 +391,7 @@ export default function ReadsMiniPage() {
   return (
     <div data-testid="reads-mini" onPointerDown={kickAudio}
       style={{
-        position: 'fixed', inset: 0, background: COLORS.bg, zIndex: 60,
+        position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, zIndex: 60, ...NO_SELECT,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         fontFamily: FONT, color: COLORS.text, overflow: 'hidden',
         paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -469,12 +472,8 @@ export default function ReadsMiniPage() {
 function DpadBtn({ children, onPress, testId, ariaLabel }) {
   return (
     <button type="button" data-testid={testId} aria-label={ariaLabel}
-      onPointerDown={(e) => { e.preventDefault(); onPress(); }}
-      style={{
-        flex: 1, minHeight: 64, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: COLORS.surface, color: COLORS.accent, border: `1px solid ${COLORS.border}`,
-        borderRadius: RADIUS.lg, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-      }}>
+      onPointerDown={(e) => { e.preventDefault(); onPress(); }} onContextMenu={(e) => e.preventDefault()}
+      style={{ ...ARCADE_BTN, flex: 1, minHeight: 64 }}>
       {children}
     </button>
   );
