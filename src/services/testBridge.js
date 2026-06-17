@@ -190,5 +190,15 @@ export function installTestBridge() {
       doc(db, 'leaderboards', 'readsMini', 'scores', otherUid),
       { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
     ),
+
+    // Reads Snake (§119) — same board infra, separate board.
+    readsSnakeSubmit: (initials, score) =>
+      ds.submitReadsSnakeScore(auth.currentUser.uid, { initials, score }),
+    readsSnakeMyScore: () => ds.getReadsSnakeMyScore(auth.currentUser.uid),
+    readsSnakeTop: () => ds.getReadsSnakeTop(25),
+    readsSnakeRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readsSnake', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
   };
 }

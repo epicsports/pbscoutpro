@@ -19,11 +19,13 @@ test.describe('Reads Mini', () => {
     await login(page, SELFEDIT_ACCOUNT);
     await skipOnboarding(page);
 
-    // T1 — real drawer entry → real route.
+    // T1 — real drawer entry → game selector (§119) → Reads Mini row → real route.
     await page.getByTestId('nav-ball').click();
     await expect(page.getByTestId('nav-drawer')).toBeVisible();
     await page.getByTestId('take-a-break-entry').click();
-    await expect(page).toHaveURL(/\/break/);
+    await expect(page.getByTestId('take-a-break')).toBeVisible();   // selector list
+    await page.getByTestId('game-row-reads').click();
+    await expect(page).toHaveURL(/\/break\/reads/);
     await expect(page.getByTestId('reads-mini')).toBeVisible();
 
     // attract overlay shows (title or high-scores phase of the loop).
@@ -49,9 +51,9 @@ test.describe('Reads Mini', () => {
     }
     await expect(page.getByTestId('reads-mini-attract')).toBeVisible({ timeout: 15000 });
 
-    // close → leaves the game.
+    // back → returns to the game selector (§119).
     await page.getByTestId('reads-mini-close').click();
-    await expect(page).not.toHaveURL(/\/break/);
+    await expect(page.getByTestId('take-a-break')).toBeVisible();
   });
 
   test('leaderboard write obeys the rules (create/update · reject-lower · cross-uid denied)', async ({ page }) => {

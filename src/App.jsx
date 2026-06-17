@@ -41,7 +41,9 @@ const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
 const LayoutAnalyticsPage = lazy(() => import('./pages/LayoutAnalyticsPage'));
 const PlayerStatsPage = lazy(() => import('./pages/PlayerStatsPage'));
 const PackingChecklistPage = lazy(() => import('./pages/PackingChecklistPage'));
+const TakeABreakPage = lazy(() => import('./pages/TakeABreakPage'));
 const ReadsMiniPage = lazy(() => import('./pages/ReadsMiniPage'));
+const ReadsSnakePage = lazy(() => import('./pages/ReadsSnakePage'));
 const TrainingSetupPage = lazy(() => import('./pages/TrainingSetupPage'));
 const TrainingSquadsPage = lazy(() => import('./pages/TrainingSquadsPage'));
 const TrainingPage = lazy(() => import('./pages/TrainingPageRedirect'));
@@ -176,7 +178,9 @@ function AppRoutes() {
             <Route path="/layout/:layoutId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
             <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
             <Route path="/player/checklist" element={<PackingChecklistPage />} />
-            <Route path="/break" element={<ReadsMiniPage />} />
+            <Route path="/break" element={<TakeABreakPage />} />
+            <Route path="/break/reads" element={<ReadsMiniPage />} />
+            <Route path="/break/snake" element={<ReadsSnakePage />} />
             <Route path="/training/:trainingId/setup" element={<TrainingSetupPage />} />
             <Route path="/training/:trainingId/squads" element={<TrainingSquadsPage />} />
             <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />
