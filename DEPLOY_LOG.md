@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-18 — [FEATURE/FIX] Arcade: one-place account score mirror + cross-game hardening (§122.1/122.3, Jacek GO)
+**App (auto-deploy). No rules/data.** Tier-1 (additive + bugfix from prod smoke). Merge `863e75e1`.
+- **Scores "in one place on the account":** all 5 games' submit fns delegate to a shared `dataService._submitArcadeScore` — identical per-game board write PLUS a best-effort mirror of the new best into ONE doc `users/{uid}/appState/arcade` (keyed by board id). Per-game boards stay source-of-truth + global top-25; mirror is fire-safe. `getArcadeBests(uid)` + `testBridge.arcadeBests`. Owner-only appState rule covers it — **no rules change**.
+- **Cross-game hardening** (Jacek smoke): (1) **uniform buttons** — shared `ArcadeButton.jsx` (`ARCADE_BTN` style + `NO_SELECT`); every game's controls use it (look consistent, placement per-game). (2) **no text-selection while pressing** — `NO_SELECT` on every game root (cascades) + buttons. (3) **window fit** — roots `height:100dvh`. (4) **sound** — 1-sample silent-buffer iOS WebAudio unlock on first gesture in every game's `ensure()`/`resume()`.
+- Gate: precommit + build + **97/97 functional e2e** (new `arcade-scores-mirror` spec + all 5 game specs green). §122 / §27 PASS.
+- **Re-smoke owed (Jacek, device):** confirm window-size fits + sound now plays on each game (note: iOS silent-switch + Reads Mini's missing `.m4a` bg-music asset are expected/separate).
+
 ## 2026-06-17 — [FEATURE] Read Warrior — 5th Arcade game + RoadEvents module (§122, Jacek GO)
 **App (auto-deploy). No rules/data.** Tier-2 (new game; brief GO'd, merge-on-GO, no iPhone gate). Merge `813d28c3` (branch `feat/read-warrior`).
 - **Read Warrior (`/break/warrior`):** Road-Fighter-feel racer, Reads amber-phosphor. Canvas field (Bayer-dither texture tiles `createPattern`, screen-anchored; procedural sections straight/curve/highway/bridge/tunnel; canvas HUD 7-seg/fuel/km-h + title/over). Analog momentum steering + GAS + keyboard; fuel = only fail state; crash-recover + oil slicks. **Brand mark KEPT in-game** (Jacek — faithful large render, not the pixelated no-mark case).
