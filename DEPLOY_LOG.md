@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-17 — [FEATURE/BRANDING] Reads home-screen icon + welcome-splash login (Jacek assets)
+**App (auto-deploy).** Tier-2 (branding/design; Jacek provided the exact assets = approved design). Merge `e171831c`.
+- **PWA home-screen icon → Reads avatar** (amber dot + seam on `#0a0e17`, from `reads_social_avatar.svg`). No sharp/resvg in the toolchain → rasterized in the e2e Playwright Chromium (`scripts/gen-reads-icons.cjs`): `icon-192`, `icon-512`, `apple-touch-icon` (180), `favicon` (64). `manifest.json` now uses the PNGs as `any maskable` (dot centered in the safe zone). Dropped stale `icon-512.webp` + unused `logo.png/webp` (~450 KB precache).
+- **Login restyle = `reads_welcome_animation.html`** (approved): `ReadsWordmark` lockup (`reads` + amber dot + seam + PAINTBALL INTELLIGENCE) replaces `logo.png` above the form (offline/reset/login). `ReadsWelcomeSplash` plays the lockup animation (track draws → rich-B radial dot pop → seam → word/tagline rise) then fades (~1.35s), revealing the form. Keyframes in `global.css`; splash is **decorative `pointer-events:none`** (never blocks the form or e2e); `prefers-reduced-motion` → fade-only. One-shot per LoginPage mount (no JS gate — a side-effecting useState initializer is StrictMode-unsafe).
+- e2e: `login-branding` (splash renders + non-blocking + lockup present); `invite-register` + `pwa-offline` still green. Gate **88/88**. §27: amber dot = brand mark (consistent with the app icon / NavDrawer ball / Reads Mini), form CTA interactive.
+- **⚠ iOS NOTE:** the home-screen icon is cached at add-to-home-screen time → existing installs keep the OLD icon until **removed + re-added**. Android picks up the new icon via the updated manifest + SW.
+
 ## 2026-06-17 — [FIX] ScoutedTeam landscape — report column squeezed by unfolded rail Isolate (Jacek regression, high)
 **App (auto-deploy). No rules/data.** Tier-1. Merge `8c8145fb` (live: chunk `ScoutedTeamPage-C2Y8XNtB.js`).
 - **Symptom:** landscape scouted-team showed only the Breakouts header (no rows); portrait fine (Jacek's key diagnostic → not a data/phase bug, a landscape layout bug).
