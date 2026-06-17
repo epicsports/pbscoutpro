@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-18 — [FIX] Arcade: Lander title text + slower Read Warrior police (Jacek smoke)
+**App (auto-deploy). No rules/data.** Tier-1 bugfix. Merge `015a4ba2`.
+- **Lunar Lander title showed key NAMES** ("reads_lander_title" etc.) instead of text: the canvas state-screens called `t('reads_lander_*')` for keys never defined (only menu/chrome keys were added) → `t()` returns the key name. Canvas text is English-only arcade art → switched to literals (matches Read Warrior). DOM chrome/initials keep their (defined) i18n keys.
+- **Read Warrior police too fast** → laggier follow in `RoadEvents.js`: lateral lerp 1.8→1.05, close-in 1.3→0.95, so weaving shakes the cops (the intended "laggy follow"). Reusable module — benefits any future road game.
+- Gate: precommit + build + **97/97 e2e**.
+
 ## 2026-06-18 — [FEATURE/FIX] Arcade: one-place account score mirror + cross-game hardening (§122.1/122.3, Jacek GO)
 **App (auto-deploy). No rules/data.** Tier-1 (additive + bugfix from prod smoke). Merge `863e75e1`.
 - **Scores "in one place on the account":** all 5 games' submit fns delegate to a shared `dataService._submitArcadeScore` — identical per-game board write PLUS a best-effort mirror of the new best into ONE doc `users/{uid}/appState/arcade` (keyed by board id). Per-game boards stay source-of-truth + global top-25; mirror is fire-safe. `getArcadeBests(uid)` + `testBridge.arcadeBests`. Owner-only appState rule covers it — **no rules change**.
