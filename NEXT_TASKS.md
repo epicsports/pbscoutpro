@@ -50,7 +50,6 @@
 - **F2 §116 manual-collapse ("focus mode")** + toggle e2e — still TODO.
 - **Custom zones** (`docs/product/CUSTOM_ZONES_SPEC.md`) — design pass owed before implementation.
 - **Hitability density UX** — at N>5, tap-a-connection-line to record + skip the pick (canvas-archetype interaction). Own brief.
-- **DRY `drawLineFromTo`** — extract one shared helper (Hitability + drawPlayers + 2 luf sites). Own brief.
 
 ## 🔴 OPEN — i18n
 - **Residual ~63 hardcoded-PL** — attended batch (NOT unattended): mixed with domain-data traps (CSVImport `detect:` arrays — must NOT extract) + interpolated log messages. Lint output (post-`fefcbc7c` refine) is the clean candidate list to triage; flag the ~10 ambiguous for ruling. Plus 2 clean aria-labels (`"Rysuj"` MatchPage / `"Rysuj plan coacha"` ScoutedTeam).
