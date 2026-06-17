@@ -48,7 +48,7 @@ Feature is branch-complete + builds; **run the e2e + eyeball the screen**, then 
 - **Reads Mini STAGE 1 docs** (`b0022305`, §117) — spec only.
 
 ### 🟡 Owed a decision / GO (Jacek / Opus)
-- **Reads Mini STAGE 2 build** — GO to build (STAGE 3 App Check separate). Audio file `sky-catcher-loop60.m4a` to drop into `public/sounds/`.
+- **Reads Mini STAGE 2 build** — ✅ SHIPPED 2026-06-17 (`186071e6`); game + leaderboard live, rules deployed, e2e green. OWED: audio file `sky-catcher-loop60.m4a` → `public/sounds/` (music silent until then); STAGE 3 App Check separate GO.
 - **Tactics consolidation** — `--live` migrate 9 + delete 24 orphans. PREP (backups + final coverage read) owed; both `--live` ops Hard-ESCALATE → GO each.
 - **Packing Checklist** — merge + rules deploy (above).
 - **§93 logo (iPhone)** — diagnosis done: likely a broken/mixed-content `logoUrl` value OR a stale PWA CacheFirst opaque response. Read the affected workspace's `logoUrl` + load it in mobile Safari to bisect (data vs cache). You smoke iPhone.

@@ -9592,6 +9592,12 @@ removed in landscape — is approved **as the archetype** and applies as-is to *
 > GO → STAGE 2 build → STAGE 3 App Check (separate GO). PRE-FLIGHT (Opus): no Reads-Mini
 > game / game-leaderboard exists in repo or history — net-new. STEP 0 (CC, verified live):
 > all infra assumptions HOLD (see §117.5).
+>
+> **STATUS: STAGE 2 SHIPPED 2026-06-17 (`186071e6`).** Game + leaderboard live, rules
+> deployed, e2e green (gate 84/84). `src/pages/ReadsMiniPage.jsx` · `TakeABreakSection`
+> (both More drawers) · `/break` route · `dataService.{getReadsMiniTop,getReadsMiniMyScore,
+> submitReadsMiniScore}`. **Residual:** audio asset `public/sounds/sky-catcher-loop60.m4a`
+> (music degrades silently until dropped) + STAGE 3 App Check (separate GO). Detail: DEPLOY_LOG 2026-06-17.
 
 ### 117.0 Locked decisions
 | # | Decision |
