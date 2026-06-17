@@ -142,11 +142,12 @@ timeout/no-point below), not a data extension.
     build brief.)
   - **Consumer — LOCKED** (avoids the 2.5 captured-but-invisible trap): a coach **per-stage move-type breakdown**
     (extend the 2.5 per-stage tables). Heatmap arrow-color-by-type = optional nice-add.
-  - **🔴 OPEN GATES — build PARKED until BOTH resolve:**
-    1. **Vocabulary** — deferred to FIT returning with details (Jacek 2026-06-05). Provisional: "change shot
-       direction" is a **shot-axis, NOT a move type**.
+  - **🔴 OPEN GATES — build PARKED (Jacek 2026-06-18: "tackle it later" — hold Stage 4 until FIT):**
+    1. **Vocabulary** — deferred to FIT returning with details (Jacek 2026-06-05; reconfirmed 2026-06-18 he
+       doesn't have the move-type list yet). Provisional starter (for when we build): hop (przeskok) ·
+       stretch (rozciągnięcie) · run (ciągły ruch); "change shot direction" is a **shot-axis, NOT a move type**.
     2. **Bump-typing (model B)** — whether to ALSO type the §79 `bumpStops` secondary move, vs only the
-       stage-relocation (A). Jacek to-decide.
+       stage-relocation (A). Jacek to-decide (provisional: A only — phase moves).
 - **Stage 5 — Time axis** (timer on first-player-placed + timestamped delta-events; reuse `LivePointTracker`;
   populate the delta layer). Continuous time WITHIN/ACROSS stages.
 - **Stage 6 — Scrubber + optional auto-play replay animation** (Jacek 2026-06-02 — the "E" mini-timeline grows
@@ -156,11 +157,12 @@ timeout/no-point below), not a data extension.
   lower priority; adoption-gated.
 - **Stage 8 — Analytics: dependent/conditional moves** (corpus-level; future).
 
-> **Cross-cutting — offline-write durability (own reliability check, NOT a timeline stage).** Stage 2 inherits
-> current Firestore offline behavior **unchanged**. Whether offline persistence is enabled and whether writes
-> queue + flush on reconnect is **UNVERIFIED — do not assume**; schedule a dedicated CC discovery. Context: venue
-> WiFi reliability + prior RESOURCE_EXHAUSTED / read-volume concerns. (`SCOUTING_CONCURRENCY_AND_CACHE.md` claims
-> the SDK queue covers commit-during-drop, but it's a doc claim, not a verified test.)
+> **Cross-cutting — offline-write durability ✅ VERIFIED (CC, 2026-06-18).** Prod Firestore uses IndexedDB
+> multi-tab persistence (`persistentLocalCache` + `persistentMultipleTabManager`, `firebase.js`) → offline read
+> cache + write queue. The write-queue→reconnect→flush path is e2e-covered by `tests/e2e/offline-sync.spec.js`
+> (go offline → `addPointRaw` queues → reconnect → `waitForPendingWrites` resolves only on backend ack → point
+> persisted), in the green `test:e2e` suite. The earlier "UNVERIFIED" concern is retired. (Emulator queue is
+> in-memory — persistence is prod-only — but the offline→queue→reconnect→sync path is identical.)
 
 ## 5. Reuse — DON'T reinvent (ground-truthed anchors)
 `slotIds` = join key for ALL additive layers. §70 `*Meta` = provenance, extend not replace. `eliminations/
