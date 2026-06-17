@@ -19,7 +19,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../ut
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
-import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Skull } from 'lucide-react';
+import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Skull, X } from 'lucide-react';
 import { resolveZones } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
@@ -216,6 +216,9 @@ export default function ScoutedTeamPage() {
   const [newNumber, setNewNumber] = useState('');
   const [allHeatmapPoints, setAllHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
+  // §118.2 — confidence banner is dismissible per screen-open (not persisted): shows
+  // on entry, X tucks it for this view, re-shows on reopen.
+  const [confidenceDismissed, setConfidenceDismissed] = useState(false);
   // No-eternal-loading guard: if tournament/team never resolve, flip to an error
   // state after a bounded wait instead of spinning forever (the 2026-06-11
   // scouted-team bug — a createdAt-less scouted doc made the entry permanently
@@ -1068,7 +1071,9 @@ export default function ScoutedTeamPage() {
       // into a sea of empty space (§118.1). Portrait is already page-capped.
       <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ ...(scroll ? { flex: 1, overflowY: 'auto' } : { flex: '0 0 auto', maxWidth: 560 }), display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}
-        {heatmapPoints.length > 0 && (() => {
+        {heatmapPoints.length > 0 && !confidenceDismissed && (
+          <div style={{ position: 'relative' }}>
+          {(() => {
           const c = computeCompleteness(heatmapPoints);
           if (!c) return null;
           const scoutSuffix = scoutNamesLabel ? t('scouted_by', scoutNamesLabel) : '';
@@ -1168,7 +1173,13 @@ export default function ScoutedTeamPage() {
               {pills}
             </div>
           );
-        })()}
+          })()}
+          <button type="button" data-testid="scouted-confidence-dismiss" aria-label={t('close') || 'Dismiss'} onClick={() => setConfidenceDismissed(true)}
+            style={{ position: 'absolute', top: 2, right: 2, minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}>
+            <X size={16} />
+          </button>
+          </div>
+        )}
 
         {/* Loading state */}
         {heatmapLoading && (

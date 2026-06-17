@@ -37,6 +37,18 @@ test.describe('ScoutedTeam field-is-king rail', () => {
     expect((await canvas.boundingBox()).height).toBeLessThan(PORTRAIT.height * 0.7);
   });
 
+  // §118.2 — the data-confidence banner shows on screen-open and the X dismisses it
+  // (per-view, not persisted). Portrait, where the report column is stacked + visible.
+  test('confidence banner shows on open; X dismisses it', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    await page.setViewportSize(PORTRAIT);
+    await page.goto('/' + url);
+    const x = page.getByTestId('scouted-confidence-dismiss');
+    await expect(x).toBeVisible({ timeout: 20000 });
+    await x.click();
+    await expect(x).toHaveCount(0);
+  });
+
   // Coordinate guardrail in the field-is-king canvas: a coach-draw at the canvas
   // CENTER persists a stroke whose normalized coords land near center — the tap
   // transform survives. Restores annotations after (shared serial emulator state).
