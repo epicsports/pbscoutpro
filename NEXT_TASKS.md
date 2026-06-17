@@ -8,6 +8,7 @@
 ---
 
 ## ✅ DONE since the last sync (2026-06-13) — verified against main, detail in DEPLOY_LOG
+- **🏎️ Read Warrior — 5th Arcade game + `RoadEvents.js` reusable module** SHIPPED (`813d28c3`, 2026-06-17) — canvas road racer, `/break/warrior`, `leaderboards/readWarrior`, brand mark kept in-game, no rules change. §122 canon (arcade registry + per-gameId score scoping; consolidated account-doc = available follow-up, not built). Gate 96/96. Smoke owed: Take a Break → Read Warrior → drive.
 - **👾 Reads Invaders — 3rd Arcade game** SHIPPED (`40b30690`, 2026-06-17) — canvas space-invaders + Mini chrome, selector row + `/break/invaders`, `leaderboards/readsInvaders` (Game A/B), no rules change, no mark in-game. §120 / §27 PASS. Smoke owed: Take a Break → Invaders → play.
 - **🌙 Reads Lunar Lander — 4th Arcade game** SHIPPED (merged same session, 2026-06-17) — canvas lander + LCD chrome, selector row + `/break/lander`, `leaderboards/readsLander` (const mode:'A'), new-best initials overlay, no rules change, no mark in-game. §121 / §27 PASS. Smoke owed: Take a Break → Lunar Lander → land.
 - **🐍 Reads Snake — 2nd mini-game + game selector** SHIPPED (`59441c23`, 2026-06-17) — classic Snake at `/break/snake` + data-driven game selector at `/break` (Reads Mini → `/break/reads`); `leaderboards/readsSnake`, no rules change (shared `{board}` wildcard; Snake writes constant `mode:'A'`). SFX only. §119 / §27 PASS. Gate 90/90 (Snake T1-T5 fail-first). Shares Reads Mini's STAGE 3 App Check. Smoke owed: tap Take a Break → Snake row → play.

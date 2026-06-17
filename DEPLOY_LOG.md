@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-17 — [FEATURE] Read Warrior — 5th Arcade game + RoadEvents module (§122, Jacek GO)
+**App (auto-deploy). No rules/data.** Tier-2 (new game; brief GO'd, merge-on-GO, no iPhone gate). Merge `813d28c3` (branch `feat/read-warrior`).
+- **Read Warrior (`/break/warrior`):** Road-Fighter-feel racer, Reads amber-phosphor. Canvas field (Bayer-dither texture tiles `createPattern`, screen-anchored; procedural sections straight/curve/highway/bridge/tunnel; canvas HUD 7-seg/fuel/km-h + title/over). Analog momentum steering + GAS + keyboard; fuel = only fail state; crash-recover + oil slicks. **Brand mark KEPT in-game** (Jacek — faithful large render, not the pixelated no-mark case).
+- **RoadEvents = reusable module** (`src/utils/RoadEvents.js`, framework-agnostic, host-contract decoupled per the brief): traffic jam · police chase (busts + collides with traffic) · rider pickup (×2 + hearts) · fuel zones. Reusable by future road games.
+- **Arcade is now 5 games:** Snake · Invaders · Lunar Lander · Read Warrior · Reads Mini (selector `GAMES` row + own lazy chunk). **§122 canon:** per-gameId score scoping — each game its own `leaderboards/{board}` (uid-keyed, global top-25, never colliding); no rules change (shared `{board}` wildcard). `leaderboards/readWarrior` (const `mode:'A'`, replaces prototype `window.storage`); new-best initials overlay (rule needs `[A-Z]{3}`). Procedural WebAudio (engine + 1-bit SFX + chiptune).
+- Gate: precommit + build + **96/96 functional e2e** (read-warrior fail-first: selector 5 games → force PB → SAVE persists under `readWarrior` + rules create/reject-lower/cross-uid-denied). §122 / §27 PASS.
+- **Smoke owed (Jacek, prod):** More → Take a Break → Read Warrior → drive (steer/GAS/refuel/crash/PB); confirm all 5 rows open.
+- **On offer (not built):** consolidated `users/{uid}` "my arcade scores" mirror doc (purely additive; current per-board uid-keyed design ships).
+
 ## 2026-06-17 — [FEATURE] Arcade games 3 + 4: Reads Invaders + Lunar Lander (§120/§121, Jacek GO)
 **App (auto-deploy). No rules/data.** Tier-2 (new games; brief GO'd, merge-on-GO, no iPhone gate). Merges `40b30690` (Invaders) + `95796622` (Lander) — built on independent branches, union-merged on the shared selector/route/dataService/testBridge/i18n append-points.
 - **Reads Invaders (§120, `/break/invaders`):** canvas space-invaders (6×4 marching sprites + auto-fire + drag-steer + ◀▶ + keyboard), Mini chrome, Game A/B, paint-themed sprites, SFX + 1-bit music. `leaderboards/readsInvaders` (real `mode` A/B). No brand mark in-game.
