@@ -3150,3 +3150,48 @@ export async function savePackingState(uid, data) {
     updatedAt: serverTimestamp(),
   }, { merge: true });
 }
+
+// ─── Reads Mini global leaderboard (§117) ──────────────────────────────────
+// ONE global board, best score per account, doc id = uid. Spark, no Functions;
+// anti-cheat lives in security rules (int 0..9999, [A-Z]{3}, monotonic, 5s
+// cooldown, no delete). All reads/writes try/catch at the call site → the game
+// degrades to local-only play if the board is unavailable (parallels packing).
+const READS_MINI_BOARD = 'readsMini';
+
+export async function getReadsMiniTop(topN = 25) {
+  const col = collection(db, 'leaderboards', READS_MINI_BOARD, 'scores');
+  const snap = await getDocs(query(col, orderBy('score', 'desc'), limit(topN)));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+export async function getReadsMiniMyScore(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'leaderboards', READS_MINI_BOARD, 'scores', uid));
+  return snap.exists() ? { uid, ...snap.data() } : null;
+}
+
+// Submit a run. Returns true if the board was updated (new personal best),
+// false if the existing best is >= score (no write attempted). Create vs update
+// is chosen client-side so each path matches its rule (createdAt set once;
+// monotonic + cooldown enforced server-side on update).
+export async function submitReadsMiniScore(uid, { initials, score, mode }) {
+  if (!uid) return false;
+  const clean = String(initials || '').toUpperCase().slice(0, 3);
+  if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
+  const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
+  const ref = doc(db, 'leaderboards', READS_MINI_BOARD, 'scores', uid);
+  const existing = await getDoc(ref);
+  if (!existing.exists()) {
+    await setDoc(ref, {
+      uid, initials: clean, score: safe, mode: mode === 'B' ? 'B' : 'A',
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    return true;
+  }
+  if (safe <= (existing.data().score || 0)) return false;
+  await updateDoc(ref, {
+    initials: clean, score: safe, mode: mode === 'B' ? 'B' : 'A',
+    updatedAt: serverTimestamp(),
+  });
+  return true;
+}

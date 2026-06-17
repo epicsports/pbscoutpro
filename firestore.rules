@@ -716,5 +716,35 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if request.auth != null;
     }
+
+    // ─── /leaderboards/{board}/scores/{uid} (§117 Reads Mini "Take a Break") ──
+    // ONE global arcade leaderboard (best score per account). DELIBERATE break of
+    // per-workspace isolation (§117.6): recreational, no scouting data; public
+    // label is a 3-letter arcade tag (no PII/GDPR). Read = any authed (top-25
+    // orderBy score desc, single-field → auto-indexed, no composite). Anti-cheat:
+    // own doc only, int score 0..9999, valid [A-Z]{3} initials, monotonic score,
+    // 5s write cooldown, no delete. (App Check enforcement = STAGE 3, separate GO.)
+    match /leaderboards/{board}/scores/{uid} {
+      function validRow(d) {
+        return d.uid == uid
+          && d.initials is string && d.initials.matches('[A-Z]{3}')
+          && d.score is int && d.score >= 0 && d.score <= 9999
+          && d.mode in ['A', 'B'];
+      }
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && validRow(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && validRow(request.resource.data)
+        && request.resource.data.score > resource.data.score
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time
+        && request.time > resource.data.updatedAt + duration.value(5, 's');
+      allow delete: if false;
+    }
   }
 }
