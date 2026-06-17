@@ -3,6 +3,7 @@ import { COLORS, FONT, FONT_SIZE, TOUCH } from '../utils/theme';
 import { loginWithEmail, registerWithEmail, resetPassword } from '../services/firebase';
 import { useOnline } from '../hooks/useOnline';
 import { useLanguage } from '../hooks/useLanguage';
+import { ReadsWordmark, ReadsWelcomeSplash } from '../components/ReadsWordmark';
 
 /**
  * LoginPage — email / password sign-in + register (§ 33).
@@ -22,7 +23,6 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false);
   const [resetError, setResetError] = useState('');
 
-  const BASE = import.meta.env.BASE_URL;
   const online = useOnline();
 
   const goReset = () => { setMode('reset'); setError(''); setResetError(''); setResetSent(false); };
@@ -57,11 +57,7 @@ export default function LoginPage() {
         display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
       }}>
         <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-          <picture>
-            <source srcSet={`${BASE}logo.webp`} type="image/webp" />
-            <img src={`${BASE}logo.png`} alt="PBScoutPRO"
-              style={{ width: 200, height: 200, objectFit: 'contain', display: 'block' }} />
-          </picture>
+          <ReadsWordmark width={220} tagline />
           <div data-testid="login-offline" style={{
             width: '100%', background: COLORS.surface, border: `1px solid ${COLORS.border}`,
             borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 10, textAlign: 'center',
@@ -85,10 +81,7 @@ export default function LoginPage() {
       <div style={{ minHeight: '100vh', background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
         <form onSubmit={(e) => { e.preventDefault(); handleReset(); }}
           style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-          <picture>
-            <source srcSet={`${BASE}logo.webp`} type="image/webp" />
-            <img src={`${BASE}logo.png`} alt="PBScoutPRO" style={{ width: 200, height: 200, objectFit: 'contain', display: 'block' }} />
-          </picture>
+          <ReadsWordmark width={220} tagline />
           <div style={{ width: '100%', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 700, color: COLORS.text, textAlign: 'center' }}>
               {t('reset_title') || 'Reset password'}
@@ -156,20 +149,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', background: COLORS.bg,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: 20,
-    }}>
-      <form onSubmit={handleSubmit} style={{
+    <>
+      <ReadsWelcomeSplash />
+      <div style={{
+        minHeight: '100vh', background: COLORS.bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}>
+        <form onSubmit={handleSubmit} style={{
         width: '100%', maxWidth: 320,
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
       }}>
-        <picture>
-          <source srcSet={`${BASE}logo.webp`} type="image/webp" />
-          <img src={`${BASE}logo.png`} alt="PBScoutPRO"
-            style={{ width: 200, height: 200, objectFit: 'contain', display: 'block' }} />
-        </picture>
+        <ReadsWordmark width={220} tagline />
 
         <div style={{
           width: '100%', background: COLORS.surface,
@@ -249,15 +240,9 @@ export default function LoginPage() {
             </button>
           )}
         </div>
-
-        <p style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
-          textAlign: 'center', margin: 0,
-        }}>
-          PBScoutPRO · paintball scouting &amp; analytics
-        </p>
-      </form>
-    </div>
+        </form>
+      </div>
+    </>
   );
 }
 

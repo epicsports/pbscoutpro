@@ -322,6 +322,44 @@ canvas {
   50%      { opacity: 0.3; }
 }
 
+/* ─── Reads welcome splash (login intro; asset = reads_welcome_animation.html) ─── */
+@keyframes readsSplashOut { to { opacity: 0; visibility: hidden; } }
+@keyframes readsTrackDraw { to { stroke-dashoffset: 0; } }
+@keyframes readsTrackFade { to { opacity: 0; } }
+@keyframes readsDotPop    { to { transform: scale(1); } }
+@keyframes readsSeamIn    { to { opacity: 1; } }
+@keyframes readsRise      { to { opacity: 1; transform: translateY(0); } }
+@keyframes readsFadeOnly  { to { opacity: 1; } }
+
+.reads-splash {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: #0a0e17; z-index: 1000;
+  animation: readsSplashOut .25s ease forwards; animation-delay: 1.35s;
+  /* Decorative only — never intercept taps. The login form lives underneath and
+     stays usable during the intro (and e2e can drive it immediately). */
+  pointer-events: none;
+}
+.reads-splash #track {
+  stroke-dasharray: 300; stroke-dashoffset: 300;
+  animation: readsTrackDraw .38s cubic-bezier(.4,0,.2,1) forwards,
+             readsTrackFade .18s ease forwards .52s;
+}
+.reads-splash #dot {
+  transform-box: fill-box; transform-origin: center; transform: scale(0);
+  animation: readsDotPop .22s cubic-bezier(.34,1.56,.64,1) forwards .34s;
+}
+.reads-splash #seam { opacity: 0; animation: readsSeamIn .15s ease forwards .55s; }
+.reads-splash #word { opacity: 0; transform: translateY(6px); animation: readsRise .26s ease forwards .62s; }
+.reads-splash #desc { opacity: 0; transform: translateY(4px); animation: readsRise .26s ease forwards .78s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reads-splash #track { display: none; }
+  .reads-splash #dot { transform: scale(1); opacity: 0; animation: readsFadeOnly .2s ease forwards; }
+  .reads-splash #seam, .reads-splash #word, .reads-splash #desc {
+    transform: none; animation: readsFadeOnly .2s ease forwards;
+  }
+}
+
 .fade-in  { animation: fadeIn  0.2s ease-out; }
 .slide-in { animation: slideIn 0.15s ease-out; }
 .slide-up { animation: slideUp 0.2s ease-out; }
