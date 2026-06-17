@@ -181,33 +181,35 @@ function mkRender(ctx) {
     ctx.restore();
     drawHUD(G);
     if (G.flash > 0) { ctx.fillStyle = amberA(G.flash * 0.5); ctx.fillRect(0, 0, CANVAS_W, CANVAS_H); }
+    // Canvas state-screen text is art/English-only (arcade convention) — literals,
+    // NOT t() (undefined i18n keys returned the key NAME on the title screen).
     if (G.mode === 'ready') drawCenter([
-      { s: t('reads_lander_title') || 'LUNAR LANDER', size: 11, weight: 'bold' },
-      { s: t('reads_lander_sub') || 'TAKE A BREAK', size: 5, alpha: 0.5 }, { s: '', size: 2 },
+      { s: 'LUNAR LANDER', size: 11, weight: 'bold' },
+      { s: 'TAKE A BREAK', size: 5, alpha: 0.5 }, { s: '', size: 2 },
       { s: G.best > 0 ? ('HI  ' + String(G.best).padStart(5, '0')) : '', size: 6.5, alpha: 0.9 }, { s: '', size: 2 },
-      { s: t('reads_lander_tip1') || 'LAND SOFT · STAY LEVEL', size: 6, alpha: 0.85 },
-      { s: t('reads_lander_tip2') || 'MIND YOUR FUEL', size: 6, alpha: 0.85 }, { s: '', size: 3 },
-      { s: G.blink ? (t('reads_lander_tap_start') || 'TAP TO START') : ' ', size: 7 },
+      { s: 'LAND SOFT · STAY LEVEL', size: 6, alpha: 0.85 },
+      { s: 'MIND YOUR FUEL', size: 6, alpha: 0.85 }, { s: '', size: 3 },
+      { s: G.blink ? 'TAP TO START' : ' ', size: 7 },
     ]);
     else if (G.mode === 'landed') drawCenter([
-      { s: t('reads_lander_touchdown') || 'TOUCHDOWN', size: 11 },
-      { s: (t('reads_lander_pad_bonus') || 'PAD BONUS x') + G.msgMult, size: 6, alpha: 0.85 },
+      { s: 'TOUCHDOWN', size: 11 },
+      { s: 'PAD BONUS x' + G.msgMult, size: 6, alpha: 0.85 },
       { s: '+' + G.msgScore, size: 9 }, { s: '', size: 3 },
-      { s: G.blink ? ((t('reads_lander_tap_level') || 'TAP FOR LEVEL ') + (G.level + 1)) : ' ', size: 6 },
+      { s: G.blink ? ('TAP FOR LEVEL ' + (G.level + 1)) : ' ', size: 6 },
     ]);
     else if (G.mode === 'crashed') drawCenter([
-      { s: t('reads_lander_crashed') || 'CRASHED', size: 11 },
-      { s: G.lives > 0 ? (G.lives + ' ' + (t('reads_lander_landers_left') || 'LANDERS LEFT')) : (t('reads_lander_no_landers') || 'NO LANDERS LEFT'), size: 6, alpha: 0.85 },
+      { s: 'CRASHED', size: 11 },
+      { s: G.lives > 0 ? (G.lives + ' LANDERS LEFT') : 'NO LANDERS LEFT', size: 6, alpha: 0.85 },
       { s: '', size: 3 },
-      { s: G.blink ? (G.lives > 0 ? (t('reads_lander_tap_retry') || 'TAP TO RETRY') : (t('reads_lander_tap_continue') || 'TAP TO CONTINUE')) : ' ', size: 6 },
+      { s: G.blink ? (G.lives > 0 ? 'TAP TO RETRY' : 'TAP TO CONTINUE') : ' ', size: 6 },
     ]);
     else if (G.mode === 'gameover') drawCenter([
-      { s: t('reads_lander_game_over') || 'GAME OVER', size: 11 },
-      { s: (t('reads_lander_score') || 'SCORE  ') + String(G.score).padStart(5, '0'), size: 7 },
-      G.newBest ? { s: G.blink ? (t('reads_lander_new_best') || '— NEW BEST —') : ' ', size: 7, alpha: 1 } : { s: G.best ? ('HI  ' + String(G.best).padStart(5, '0')) : '', size: 6, alpha: 0.75 },
-      { s: '', size: 3 }, { s: G.blink ? (t('reads_lander_play_again') || 'TAP TO PLAY AGAIN') : ' ', size: 6 },
+      { s: 'GAME OVER', size: 11 },
+      { s: 'SCORE  ' + String(G.score).padStart(5, '0'), size: 7 },
+      G.newBest ? { s: G.blink ? '— NEW BEST —' : ' ', size: 7, alpha: 1 } : { s: G.best ? ('HI  ' + String(G.best).padStart(5, '0')) : '', size: 6, alpha: 0.75 },
+      { s: '', size: 3 }, { s: G.blink ? 'TAP TO PLAY AGAIN' : ' ', size: 6 },
     ]);
-    else if (G.mode === 'paused') drawCenter([{ s: t('reads_lander_paused') || 'PAUSED', size: 11 }, { s: G.blink ? (t('reads_lander_resume') || 'TAP TO RESUME') : ' ', size: 6 }]);
+    else if (G.mode === 'paused') drawCenter([{ s: 'PAUSED', size: 11 }, { s: G.blink ? 'TAP TO RESUME' : ' ', size: 6 }]);
   };
 }
 
