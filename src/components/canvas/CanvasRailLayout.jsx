@@ -210,6 +210,12 @@ export default function CanvasRailLayout({
   isLandscape, artifact, rail, header = null, hint = null,
   aspect = 16 / 10, railMin = 200, portraitArtifactVh = 46, side = 'left',
   collapsed = null,
+  // ── Report-first width mode (§118.1 amend) — Report + promotable-Canvas family.
+  // Default false → byte-identical to the field-hero path (Canvas/Tool screens,
+  // pixel-diff 0). When true: field + rail SHARE width (fieldGrow:railGrow), rail
+  // floored at reportMin so dense report content never clips; field residual +
+  // letterbox, promotable on tap. Cramped → stacked (no §116 strip). ──
+  railPriority = false, reportMin = 340, fieldGrow = 3, railGrow = 2, fieldFloor = 360,
   // ── Field View shell slots (additive, all optional; null → prior behavior) ──
   phaseControl = null, fieldTools = null, primaryAction = null,
 }) {
@@ -242,7 +248,9 @@ export default function CanvasRailLayout({
   // config is supplied (else legacy width-yield).
   const COLLAPSE_AT = 0.90;
   const fullRailFieldH = (dims.w - railMin - GAP) / aspect;
-  const isCollapsed = landscape && !!collapsed && dims.w > 0 && dims.h > 0 && fullRailFieldH < COLLAPSE_AT * dims.h;
+  // Report-first NEVER uses the §116 strip (it hides the report behind a field-priority
+  // device); cramped report-first falls back to the stacked layout instead.
+  const isCollapsed = landscape && !!collapsed && !railPriority && dims.w > 0 && dims.h > 0 && fullRailFieldH < COLLAPSE_AT * dims.h;
   useEffect(() => { if (!isCollapsed && overlayOpen) setOverlayOpen(false); }, [isCollapsed, overlayOpen]);
 
   const safeArea = {
@@ -261,6 +269,30 @@ export default function CanvasRailLayout({
   );
 
   if (landscape) {
+    // Report-first width mode — field + rail share width; rail floored at reportMin.
+    if (railPriority) {
+      const tooNarrow = dims.w > 0 && dims.w < reportMin + fieldFloor + GAP;
+      if (!tooNarrow) {
+        const heroRP = (
+          <div key="hero" style={{ flex: `${fieldGrow} 1 0`, minWidth: 0, height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ height: '100%', aspectRatio: String(aspect), maxWidth: '100%', display: 'flex' }}>{frameArtifact(true)}</div>
+          </div>
+        );
+        const railRP = (
+          <div key="rail" style={{ flex: `${railGrow} 1 0`, minWidth: reportMin, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            {header}
+            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{rail}</div>
+            {hint}
+          </div>
+        );
+        return (
+          <div ref={containerRef} style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', gap: GAP, alignItems: 'stretch', ...safeArea }}>
+            {side === 'left' ? [railRP, heroRP] : [heroRP, railRP]}
+          </div>
+        );
+      }
+      // tooNarrow → fall through to the stacked (portrait) layout below.
+    } else {
     const hero = (
       <div key="hero" style={{ flex: '0 1 auto', height: '100%', aspectRatio: String(aspect), minWidth: 0, display: 'flex' }}>
         {frameArtifact(true)}
@@ -295,6 +327,7 @@ export default function CanvasRailLayout({
         {side === 'left' ? [railEl, hero] : [hero, railEl]}
       </div>
     );
+    }
   }
 
   // Portrait: header full-bleed top · padded field(capped) over rail · hint full-bleed

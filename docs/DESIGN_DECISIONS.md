@@ -9657,3 +9657,28 @@ model:
    user-resizable / draggable rail** — touch-first device class + field-is-hero model.
    Deferred-if-needed: discrete snap presets (swap `railMin`) on tablet; a draggable divider
    only under `pointer:fine` if a desktop/mouse surface ever ships.
+
+### 118.1 Landscape-hero canon AMEND — report-first width mode (2026-06-17)
+
+The "field = HERO, rail = residual" canon is now SCOPED by archetype:
+
+- **Canvas/Tool screens** (LivePoint capture, Hitability draw): UNCHANGED — field is the
+  HERO (aspect-basis width), rail is residual, §116 auto-collapse to the 56px strip on
+  cramped tablet. The data IS the field; width belongs to it.
+- **Report + promotable-Canvas screens** (PlayerStats, ScoutedTeam): **report-first**
+  (`CanvasRailLayout railPriority`). Field + rail SHARE width (default `fieldGrow:railGrow`
+  = 3:2 ≈ 60/40), rail floored at `reportMin` (340) so dense report content (stat cards,
+  table headers) never clips; the field becomes residual + letterbox, still promotable to
+  full hero on tap. **§116 strip is DISABLED** here (hiding the report behind a
+  field-priority strip is wrong for a report screen); a cramped viewport
+  (`< reportMin + fieldFloor + GAP`) falls back to the stacked (portrait) layout instead.
+  Rationale: on report screens the DATA is primary, but the field was hoarding width via
+  its aspect basis while the report floored at railMin=200 (→ the clipped stat-card 3rd
+  column + colliding table headers Jacek hit on tablet).
+
+Default `railPriority=false` → the field-hero path is byte-identical (pixel-diff 0).
+MatchPage review is **NOT** flipped pending an archetype call (it's capture-adjacent, not a
+pure report). Report tables additionally cap at a comfortable measure (report column
+`maxWidth` in the rail) + use `whiteSpace:nowrap` widened value columns so headers never
+collide. Follow-up (NOT built): extract a shared `<ReportTable>` primitive (the
+Breakouts/Shooting/big-moves tables are copy-pasted).

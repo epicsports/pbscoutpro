@@ -1052,7 +1052,10 @@ export default function ScoutedTeamPage() {
   // (zones + column) → expanding any zone grows the rail's scroll, never steals the
   // report column's height (the expand→squeeze regression is gone structurally).
   const renderColumn = (scroll) => (
-      <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ ...(scroll ? { flex: 1, overflowY: 'auto' } : { flex: '0 0 auto' }), display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
+      // maxWidth in the landscape rail keeps the report at a comfortable measure — a
+      // wide (report-first) rail must not stretch the table name columns (flex:1)
+      // into a sea of empty space (§118.1). Portrait is already page-capped.
+      <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ ...(scroll ? { flex: 1, overflowY: 'auto' } : { flex: '0 0 auto', maxWidth: 560 }), display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}
         {heatmapPoints.length > 0 && (() => {
           const c = computeCompleteness(heatmapPoints);
@@ -1292,10 +1295,10 @@ export default function ScoutedTeamPage() {
                   borderBottom: `1px solid ${COLORS.surfaceLight}`,
                 }}>
                   <div style={{ flex: 1 }} />
-                  <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
-                  <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
-                  <div style={{ width: 36, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played')}</div>
-                  <div style={{ width: 44, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played_in')}</div>
+                  <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
+                  <div data-testid="breakouts-col-surv" style={{ width: 60, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
+                  <div style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played')}</div>
+                  <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played_in')}</div>
                 </div>
                 {rows.map((b, i) => {
                   const freqColor = qualityColor(b.pct, [30, 15]);
@@ -1313,10 +1316,10 @@ export default function ScoutedTeamPage() {
                           <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
                         )}
                       </div>
-                      <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
-                      <div style={{ width: 42, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
-                      <div style={{ width: 36, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{b.timesPlayed}</div>
-                      <div style={{ width: 44, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{b.pointsPlayed}/{b.totalPoints}</div>
+                      <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
+                      <div style={{ width: 60, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                      <div style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{b.timesPlayed}</div>
+                      <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{b.pointsPlayed}/{b.totalPoints}</div>
                     </div>
                   );
                 })}
@@ -2296,6 +2299,7 @@ export default function ScoutedTeamPage() {
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
         <CanvasRailLayout
           isLandscape
+          railPriority
           aspect={16 / 10}
           railMin={200}
           header={pageHeaderEl}
