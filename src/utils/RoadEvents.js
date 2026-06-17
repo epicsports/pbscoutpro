@@ -50,8 +50,8 @@ export default class RoadEvents {
     for (const e of this.active) {
       if (e.kind === 'police') {
         e.t += dt; e.sir -= dt; if (e.sir <= 0 && !e.gave) { this.h.beep(((performance.now() / 300 | 0) % 2) ? 760 : 540, 0.07, 0.05); e.sir = 0.3; }
-        e.x += (this.h.playerX - e.x) * Math.min(1, dt * 1.8);
-        const ty = e.gave ? H + 60 : PY + 8; e.y += (ty - e.y) * Math.min(1, dt * 1.3);
+        e.x += (this.h.playerX - e.x) * Math.min(1, dt * 1.05);   // laggier lateral follow (was 1.8) — weaving shakes the cops
+        const ty = e.gave ? H + 60 : PY + 8; e.y += (ty - e.y) * Math.min(1, dt * 0.95);   // slower close-in (was 1.3)
         if (!e.gave && Math.abs(e.x - this.h.playerX) < 24 && Math.abs(e.y - PY) < 28) { this.h.bust(); e.gave = true; this.h.sfx('bust'); }
         if (!e.gave) { for (const c of this.h.cars) { const cy = this.h.screenY(c.d), cx = this.h.curve(c.d) + c.lane * this.h.halfW(c.d), cw = c.w || 24, ch = c.h || 40; if (Math.abs(cx - e.x) < (24 + cw) / 2 * 0.8 && Math.abs(cy - e.y) < (40 + ch) / 2 * 0.8) { e.gave = true; this.h.sfx('bust'); break; } } }
         if (e.t > e.life) e.gave = true;
