@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-17 — [FEATURE] Report-first rail width mode + responsive rail content (§118.1, Jacek GO)
+**App (auto-deploy). No rules/data.** Tier-1 (brief: validate-then-GO; no preview — `/preview` dead). Merge `9347989c`.
+- **`CanvasRailLayout railPriority`** (default `false` → byte-identical field-hero path, pixel-diff 0 for Hitability/LivePoint/Match). When `true`+landscape+not-cramped: field + rail SHARE width (`fieldGrow:railGrow` 3:2 ≈ 60/40), rail floored at `reportMin=340`, field residual+letterbox (promotable on tap), **§116 strip DISABLED**; cramped (`< reportMin+fieldFloor+GAP`) → stacked layout. Flipped on **PlayerStats + ScoutedTeam**. **MatchPage NOT flipped** — archetype call pending (NEXT_TASKS).
+- **Responsive content:** PlayerStats + MatchPage stat grids → `auto-fit minmax(96px,1fr)` (3rd card never clips). ScoutedTeam Breakouts value columns widened + `whiteSpace:nowrap` (PRZEŻYCIE header was overflowing 42px → 60px); report column `maxWidth 560` in the rail (no name-column stretch).
+- **e2e rewritten** to the report-first model (the old strip / hero-≥95% assertions were the pre-amend field-hero behavior): rail breathes >200, no strip, grid + Breakouts-header no overflow, zones collapse independently, field coordinate guardrail survives the share-width reflow. Gate **88/88**. §27 PASS.
+- **Canon:** DESIGN_DECISIONS **§118.1** (landscape-hero amend, scoped by archetype). Follow-up (NEXT_TASKS): MatchPage archetype call + shared `<ReportTable>` extraction.
+
 ## 2026-06-17 — [FEATURE] ScoutedTeam rail — all-collapsible zones + whole-rail scroll (Jacek GO)
 **App (auto-deploy). No rules/data.** Tier-1 (brief: preview + GO — GO given). Merge `4ba31fe2`.
 - **Squeeze killed structurally:** the landscape rail now scrolls as ONE unit — `renderColumn(scroll)` makes the report column the page scroller in PORTRAIT (`flex:1, overflowY:auto`) and content-height in LANDSCAPE (`flex:0 0 auto`), wrapped with the control zones in a single `overflowY:auto` rail div. Expanding any zone grows the scroll, never steals the report column's height (supersedes the 2026-06-17 fold-only mitigation). §116 ☰ overlay renders the same `rail` → same one-unit scroll.
