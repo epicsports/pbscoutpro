@@ -60,6 +60,14 @@ Stage 2.** Stage 2 reuses ONLY the canonical draw.
   - **Naming-lock rationale = forward-correctness, not migration-avoidance:** locking now means any future explicit
     Break keyframe writes `stage:'breakout'` from day one (avoids a later `break`/`breakout` literal split).
   - **Shell-agnostic:** the Field View `phaseControl` slot is enum-agnostic, so widening the enum needs no shell change.
+  - **SINGLE SOURCE = `src/utils/pointPhases.js` (shipped 2026-06-17).** The scattered phase literals/icon maps/
+    `STAGE_ORDER`s named above are now consolidated into one module: the `PHASES` axis + selectors
+    (`capturePhases`/`playPhases`/`coachReportPhases`/`isReasonRadial`/`label`/`toPersistedLiteral`/…) + the
+    `ALIAS` map (`break`↔`breakout`, `postBreakout`↔`settle`). Every consumer (MatchPage capture/review,
+    StageSwitcher, `dataService.mergeStreamTimelines`, generateInsights, HeatmapCanvas, ScoutedTeam coach report)
+    imports from HERE — adding/renaming/remapping a phase is one edit. `endgame` carries `captureEnabled:false`
+    (reserved, like `preBreakout`/`outcome`), so it appears in the model axis but in NO capture/report UI, exactly
+    per the D4 capture-subset scope above; read-side endgame branches stay as inert, data-gated forward-compat.
 
 ## 3. Target spine (per D2, refined with Jacek's phase/UX model 2026-06-02)
 **Stages = bounded keyframes** (the keyframe-per-stage realization of D2; continuous timestamped delta-events

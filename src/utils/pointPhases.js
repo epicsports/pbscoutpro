@@ -6,7 +6,9 @@
 // Axis (ordered): preBreakout · breakout · settle · mid · endgame · outcome.
 //   - kind 'play'     → a field state on the timeline.
 //   - kind 'terminal' → the buzzer/result (outcome); NOT a capture/heatmap tab.
-//   - captureEnabled  → the scout can record this phase (preBreakout/outcome can't).
+//   - captureEnabled  → the scout can record this phase. Per ratified D4 (2026-06-16)
+//     capture is the SUBSET breakout/settle/mid; preBreakout/endgame/outcome are RESERVED
+//     model phases (no capture UI) so view-side features have a phase to attach to.
 //   - reasonRadial    → the 2b elimination-reason radial applies (Settle/Mid/Endgame).
 //   - persistedLiteral→ the verbatim Firestore `timeline[].stage` value. Breakout is
 //     keyframe #0 (homeData/awayData) and persists under the LEGACY literal 'break';
@@ -21,7 +23,7 @@ export const PHASES = [
   { key: 'breakout',    i18nKey: 'phase_breakout',    kind: 'play',     seq: 1, captureEnabled: true,  positional: true,  reasonRadial: false, persistedLiteral: 'break' },
   { key: 'settle',      i18nKey: 'phase_settle',      kind: 'play',     seq: 2, captureEnabled: true,  positional: true,  reasonRadial: true,  persistedLiteral: 'settle' },
   { key: 'mid',         i18nKey: 'phase_mid',         kind: 'play',     seq: 3, captureEnabled: true,  positional: true,  reasonRadial: true,  persistedLiteral: 'mid' },
-  { key: 'endgame',     i18nKey: 'phase_endgame',     kind: 'play',     seq: 4, captureEnabled: true,  positional: true,  reasonRadial: true,  persistedLiteral: 'endgame' },
+  { key: 'endgame',     i18nKey: 'phase_endgame',     kind: 'play',     seq: 4, captureEnabled: false, positional: true,  reasonRadial: true,  persistedLiteral: 'endgame' },
   { key: 'outcome',     i18nKey: 'phase_outcome',     kind: 'terminal', seq: 5, captureEnabled: false, positional: false, reasonRadial: false },
 ];
 
@@ -44,7 +46,7 @@ const phase = (k) => BY_KEY[normalizeKey(k)] || null;
 export const INPLAY = ['mid', 'endgame'];                                   // post-settle live play
 
 // SELECTORS — consumers iterate these instead of hardcoding literals.
-export const capturePhases = () => PHASES.filter((p) => p.captureEnabled);                       // breakout/settle/mid/endgame
+export const capturePhases = () => PHASES.filter((p) => p.captureEnabled);                       // breakout/settle/mid (D4 capture subset)
 export const playPhases = () => PHASES.filter((p) => p.kind === 'play');                          // preBreakout..endgame
 export const coachReportPhases = () => PHASES.filter((p) => p.kind === 'play' && p.captureEnabled); // the coach report tabs
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { COLORS, FONT } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { capturePhases, toPersistedLiteral, label } from '../../utils/pointPhases';
 
 /**
  * StageSwitcher — the "E": a mini-timeline + playhead for the SCOUT capture
@@ -19,14 +20,11 @@ import { useLanguage } from '../../hooks/useLanguage';
  *   done     — { break, settle, mid } booleans: stage has captured data
  *   device-agnostic: each node is a ≥44px tap target; scales by flex.
  */
-const STAGES = [
-  { key: 'break', label: 'Break' },
-  { key: 'settle', label: 'Settle' },
-  { key: 'mid', label: 'Mid' },
-];
-
 export default function StageSwitcher({ stage = 'break', onChange, done = {} }) {
   const { t } = useLanguage();
+  // PaT D4 — capture nodes from the canonical module (single source). Keys are the
+  // persisted literals (break/settle/mid + endgame); labels via the module.
+  const STAGES = capturePhases().map(p => ({ key: toPersistedLiteral(p.key), label: label(p.key, t) }));
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} role="tablist" aria-label={t('b13_capture_stage')}>
       {STAGES.map((s, i) => {

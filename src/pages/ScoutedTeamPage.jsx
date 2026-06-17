@@ -13,6 +13,7 @@ import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
 import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, computeEliminationReasons, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { coachReportPhases, label as phaseLabel, toPersistedLiteral } from '../utils/pointPhases';
 import { ELIM_REASONS } from '../components/match/ReasonRadial';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
@@ -366,6 +367,20 @@ export default function ScoutedTeamPage() {
     () => heatmapPoints.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === 'mid')),
     [heatmapPoints]
   );
+  const hasEndgame = useMemo(
+    () => heatmapPoints.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === 'endgame')),
+    [heatmapPoints]
+  );
+  // § PaT D4 — the coach report phase tabs come from the canonical module (single
+  // source): break/settle/mid + endgame. Runtime keys are the PERSISTED literals
+  // (toPersistedLiteral) so the stage-aware readers + testids are unchanged; only
+  // the label ("Break"→"Breakout") + the net-new Endgame tab are added. Mid/Endgame
+  // are gated to the data that captured them (graceful-empty otherwise).
+  const phaseItems = coachReportPhases().map(p => {
+    const key = toPersistedLiteral(p.key);
+    const gated = key === 'mid' ? !hasMid : key === 'endgame' ? !hasEndgame : false;
+    return { key, label: phaseLabel(p.key, t), testId: `hm-phase-${key}`, disabled: gated, title: gated ? t('scouted_no_mid') : undefined };
+  });
   // § dup-cleanup Part 2a — dedup the roster by RESOLVED canonical id. playersById
   // is alias-aware (alias + canonical ids both resolve to the same doc), so a
   // roster holding [survivor, alias] for one person would render the player twice.
@@ -843,11 +858,7 @@ export default function ScoutedTeamPage() {
       <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>{t('scouted_layer_stage')}</div>
         <SegmentedControl
-          items={[
-            { key: 'break', label: 'Break', testId: 'hm-phase-break' },
-            { key: 'settle', label: 'Settle', testId: 'hm-phase-settle' },
-            { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? t('scouted_no_mid') : undefined, testId: 'hm-phase-mid' },
-          ]}
+          items={phaseItems}
           value={hmPhase}
           onChange={setHmPhase}
         />
@@ -2222,13 +2233,9 @@ export default function ScoutedTeamPage() {
   const fvPhaseControlEl = (
     <FieldPhaseControl
       kind="coach"
-      phases={[
-        { key: 'break', label: 'Break' },
-        { key: 'settle', label: 'Settle' },
-        { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? t('scouted_no_mid') : undefined },
-      ]}
+      phases={phaseItems}
       phase={hmPhase} onPhase={setHmPhase}
-      done={{ break: true, settle: canReplay, mid: hasMid }}
+      done={{ break: true, settle: canReplay, mid: hasMid, endgame: hasEndgame }}
       canReplay={canReplay} replaying={replaying}
       onReplay={() => setHmReplay(v => !v)}
     />

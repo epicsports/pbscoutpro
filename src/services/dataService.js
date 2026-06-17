@@ -14,6 +14,7 @@ import { locatePlayerInPoint, alignSequence, positionConfidence } from '../utils
 import { playerOnTeam } from '../utils/playerTeams';
 import { promoteSyntheticIds, dualWriteLegacyFromZones, resolveZones } from '../utils/layoutZones';
 import { polygonCentroid } from '../utils/helpers';
+import { capturePhases, toPersistedLiteral } from '../utils/pointPhases';
 // § 90 1.B.3 (design b): the matcher reuses the collectionGroup selfReports
 // reader. Circular import is call-time-safe — both this binding and PPT's
 // `bp` import are used only inside functions, never at module-init.
@@ -1139,7 +1140,8 @@ export async function writeMatchRollup(tid, mid) {
 // against keyframe #0's slotIds so the layers align by slot. Solo/legacy points
 // keep their timeline[] via canonical-in-place — this path is the 2-coach merge.
 export function mergeStreamTimelines(tlA, tlB) {
-  const STAGE_ORDER = ['settle', 'mid'];
+  // PaT D4 — persisted timeline stages from the canonical module (settle/mid/endgame).
+  const STAGE_ORDER = capturePhases().map(p => toPersistedLiteral(p.key)).filter(s => s !== 'break');
   const kfOf = (tl, stage) => (Array.isArray(tl) ? tl : []).find(e => e?.stage === stage) || null;
   // Union two index-keyed stroke maps loss-free (re-index so keys don't collide).
   const mergeAnnos = (a, b) => {

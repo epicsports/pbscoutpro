@@ -34,22 +34,20 @@ export function buildReplayModel(points) {
     (Array.isArray(pt.timeline) ? pt.timeline : []).find(e => e && e.stage === stage) || null;
   const hasSettle = list.some(pt => kfOf(pt, 'settle'));
   const hasMid = list.some(pt => kfOf(pt, 'mid'));
-  const phases = ['break', hasSettle ? 'settle' : null, hasMid ? 'mid' : null].filter(Boolean);
+  const hasEndgame = list.some(pt => kfOf(pt, 'endgame'));   // PaT D4 — endgame keyframe
+  const phases = ['break', hasSettle ? 'settle' : null, hasMid ? 'mid' : null, hasEndgame ? 'endgame' : null].filter(Boolean);
   // Need ≥2 keyframes to animate; otherwise there's nothing to play.
   if (phases.length < 2) return { phases, markers: [] };
 
   const markers = [];
   list.forEach(pt => {
-    const settle = kfOf(pt, 'settle');
-    const mid = kfOf(pt, 'mid');
+    // Settle/Mid/Endgame are keyframe-only; read generically by the stage literal.
     const rawPosFor = (phase, i) =>
       phase === 'break' ? (pt.bumpStops?.[i] || pt.players?.[i] || null)
-      : phase === 'settle' ? (settle?.players?.[i] || null)
-      : (mid?.players?.[i] || null);
+      : (kfOf(pt, phase)?.players?.[i] || null);
     const elimFor = (phase, i) =>
-      phase === 'settle' ? !!settle?.eliminations?.[i]
-      : phase === 'mid' ? !!mid?.eliminations?.[i]
-      : false; // Break: everyone alive (do NOT apply kf#0 end-state here)
+      phase === 'break' ? false // Break: everyone alive (do NOT apply kf#0 end-state here)
+      : !!kfOf(pt, phase)?.eliminations?.[i];
     for (let i = 0; i < 5; i++) {
       // Forward-fill positions; leading nulls stay null (not-yet-appeared).
       const positions = [];
