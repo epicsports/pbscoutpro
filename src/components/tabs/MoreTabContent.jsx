@@ -124,6 +124,12 @@ export default function MoreTabContent({
             onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)}
           />
         )}
+        {linkedPlayer && (
+          <MoreItem icon="🎒" testId="packing-menu-entry"
+            label={t('packing_menu')}
+            onClick={() => navigate('/player/checklist')}
+          />
+        )}
         <InlineLanguageRow t={t} />
         {onSignOut && (
           <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />

@@ -192,6 +192,14 @@ service cloud.firestore {
       allow update: if isSuperAdmin()
                     && request.resource.data.diff(resource.data).affectedKeys()
                        .hasOnly(['disabled', 'disabledAt', 'disabledBy', 'reEnabledAt']);
+
+      // Per-user app state (Packing Checklist + future per-user prefs) — owner-only.
+      // STAGED 2026-06-17 (CC_BRIEF_PACKING_CHECKLIST Stage D). NOT YET DEPLOYED —
+      // deploy with Jacek's morning GO (`firebase deploy --only firestore:rules`).
+      // Until deployed, the client read/write degrades silently to in-memory.
+      match /appState/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // ─── Collection-group read: selfReports (PPT, § 48 · § read-volume C 2) ──
