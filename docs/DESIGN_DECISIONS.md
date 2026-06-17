@@ -9682,3 +9682,67 @@ pure report). Report tables additionally cap at a comfortable measure (report co
 `maxWidth` in the rail) + use `whiteSpace:nowrap` widened value columns so headers never
 collide. Follow-up (NOT built): extract a shared `<ReportTable>` primitive (the
 Breakouts/Shooting/big-moves tables are copy-pasted).
+
+## 119. Reads Snake — 2nd in-app mini-game + game selector (LOCKED 2026-06-17)
+
+> Classic Snake shipped into the app as the second "Take a Break" game, sharing the
+> §117 Reads Mini arcade + leaderboard infra. Brief: `CC_BRIEF — Reads Snake` (Opus,
+> 2026-06-17). Reuses `CC_BRIEF_READS_MINI_INAPP` verbatim for everything not stated
+> (tech, lazy chunk, theme tokens, container-query sizing, dt-loop, reduced-motion,
+> arcade attract/HIGH-SCORES/initials layer, leaderboard read/write, fail-first e2e).
+> Design ref: `docs/prototypes/reads-take-a-break.html` (committed — contains BOTH the
+> game selector §S and the full standalone Snake engine §A; pixel/behaviour baseline for STAGE 2).
+> Staged: STAGE 1 docs (this) → **Jacek GO** → STAGE 2 build. PRE-FLIGHT (Opus): net-new,
+> no Snake game exists. STEP 0 (CC, verified live 2026-06-17): see §119.5 — all assumptions HOLD.
+>
+> **STATUS: STAGE 1 docs — AWAITING GO for STAGE 2.**
+
+### 119.0 Locked decisions (Snake-specific; rest inherits §117 Reads Mini)
+| # | Decision |
+|---|---|
+| Game | **Classic Snake.** Grid **24×15**, walls kill, self-collision kills. Food grows the snake + **+10 score**; speed ramps. Score 0–9999 (7-seg). Single mode (no Game A/B). |
+| Visual | **amber-LCD** (same palette/aesthetic as Reads Mini). Faint ghost **dot-matrix** grid. Snake = amber rounded cells (head has two tiny dark eyes oriented to travel). **Food = the Reads amber dot + seam** (brand callback). |
+| Controls | On-screen **D-pad** (4 dirs) · **swipe** on the LCD · keyboard **arrows + WASD**. 180° reversal ignored. |
+| Audio | **SFX only** (synth WebAudio: eat / die / game-over / UI blip) + SFX mute toggle. **No background music** (no track for Snake). Respect iOS silent switch. |
+| Hi-score | Same arcade layer as Reads Mini: attract loop (title ↔ HIGH SCORES), **HI** on welcome, **3-letter initials** on a new personal best. |
+| Leaderboard | **Separate board, same infra.** `leaderboards/readsSnake/scores/{uid}`. The §117 rule uses a `leaderboards/{board}/scores/{uid}` **wildcard** → **no new rules/index** (verified, §119.5); just `board="readsSnake"`. Top-25, per-account best, arcade initials. |
+| Entry point | **CONFIRMED (Jacek 2026-06-17).** The **"Take a Break"** menu item (bottom of drawer, Reads icon) opens a **game selector — a vertical list** (§119.S). Each row = icon + name (+ per-game HI + chevron); tap → opens that game; back → selector. **Snake's row = snake icon + name "side is the best!"**. Reads Mini becomes a second row. *Supersedes* §117's "Take a Break → game directly" — it now opens the selector. |
+| Tech | Identical to Reads Mini: single self-contained React feature, **DOM/CSS + SVG, no canvas/engine/new deps**, theme tokens, Lucide chrome, **own lazy chunk**, responsive portrait/landscape. |
+
+### 119.A Snake play spec (baseline `reads-snake.html`)
+Game-space SVG `viewBox = 240×150`, grid **COLS=24 × ROWS=15**, cell = 10.
+- **State:** `snake[]` (array of `{x,y}`, head first), `dir`, `nextDir`, `food`, `score`, `speed`.
+- **Start:** snake length 4 at `[(7,7),(6,7),(5,7),(4,7)]`, `dir={1,0}`. Food = random empty cell.
+- **Tick** (every `speed` ms, dt-accumulator): `dir=nextDir`; `head'=head+dir`. Out of `[0,COLS)×[0,ROWS)` → **die**. `grow = head'==food`; collision body = `grow ? snake : snake[:-1]`, `head'` in body → **die**; else `unshift(head')`; if grow → `score+=10`, new food, `speed=max(70,speed-3)`; else `pop()`.
+- **Speed:** start **140 ms**, −3 ms/food, floor **70 ms**.
+- **Input:** D-pad / swipe (~18px threshold) / arrows / WASD → `setDir(x,y)` (ignore reverse of current `dir`); small tap on the LCD during attract = start.
+- **Render:** food = amber dot + dark seam (Reads dot) + glow; snake = amber rounded rects (`rx≈2.2`, ~7.6 in the 10-cell) opacity 1 head / 0.9 body; head eyes = 2 dark dots offset toward `dir` (± perpendicular); ghost dot-matrix drawn once (opacity ~0.05). 7-seg score top-center (0–9999), same renderer as Reads Mini; optional "LEN n" bottom-left.
+- **SFX:** eat 700→1040 Hz; die 140 Hz saw; game-over 440→330→247→196 Hz; UI blip 660 Hz.
+- **States:** attract (title↔HIGH SCORES ~4.5s) → playing → over (brief) → initials (if PB) → attract.
+
+### 119.S Game selector ("Take a Break" screen)
+A vertical **data-driven list** of game rows (design ref `reads-take-a-break.html`). Row = left icon in an amber-tinted rounded tile + name + small uppercase subtitle + per-game **HI** + right chevron + press state. Snake row = snake glyph + **"side is the best!"** + "Classic snake"; Reads Mini row = Reads-dot glyph + "Reads Mini" + "Catch the drops". Tap → open that game; **back** → selector; header "Take a Break" + close → menu. Data-driven so new games just append; per-row HI = that game's leaderboard #1 (cheap one-shot, lazy per row). Prototype snake glyph is a placeholder → final icon at build.
+
+**Routing/architecture (STEP 0 item 1 — where the shared selector lives):** the existing
+`/break` route (currently `ReadsMiniPage`) becomes the **selector** — a new lazy
+`TakeABreakPage` holding a `GAMES` array `[{ id, name, sub, icon, route, board }]`. Games move
+to sub-routes: **`/break/reads`** (existing `ReadsMiniPage`, lazy) + **`/break/snake`** (new
+`ReadsSnakePage`, own lazy chunk). `TakeABreakSection` (both More drawers) keeps navigating to
+`/break` (now the selector). The selector is the single host for all games; adding a game = one
+`GAMES` row + one lazy route.
+
+### 119.B Leaderboard (reuse §117.B)
+`leaderboards/readsSnake/scores/{uid}` — same schema/rules as `readsMini` minus `mode`
+(`{ uid, initials:"ABC", score:0..9999, createdAt, updatedAt }`). Generalize `dataService` —
+add `READS_SNAKE_BOARD='readsSnake'` + board-parameterized `getReadsSnakeTop / getReadsSnakeMyScore /
+submitReadsSnakeScore` (or a shared board-param helper the two games call). Read top-25
+`orderBy('score','desc')` (single-field, auto-indexed). **Rules: wildcard already covers it
+(verified §119.5) — no rules deploy.**
+
+### 119.5 STEP 0 findings (CC, verified live 2026-06-17 — all assumptions HOLD)
+1. **"Take a Break" entry EXISTS** (`TakeABreakSection.jsx` → `navigate('/break')` → `ReadsMiniPage`, both More drawers) → upgrade to open the selector (§119.S routing).
+2. **Wildcard leaderboard rule DEPLOYED** — `match /leaderboards/{board}/scores/{uid}` (`firestore.rules:727`); `{board}` covers `readsSnake` → **no new rules, no index, no rules-before-code step**.
+3. **Reusable scaffolding** — leaderboard CRUD `dataService.js:3156–3184` (generic `leaderboards/{board}/scores/{uid}`); `ReadsMiniPage.jsx` (states, 7-seg renderer, WebAudio helper, arcade attract/initials layer, own lazy chunk) to clone for `ReadsSnakePage`.
+
+### 119.6 Out of scope / parked
+- Background music for Snake (none provided). Optional wrap-around "Game B" mode — deferred (classic walls-kill kept). Everything else per §117.
