@@ -30,23 +30,28 @@ export const kfOf = (pt, stage) =>
   (Array.isArray(pt?.timeline) ? pt.timeline : []).find(e => e?.stage === stage) || null;
 
 // Per-stage side-resolved fields for one normalized point. Break = kf#0 (the
-// point itself). Settle = the settle keyframe, falling back to point-level fields
-// for OLD points (the normalizer already resolves pt.obstacleShots →
-// settle-keyframe band shots, so pt.* is the correct settle source for legacy +
-// current). Mid = the mid keyframe only (no legacy fallback — Mid is net-new).
-// Eliminations are read per-stage where the keyframe carries them; eliminationTimes
-// exists only at kf#0 (Break) so the 10s survival window applies to Break only —
-// Settle/Mid survival is "not eliminated" (graceful; no per-keyframe time capture).
+// point itself). Settle/Mid POSITIONS come ONLY from the matching keyframe (no
+// fallback to Break positions) so each phase shows its true setup — legacy points
+// with no keyframe show graceful-empty for that phase. Band SHOTS for settle do
+// fall back to pt.obstacleShots (the normalizer-resolved post-break band that
+// legacy points legitimately captured). eliminationTimes exists only at kf#0
+// (Break) so the 10s survival window applies to Break only — Settle/Mid survival
+// is "not eliminated" (graceful; no per-keyframe time capture).
 export function stageSideData(pt, stage) {
   if (!pt) return { players: [], assignments: [], quickShots: [], shots: [], eliminations: [], eliminationTimes: [], eliminationReasons: [] };
   if (stage === 'settle') {
     const k = kfOf(pt, 'settle');
     return {
-      players: (k?.players?.length ? k.players : pt.players) || [],
-      assignments: (k?.assignments?.length ? k.assignments : pt.assignments) || [],
+      // Positions are the SETTLE keyframe ONLY — no fallback to Break positions
+      // (Jacek 2026-06-17): Settle must show the actual settle SETUP, so legacy
+      // points with no settle keyframe show graceful-empty, not Break mislabeled
+      // as Settle. (Band shots DO fall back: pt.obstacleShots is the normalizer-
+      // resolved post-break band that legacy points legitimately captured.)
+      players: k?.players || [],
+      assignments: k?.assignments || [],
       quickShots: pt.obstacleShots || [],   // normalizer already = settle band shots (§101)
       shots: pt.shots || [],                 // precision is point-level (keyframes carry no precision)
-      eliminations: (k?.eliminations?.length ? k.eliminations : pt.eliminations) || [],
+      eliminations: k?.eliminations || [],
       eliminationTimes: [],                  // not captured per-keyframe → graceful (no 10s window)
       eliminationReasons: k?.eliminationReasons || [],
     };
