@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-17 — [MIGRATION/--live] Tactics PURGE — all tactics data deleted (Jacek GO)
+**Firestore --live (data-only, NO code/rules/app change).** Jacek directive: "Możemy wyrzucić wszystkie taktyki / Nie potrzebujemy tych danych. Wyrzucaj." `scripts/migration/tactics_purge_all.cjs`.
+- **Census first (read-only):** all 35 tactics (26 `layoutOverlays` + 9 `tournaments`, post-OP2) live in **`ranger1996` only** — Jacek's own workspace, **zero customer docs**. Script has a hard ABORT if any non-`ranger1996` tactic is found (refuses to purge customer data).
+- **Executed:** backup all 35 (full data → `…/dk/pbscoutpro_backups_tactics/<ts>-purge-all/all_tactics_backup.json`, outside-repo/gitignored) → batch-delete all 35. **Final census: 0 tactics.**
+- **Data-only:** the tactics FEATURE is untouched (TacticPage / `subscribeTactics` / `subscribeLayoutTactics` / CRUD stay) — the stores are simply empty; new tactics can be created. **Supersedes OP1** (no tournament-store migration needed — those 9 deleted too). The dual-store CODE debt (two stores/hooks) remains a future Tier-1 cleanup, but with no data it's harmless.
+- Reversible via the backup JSON if ever needed. Tactics-consolidation workstream now CLOSED (data side).
+
 ## 2026-06-17 — [MIGRATION/--live] Tactics consolidation OP2 — orphan `layouts/{id}/tactics` cleanup (Jacek GO)
 **Firestore --live (data-only, NO code/rules/app change).** Tier-2, GO'd ("anything waiting on go" + "lećmy dalej" 2026-06-17, brief OP2 enumerated). `scripts/migration/tactics_orphan_cleanup.cjs`. The §96 STAGE-3 "later cleanup" the copy-not-move migration explicitly anticipated.
 - **Why safe:** `layouts/{id}/tactics` has had **no code reader since `67b95df5`** (writer retargeted to `layoutOverlays` in §96 STAGE 1) → deleting it is code-safe, no deploy. Tournament store (`tournaments/{id}/tactics`, 9 live) = **OP1, NOT touched** (it has a live reader `subscribeTactics` → needs a code+data brief; held for the exact spec).
