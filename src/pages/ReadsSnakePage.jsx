@@ -11,6 +11,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
+import { NO_SELECT, ARCADE_BTN } from '../components/arcade/ArcadeButton';
 
 // ─── Grid geometry (§119.A) ─────────────────────────────────────────────────
 const COLS = 24, ROWS = 15, CELL = 10;
@@ -66,10 +67,13 @@ function setDir(G, x, y) {
 
 // ─── Audio (§119: SFX only — no bg music) ───────────────────────────────────
 function makeAudio() {
-  let ctx = null, sfxMuted = false;
+  let ctx = null, sfxMuted = false, unlocked = false;
   const ensureCtx = () => {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { ctx = null; } }
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+    // iOS WebAudio unlock: play one silent buffer inside the first gesture so
+    // subsequent SFX actually sound (a resumed-but-never-kicked ctx stays mute).
+    if (ctx && !unlocked) { unlocked = true; try { const b = ctx.createBuffer(1, 1, 22050); const s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0); } catch {} }
     return ctx;
   };
   const tone = (steps, type = 'square') => {
@@ -336,9 +340,9 @@ export default function ReadsSnakePage() {
   return (
     <div data-testid="reads-snake" onPointerDown={kickAudio}
       style={{
-        position: 'fixed', inset: 0, background: COLORS.bg, zIndex: 60,
+        position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, zIndex: 60,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        fontFamily: FONT, color: COLORS.text, overflow: 'hidden',
+        fontFamily: FONT, color: COLORS.text, overflow: 'hidden', ...NO_SELECT,
         paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
       {/* Chrome bar — back to the selector */}
@@ -407,12 +411,8 @@ export default function ReadsSnakePage() {
 function DpadBtn({ children, onPress, testId, ariaLabel }) {
   return (
     <button type="button" data-testid={testId} aria-label={ariaLabel}
-      onPointerDown={(e) => { e.preventDefault(); onPress(); }}
-      style={{
-        width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: COLORS.surface, color: COLORS.accent, border: `1px solid ${COLORS.border}`,
-        borderRadius: RADIUS.lg, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
-      }}>
+      onPointerDown={(e) => { e.preventDefault(); onPress(); }} onContextMenu={(e) => e.preventDefault()}
+      style={{ ...ARCADE_BTN, width: 56, height: 56 }}>
       {children}
     </button>
   );

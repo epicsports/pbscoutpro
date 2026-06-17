@@ -9850,9 +9850,29 @@ submitReadsSnakeScore` (or a shared board-param helper the two games call). Read
   (`orderBy score desc`, read = any signed-in user) — the deliberate cross-tenant break of §117.6
   (recreational; public label = 3-letter arcade initials → no PII/GDPR). Score 0..9999, monotonic,
   5s cooldown, `[A-Z]{3}` initials, no delete — all on the shared `{board}` wildcard rule (**no rules
-  change per new game**). NOTE: bests are NOT consolidated into a single `users/{uid}` account doc —
-  they live as one doc-per-game-per-uid across the boards (a consolidated "my arcade" account mirror is
-  an available additive follow-up, not built).
+  change per new game**).
+- **One place on the account (BUILT 2026-06-18):** all 5 games' submits delegate to a shared
+  `dataService._submitArcadeScore(board, …)` that does the per-game board write AND best-effort mirrors
+  the new best into ONE account doc `users/{uid}/appState/arcade` keyed by board id (`{ [board]:
+  {score,initials,updatedAt} }`) — so a player's bests across all games live in one place (owner-only
+  appState rule, no rules change). Mirror is fire-safe (never breaks the leaderboard submit); boards stay
+  the source of truth for top-25. Read via `getArcadeBests(uid)` (for a future "my arcade" view).
+
+### 122.3 Arcade hardening (cross-game, 2026-06-18 — Jacek prod smoke)
+Shared fixes across all 5 games after the first prod smoke:
+- **Uniform buttons** — shared `src/components/arcade/ArcadeButton.jsx` exports `ARCADE_BTN` (the uniform
+  control-button style: surface bg / accent / border / radius / no-select) + `NO_SELECT` + an
+  `ArcadeButton` component. Every game's control buttons spread `ARCADE_BTN` → consistent look across
+  games; **placement/size stays per-game** (flex/width/height overrides).
+- **No text-selection while pressing** — `NO_SELECT` (`user-select`/`-webkit-touch-callout`/tap-highlight
+  off + `touch-action:none`) on every game ROOT (cascades to all children via inheriting `user-select`)
+  AND the buttons. Kills the press-selects-the-label bug that hampered play.
+- **Window fit** — game roots use `height:100dvh` (dynamic viewport; mobile-chrome-safe) so controls
+  aren't pushed off-screen.
+- **Sound reliability** — every game's audio `ensure()`/`resume()` now plays a 1-sample silent buffer on
+  the first gesture (the standard iOS WebAudio unlock; a resumed-but-never-kicked ctx stays mute). NOTE:
+  iOS silent-switch muting hardware audio remains expected (not a bug); Reads Mini's bg music still needs
+  its `.m4a` asset (SFX work without it).
 
 ### 122.2 Read Warrior specifics
 - **Render:** single `<canvas>` (textured ground/water/brick via Bayer-dither `createPattern` tiles,

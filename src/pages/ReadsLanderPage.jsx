@@ -15,6 +15,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
+import { NO_SELECT, ARCADE_BTN } from '../components/arcade/ArcadeButton';
 
 // ── palette (named; AMBER from theme, warm LCD/bezel have no token) ─────────
 const AMBER = COLORS.accent;                       // #f59e0b — brand amber
@@ -233,7 +234,7 @@ function makeAudio() {
     o.frequency.exponentialRampToValueAtTime(freq * 0.6, t + dur); o.start(t); o.stop(t + dur + 0.02);
   }
   return {
-    resume() { ensure(); if (ctxA && ctxA.state === 'suspended') ctxA.resume().catch(() => {}); },
+    resume() { ensure(); if (ctxA && ctxA.state === 'suspended') ctxA.resume().catch(() => {}); if (ctxA && !ctxA.__pbUnlocked) { ctxA.__pbUnlocked = true; try { const b = ctxA.createBuffer(1, 1, 22050); const s = ctxA.createBufferSource(); s.buffer = b; s.connect(ctxA.destination); s.start(0); } catch {} } },
     thrust(active, frac) { if (!ctxA || !on) { if (thrustGain) thrustGain.gain.value = 0; return; } const target = active ? 0.18 + 0.12 * frac : 0; thrustGain.gain.setTargetAtTime(target, ctxA.currentTime, 0.04); if (lp) lp.frequency.setTargetAtTime(active ? 520 : 420, ctxA.currentTime, 0.05); },
     land() { blip(660, 0.12, 'square'); setTimeout(() => blip(990, 0.18, 'square'), 90); },
     crash() {
@@ -359,7 +360,7 @@ export default function ReadsLanderPage() {
 
   return (
     <div data-testid="reads-lander"
-      style={{ position: 'fixed', inset: 0, background: COLORS.bg, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: AMBER, overflow: 'hidden', paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+      style={{ position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: FONT, color: AMBER, overflow: 'hidden', ...NO_SELECT, paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
       {/* Chrome bar */}
       <div style={{ width: '100%', maxWidth: 440, display: 'flex', alignItems: 'center', gap: SPACE.sm, padding: `${SPACE.sm}px ${SPACE.md}px`, boxSizing: 'border-box' }}>
         <div role="button" aria-label={t('reads_lander_back') || 'Back'} data-testid="reads-lander-back" onClick={() => navigate('/break')}
@@ -427,6 +428,6 @@ export default function ReadsLanderPage() {
   );
 }
 
-const rotBtn = { width: 62, height: 62, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.surface, color: AMBER, border: `1px solid ${COLORS.border}`, borderRadius: 14, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'none' };
-const thrustBtn = { width: 104, height: 84, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: COLORS.surface, color: AMBER, border: `1px solid ${COLORS.accent}55`, borderRadius: 14, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', touchAction: 'none' };
+const rotBtn = { ...ARCADE_BTN, width: 62, height: 62 };
+const thrustBtn = { ...ARCADE_BTN, width: 104, height: 84, flexDirection: 'column', gap: 4 };
 const iniBtn = { minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.surface, color: AMBER, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.md, cursor: 'pointer' };
