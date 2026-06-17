@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-17 — [FEATURE] Arcade games 3 + 4: Reads Invaders + Lunar Lander (§120/§121, Jacek GO)
+**App (auto-deploy). No rules/data.** Tier-2 (new games; brief GO'd, merge-on-GO, no iPhone gate). Merges `40b30690` (Invaders) + `95796622` (Lander) — built on independent branches, union-merged on the shared selector/route/dataService/testBridge/i18n append-points.
+- **Reads Invaders (§120, `/break/invaders`):** canvas space-invaders (6×4 marching sprites + auto-fire + drag-steer + ◀▶ + keyboard), Mini chrome, Game A/B, paint-themed sprites, SFX + 1-bit music. `leaderboards/readsInvaders` (real `mode` A/B). No brand mark in-game.
+- **Lunar Lander (§121, `/break/lander`):** canvas lander (per-level terrain + shrinking pads, rotate+thrust physics, fuel, safe-land gates), LCD scanline/vignette chrome, canvas-drawn HUD/state-screens, new-best initials overlay (rule needs `[A-Z]{3}`), WebAudio thrust+blips. `leaderboards/readsLander` (const `mode:'A'`). No brand mark in-game.
+- Both = a `GAMES` row in the §119 selector (now 4 games: Snake · Invaders · Lander · Reads Mini) + own lazy chunk. **No rules change** (shared `{board}` wildcard covers both boards). App Check = shared STAGE 3.
+- Gate: precommit + build + **94/94 functional e2e** (each game's fail-first spec: selector → game → force/real PB → SAVE persists via shared submit + rules create/reject-lower/cross-uid-denied). §27 PASS (canvas LCD + nav chevron = flagged art exceptions per §117).
+- **Smoke owed (Jacek, prod):** More → Take a Break → Invaders (play/die/PB) + Lunar Lander (land/crash/PB); confirm Snake + Reads Mini still open.
+
 ## 2026-06-17 — [FEATURE] Reads Snake — 2nd mini-game + game selector (§119, Jacek GO)
 **App (auto-deploy). No rules/data.** Tier-2 (new game/UI surface; brief GO'd, merge-on-GO, no iPhone gate). Merge `59441c23` (branch `feat/reads-snake`).
 - **Game selector:** `/break` is now `TakeABreakPage` — a data-driven vertical list (`GAMES` array + per-row HI one-shot). Games moved to sub-routes: `/break/reads` (Reads Mini) + `/break/snake` (new), each its **own lazy chunk** (98 precache entries, +2). `TakeABreakSection` (both More drawers) still navigates to `/break`. Reads Mini's close → back-arrow to the selector.

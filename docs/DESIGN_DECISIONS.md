@@ -9751,3 +9751,81 @@ submitReadsSnakeScore` (or a shared board-param helper the two games call). Read
 
 ### 119.6 Out of scope / parked
 - Background music for Snake (none provided). Optional wrap-around "Game B" mode — deferred (classic walls-kill kept). Everything else per §117.
+
+## 120. Reads Invaders — 3rd Arcade game (canvas field) (LOCKED 2026-06-17)
+
+> Space-invaders-style shooter, third "Take a Break" game. Brief: `CC_BRIEF_READS_INVADERS_INAPP`
+> (Opus, 2026-06-17). Ported from the approved prototype `docs/prototypes/reads_invaders.html`
+> (its constants ARE the spec). Reuses the §117/§119 Arcade scaffolding + the generic leaderboard
+> rule. **NOTE — brief authored pre-Snake:** it provisionally said "§118" and "add a 2nd
+> `MoreItem`"; both superseded — this is **§120**, and integration = a `GAMES` row in the §119
+> selector (`TakeABreakPage`) + a `/break/invaders` lazy route (NOT a `TakeABreakSection` item).
+>
+> **STATUS: built on `feat/reads-invaders` — branch + preview only; AWAITING GO to merge.**
+
+- **Render split (Architecture B):** the play-field is a single `<canvas>` (24 marching sprites +
+  bullets + auto-fire churn too many SVG nodes; `<canvas>` is a built-in, honors "no new dep" and
+  gives clean 60fps). ALL chrome/HUD/overlays are DOM+SVG, byte-for-byte the Reads Mini/Snake
+  treatment; the `SevenSeg` digits stay SVG. This is the first Arcade game on canvas (Mini/Snake
+  are SVG) — a deliberate, brief-authorized deviation from §117's "no canvas" tech note.
+- **No brand mark in-game (HARD RULE):** the Reads dot+seam is forbidden inside the game (distorts
+  when pixelated) — text wordmark only ("READS INVADERS" / "Invaders"). The selector tile glyph is
+  menu chrome and exempt. LCD palette = named constants (`AMBER`/`AMBER_DIM`/`LCD_GLASS`/`GHOST`,
+  + an `amberA(α)` helper for live-alpha canvas strokes) from theme — no scattered hex.
+- **Controls:** relative drag-to-steer on the canvas (`STEER_GAIN=1.35`, finger never occludes the
+  ship) + always-on auto-fire (`AUTOFIRE_MS=360`, max 2 bullets) + ◀▶ hold buttons + keyboard
+  (arrows/A-D + Space). iOS hardening (fixed full-screen, `touch-action:none`, global `touchmove`
+  preventDefault scoped to mount, `setPointerCapture`). Attract is **static** (Game A/B always
+  visible; HIGH SCORES a tapped toggle) — no auto-cycle (it hid the start buttons on iOS).
+- **Difficulty:** Game A classic / Game B fast (per-wave `stepMs` speed-up); `mode` persists (A|B)
+  — Invaders satisfies the rule's `validRow` `mode in ['A','B']` natively (no const-mode hack).
+- **Leaderboard:** `leaderboards/readsInvaders` (board id `readsInvaders`), client-only, mirrors
+  Reads Mini exactly; **fully independent** (HUD HI / table / myBest read ONLY from this board).
+  The generic `{board}` wildcard rule covers it → **no rules change**. App Check = shared STAGE 3.
+- **Audio:** procedural WebAudio SFX (shoot/hit/boom/ufo/march) + 1-bit square-wave music
+  (arpeggiated Am-F-G-E, `PAT`/`STEP=150ms`), plays only during `phase==='playing'`. Both default
+  on; toggles. AudioContext on first gesture; iOS silent-switch muting = expected.
+- e2e `reads-invaders.spec.js` (fail-first): selector(3 games) → Invaders → force-PB via an
+  emulator-gated `__pbInvadersTest` hook → GAME OVER → initials → **SAVE persists via the shared
+  submit path** + the rules path (create/reject-lower/cross-uid-denied). Gate 92/92. §27 PASS
+  (canvas LCD + nav-list chevron = flagged art-directed exceptions per §117).
+
+## 121. Reads Lunar Lander — 4th Arcade game (canvas + device bezel) (LOCKED 2026-06-17)
+
+> Retro amber-LCD lunar lander, 4th "Take a Break" game. Brief: `CC_BRIEF_LUNAR_LANDER`
+> (Opus, 2026-06-17). Ported from `docs/prototypes/lunar-lander.html` (its physics/terrain/
+> controls/HUD/states ARE the spec). **§ number = 121** (§120 = Reads Invaders, on its own
+> branch; both numbered to avoid collision regardless of merge order). Integration mirrors
+> Snake: one `GAMES` row in the §119 selector + `/break/lander` lazy route.
+>
+> **STATUS: built on `feat/lunar-lander` — branch + preview only; AWAITING GO to merge.**
+
+- **Render:** single `<canvas>` play-field with a **canvas-drawn HUD + state screens** (ready/
+  play/landed/crashed/gameover/paused) — unlike Snake/Invaders' DOM overlays; kept on canvas
+  per "port verbatim." DOM chrome = device-frame bezel + LCD scanline/vignette overlays + the
+  back/pause/sound bar + the thumb controls. RAF + AudioContext cleaned up on unmount.
+- **Physics (verbatim):** GRAVITY0 16 / THRUST 38 / ROT_SPD 2.7 / FUEL_MAX0 100 / BURN 21;
+  safe-land gates SAFE_VY 16 · SAFE_VX 11 · SAFE_ANG 0.20; per-level terrain gen + shrinking
+  pads (x2/x3/x4 mult), fuel + gravity scale with level. Virtual world 160×224, S=4.
+- **Controls:** rotate-L / rotate-R clustered (one thumb) + dominant **THRUST** (other thumb,
+  ≥44pt) + keyboard (arrows/Space). Tap canvas / THRUST advances ready→play→next. Pause +
+  sound toggles. iOS hardening (fixed full-screen, touch-action none, scoped touchmove
+  preventDefault, setPointerCapture).
+- **No brand mark in-game (HARD RULE):** silk-screen TEXT title only ("LUNAR LANDER"). LCD
+  palette = named constants (`AMBER`=COLORS.accent + `amberA(α)`; warm `LCD_GLASS` has no theme
+  token → named constant) — no scattered hex.
+- **Leaderboard:** `leaderboards/readsLander` (board id `readsLander`), client-only, fully
+  independent. The shared `{board}` wildcard rule covers it → **no rules change**; level-based
+  Lander writes a constant `mode:'A'` to satisfy the rule's `validRow`. **Gap bridged:** the
+  prototype has no initials entry but the rule requires `[A-Z]{3}` — so a minimal **new-best
+  initials overlay** (DOM, Snake-parity) is added on game-over → `submitReadsLanderScore`. Best
+  loads on mount (max of global #1 + my best) and shows in the canvas HUD/ready/gameover.
+- **Audio:** WebAudio thrust noise-bed + land/crash blips (no music track for Lander). Sound
+  toggle; AudioContext on first gesture. App Check = shared STAGE 3.
+- e2e `reads-lander.spec.js` (fail-first): selector → Lander → force-PB via emulator-gated
+  `__pbLanderTest` → game-over → initials → **SAVE persists via the shared submit** + rules
+  (create/reject-lower/cross-uid-denied). Gate 92/92. §27 PASS (canvas LCD + nav chevron =
+  flagged art-directed exceptions per §117).
+- **Out of scope:** deeper LCD authenticity (true ghost-segment layer, bezel silk-screen art),
+  landscape flank-reflow of the controls (portrait-primary shipped; column layout survives
+  landscape) — follow-up polish per the brief's OUT-OF-SCOPE bucket.

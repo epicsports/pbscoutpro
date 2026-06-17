@@ -200,5 +200,25 @@ export function installTestBridge() {
       doc(db, 'leaderboards', 'readsSnake', 'scores', otherUid),
       { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
     ),
+
+    // Reads Invaders (§120) — same board infra, separate board (has Game A/B).
+    readsInvadersSubmit: (initials, score, mode) =>
+      ds.submitReadsInvadersScore(auth.currentUser.uid, { initials, score, mode }),
+    readsInvadersMyScore: () => ds.getReadsInvadersMyScore(auth.currentUser.uid),
+    readsInvadersTop: () => ds.getReadsInvadersTop(25),
+    readsInvadersRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readsInvaders', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
+
+    // Reads Lunar Lander (§121) — same board infra, separate board.
+    readsLanderSubmit: (initials, score) =>
+      ds.submitReadsLanderScore(auth.currentUser.uid, { initials, score }),
+    readsLanderMyScore: () => ds.getReadsLanderMyScore(auth.currentUser.uid),
+    readsLanderTop: () => ds.getReadsLanderTop(25),
+    readsLanderRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readsLander', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
   };
 }

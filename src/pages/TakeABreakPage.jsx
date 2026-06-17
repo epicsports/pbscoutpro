@@ -29,10 +29,36 @@ function SnakeGlyph({ size = 26 }) {
     </svg>
   );
 }
+// Invader glyph (menu tile — chrome, exempt from the in-game brand-mark ban).
+function InvadersGlyph({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={COLORS.accent} style={{ display: 'block' }} aria-hidden>
+      <rect x="9" y="4" width="6" height="2" /><rect x="7" y="6" width="10" height="2" />
+      <rect x="5" y="8" width="14" height="2" /><rect x="5" y="10" width="3" height="2" />
+      <rect x="10" y="10" width="4" height="2" /><rect x="16" y="10" width="3" height="2" />
+      <rect x="5" y="12" width="14" height="2" /><rect x="7" y="14" width="3" height="2" />
+      <rect x="14" y="14" width="3" height="2" /><rect x="4" y="16" width="3" height="2" />
+      <rect x="17" y="16" width="3" height="2" />
+    </svg>
+  );
+}
+
+// Lander glyph (menu tile — chrome, exempt from the in-game brand-mark ban).
+function LanderGlyph({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }} aria-hidden>
+      <path d="M8 7h8l1.6 4-1.6 3.2H8L6.4 11 8 7Z" />
+      <path d="M9 6.6a3 3 0 0 1 6 0" />
+      <path d="M8 14.2 6 19M16 14.2 18 19M6 19h2M16 19h2" />
+    </svg>
+  );
+}
 
 // Data-driven game registry. New games append here + add a lazy /break/<id> route.
 const GAMES = [
   { id: 'snake', route: '/break/snake', Icon: SnakeGlyph, nameKey: 'reads_snake_name', nameFallback: 'side is the best!', subKey: 'reads_snake_sub', subFallback: 'Classic snake', top: ds.getReadsSnakeTop },
+  { id: 'invaders', route: '/break/invaders', Icon: InvadersGlyph, nameKey: 'reads_invaders_name', nameFallback: 'Invaders', subKey: 'reads_invaders_sub', subFallback: 'Shoot the wave', top: ds.getReadsInvadersTop },
+  { id: 'lander', route: '/break/lander', Icon: LanderGlyph, nameKey: 'reads_lander_name', nameFallback: 'Lunar Lander', subKey: 'reads_lander_menu_sub', subFallback: 'Land soft', top: ds.getReadsLanderTop },
   { id: 'reads', route: '/break/reads', Icon: ReadsGlyph, nameKey: 'reads_mini_name', nameFallback: 'Reads Mini', subKey: 'reads_mini_sub', subFallback: 'Catch the drops', top: ds.getReadsMiniTop },
 ];
 
