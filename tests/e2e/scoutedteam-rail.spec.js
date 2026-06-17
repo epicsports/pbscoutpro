@@ -45,6 +45,34 @@ test.describe('Stage 4.2 — ScoutedTeam landscape rail', () => {
     expect(pBox2.height).toBeLessThan(PORTRAIT.height * 0.7);
   });
 
+  // REGRESSION (Jacek 2026-06-17, tablet): the landscape report column (Breakouts/
+  // Shooting/…) was squeezed to a sliver because the Isolate zone rendered all 14
+  // roster players, eating the rail/overlay height. Fix: Isolate folds by default →
+  // the report column gets real estate. Fail-first: report-column height was ~0.
+  test('landscape report column keeps real estate; Isolate folds by default', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    await page.setViewportSize(TABLET_LS);          // Jacek's device class → §116 collapse
+    await page.goto('/' + url);
+    await expect(page.getByTestId('rail-strip-back')).toBeVisible({ timeout: 20000 });
+
+    // Open the full rail (☰) — that's where the report column + zones live when collapsed.
+    await page.getByTestId('rail-strip-expand').click();
+    await expect(page.getByTestId('rail-overlay-panel')).toBeVisible();
+
+    // Isolate is FOLDED by default → no player rows until expanded.
+    await expect(page.locator('[data-testid^="rail-item-"]')).toHaveCount(0);
+
+    // The report column renders WITH real estate (not the squished sliver of the bug).
+    const report = page.getByTestId('scouted-report-column');
+    await expect(report).toBeVisible();
+    const rBox = await report.boundingBox();
+    expect(rBox.height).toBeGreaterThan(220); // was ~0 when the 14-player isolate ate the height
+
+    // Expanding Isolate reveals the player rows (the fold is a fold, not a removal).
+    await page.getByTestId('rail-isolate-toggle').click();
+    await expect(page.locator('[data-testid^="rail-item-"]').first()).toBeVisible();
+  });
+
   // Field View shell (reference impl) — structured rail zones + floating phaseControl
   // + semantic collapsed pins, and the coordinate guardrail: a coach-draw at the canvas
   // CENTER while COLLAPSED persists a stroke whose normalized coords land near center

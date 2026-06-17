@@ -18,17 +18,31 @@ import { COLORS, FONT, TOUCH } from '../../utils/theme';
  * Each lives inside a `RailZone` (labelled block, mockup `.zone`/`.zone-h`).
  */
 
-/** RailZone — a labelled block in the rail. `last` drops the bottom divider. */
-export function RailZone({ label, children, last = false, style }) {
+/** RailZone — a labelled block in the rail. `last` drops the bottom divider.
+ * `collapsible` makes the label a tap-to-expand header (chevron); `defaultCollapsed`
+ * starts it folded. Folding a long zone (e.g. a 14-player isolate list) is what keeps
+ * the rail's report column (a flex sibling below the zones) from being squeezed to a
+ * sliver in landscape. `headerExtra` shows beside the label while collapsed (e.g. the
+ * active selection), so folding doesn't hide that a filter is engaged. */
+export function RailZone({ label, children, last = false, style, collapsible = false, defaultCollapsed = false, headerExtra = null, testId }) {
+  const [open, setOpen] = React.useState(!defaultCollapsed);
+  const labelStyle = {
+    fontSize: 11, fontWeight: 600, color: COLORS.textSubtle,
+    textTransform: 'uppercase', letterSpacing: 0.5,
+  };
   return (
     <div style={{ padding: '9px 11px', borderBottom: last ? 'none' : `1px solid ${COLORS.border}`, ...style }}>
-      {label != null && (
-        <div style={{
-          fontSize: 11, fontWeight: 600, color: COLORS.textSubtle,
-          textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 7,
-        }}>{label}</div>
-      )}
-      {children}
+      {label != null && (collapsible ? (
+        <div role="button" aria-expanded={open} data-testid={testId} onClick={() => setOpen(o => !o)}
+          style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', minHeight: TOUCH.minTarget }}>
+          <span style={labelStyle}>{label}</span>
+          {!open && headerExtra}
+          <span aria-hidden style={{ marginLeft: 'auto', color: COLORS.textMuted, fontSize: 15, transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>›</span>
+        </div>
+      ) : (
+        <div style={{ ...labelStyle, marginBottom: 7 }}>{label}</div>
+      ))}
+      {(!collapsible || open) && children}
     </div>
   );
 }
