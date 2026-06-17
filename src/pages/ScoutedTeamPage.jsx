@@ -1296,7 +1296,7 @@ export default function ScoutedTeamPage() {
                 }}>
                   <div style={{ flex: 1 }} />
                   <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
-                  <div data-testid="breakouts-col-surv" style={{ width: 60, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
+                  <div data-testid="breakouts-col-surv" style={{ width: 72, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
                   <div style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played')}</div>
                   <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played_in')}</div>
                 </div>
@@ -1317,7 +1317,7 @@ export default function ScoutedTeamPage() {
                         )}
                       </div>
                       <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
-                      <div style={{ width: 60, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                      <div style={{ width: 72, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
                       <div style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{b.timesPlayed}</div>
                       <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{b.pointsPlayed}/{b.totalPoints}</div>
                     </div>
