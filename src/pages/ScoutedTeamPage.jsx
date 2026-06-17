@@ -612,13 +612,13 @@ export default function ScoutedTeamPage() {
   const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster, lang),
     [stats, heatmapPoints, field, roster, lang]);
   const counters = useMemo(() => generateCounters(insights, lang), [insights, lang]);
-  // § Stage 2.5 — the global phase control (hmPhase) drives the Shooting table +
-  // the elim-reason block (genuinely per-stage). The BREAKOUTS table is ANCHORED
-  // to Break (Jacek 2026-06-17): "breakout survival" is inherently a break-phase
-  // concept + the single most important coach read, so it must ALWAYS show its
-  // whole-point breakout numbers regardless of the switcher — never lost/altered
-  // when exploring Settle/Mid (esp. for legacy pre-phase data like Prague).
-  const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field, 'break'), [heatmapPoints, field]);
+  // § Stage 2.5 — the global phase control (hmPhase) drives ALL the numeric tables
+  // per-phase (Jacek 2026-06-17): Break = where they ran/broke to, Settle = how the
+  // setup looked, Mid = how the game developed. Breakouts/Shooting/elim-reasons all
+  // follow the selected phase so field + numbers agree. Legacy pre-phase data (e.g.
+  // Prague) has only Break captured → Settle/Mid show graceful-empty (no keyframe),
+  // which is correct: there was no settle/mid setup to report.
+  const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
   const sideTendency = useMemo(() => computeSideTendency(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
   const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
