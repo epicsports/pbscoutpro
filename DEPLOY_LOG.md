@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-17 — [FEATURE] ScoutedTeam rail — all-collapsible zones + whole-rail scroll (Jacek GO)
+**App (auto-deploy). No rules/data.** Tier-1 (brief: preview + GO — GO given). Merge `4ba31fe2`.
+- **Squeeze killed structurally:** the landscape rail now scrolls as ONE unit — `renderColumn(scroll)` makes the report column the page scroller in PORTRAIT (`flex:1, overflowY:auto`) and content-height in LANDSCAPE (`flex:0 0 auto`), wrapped with the control zones in a single `overflowY:auto` rail div. Expanding any zone grows the scroll, never steals the report column's height (supersedes the 2026-06-17 fold-only mitigation). §116 ☰ overlay renders the same `rail` → same one-unit scroll.
+- **Every `RailZone` independently collapsible** (each owns its `useState` — NOT an accordion): Scope open, Layers collapsed + active-count amber pill (3 by default), Isolate collapsed + active-player. No collapse-others logic. `RailZones.jsx` untouched (already supported `collapsible`/`defaultCollapsed`/`headerExtra`).
+- e2e: expand Isolate → report column still >220 (RED before); Scope/Layers toggle `aria-expanded` independently; Layers count pill when collapsed. Gate **88/88**. §27 PASS.
+- **NOTE — stale preview mechanism:** the brief's `gh-pages --dest preview` no longer works (Pages is `build_type: workflow`/deploy.yml from `main` → the `gh-pages` branch is ignored, `/preview` 404s). Reviewed via tablet-landscape screenshots instead (folded/expanded) before GO. A real hosted preview under Actions-Pages is a separate follow-up.
+
 ## 2026-06-17 — [FEATURE/BRANDING] Reads home-screen icon + welcome-splash login (Jacek assets)
 **App (auto-deploy).** Tier-2 (branding/design; Jacek provided the exact assets = approved design). Merge `e171831c`.
 - **PWA home-screen icon → Reads avatar** (amber dot + seam on `#0a0e17`, from `reads_social_avatar.svg`). No sharp/resvg in the toolchain → rasterized in the e2e Playwright Chromium (`scripts/gen-reads-icons.cjs`): `icon-192`, `icon-512`, `apple-touch-icon` (180), `favicon` (64). `manifest.json` now uses the PNGs as `any maskable` (dot centered in the safe zone). Dropped stale `icon-512.webp` + unused `logo.png/webp` (~450 KB precache).
