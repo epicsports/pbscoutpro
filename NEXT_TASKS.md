@@ -30,7 +30,7 @@
 - **B8 Strzela% denominator (med, deferred).** Parked in the "data-trust/validation" workstream (Jacek doesn't trust scouted data yet).
 - **B20 cross-device same-UID presence (low).** No contention signal after Brief F retired match-claim; passive-presence design.
 - **Loupe pan-lag (low perf).** Canvas redraws everything per frame; needs an overlay layer / throttle.
-- **ci-flake `hitability-responsive.spec.js` (test-only).** Intermittent under full-suite load (canvas-tap + resize + poll); needed a manual deploy-gate re-run once. Stabilize waits; don't weaken the coordinate-mapping assertion.
+- ✅ **ci-flake `hitability-responsive.spec.js` — FIXED (2026-06-17).** Root cause: fixed `waitForTimeout(350)` before measuring the canvas rect → under full-suite load the ResizeObserver hadn't settled → tap missed the target → exact-count poll timed out. Fix: deterministic `waitForStableBox` (poll boundingBox until two reads match ±1px) + baseline-relative hit counts (spec no longer assumes a 0-hit slate) + 15s poll headroom. Coordinate-mapping assertion unchanged. Validated `--repeat-each=4` + full suite 84/84.
 
 ## 🔴 OPEN — Product / Tier-2 (need Opus brief and/or Jacek gate)
 - **🎮 Reads Mini "Take a Break" — STAGE 2 build SHIPPED (`186071e6`).** Residual: (a) **audio asset** `public/sounds/sky-catcher-loop60.m4a` (60s AAC loop) — drop in; bg music degrades silently until then (SFX already work). (b) **STAGE 3 App Check** (reCAPTCHA v3 web, app-wide enforcement) — separate Jacek GO. Spec `DESIGN_DECISIONS §117`.
