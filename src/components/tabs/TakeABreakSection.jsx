@@ -26,7 +26,7 @@ export default function TakeABreakSection() {
         icon={<ReadsMark />}
         testId="take-a-break-entry"
         label={t('reads_mini_menu_label') || 'Take a Break'}
-        sub={t('reads_mini_menu_sub') || 'Reads Mini · catch game'}
+        sub={t('take_a_break_sub') || 'Reads Mini · Snake'}
         onClick={() => navigate('/break')}
         isLast
       />

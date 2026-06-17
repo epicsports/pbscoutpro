@@ -3197,3 +3197,45 @@ export async function submitReadsMiniScore(uid, { initials, score, mode }) {
   });
   return true;
 }
+
+// ─── Reads Snake global leaderboard (§119) ─────────────────────────────────
+// Second mini-game, SAME infra/rules as Reads Mini (the leaderboards/{board}
+// wildcard rule already covers it) — separate board, no `mode` (single-mode
+// classic Snake). Same degrade-to-local-only try/catch contract at call sites.
+const READS_SNAKE_BOARD = 'readsSnake';
+
+export async function getReadsSnakeTop(topN = 25) {
+  const col = collection(db, 'leaderboards', READS_SNAKE_BOARD, 'scores');
+  const snap = await getDocs(query(col, orderBy('score', 'desc'), limit(topN)));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+export async function getReadsSnakeMyScore(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'leaderboards', READS_SNAKE_BOARD, 'scores', uid));
+  return snap.exists() ? { uid, ...snap.data() } : null;
+}
+
+// Submit a Snake run. Same create-vs-update split as Reads Mini so each path
+// matches its rule (createdAt once; monotonic + 5s cooldown on update).
+// NOTE: the shared `leaderboards/{board}` rule's validRow REQUIRES `mode in
+// ['A','B']` (§117 schema). Single-mode Snake carries a constant `mode:'A'` to
+// satisfy that rule verbatim — vestigial here, but keeps "no rules change" true.
+export async function submitReadsSnakeScore(uid, { initials, score }) {
+  if (!uid) return false;
+  const clean = String(initials || '').toUpperCase().slice(0, 3);
+  if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
+  const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
+  const ref = doc(db, 'leaderboards', READS_SNAKE_BOARD, 'scores', uid);
+  const existing = await getDoc(ref);
+  if (!existing.exists()) {
+    await setDoc(ref, {
+      uid, initials: clean, score: safe, mode: 'A',
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    return true;
+  }
+  if (safe <= (existing.data().score || 0)) return false;
+  await updateDoc(ref, { initials: clean, score: safe, mode: 'A', updatedAt: serverTimestamp() });
+  return true;
+}

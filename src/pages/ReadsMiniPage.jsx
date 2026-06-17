@@ -6,7 +6,7 @@
 // Splat) so hand-drawn art can replace a layer later without touching mechanics.
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, ChevronLeft, ChevronRight, Volume2, VolumeX, Music, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Volume2, VolumeX, Music, Play } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -395,9 +395,9 @@ export default function ReadsMiniPage() {
       }}>
       {/* Chrome bar */}
       <div style={{ width: '100%', maxWidth: 480, display: 'flex', alignItems: 'center', gap: SPACE.sm, padding: `${SPACE.sm}px ${SPACE.md}px`, boxSizing: 'border-box' }}>
-        <div role="button" aria-label={t('reads_mini_close') || 'Close'} data-testid="reads-mini-close" onClick={() => navigate('/')}
+        <div role="button" aria-label={t('reads_mini_back') || 'Back'} data-testid="reads-mini-close" onClick={() => navigate('/break')}
           style={{ minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: COLORS.textMuted }}>
-          <X size={22} />
+          <ChevronLeft size={24} />
         </div>
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
           <ReadsIcon size={20} />
