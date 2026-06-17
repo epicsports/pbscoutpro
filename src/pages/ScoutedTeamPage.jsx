@@ -239,6 +239,9 @@ export default function ScoutedTeamPage() {
   const [hmPhase, setHmPhase] = useState('break');
   // § OSTRZAŁ B3 — per-player isolation (roster player id | null).
   const [hmSelectedPlayer, setHmSelectedPlayer] = useState(null);
+  // Isolate is a secondary drill-down → folded by default (Jacek 2026-06-17); the
+  // breakout table is the priority read, so Isolate doesn't crowd it open.
+  const [hmIsolateOpen, setHmIsolateOpen] = useState(false);
   // § Stage 6-lite — replay animation toggle (OFF by default; on-demand).
   const [hmReplay, setHmReplay] = useState(false);
   const [heatmapExpanded, setHeatmapExpanded] = useState(true);
@@ -609,10 +612,13 @@ export default function ScoutedTeamPage() {
   const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster, lang),
     [stats, heatmapPoints, field, roster, lang]);
   const counters = useMemo(() => generateCounters(insights, lang), [insights, lang]);
-  // § Stage 2.5 — the global phase control (hmPhase) drives the numeric report
-  // tables too, not just the heatmap: Breakouts + Shooting + the elim-reason block
-  // all read the SELECTED phase so the field and the numbers always agree.
-  const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
+  // § Stage 2.5 — the global phase control (hmPhase) drives the Shooting table +
+  // the elim-reason block (genuinely per-stage). The BREAKOUTS table is ANCHORED
+  // to Break (Jacek 2026-06-17): "breakout survival" is inherently a break-phase
+  // concept + the single most important coach read, so it must ALWAYS show its
+  // whole-point breakout numbers regardless of the switcher — never lost/altered
+  // when exploring Settle/Mid (esp. for legacy pre-phase data like Prague).
+  const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field, 'break'), [heatmapPoints, field]);
   const sideTendency = useMemo(() => computeSideTendency(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
   const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
@@ -919,22 +925,42 @@ export default function ScoutedTeamPage() {
           overlapping positions per player, so a deterministic roster pick is
           unambiguous. Active chip = amber (selected state). */}
       {roster.length > 0 && (
-        <div style={{ display: 'flex', gap: 6, padding: '0 16px 8px', overflowX: 'auto', alignItems: 'center' }}>
-          <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>{t('scouted_layer_isolate')}</span>
-          {roster.map(p => {
-            const active = hmSelectedPlayer === p.id;
-            return (
-              <div key={p.id} onClick={() => setHmSelectedPlayer(active ? null : p.id)} style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
-                padding: '3px 10px 3px 3px', borderRadius: RADIUS.full, cursor: 'pointer',
-                background: active ? `${COLORS.accent}1f` : COLORS.surface,
-                border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-              }}>
-                <PlayerAvatar player={p} size={20} />
-                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: active ? COLORS.accent : COLORS.text, whiteSpace: 'nowrap' }}>{p.name || `#${p.number}`}</span>
-              </div>
-            );
-          })}
+        <div style={{ padding: '0 16px 8px' }}>
+          {/* Folded by default — a secondary drill-down, kept out of the way of the
+              breakout table. Header row toggles; shows the active isolate inline. */}
+          <div
+            role="button"
+            data-testid="isolate-toggle"
+            onClick={() => setHmIsolateOpen(v => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+              minHeight: 44, ...inertWhileReplaying,
+            }}>
+            <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>{t('scouted_layer_isolate')}</span>
+            {hmSelectedPlayer && !hmIsolateOpen && (() => {
+              const sp = roster.find(p => p.id === hmSelectedPlayer);
+              return sp ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{sp.name || `#${sp.number}`}</span> : null;
+            })()}
+            <span style={{ marginLeft: 'auto', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, transition: 'transform 0.15s', transform: hmIsolateOpen ? 'rotate(90deg)' : 'none' }}>›</span>
+          </div>
+          {hmIsolateOpen && (
+            <div style={{ display: 'flex', gap: 6, paddingTop: 4, overflowX: 'auto', alignItems: 'center' }}>
+              {roster.map(p => {
+                const active = hmSelectedPlayer === p.id;
+                return (
+                  <div key={p.id} onClick={() => setHmSelectedPlayer(active ? null : p.id)} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5, flexShrink: 0,
+                    padding: '3px 10px 3px 3px', borderRadius: RADIUS.full, cursor: 'pointer',
+                    background: active ? `${COLORS.accent}1f` : COLORS.surface,
+                    border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                  }}>
+                    <PlayerAvatar player={p} size={20} />
+                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: active ? COLORS.accent : COLORS.text, whiteSpace: 'nowrap' }}>{p.name || `#${p.number}`}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </>

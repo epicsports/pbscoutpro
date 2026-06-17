@@ -86,6 +86,10 @@ test.describe('PaT Stage 2.5 — per-stage report tables', () => {
     await dismissNudge(page);
     await expect(page.getByTestId('hm-phase-break')).toBeVisible({ timeout: 20000 });
 
+    // Isolate is folded by default (secondary drill-down; the breakout table is the
+    // priority read) — only the toggle header shows, chips are collapsed.
+    await expect(page.getByTestId('isolate-toggle')).toBeVisible();
+
     // Break (default): implicit phase → no captured reasons → block absent.
     await expect(page.getByTestId('elim-reasons')).toHaveCount(0);
 
