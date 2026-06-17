@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-17 — [FEATURE] Reads Snake — 2nd mini-game + game selector (§119, Jacek GO)
+**App (auto-deploy). No rules/data.** Tier-2 (new game/UI surface; brief GO'd, merge-on-GO, no iPhone gate). Merge `59441c23` (branch `feat/reads-snake`).
+- **Game selector:** `/break` is now `TakeABreakPage` — a data-driven vertical list (`GAMES` array + per-row HI one-shot). Games moved to sub-routes: `/break/reads` (Reads Mini) + `/break/snake` (new), each its **own lazy chunk** (98 precache entries, +2). `TakeABreakSection` (both More drawers) still navigates to `/break`. Reads Mini's close → back-arrow to the selector.
+- **Snake** (`ReadsSnakePage`): classic 24×15, walls + self kill, food +10, speed ramp 140→70ms. SVG amber-LCD cloning the Reads Mini scaffolding (7-seg renderer, arcade attract↔HIGH-SCORES + 3-letter initials, dt-accumulator rAF loop). Controls: D-pad (4-dir) + swipe + arrows/WASD, 180° reversal ignored. Food = Reads dot+seam. **SFX only** (eat/die/over/blip) + mute — no music asset.
+- **Leaderboard** `leaderboards/readsSnake` (separate board, same infra). **No rules change** — the shared `leaderboards/{board}/scores/{uid}` wildcard already covers it. CAVEAT: the rule's `validRow` requires `mode in ['A','B']`, so single-mode Snake writes a constant `mode:'A'` to satisfy it verbatim (vestigial field) — keeps "no rules change" true. `dataService.{getReadsSnakeTop,getReadsSnakeMyScore,submitReadsSnakeScore}` + `testBridge.readsSnake*`.
+- **e2e (fail-first, 90/90):** `reads-snake.spec.js` — T1 eat→+10+grow (deterministic via an emulator-only `__pbSnakeTest` hook, inert in prod), T2 wall death→GAME OVER, T3 leaderboard create/update + reject-lower + cross-uid-DENIED against real rules, T4 HIGH SCORES, T5 menu→selector→Snake. `reads-mini.spec.js` updated for the selector hop. §119 / §27 PASS (amber-LCD canvas + nav-list chevron = flagged art-directed exceptions per §117 precedent).
+- **Smoke owed (Jacek, prod):** More → Take a Break → Snake row → play (eat, die, submit a PB); confirm Reads Mini still opens via its row.
+- **Shared follow-up:** STAGE 3 App Check (reCAPTCHA v3, app-wide) covers both games — separate GO (Reads Mini §117).
+
 ## 2026-06-17 — [REFACTOR/FIX] Canonical pointPhases module + consumer migration (PaT D4, Jacek GO)
 **App (auto-deploy). No rules/data.** Tier-1 (within GO'd brief; refactor + bug-fix). Merge `7baaf9e3` (foundation `706301af` + migration `d5ef57bd`).
 - **Single source = `src/utils/pointPhases.js`.** The phase axis (`PHASES` + `ALIAS`) and selectors (`capturePhases`/`playPhases`/`coachReportPhases`/`isReasonRadial`/`label`/`toPersistedLiteral`/`fromPersistedLiteral`/`normalizeKey`/`order`/`INPLAY`) now drive every consumer — MatchPage capture+review, `StageSwitcher`, `dataService.mergeStreamTimelines`, `generateInsights`, `HeatmapCanvas`, ScoutedTeam coach report — replacing scattered literals/icon-maps/`STAGE_ORDER`s. Adding/renaming/remapping a phase is one edit.

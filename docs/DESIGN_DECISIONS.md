@@ -9695,7 +9695,12 @@ Breakouts/Shooting/big-moves tables are copy-pasted).
 > Staged: STAGE 1 docs (this) → **Jacek GO** → STAGE 2 build. PRE-FLIGHT (Opus): net-new,
 > no Snake game exists. STEP 0 (CC, verified live 2026-06-17): see §119.5 — all assumptions HOLD.
 >
-> **STATUS: STAGE 1 docs — AWAITING GO for STAGE 2.**
+> **STATUS: STAGE 2 SHIPPED 2026-06-17 (`59441c23`).** Game + selector + leaderboard live,
+> e2e green (gate 90/90). `src/pages/ReadsSnakePage.jsx` · `src/pages/TakeABreakPage.jsx` (selector
+> at `/break`) · games at `/break/reads` + `/break/snake` · `dataService.{getReadsSnakeTop,
+> getReadsSnakeMyScore,submitReadsSnakeScore}` (board `readsSnake`). No rules change (shared
+> `{board}` wildcard; single-mode Snake writes a constant `mode:'A'` to satisfy the rule's
+> `validRow`). SFX only — no music asset. App Check enforcement = shared STAGE 3 (Reads Mini §117).
 
 ### 119.0 Locked decisions (Snake-specific; rest inherits §117 Reads Mini)
 | # | Decision |
