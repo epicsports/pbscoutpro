@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Lunar Lander</title>
+<style>
+  :root{
+    --bezel-1:#0e1320; --bezel-2:#070a12; --bezel-edge:#1a2234; --surface:#111827;
+    --lcd-glass:#130d04; --amber:#fbbf24; --amber-rich:#f59e0b; --amber-dim:rgba(251,191,36,.10);
+    --amber-mid:rgba(251,191,36,.45); --btn:#161d2b; --btn-edge:#222c40; --btn-press:#2a2208;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; width:100%; background:#05070c; color:var(--amber);
+    font-family:"SF Mono",ui-monospace,"Courier New",monospace; overflow:hidden;
+    overscroll-behavior:none; touch-action:none; -webkit-user-select:none; user-select:none; }
+  #stage{ position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    padding:max(8px,env(safe-area-inset-top)) 10px max(8px,env(safe-area-inset-bottom)); }
+  .device{ display:flex; flex-direction:column; width:100%; height:100%; max-width:440px; max-height:920px;
+    background:linear-gradient(160deg,var(--bezel-1),var(--bezel-2)); border:1px solid var(--bezel-edge);
+    border-radius:26px; box-shadow:0 30px 80px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04); padding:14px; gap:12px; }
+  .brandbar{ display:flex; align-items:center; justify-content:center; padding:2px 6px 0; flex:0 0 auto; }
+  .silk{ font-size:11px; letter-spacing:3px; color:var(--amber-mid); font-weight:600; }
+  .lcd-wrap{ position:relative; flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; }
+  .lcd{ position:relative; aspect-ratio:160/224; max-height:100%; max-width:100%; height:100%; background:var(--lcd-glass);
+    border-radius:10px; border:1px solid #241a08; box-shadow:inset 0 0 40px rgba(0,0,0,.85), inset 0 0 0 2px rgba(0,0,0,.5), 0 2px 10px rgba(0,0,0,.6); overflow:hidden; }
+  .lcd canvas{ display:block; width:100%; height:100%; image-rendering:auto; }
+  .scan{ position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(to bottom, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,0,0,.16) 3px); mix-blend-mode:multiply; }
+  .vig{ position:absolute; inset:0; pointer-events:none; background:radial-gradient(120% 120% at 50% 45%, rgba(0,0,0,0) 55%, rgba(0,0,0,.55) 100%); }
+  .glare{ position:absolute; inset:0; pointer-events:none; background:linear-gradient(135deg, rgba(255,240,200,.05), rgba(255,240,200,0) 40%); }
+  .deck{ display:flex; flex-direction:row; align-items:flex-end; justify-content:space-between; gap:12px; flex:0 0 auto; }
+  .pad{ display:flex; gap:12px; align-items:flex-end; }
+  .btn{ appearance:none; border:1px solid var(--btn-edge); background:linear-gradient(180deg,#1a2233,#0d1320); color:var(--amber);
+    border-radius:14px; display:flex; align-items:center; justify-content:center; font-family:inherit; font-weight:600;
+    box-shadow:0 3px 0 #060a12, inset 0 1px 0 rgba(255,255,255,.05); transition:transform .03s, box-shadow .03s, background .08s; touch-action:none; cursor:pointer; position:relative; }
+  .btn:active,.btn.is-held{ transform:translateY(2px); box-shadow:0 1px 0 #060a12, inset 0 0 14px rgba(251,191,36,.35); background:linear-gradient(180deg,#24201a,#1a160a); color:#fde68a; }
+  .btn svg{ width:60%; height:60%; }
+  .rot{ width:62px; height:62px; }
+  .thrust{ width:104px; height:84px; flex-direction:column; gap:4px; }
+  .thrust .lab{ font-size:10px; letter-spacing:2px; opacity:.85; }
+  .mini{ width:40px; height:40px; border-radius:11px; }
+  .mini svg{ width:55%; height:55%; }
+  .deck-mid{ display:flex; flex-direction:column; align-items:center; gap:8px; padding-bottom:6px; }
+  @media (orientation:landscape){
+    .device{ flex-direction:row; align-items:center; padding:12px 16px; gap:14px; max-width:none; max-height:560px; }
+    .brandbar{ position:absolute; top:10px; left:18px; right:18px; padding:0; pointer-events:none; }
+    .deck{ display:contents; }
+    .pad-left{ order:0; } .lcd-wrap{ order:1; height:100%; } .pad-right{ order:2; }
+    .deck-mid{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); flex-direction:row; }
+  }
+  @media (prefers-reduced-motion: reduce){ .btn{ transition:none; } }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="device" id="device">
+    <div class="brandbar"><div class="silk">L U N A R &nbsp; L A N D E R</div></div>
+    <div class="lcd-wrap">
+      <div class="lcd"><canvas id="game" width="640" height="896"></canvas><div class="scan"></div><div class="vig"></div><div class="glare"></div></div>
+    </div>
+    <div class="deck">
+      <div class="pad pad-left">
+        <button class="btn rot" id="bLeft" aria-label="Rotate left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6 3 12l6 6"/><path d="M3 12h13a4 4 0 0 1 0 8h-3"/></svg></button>
+        <button class="btn rot" id="bRight" aria-label="Rotate right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6 21 12l-6 6"/><path d="M21 12H8a4 4 0 0 0 0 8h3"/></svg></button>
+      </div>
+      <div class="deck-mid">
+        <button class="btn mini" id="bSound" aria-label="Toggle sound"><svg id="sndOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M16 9a3 3 0 0 1 0 6"/><path d="M19.5 6.5a7 7 0 0 1 0 11"/></svg></button>
+        <button class="btn mini" id="bPause" aria-label="Pause"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 5v14"/><path d="M16 5v14"/></svg></button>
+      </div>
+      <div class="pad pad-right">
+        <button class="btn thrust" id="bThrust" aria-label="Thrust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3 3 4.5 6.5 4.5 10A4.5 4.5 0 0 1 12 17.5 4.5 4.5 0 0 1 7.5 13C7.5 9.5 9 6 12 3Z"/><path d="M9 19c0 1.5 1.3 2.5 3 2.5s3-1 3-2.5"/></svg><span class="lab">THRUST</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Full game script: see src/pages/ReadsLanderPage.jsx (ported verbatim). The
+     standalone prototype's <script> (virtual world 160x224, GRAVITY0/THRUST/ROT_SPD
+     tunables, genLevel/terrainYAt/padAt, update/render, WebAudio Snd, hold-button
+     input) is the source of truth; the React port preserves its constants + logic. -->
+</body>
+</html>
