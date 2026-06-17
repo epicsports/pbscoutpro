@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-17 — [FIX] ScoutedTeam — Breakouts table anchored to Break + Isolate folded (Jacek feedback)
+**App (auto-deploy). No rules/migration.** Tier-1 follow-up to the same-day Stage 2.5 ship. Merge `27c43909`.
+- **Regression:** Jacek reported the breakout % table "disappeared" when exploring the new phase switcher on **legacy pre-phase data** (Czech/Prague — points have no `timeline[]`, and are per-coach single-side stream docs). Stage 2.5 had made the Breakouts memo follow `hmPhase`; on Settle/Mid the table shifted/looked lost.
+- **Fix:** Breakouts is now **anchored to Break** (`computeBreakSurvival(…, 'break')`, no `hmPhase` dep) — "breakout survival" is inherently a break-phase concept + the priority coach read, so it ALWAYS shows its whole-point numbers regardless of the switcher (= exactly the pre-Stage-2.5 behavior). Shooting + the elim-reason block stay per-stage (genuinely per-stage).
+- **Isolate folded:** the per-player isolate selector is now collapsed by default (`isolate-toggle`; secondary drill-down, was crowding the priority table) — header toggles the chips, shows the active isolate inline.
+- e2e: pat-stage25 UI test extended (isolate folded by default); functional gate 86/86. §27 PASS.
+
 ## 2026-06-17 — [FEATURE] PaT Stage 2.5 — coach-report per-stage tables (global phase control)
 **App (auto-deploy via deploy.yml). NO rules, NO capture change, NO migration.** Tier-1 (read-side aggregation + display; brief "ship on green" + standing Tier-1 autonomy). Merge `da06f0e9`.
 - **Gap closed:** Stage 2.5(A) heatmap-per-phase was already shipped (§B/`hmPhase`); the GAP was the NUMERIC tables — Breakouts + Shooting aggregated over the whole point, and `eliminationReasons` (captured 2b) appeared in NO table. Now the global `hmPhase` control (Break/Settle/Mid) drives heatmap **and** Breakouts + Shooting + a new elim-reason breakdown together — one coherent per-phase view.
