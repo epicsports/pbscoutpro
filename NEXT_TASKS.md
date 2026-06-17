@@ -8,6 +8,8 @@
 ---
 
 ## ✅ DONE since the last sync (2026-06-13) — verified against main, detail in DEPLOY_LOG
+- **PaT Stage 2.5 — coach-report per-stage tables** SHIPPED (`da06f0e9`, 2026-06-17) — global `hmPhase` control now drives Breakouts + Shooting + a new elim-reason breakdown (heatmap-per-phase was already done). Stage-aware `computeBreakSurvival`/`computeShotTargets` + `computeEliminationReasons`; carried the previously-dropped keyframe `eliminationReasons` through normalization (read-side). Tier-1, no rules/capture/migration. Gate 86/86. **Charter Stage 2.5 closed.** Smoke owed: switch Break/Settle/Mid on a scouted team with Settle/Mid points.
+- **Tactics — all data purged** (`326e4343`, 2026-06-17) — Jacek "nie potrzebujemy tych danych"; OP2 orphan-cleanup then full purge of all 35 (ranger1996 only). Feature code intact (empty stores). Optional future Tier-1: unify the dual-store code.
 - **Packing Checklist "Checklista wyjazdowa" (player)** SHIPPED + rules deployed (`a73a7744`, 2026-06-17) — in-app travel checklist (static catalog v1, 3 templates, binary/counted, critical sheet, custom items, progress ring), per-user `users/{uid}/appState/packing` (degrade-to-memory), owner-only rule live. e2e fail-first caught 3 real bugs (t() call-shape crash · `Btn` testid-drop → added `testId`/`ariaLabel` to shared Btn · undefined `FONT_SIZE.md`). Phase 2 parked in `docs/PACKING_CHECKLIST.md`.
 - **view-as (role impersonation) RE-ENABLED** (`f45086ea`) — real impersonation + persistent visible exit; admin-guarded; e2e green. (Closes the "Podgląd jako broken" bug.)
 - **Playbooks coach-framed door** (`de9f16bb`) — coach drawer entry + role-branded LayoutsPage; e2e green. (Discharges "role-scoped layout-library visibility".)

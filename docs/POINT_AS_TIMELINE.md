@@ -97,7 +97,8 @@ timeout/no-point below), not a data extension.
   merged top bar + additive `point.timeline[]` keyed by `slotIds` + per-stage capture/draw); 2b `3584f6c0` (radial
   reason menu Settle/Mid + `eliminationReasons` + smoke fixes); outcome-sheet layout `852b055a` (full-width
   TEAM A | TEAM B). **2c (forfeit + win-reason) CANCELLED.** Break = keyframe #0 (`homeData/awayData`) untouched throughout.
-- **Stage 2.5 — Coach-report per-stage breakdown (NEAR-TERM, P1).** ⚠️ 2a/2b capture Settle/Mid keyframes +
+- **Stage 2.5 — Coach-report per-stage breakdown ✅ DONE 2026-06-17** (`da06f0e9`). (A) heatmap-per-phase was already shipped (§B/`hmPhase`). (B) the report TABLES now follow the global phase control: `computeBreakSurvival`/`computeShotTargets` stage-aware + new `computeEliminationReasons` block (the captured-but-invisible 2b reasons, surfaced). Found + fixed: the normalizer dropped per-keyframe `eliminationReasons` (carried now; still read-side). Tier-1, no rules/capture/migration. Detail: DEPLOY_LOG 2026-06-17. Original spec below.
+- **Stage 2.5 (original spec) — Coach-report per-stage breakdown (NEAR-TERM, P1).** ⚠️ 2a/2b capture Settle/Mid keyframes +
   elimination reasons into `point.timeline[]`, but the coach report (`generateInsights.js` / `ScoutedTeamPage`)
   reads ONLY `homeData/awayData` (keyframe #0) → **the new data is captured-but-INVISIBLE** (same trap as the
   earlier callout-zones-with-no-view). Stage 2.5 = the coach-side CONSUMER: a per-stage breakdown in the report +
