@@ -598,6 +598,12 @@ const T = {
     packing_reset_title:   'Wyczyścić checklistę?',
     packing_reset_msg:     'Odznaczę wszystkie pozycje, żebyś mógł spakować się na nowy wyjazd. Twoje własne dodane rzeczy zostają.',
     packing_reset_confirm: 'Wyczyść',
+    // ── PaT phase axis (D4 / pointPhases.js) — NEW keys only; phase_break/settle/mid
+    // already exist above (the module's label() reuses phase_settle/phase_mid). ──
+    phase_prebreakout:     'Przed breakiem',
+    phase_breakout:        'Breakout',
+    phase_endgame:         'Endgame',
+    phase_outcome:         'Wynik',
     // ── Reads Mini "Take a Break" (§117) — arcade strings stay stylised EN ──
     reads_mini_section:     'Arcade',
     reads_mini_menu_label:  'Take a Break',
@@ -2515,6 +2521,11 @@ const T = {
     packing_reset_title:   'Clear the checklist?',
     packing_reset_msg:     "I'll uncheck everything so you can pack for a new trip. Your own added items stay.",
     packing_reset_confirm: 'Clear',
+    // ── PaT phase axis (D4 / pointPhases.js) — NEW keys only (phase_break/settle/mid exist) ──
+    phase_prebreakout:     'Pre-breakout',
+    phase_breakout:        'Breakout',
+    phase_endgame:         'Endgame',
+    phase_outcome:         'Outcome',
     // ── Reads Mini "Take a Break" (§117) ──
     reads_mini_section:     'Arcade',
     reads_mini_menu_label:  'Take a Break',

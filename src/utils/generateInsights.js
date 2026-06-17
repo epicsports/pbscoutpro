@@ -56,19 +56,20 @@ export function stageSideData(pt, stage) {
       eliminationReasons: k?.eliminationReasons || [],
     };
   }
-  if (stage === 'mid') {
-    const k = kfOf(pt, 'mid');
+  if (stage === 'mid' || stage === 'endgame') {
+    // Mid + Endgame are keyframe-only (D4); identical read shape, distinct keyframe.
+    const k = kfOf(pt, stage);
     return {
       players: k?.players || [],
       assignments: k?.assignments || [],
       quickShots: k?.quickShots || [],
-      shots: [],                             // no precision capture at Mid
+      shots: [],                             // no precision capture at Mid/Endgame
       eliminations: k?.eliminations || [],
       eliminationTimes: [],
       eliminationReasons: k?.eliminationReasons || [],
     };
   }
-  // break = keyframe #0 (the point itself, today's behavior)
+  // break/breakout = keyframe #0 (the point itself, today's behavior)
   return {
     players: pt.players || [],
     assignments: pt.assignments || [],
@@ -879,10 +880,10 @@ export function computeShotTargets(points, field, stage = 'break') {
   // stages (an elimination is a point outcome, attributed to the stage's zones).
   const bandSourcesFor = (pt) => {
     if (stage === 'settle') return [pt.obstacleShots];
-    if (stage === 'mid') return [kfOf(pt, 'mid')?.quickShots];
+    if (stage === 'mid' || stage === 'endgame') return [kfOf(pt, stage)?.quickShots];
     return [pt.quickShots, pt.obstacleShots];   // break (today's merged kf#0)
   };
-  const precisionFor = (pt) => (stage === 'mid' ? [] : (pt.shots || []));
+  const precisionFor = (pt) => ((stage === 'mid' || stage === 'endgame') ? [] : (pt.shots || []));
 
   points.forEach(pt => {
     // Precision shots per player slot
@@ -1020,7 +1021,8 @@ export function computeCalloutZoneTargets(points, field) {
         holders: true,
       };
     }
-    const k = kfOf(pt, 'mid');
+    // mid + endgame: keyframe-only, read by the stage literal (D4).
+    const k = kfOf(pt, stage);
     return { tags: k?.zoneShots || [], positions: k?.players || [], assignments: k?.assignments || [], holders: true };
   };
 
@@ -1080,12 +1082,14 @@ export function computeCalloutZoneTargets(points, field) {
   const breakOut = buildStage('break');
   const settleOut = buildStage('settle');
   const midOut = buildStage('mid');
+  const endgameOut = buildStage('endgame');
   return {
     break: breakOut,
     settle: settleOut,
     mid: midOut,
+    endgame: endgameOut,
     obstacle: settleOut, // transitional alias (= settle); retired with the 2-way
-    hasAny: [breakOut, settleOut, midOut].some(o => Object.keys(o).length > 0),
+    hasAny: [breakOut, settleOut, midOut, endgameOut].some(o => Object.keys(o).length > 0),
   };
 }
 

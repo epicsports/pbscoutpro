@@ -30,7 +30,8 @@ import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { MapPin, Pencil, Play, Pause, Zap, Shield, Timer } from 'lucide-react';
+import { MapPin, Pencil, Play, Pause, Zap, Shield, Timer, Flag } from 'lucide-react';
+import { capturePhases, toPersistedLiteral, fromPersistedLiteral, label as phaseLabel, isReasonRadial } from '../utils/pointPhases';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
@@ -66,12 +67,15 @@ const PENALTIES = ['', '141', '241', '341'];
 //   Mid    → positions only
 const PHASE_DEFAULTS_STICKY = false;
 const PHASE_LAYER_DEFAULTS = {
-  break:  { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
-  settle: { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
-  mid:    { teamA: { positions: true, shots: false }, teamB: { positions: true, shots: false } },
+  break:   { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
+  settle:  { teamA: { positions: true, shots: true },  teamB: { positions: true, shots: true } },
+  mid:     { teamA: { positions: true, shots: false }, teamB: { positions: true, shots: false } },
+  endgame: { teamA: { positions: true, shots: false }, teamB: { positions: true, shots: false } },
 };
-const PHASE_SEGMENTS = ['break', 'settle', 'mid'];
-const PHASE_ICON = { break: Zap, settle: Shield, mid: Timer };
+// PaT D4 — capture segments come from the canonical module (single source). Persisted
+// literals (toPersistedLiteral): break/settle/mid + endgame.
+const PHASE_SEGMENTS = capturePhases().map(p => toPersistedLiteral(p.key));
+const PHASE_ICON = { break: Zap, settle: Shield, mid: Timer, endgame: Flag };
 
 function emptyTeam() {
   // § Stage 2b — elimReasons: per-slot elimination reason code, set only for
@@ -235,10 +239,10 @@ export default function MatchPage() {
   // same slotIds); drawings are per-stage (stageAnnotations). Break path stays
   // byte-identical (captureStage==='break' ⇒ draft/setDraft/activeAnnotations
   // resolve to the existing draftA/draftB + annotations).
-  const [captureStage, setCaptureStage] = useState('break'); // 'break'|'settle'|'mid'
-  const [stageDraftsA, setStageDraftsA] = useState({ settle: null, mid: null });
-  const [stageDraftsB, setStageDraftsB] = useState({ settle: null, mid: null });
-  const [stageAnnotations, setStageAnnotations] = useState({ settle: [], mid: [] });
+  const [captureStage, setCaptureStage] = useState('break'); // 'break'|'settle'|'mid'|'endgame'
+  const [stageDraftsA, setStageDraftsA] = useState({ settle: null, mid: null, endgame: null });
+  const [stageDraftsB, setStageDraftsB] = useState({ settle: null, mid: null, endgame: null });
+  const [stageAnnotations, setStageAnnotations] = useState({ settle: [], mid: [], endgame: [] });
   // § Stage 2b — radial elimination-reason menu, Settle/Mid only. { slot, pos } = anchor.
   const [reasonMenu, setReasonMenu] = useState(null);
   const [fieldSide, setFieldSide] = useState('left');
@@ -324,9 +328,9 @@ export default function MatchPage() {
   useEffect(() => {
     const scope = previewPointId ? points.filter(p => p.id === previewPointId) : points;
     const has = (st) => scope.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === st));
-    if ((phasePin === 'settle' && !has('settle')) || (phasePin === 'mid' && !has('mid'))) {
+    if ((phasePin === 'settle' && !has('settle')) || (phasePin === 'mid' && !has('mid')) || (phasePin === 'endgame' && !has('endgame'))) {
       pinPhase('break');
-    } else if (!has('settle') && !has('mid')) {
+    } else if (!has('settle') && !has('mid') && !has('endgame')) {
       setPhasePlaying(false);
       setReplayStage(null);
     }
@@ -677,21 +681,28 @@ export default function MatchPage() {
         [captureStage]: typeof updater === 'function' ? updater(prev[captureStage] || []) : updater,
       }));
   // Switch the active capture stage; seed an empty stage from the prior stage
-  // (settle ← break; mid ← settle||break) so positions carry forward to move.
+  // (settle ← break; mid ← settle||break; endgame ← mid||settle||break) so positions
+  // carry forward to move.
   const switchStage = (next) => {
     if (next !== 'break') {
-      const baseA = next === 'mid' ? (stageDraftsA.settle || draftA) : draftA;
-      const baseB = next === 'mid' ? (stageDraftsB.settle || draftB) : draftB;
+      const priorBase = (drafts, fallback) =>
+        next === 'endgame' ? (drafts.mid || drafts.settle || fallback)
+        : next === 'mid' ? (drafts.settle || fallback)
+        : fallback;
+      const baseA = priorBase(stageDraftsA, draftA);
+      const baseB = priorBase(stageDraftsB, draftB);
       if (!stageDraftsA[next]) setStageDraftsA(prev => ({ ...prev, [next]: seedStageDraft(baseA) }));
       if (!stageDraftsB[next]) setStageDraftsB(prev => ({ ...prev, [next]: seedStageDraft(baseB) }));
     }
     setCaptureStage(next);
     setSelPlayer(null); setQuickShotPlayer(null); setToolbarPlayer(null); setRedoStack([]); setReasonMenu(null);
   };
+  const stageHasData = (drafts, anns) => !!(drafts?.players?.some(Boolean) || anns?.length);
   const stageDone = {
     break: draftA.players.some(Boolean) || draftB.players.some(Boolean),
-    settle: !!(stageDraftsA.settle?.players?.some(Boolean) || stageDraftsB.settle?.players?.some(Boolean) || stageAnnotations.settle?.length),
-    mid: !!(stageDraftsA.mid?.players?.some(Boolean) || stageDraftsB.mid?.players?.some(Boolean) || stageAnnotations.mid?.length),
+    settle: stageHasData(stageDraftsA.settle, stageAnnotations.settle) || stageHasData(stageDraftsB.settle, stageAnnotations.settle),
+    mid: stageHasData(stageDraftsA.mid, stageAnnotations.mid) || stageHasData(stageDraftsB.mid, stageAnnotations.mid),
+    endgame: stageHasData(stageDraftsA.endgame, stageAnnotations.endgame) || stageHasData(stageDraftsB.endgame, stageAnnotations.endgame),
   };
   const roster = activeTeam === 'A' ? rosterA : rosterB;
 
@@ -731,7 +742,7 @@ export default function MatchPage() {
       { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
       // § Stage 2b — re-open the radial reason menu for an already-eliminated
       // player in Settle/Mid (Break has no reason).
-      ...(isElim && captureStage !== 'break' ? [{ icon: '🏷️', label: 'Reason', color: COLORS.danger, action: 'reason' }] : []),
+      ...(isElim && isReasonRadial(captureStage) ? [{ icon: '🏷️', label: 'Reason', color: COLORS.danger, action: 'reason' }] : []),
       { icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' },
     ];
   }, [toolbarPlayer, draft.elim, draft.runners, draft.bumps, captureStage]);
@@ -864,7 +875,7 @@ export default function MatchPage() {
     if (snap.stageDraftsA) setStageDraftsA(snap.stageDraftsA);
     if (snap.stageDraftsB) setStageDraftsB(snap.stageDraftsB);
     if (snap.stageAnnotations) setStageAnnotations(snap.stageAnnotations);
-    if (snap.captureStage === 'break' || snap.captureStage === 'settle' || snap.captureStage === 'mid') setCaptureStage(snap.captureStage);
+    if (snap.captureStage && PHASE_SEGMENTS.includes(snap.captureStage)) setCaptureStage(snap.captureStage);
   }, [scoutingSide, tournamentId, matchId, trainingId, matchupId, isTraining, pointParamId]);
 
   // AUTOSAVE — debounced 2s after any draft-content change. Non-pristine
@@ -1263,7 +1274,7 @@ export default function MatchPage() {
       // so stage slots reuse the SAME slotIds (layers align by slot). Empty stages
       // (no positions + no drawing) are skipped. homeData/awayData (keyframe #0)
       // are NOT touched.
-      const STAGE_ORDER = ['settle', 'mid'];
+      const STAGE_ORDER = PHASE_SEGMENTS.filter(st => st !== 'break'); // timeline stages: settle/mid/endgame
       const buildTimeline = (homeKf, awayKf) => {
         const out = [];
         STAGE_ORDER.forEach((stage, i) => {
@@ -1806,7 +1817,7 @@ export default function MatchPage() {
     });
     // § Stage 2b — tagging a hit in Settle/Mid blooms the radial reason menu on
     // the player. Break = implicit, no prompt.
-    if (willBeElim && captureStage !== 'break') {
+    if (willBeElim && isReasonRadial(captureStage)) {
       const pos = draft.players[idx];
       if (pos) setReasonMenu({ slot: idx, pos });
     }
@@ -1860,6 +1871,7 @@ export default function MatchPage() {
   const scopeHasStage = (st) => phaseScopePoints.some(p => Array.isArray(p.timeline) && p.timeline.some(e => e?.stage === st));
   const hasSettleStage = scopeHasStage('settle');
   const hasMidStage = scopeHasStage('mid');
+  const hasEndgameStage = scopeHasStage('endgame');   // PaT D4
   const canReplay = hasSettleStage || hasMidStage;
 
   const getHeatmapPoints = (side) => {
@@ -2134,11 +2146,14 @@ export default function MatchPage() {
             </div>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 6 }} role="group" aria-label={t('phase_row_label')}>
               {PHASE_SEGMENTS.map(st => {
-                const enabled = st === 'break' || (st === 'settle' ? hasSettleStage : hasMidStage);
+                const enabled = st === 'break' ? true
+                  : st === 'settle' ? hasSettleStage
+                  : st === 'mid' ? hasMidStage
+                  : hasEndgameStage;
                 const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
                 const active = activeSeg === st;
                 const SegIcon = PHASE_ICON[st];
-                const segLabel = t(`phase_${st}`);
+                const segLabel = phaseLabel(fromPersistedLiteral(st), t);
                 return (
                   <div key={st} data-testid={`phase-seg-${st}`} role="button"
                     aria-pressed={active} aria-disabled={!enabled} aria-label={segLabel} title={segLabel}
@@ -2518,14 +2533,14 @@ export default function MatchPage() {
     const mrPhaseControlEl = (
       <FieldPhaseControl
         kind="review"
-        phases={[
-          { key: 'break', label: t('phase_break') },
-          { key: 'settle', label: t('phase_settle'), disabled: !hasSettleStage },
-          { key: 'mid', label: t('phase_mid'), disabled: !hasMidStage },
-        ]}
+        phases={capturePhases().map(p => {
+          const key = toPersistedLiteral(p.key);
+          const disabled = key === 'settle' ? !hasSettleStage : key === 'mid' ? !hasMidStage : key === 'endgame' ? !hasEndgameStage : false;
+          return { key, label: phaseLabel(p.key, t), disabled };
+        })}
         phase={(phasePlaying && canReplay) ? (replayStage || 'break') : phasePin}
         onPhase={pinPhase}
-        done={{ break: true, settle: hasSettleStage, mid: hasMidStage }}
+        done={{ break: true, settle: hasSettleStage, mid: hasMidStage, endgame: hasEndgameStage }}
         canReplay={canReplay}
         replaying={phasePlaying && canReplay}
         onReplay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
@@ -2807,7 +2822,7 @@ export default function MatchPage() {
             calloutZones={resolveZones(field?.layout)}
             fieldImage={field?.fieldImage}
             selectedCallout={quickShotPlayer != null ? (draft.zoneShots?.[quickShotPlayer] || []) : []}
-            stageLabel={{ break: 'Break', settle: 'Settle', mid: 'Mid' }[captureStage] || 'Break'}
+            stageLabel={phaseLabel(fromPersistedLiteral(captureStage), t)}
             onToggleZone={handleToggleQuickZone}
             onPrecise={handleQuickShotPrecise}
             onClose={() => setQuickShotPlayer(null)}
