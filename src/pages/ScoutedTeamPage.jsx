@@ -1048,7 +1048,7 @@ export default function ScoutedTeamPage() {
       })();
 
   const columnEl = (
-      <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
+      <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}
         {heatmapPoints.length > 0 && (() => {
           const c = computeCompleteness(heatmapPoints);
@@ -2238,12 +2238,20 @@ export default function ScoutedTeamPage() {
     active: hmSelectedPlayer === p.id,
     onSelect: () => setHmSelectedPlayer(hmSelectedPlayer === p.id ? null : p.id),
   }));
+  const fvIsolateActive = hmSelectedPlayer ? roster.find(p => p.id === hmSelectedPlayer) : null;
   const fvControlZonesEl = (
     <>
       <RailZone label="Scope">{scopePillsEl}</RailZone>
       <RailZone label={t('scouted_layer_layers')}><RailToggleList items={fvLayerItems} /></RailZone>
       {roster.length > 0 && (
-        <RailZone label={t('scouted_layer_isolate')} last><RailItemList items={fvIsolateItems} /></RailZone>
+        // Folded by default — a long player list here squeezes the report column
+        // (Breakouts/Shooting) below it to a sliver in landscape (Jacek regression
+        // 2026-06-17). Collapsed by default; the active isolate shows in the header.
+        <RailZone label={t('scouted_layer_isolate')} last collapsible defaultCollapsed
+          testId="rail-isolate-toggle"
+          headerExtra={fvIsolateActive ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{fvIsolateActive.name || `#${fvIsolateActive.number}`}</span> : null}>
+          <RailItemList items={fvIsolateItems} />
+        </RailZone>
       )}
     </>
   );
