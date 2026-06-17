@@ -40,6 +40,7 @@ const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
 const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
 const LayoutAnalyticsPage = lazy(() => import('./pages/LayoutAnalyticsPage'));
 const PlayerStatsPage = lazy(() => import('./pages/PlayerStatsPage'));
+const PackingChecklistPage = lazy(() => import('./pages/PackingChecklistPage'));
 const TrainingSetupPage = lazy(() => import('./pages/TrainingSetupPage'));
 const TrainingSquadsPage = lazy(() => import('./pages/TrainingSquadsPage'));
 const TrainingPage = lazy(() => import('./pages/TrainingPageRedirect'));
@@ -173,6 +174,7 @@ function AppRoutes() {
             <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
             <Route path="/layout/:layoutId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
             <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
+            <Route path="/player/checklist" element={<PackingChecklistPage />} />
             <Route path="/training/:trainingId/setup" element={<TrainingSetupPage />} />
             <Route path="/training/:trainingId/squads" element={<TrainingSquadsPage />} />
             <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />

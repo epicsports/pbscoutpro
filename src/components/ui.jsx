@@ -8,6 +8,7 @@ import { useLanguage } from '../hooks/useLanguage';
 export function Btn({
   children, onClick, variant = 'default', size = 'md',
   disabled, style, title, active, type = 'button', className,
+  testId, ariaLabel,
 }) {
   const device = useDevice();
   const R = responsive(device.type);
@@ -35,6 +36,7 @@ export function Btn({
   };
   return (
     <button type={type} onClick={onClick} disabled={disabled} title={title} className={className}
+      data-testid={testId || undefined} aria-label={ariaLabel || undefined}
       style={{ ...base, ...v[variant], ...style }}
       onMouseEnter={e => !disabled && (e.currentTarget.style.filter = 'brightness(1.15)')}
       onMouseLeave={e => (e.currentTarget.style.filter = 'none')}>

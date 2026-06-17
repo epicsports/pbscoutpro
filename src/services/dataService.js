@@ -3128,3 +3128,25 @@ export function subscribeLinkedPlayer(uid, cb) {
     cb(null);
   });
 }
+
+// ─── Packing checklist — per-user app state (CC_BRIEF_PACKING_CHECKLIST Stage D) ───
+// users/{uid}/appState/packing. Owner-only (rules STAGED in firestore.rules, NOT yet
+// deployed). Callers wrap these in try/catch and degrade to in-memory on any failure.
+export async function getPackingState(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'users', uid, 'appState', 'packing'));
+  return snap.exists() ? snap.data() : null;
+}
+export async function savePackingState(uid, data) {
+  if (!uid) return;
+  // Nested-map literals only — setDoc(merge:true) does NOT expand dot-notation keys.
+  await setDoc(doc(db, 'users', uid, 'appState', 'packing'), {
+    template: data.template || 'full',
+    done: data.done || {},
+    counts: data.counts || {},
+    customItems: data.customItems || {},
+    collapsed: data.collapsed || {},
+    catalogVersion: data.catalogVersion || 1,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
