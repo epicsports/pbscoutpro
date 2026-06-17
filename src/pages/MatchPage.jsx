@@ -3071,7 +3071,7 @@ export default function MatchPage() {
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, textAlign: 'center', marginBottom: SPACE.md }}>
           {assignTarget !== null ? t('match_assign_slot', getChipLabel(assignTarget)) : t('match_assign_slot', '')}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: SPACE.xs + 2 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))', gap: SPACE.xs + 2 }}>
           {/* Assign list = players only (exclude coach/staff). Same `role`
               dimension PlayersPage filters on; missing role defaults to player
               (pre-role-field docs). Scoped to the assign picker — the underlying

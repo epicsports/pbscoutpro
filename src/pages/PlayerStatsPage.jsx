@@ -922,7 +922,7 @@ export default function PlayerStatsPage() {
   );
 
   const columnEl = (
-      <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div data-testid="player-report-column" style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* ─── Cold-review entry (claim flow 1b, W4) — own player only;
               quiet at N=0 (renders nothing). ─────────────────────────── */}
@@ -1118,9 +1118,9 @@ export default function PlayerStatsPage() {
           return (
           <>
             {/* ─── § 59.9 — six-metric headline grid ──────────────────────── */}
-            <div style={{
+            <div data-testid="player-stat-grid" style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',  // 3×2 mobile (and tablet — 6×1 escape via media is future polish)
+              gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))',  // reflows to as many cards as fit — never clips the 3rd column in a wide/narrow rail
               gap: 10,
             }}>
               <MetricGridCell t={t}
@@ -1470,6 +1470,7 @@ export default function PlayerStatsPage() {
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
         <CanvasRailLayout
           isLandscape
+          railPriority
           aspect={16 / 10}
           railMin={200}
           header={pageHeaderEl}
