@@ -46,6 +46,7 @@ const ReadsMiniPage = lazy(() => import('./pages/ReadsMiniPage'));
 const ReadsSnakePage = lazy(() => import('./pages/ReadsSnakePage'));
 const ReadsInvadersPage = lazy(() => import('./pages/ReadsInvadersPage'));
 const ReadsLanderPage = lazy(() => import('./pages/ReadsLanderPage'));
+const ReadWarriorPage = lazy(() => import('./pages/ReadWarriorPage'));
 const TrainingSetupPage = lazy(() => import('./pages/TrainingSetupPage'));
 const TrainingSquadsPage = lazy(() => import('./pages/TrainingSquadsPage'));
 const TrainingPage = lazy(() => import('./pages/TrainingPageRedirect'));
@@ -185,6 +186,7 @@ function AppRoutes() {
             <Route path="/break/snake" element={<ReadsSnakePage />} />
             <Route path="/break/invaders" element={<ReadsInvadersPage />} />
             <Route path="/break/lander" element={<ReadsLanderPage />} />
+            <Route path="/break/warrior" element={<ReadWarriorPage />} />
             <Route path="/training/:trainingId/setup" element={<TrainingSetupPage />} />
             <Route path="/training/:trainingId/squads" element={<TrainingSquadsPage />} />
             <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />

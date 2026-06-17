@@ -54,11 +54,24 @@ function LanderGlyph({ size = 26 }) {
   );
 }
 
+// Read Warrior glyph (menu tile — chrome; a little race car).
+function WarriorGlyph({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }} aria-hidden>
+      <path d="M7 17V9l2-3h6l2 3v8" />
+      <path d="M7 12h10" />
+      <circle cx="8.5" cy="17.5" r="1.6" fill={COLORS.accent} stroke="none" />
+      <circle cx="15.5" cy="17.5" r="1.6" fill={COLORS.accent} stroke="none" />
+    </svg>
+  );
+}
+
 // Data-driven game registry. New games append here + add a lazy /break/<id> route.
 const GAMES = [
   { id: 'snake', route: '/break/snake', Icon: SnakeGlyph, nameKey: 'reads_snake_name', nameFallback: 'side is the best!', subKey: 'reads_snake_sub', subFallback: 'Classic snake', top: ds.getReadsSnakeTop },
   { id: 'invaders', route: '/break/invaders', Icon: InvadersGlyph, nameKey: 'reads_invaders_name', nameFallback: 'Invaders', subKey: 'reads_invaders_sub', subFallback: 'Shoot the wave', top: ds.getReadsInvadersTop },
   { id: 'lander', route: '/break/lander', Icon: LanderGlyph, nameKey: 'reads_lander_name', nameFallback: 'Lunar Lander', subKey: 'reads_lander_menu_sub', subFallback: 'Land soft', top: ds.getReadsLanderTop },
+  { id: 'warrior', route: '/break/warrior', Icon: WarriorGlyph, nameKey: 'read_warrior_name', nameFallback: 'Read Warrior', subKey: 'read_warrior_menu_sub', subFallback: 'Road racer', top: ds.getReadWarriorTop },
   { id: 'reads', route: '/break/reads', Icon: ReadsGlyph, nameKey: 'reads_mini_name', nameFallback: 'Reads Mini', subKey: 'reads_mini_sub', subFallback: 'Catch the drops', top: ds.getReadsMiniTop },
 ];
 

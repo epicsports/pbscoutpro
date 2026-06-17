@@ -220,5 +220,15 @@ export function installTestBridge() {
       doc(db, 'leaderboards', 'readsLander', 'scores', otherUid),
       { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
     ),
+
+    // Read Warrior (§122) — same board infra, separate board.
+    readWarriorSubmit: (initials, score) =>
+      ds.submitReadWarriorScore(auth.currentUser.uid, { initials, score }),
+    readWarriorMyScore: () => ds.getReadWarriorMyScore(auth.currentUser.uid),
+    readWarriorTop: () => ds.getReadWarriorTop(25),
+    readWarriorRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readWarrior', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
   };
 }
