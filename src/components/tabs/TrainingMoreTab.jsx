@@ -7,6 +7,7 @@ import { useLayouts, useActiveTeams } from '../../hooks/useFirestore';
 import { Modal, Btn, Input, Select, EmptyState, ConfirmModal } from '../ui';
 import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
+import TakeABreakSection from './TakeABreakSection';
 import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
@@ -177,6 +178,9 @@ export default function TrainingMoreTab({
           />
         </MoreSection>
       )}
+
+      {/* Very bottom of the drawer (§117) — ungated recreational entry. */}
+      <TakeABreakSection />
 
       {/* Layout picker modal */}
       <Modal open={layoutPickerOpen} onClose={() => setLayoutPickerOpen(false)}

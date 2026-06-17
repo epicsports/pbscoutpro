@@ -13,7 +13,7 @@
 
 import { auth, db, sendInviteEmailLink } from './firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, getDocs, setDoc, collection, collectionGroup, query, where, increment, arrayUnion, waitForPendingWrites } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, collection, collectionGroup, query, where, increment, arrayUnion, waitForPendingWrites, serverTimestamp } from 'firebase/firestore';
 import * as ds from './dataService';
 import { buildPlayerPointsFromMatch, computePlayerStats } from '../utils/playerStats';
 import { resolvePbliImport } from '../utils/playerImportDedup';
@@ -166,5 +166,19 @@ export function installTestBridge() {
       const all = await ds.fetchHitabilityHits(layoutId);
       return all.filter(h => h.trainingId === trainingId).length;
     },
+
+    // ── §117 Reads Mini leaderboard — exercise the REAL submit path against the
+    //    REAL rules (create / monotonic update / reject-lower) deterministically,
+    //    since reaching a personal-best via timed gameplay is non-deterministic. ──
+    readsMiniSubmit: (initials, score, mode) =>
+      ds.submitReadsMiniScore(auth.currentUser.uid, { initials, score, mode }),
+    readsMiniMyScore: () => ds.getReadsMiniMyScore(auth.currentUser.uid),
+    readsMiniTop: () => ds.getReadsMiniTop(25),
+    // Isolation probe: writing ANOTHER uid's score row must be DENIED by rules
+    // (the `request.auth.uid == uid` owner clause). Spec asserts this rejects.
+    readsMiniRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readsMini', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
   };
 }

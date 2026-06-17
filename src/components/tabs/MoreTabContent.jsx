@@ -9,6 +9,7 @@ import { leagueDisplayName } from '../../hooks/useLeagues';
 import { hasAnyRole, getRolesForUser, ADMIN_EMAILS, canEditTactics } from '../../utils/roleUtils';
 import ViewAsPill from '../ViewAsPill';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
+import TakeABreakSection from './TakeABreakSection';
 import { ConfirmModal } from '../ui';
 import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import * as ds from '../../services/dataService';
@@ -190,6 +191,9 @@ export default function MoreTabContent({
           />
         </MoreSection>
       )}
+
+      {/* Very bottom of the drawer (§117) — ungated recreational entry. */}
+      <TakeABreakSection />
     </MoreShell>
   );
 }
