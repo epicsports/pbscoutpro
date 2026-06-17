@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-17 — [FEATURE] Packing Checklist "Checklista wyjazdowa" (player) + rules
+**App (auto-deploy via deploy.yml) + Firestore RULES (manual, deployed).** Tier-2 (new feature, Jacek-approved prototype; GO'd "anything waiting on go" 2026-06-17). Merge `a73a7744`.
+- **Feature:** in-app travel/packing checklist — static catalog v1 (`src/data/packingChecklist.js`, `CATALOG_VERSION=1`, 8 categories), 3 templates (full/oneday/training, level-gated), binary + counted (stepper) items, per-category collapse/progress, overall progress ring, hide-completed, custom add/remove, critical bottom sheet ("Zanim wyjedziesz") with success state, reset (keeps customItems+template). Screen `src/pages/PackingChecklistPage.jsx`, lazy route `/player/checklist`, KONTO → Checklista entry (linkedPlayer-gated).
+- **Persistence:** `users/{uid}/appState/packing` — read-once + debounced 600ms `setDoc(merge)` with nested-map literals; all reads/writes try/catch → **degrade silently to in-memory** (UI never breaks if persistence is down).
+- **RULES (deployed):** owner-only `match /users/{uid}/appState/{doc}` (`auth.uid==uid`) — `firebase deploy --only firestore:rules`, compiled clean, released. NOT a tenant-isolation predicate.
+- **e2e fail-first earned its keep** — the first run caught **3 real bugs** before merge: (1) `t('packing_progress_sub')(args)` crashed the whole screen (canonical `t()` auto-invokes function keys → use `t('key', ...args)`); (2) shared `Btn` silently dropped `data-testid`/`aria-label` (no `...rest`) → added `testId`/`ariaLabel` props (matches the file's `testId` convention, additive/zero-impact); (3) `FONT_SIZE.md` is undefined in theme → `base`/`lg`. After fixes: `packing-checklist.spec.js` green; full functional gate `npm run test:e2e` 82/82.
+- **Phase 2 parked** (weather banner, trip-context card from calendar, shared/coach-pushed templates, in-app quantity edit, promote checkbox/stepper/sheet/ring to `ui.jsx`) — `docs/PACKING_CHECKLIST.md`.
+
 ## 2026-06-16 — [MIGRATION/--live] Player dedup Item 3 — merged 13 obvious duplicates (Jacek GO)
 **Firestore --live (Hard-ESCALATE, explicit Jacek GO 2026-06-16) — global `/players` only, NO rules/app change.** `scripts/migration/player_dedup_migration.cjs --live`.
 - **Audit (--dry first):** 2592 players · 13 OBVIOUS (pbliId + pbliId-less twin) · **0 pbliId-collisions** (primary key already held) · 61 namesakes (different pbliId = distinct real people — LEFT) · 4 ambiguous.

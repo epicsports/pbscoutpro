@@ -6,7 +6,7 @@
 
 ## A. Packing Checklist (`feat/packing-checklist`) — STAGE F handoff
 
-**Status:** Stages A–E built on the branch. **NOT merged. Rules NOT deployed.** Awaiting GO.
+**Status:** ✅ SHIPPED 2026-06-17 (merge `a73a7744`). e2e green (fail-first caught 3 real bugs — see DEPLOY_LOG), merged to main (app auto-deploy), owner-only `appState` rule deployed. Closeout in DEPLOY_LOG + NEXT_TASKS.
 
 ### STEP 0 findings (verified live)
 - **Player menu:** Option A — "Checklista" added to the **KONTO** section of `MoreTabContent.jsx` (linkedPlayer-gated, beside "Moje statystyki") → lazy `/player/checklist` route (`App.jsx`). All routes are `React.lazy` (its own chunk; manualChunks touches node_modules only).

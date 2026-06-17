@@ -3,11 +3,15 @@
 > **Canonical-board rule.** If something is *actionable and open*, it lives **here**. `DEPLOY_LOG.md` is the ship ledger (newest-first, full detail); `HANDOVER.md` is narrative state. Zero actionable items living ONLY in DEPLOY_LOG/HANDOVER. Kept current on every doc-closeout.
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active brief. See `CLAUDE.md`.
 
-**Last synced:** 2026-06-16 · main HEAD `9bdba6cc` · **RECONCILED clean-slate** (premise had gone stale twice — arc-B + tier-2 branches were reported open but were already shipped). The verbose pre-2026-06-14 session-wrap history was pruned here; full ship detail lives in `DEPLOY_LOG.md` (newest-first) + git. This board now lists only **verified-open** work.
+**Last synced:** 2026-06-17 · main HEAD `a73a7744` · reconciled against git log. Full ship detail in `DEPLOY_LOG.md` (newest-first) + git. This board lists only **verified-open** work.
 
 ---
 
 ## ✅ DONE since the last sync (2026-06-13) — verified against main, detail in DEPLOY_LOG
+- **Packing Checklist "Checklista wyjazdowa" (player)** SHIPPED + rules deployed (`a73a7744`, 2026-06-17) — in-app travel checklist (static catalog v1, 3 templates, binary/counted, critical sheet, custom items, progress ring), per-user `users/{uid}/appState/packing` (degrade-to-memory), owner-only rule live. e2e fail-first caught 3 real bugs (t() call-shape crash · `Btn` testid-drop → added `testId`/`ariaLabel` to shared Btn · undefined `FONT_SIZE.md`). Phase 2 parked in `docs/PACKING_CHECKLIST.md`.
+- **view-as (role impersonation) RE-ENABLED** (`f45086ea`) — real impersonation + persistent visible exit; admin-guarded; e2e green. (Closes the "Podgląd jako broken" bug.)
+- **Playbooks coach-framed door** (`de9f16bb`) — coach drawer entry + role-branded LayoutsPage; e2e green. (Discharges "role-scoped layout-library visibility".)
+- **i18n draw aria-labels wrapped** (`fcc62b3d`). **Reads Mini STAGE 1 docs** (`b0022305`, §117) — spec only.
 - **Onboarding arc CLOSED** — durable email-link invite (express-reg + email-keyed self-claim; verified-email tenant-isolation rules deployed) `a8ed9cad`; source-of-truth ENTRY fix (userRoles authoritative) `4ddbf0b2`; already-member self-claim `b81fc558`; idempotent re-send `7f4a0f40`; 4 account-stranding fixes + recovery (Maks +3 stamped). **biuro verified `claimed`+coach in prod 2026-06-16.**
 - **arc-B `<Screen>` model-C migration TRACK CLOSED** — `Screen.jsx` model C (`8b4ab8e8`, "Jacek decision") + 15 pages live (Teams/Players/Layouts/Members/Profile/TeamDetail/TrainingResults/UserDetail/ScoutDetail/Ranking/Issues + 4 admin). Migration-diff 24/24 (re-baselined `9bdba6cc` for the p-selfedit fixture row).
 - **phase-view + nav-drawer** SHIPPED + merged (`154934a4` §B; NavDrawer live). i18n crash classes (t-scope + call-shape) fixed + lints shipped. ITEM-1 drawing unify (`4ae31cfc`); tactics `freehandStrokes` drift fix (`96809879`); Polish-lint refine (`fefcbc7c`); player self-edit catalog-bump best-effort (`db8d4fc2`).
@@ -20,7 +24,6 @@
   - ✅ **Item 1 prevention LIVE** — `resolvePbliImport` + `CSVImport`: a lone exact-name pbliId-less namesake is claimed (not duplicated); ambiguous → import-log flag. e2e all 4 decisions.
   - ✅ **Item 3 migration DONE** — `--live` merged the **13 obvious** dups (2592→2579; aliasIds preserved; catalogVersion bumped; backup gitignored). 0 pbliId-collisions, 61 namesakes left (real people).
   - ⏭ **Item 2 reconcile UI SKIPPED** (Jacek) — over-engineering for **4 ambiguous**; they go through the existing AdminPlayersPage `MergePlayersModal` if/when wanted (low priority, no ticket).
-- **"Podgląd jako" (view-as role) broken (high).** Settings role-impersonation does nothing — dead handler vs broken `effectiveRoles` plumbing. e2e: view-as=player hides coach-only nav.
 - **Workspace logo phone fallback (med, §93).** House-icon fallback on iPhone — URL/CORS/cache-headers/PWA cache. Jacek smokes iPhone Safari/PWA.
 - **B4 Home role-aware dashboard remainder (med, awaiting Opus mockup).** Cold-open-on-Settings already fixed (`0c4852a2`); the role-aware "get started" home + `NoTournamentEmptyState` copy/CTA still needs a mockup.
 - **B8 Strzela% denominator (med, deferred).** Parked in the "data-trust/validation" workstream (Jacek doesn't trust scouted data yet).
@@ -37,7 +40,6 @@
 - **ITEM-2 folded-rail opponent controls** — propagate the mockup-6 phase-view composite into the folded rail. Needs phase-view ratified on MatchPage review + an Opus mockup (56px strip + overlay). **[→ folds into Field View shell]**
 - **ScoutedTeam aggregate-phase vs MatchPage review-phase model** — unify into one visual language? Tier-2 redesign (Opus/Jacek), not a propagation. `docs/architecture/CONTROL_LANGUAGE_INVENTORY.md`. **[→ folds into Field View shell]**
 - **kiosk join-by-code** [arc E etap 2] — build the flow (code on kiosk lobby + scout join route), then flip `b4-scout-join-disabled` live. Opus brief.
-- **role-scoped layout-library visibility** (admin→config / coach→tactics) — **Tier-1**, discovery DONE (`docs/architecture/ROLE_LAYOUT_VISIBILITY_DISCOVERY.md`). Finding: coach ALREADY reaches tactics; LayoutDetail already role-branches; TacticPage untouched. Real gap = discoverability/branding (coach "Playbooks" entry + brand LayoutsPage rows by role). Reuses authoritative role store. Opus build brief → GO.
 - **events-list redesign** [arc D] — Jacek "przebudować docelowo"; dual-badge OK for now. Opus design brief.
 - **arc-B phase-2 "untangle-then-wrap"** — WorkspacesAdmin · LayoutAnalytics · TrainingSetup · LayoutWizard: tangled shell/flex must be restructured before a clean `<Screen>` wrap. Each its own ticket.
 - **TrainingSquadsPage → arc-D tool-screen track** (drag-drop builder; `<Screen>` tiering is the wrong frame).
