@@ -28,3 +28,6 @@ scripts/diag/*.local.json
 
 # Player-dedup migration backups (contain catalog PII — keep local, like *.local.json)
 scripts/migration/player_dedup_backup.*.json
+
+# Night-run intake (local coordination scratch; shipped work logged in DEPLOY_LOG)
+NIGHT_QUEUE.md
