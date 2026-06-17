@@ -3278,3 +3278,41 @@ export async function submitReadsInvadersScore(uid, { initials, score, mode }) {
   await updateDoc(ref, { initials: clean, score: safe, mode: m, updatedAt: serverTimestamp() });
   return true;
 }
+
+// ─── Reads Lunar Lander global leaderboard (§121) ──────────────────────────
+// 4th Arcade game, SAME infra/rules as Reads Mini (the leaderboards/{board}
+// wildcard already covers it) — separate board. Lander is level-based (no Game
+// A/B), so it carries a constant `mode:'A'` to satisfy the rule's validRow
+// (vestigial here). Same degrade-to-local-only try/catch at call sites.
+const READS_LANDER_BOARD = 'readsLander';
+
+export async function getReadsLanderTop(topN = 25) {
+  const col = collection(db, 'leaderboards', READS_LANDER_BOARD, 'scores');
+  const snap = await getDocs(query(col, orderBy('score', 'desc'), limit(topN)));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+export async function getReadsLanderMyScore(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'leaderboards', READS_LANDER_BOARD, 'scores', uid));
+  return snap.exists() ? { uid, ...snap.data() } : null;
+}
+
+export async function submitReadsLanderScore(uid, { initials, score }) {
+  if (!uid) return false;
+  const clean = String(initials || '').toUpperCase().slice(0, 3);
+  if (!/^[A-Z]{3}$/.test(clean)) throw new Error('INVALID_INITIALS');
+  const safe = Math.max(0, Math.min(9999, Math.round(Number(score) || 0)));
+  const ref = doc(db, 'leaderboards', READS_LANDER_BOARD, 'scores', uid);
+  const existing = await getDoc(ref);
+  if (!existing.exists()) {
+    await setDoc(ref, {
+      uid, initials: clean, score: safe, mode: 'A',
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    return true;
+  }
+  if (safe <= (existing.data().score || 0)) return false;
+  await updateDoc(ref, { initials: clean, score: safe, mode: 'A', updatedAt: serverTimestamp() });
+  return true;
+}
