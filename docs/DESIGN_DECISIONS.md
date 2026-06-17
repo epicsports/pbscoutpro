@@ -9829,3 +9829,51 @@ submitReadsSnakeScore` (or a shared board-param helper the two games call). Read
 - **Out of scope:** deeper LCD authenticity (true ghost-segment layer, bezel silk-screen art),
   landscape flank-reflow of the controls (portrait-primary shipped; column layout survives
   landscape) — follow-up polish per the brief's OUT-OF-SCOPE bucket.
+
+## 122. Read Warrior — 5th Arcade game + arcade-registry/score-scoping canon (LOCKED 2026-06-17)
+
+> Road-Fighter-feel racer in Reads amber-phosphor, 5th "Take a Break" game. Brief:
+> `CC_BRIEF_READ_WARRIOR_ARCADE` (Opus). Ported 1:1 from `docs/prototypes/read_warrior.html`.
+> Integration mirrors Snake/Invaders/Lander: a `GAMES` row in the §119 selector + `/break/warrior`
+> lazy route. **Arcade is now 5 games:** Snake · Invaders · Lunar Lander · Read Warrior · Reads Mini.
+>
+> **STATUS: built on `feat/read-warrior`; merging on Jacek GO.**
+
+### 122.1 Arcade registry + per-gameId score scoping (canon — applies to all 5 games)
+- **Registry:** `src/pages/TakeABreakPage.jsx` `GAMES[]` (data-driven: `{id,route,Icon,nameKey,subKey,top}`).
+  Adding a game = one `GAMES` row + one lazy `/break/<id>` route. The "Take a Break" menu item opens
+  the selector (`/break`); games live at `/break/<id>`, each its own lazy chunk.
+- **Score scoping — per-game, uid-keyed, GLOBAL, never colliding.** Each game has its OWN board:
+  `leaderboards/{board}/scores/{uid}` (board = `readsMini`/`readsSnake`/`readsInvaders`/`readsLander`/
+  `readWarrior`). The doc id IS the player's uid → each game's personal best is tied to the account and
+  read via `getX MyScore(uid)`; **different boards never collide.** Each board is a **global** top-25
+  (`orderBy score desc`, read = any signed-in user) — the deliberate cross-tenant break of §117.6
+  (recreational; public label = 3-letter arcade initials → no PII/GDPR). Score 0..9999, monotonic,
+  5s cooldown, `[A-Z]{3}` initials, no delete — all on the shared `{board}` wildcard rule (**no rules
+  change per new game**). NOTE: bests are NOT consolidated into a single `users/{uid}` account doc —
+  they live as one doc-per-game-per-uid across the boards (a consolidated "my arcade" account mirror is
+  an available additive follow-up, not built).
+
+### 122.2 Read Warrior specifics
+- **Render:** single `<canvas>` (textured ground/water/brick via Bayer-dither `createPattern` tiles,
+  screen-anchored to avoid 1-bit scroll-strobe; solid player car vs 50%-dither traffic). Distance-procedural
+  track sections (straight/curve/highway/bridge/tunnel). Canvas-drawn HUD (7-seg score, fuel bar, km/h) +
+  title/over screens. DOM chrome = console frame + brand mark + ◀ ▶ GAS + sound.
+- **RoadEvents = its own reusable module** `src/utils/RoadEvents.js` (framework-agnostic class, host-contract
+  decoupled per the brief — usable by future road games): traffic jam, police chase (laggy follow, busts on
+  contact, also collides with ambient traffic), roadside rider pickup (speed ×2 + hearts/boost trail), fuel
+  zones (40%-width road strip), hearts.
+- **Controls:** analog momentum steering (hold ◀/▶, settles on release) + GAS (cruise ramps with distance)
+  + keyboard. **Fuel is the only fail state** (drains ∝ speed; each hit steals fuel). Crash-and-recover with
+  brief invuln. Oil slicks = grip loss.
+- **Brand mark KEPT in-game** (Jacek 2026-06-17) — the title-screen seam-dot + dithered halo and the topbar
+  radial-gradient mark are faithful large-size renders (not the pixelated case the §120/§121 no-mark rule
+  targets). Palette = named `#fbbf24`-amber constants (brief lists it as a valid amber; "define once").
+- **Audio:** procedural WebAudio — engine drone + 1-bit SFX (square + noise crash) + chiptune loop
+  (`prefers-reduced-motion` static). Valid per-game choice vs Mini's `.m4a` (§121 precedent).
+- **Leaderboard:** `leaderboards/readWarrior` (gameId `read_warrior` → board `readWarrior`), replacing the
+  prototype's `window.storage`; distance-based → const `mode:'A'`. New-best initials overlay (rule needs
+  `[A-Z]{3}`, prototype had none) → `submitReadWarriorScore`. e2e `read-warrior.spec.js` (fail-first):
+  selector(5 games) → Warrior → force-PB via `__pbWarriorTest` → GAME OVER → initials → SAVE persists under
+  `readWarrior` + rules path. Gate 96/96. §27 PASS (canvas + nav chevron = flagged art exceptions per §117).
+- **Orientation:** canvas letterboxed (9:16), never portrait-locked. App Check = shared STAGE 3.
