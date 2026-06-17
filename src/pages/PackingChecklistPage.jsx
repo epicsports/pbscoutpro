@@ -185,7 +185,7 @@ export default function PackingChecklistPage() {
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.6 }}>{t('packing_eyebrow')}</div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.text }}>{t('packing_title')}</div>
             <div data-testid="packing-progress-sub" style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: 2 }}>
-              {t('packing_progress_sub')(packed, total, activeTpl.label)}
+              {t('packing_progress_sub', packed, total, activeTpl.label)}
             </div>
           </div>
           {ring}
@@ -238,7 +238,7 @@ export default function PackingChecklistPage() {
                   <span style={{ width: 32, height: 32, borderRadius: RADIUS.sm, background: COLORS.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: catComplete ? COLORS.success : COLORS.accent }}>
                     <Icon size={18} />
                   </span>
-                  <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.text }}>{c.name}</span>
+                  <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text }}>{c.name}</span>
                   {catComplete
                     ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: `2px ${SPACE.sm}px`, borderRadius: RADIUS.xl, background: `${COLORS.success}1f`, color: COLORS.success, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700 }}><Check size={13} strokeWidth={3} />{t('packing_complete')}</span>
                     : <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.textDim }}>{catPacked} / {catTotal}</span>}
@@ -300,7 +300,7 @@ export default function PackingChecklistPage() {
           {/* ── All-done banner ── */}
           {allDone && (
             <div data-testid="packing-alldone" style={{ background: `${COLORS.success}14`, border: `1px solid ${COLORS.success}40`, borderRadius: RADIUS.lg, padding: SPACE.lg, textAlign: 'center' }}>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800, color: COLORS.success }}>{t('packing_alldone_title')}</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.success }}>{t('packing_alldone_title')}</div>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginTop: 2 }}>{t('packing_alldone_sub')}</div>
             </div>
           )}
@@ -310,13 +310,13 @@ export default function PackingChecklistPage() {
       {/* ── Bottom bar (sticky) ── */}
       <div style={{ position: 'sticky', bottom: 0, zIndex: 10, background: COLORS.bg, borderTop: `1px solid ${COLORS.border}`, padding: `${SPACE.sm}px ${SPACE.lg}px calc(${SPACE.sm}px + env(safe-area-inset-bottom, 0px))` }}>
         <div style={{ maxWidth: 520, margin: '0 auto', display: 'flex', gap: SPACE.sm, alignItems: 'stretch' }}>
-          <Btn variant={critMissing.length > 0 ? 'accent' : 'default'} data-testid="packing-crit-btn" onClick={() => setSheetOpen(true)}
+          <Btn variant={critMissing.length > 0 ? 'accent' : 'default'} testId="packing-crit-btn" onClick={() => setSheetOpen(true)}
             style={{ flex: 1, justifyContent: 'center', gap: SPACE.sm, ...(critMissing.length === 0 ? { color: COLORS.success, borderColor: COLORS.success } : {}) }}>
             {critMissing.length === 0 ? <ShieldCheck size={18} /> : <Shield size={18} />}
             {t('packing_check_crit')}
             {critMissing.length > 0 && <span data-testid="packing-crit-badge" style={{ minWidth: 22, padding: '0 6px', borderRadius: RADIUS.xl, background: COLORS.bg, color: COLORS.accent, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800, lineHeight: '20px' }}>{critMissing.length}</span>}
           </Btn>
-          <Btn variant="default" aria-label="reset" data-testid="packing-reset-btn" onClick={() => setResetOpen(true)} style={{ flexShrink: 0 }}><RotateCcw size={18} /></Btn>
+          <Btn variant="default" ariaLabel="reset" testId="packing-reset-btn" onClick={() => setResetOpen(true)} style={{ flexShrink: 0 }}><RotateCcw size={18} /></Btn>
         </div>
       </div>
 
@@ -337,7 +337,7 @@ export default function PackingChecklistPage() {
               {critMissing.length === 0 ? (
                 <div data-testid="packing-sheet-success" style={{ textAlign: 'center', padding: `${SPACE.xl}px 0` }}>
                   <ShieldCheck size={48} color={COLORS.success} />
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 800, color: COLORS.success, marginTop: SPACE.md }}>{t('packing_sheet_ok_title')}</div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 800, color: COLORS.success, marginTop: SPACE.md }}>{t('packing_sheet_ok_title')}</div>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginTop: 2 }}>{t('packing_sheet_ok_sub')}</div>
                 </div>
               ) : (
