@@ -19,6 +19,80 @@ import { resolveZones } from './layoutZones';
 
 const isRealNumber = (n) => typeof n === 'number' && !Number.isNaN(n);
 
+// ── Point-as-Timeline Stage 2.5 — shared per-stage readers (D2/D4) ──────────
+// A normalized heatmap point is keyframe #0 (Break = homeData/awayData). Settle/
+// Mid live additively in point.timeline[] keyed by slotIds. These mirror the
+// (formerly local) kfOf/stageSrc idiom in computeCalloutZoneTargets so the
+// numeric tables (Breakouts/Shooting/elim-reasons) read the SAME per-stage source
+// — zero writes, read-only consumers of data the capture side already produced.
+export const PHASES = ['break', 'settle', 'mid'];
+export const kfOf = (pt, stage) =>
+  (Array.isArray(pt?.timeline) ? pt.timeline : []).find(e => e?.stage === stage) || null;
+
+// Per-stage side-resolved fields for one normalized point. Break = kf#0 (the
+// point itself). Settle = the settle keyframe, falling back to point-level fields
+// for OLD points (the normalizer already resolves pt.obstacleShots →
+// settle-keyframe band shots, so pt.* is the correct settle source for legacy +
+// current). Mid = the mid keyframe only (no legacy fallback — Mid is net-new).
+// Eliminations are read per-stage where the keyframe carries them; eliminationTimes
+// exists only at kf#0 (Break) so the 10s survival window applies to Break only —
+// Settle/Mid survival is "not eliminated" (graceful; no per-keyframe time capture).
+export function stageSideData(pt, stage) {
+  if (!pt) return { players: [], assignments: [], quickShots: [], shots: [], eliminations: [], eliminationTimes: [], eliminationReasons: [] };
+  if (stage === 'settle') {
+    const k = kfOf(pt, 'settle');
+    return {
+      players: (k?.players?.length ? k.players : pt.players) || [],
+      assignments: (k?.assignments?.length ? k.assignments : pt.assignments) || [],
+      quickShots: pt.obstacleShots || [],   // normalizer already = settle band shots (§101)
+      shots: pt.shots || [],                 // precision is point-level (keyframes carry no precision)
+      eliminations: (k?.eliminations?.length ? k.eliminations : pt.eliminations) || [],
+      eliminationTimes: [],                  // not captured per-keyframe → graceful (no 10s window)
+      eliminationReasons: k?.eliminationReasons || [],
+    };
+  }
+  if (stage === 'mid') {
+    const k = kfOf(pt, 'mid');
+    return {
+      players: k?.players || [],
+      assignments: k?.assignments || [],
+      quickShots: k?.quickShots || [],
+      shots: [],                             // no precision capture at Mid
+      eliminations: k?.eliminations || [],
+      eliminationTimes: [],
+      eliminationReasons: k?.eliminationReasons || [],
+    };
+  }
+  // break = keyframe #0 (the point itself, today's behavior)
+  return {
+    players: pt.players || [],
+    assignments: pt.assignments || [],
+    quickShots: pt.quickShots || [],
+    shots: pt.shots || [],
+    eliminations: pt.eliminations || [],
+    eliminationTimes: pt.eliminationTimes || [],
+    eliminationReasons: pt.eliminationReasons || [],
+  };
+}
+
+// Per-stage elimination-reason breakdown (§117 2b taxonomy lives in keyframes;
+// Break is implicit so it has no captured reasons). Returns { counts:{code:n},
+// total }. The UI maps codes → labels + order via ELIM_REASONS (don't duplicate
+// the vocabulary here — count whatever codes appear).
+export function computeEliminationReasons(points, stage = 'break') {
+  const counts = {};
+  let total = 0;
+  (points || []).forEach(pt => {
+    const reasons = stageSideData(pt, stage).eliminationReasons;
+    (Array.isArray(reasons) ? reasons : []).forEach(code => {
+      if (!code) return;
+      counts[code] = (counts[code] || 0) + 1;
+      total += 1;
+    });
+  });
+  return { counts, total };
+}
+
 /** % of points where any player reached the fifty zone (0.4 < x < 0.6). 
  *  Also returns breakdown by which fifty bunker (Snake50, Dorito50, Center50). */
 export function computeFiftyReached(points, field) {
@@ -772,7 +846,7 @@ export function findPrecisionShotBunker(shotPos, bunkers, field) {
  *   quickZones: {dorito, snake, center} — % of zone shots (quick shots)
  *   hasPrecision: boolean
  */
-export function computeShotTargets(points, field) {
+export function computeShotTargets(points, field, stage = 'break') {
   if (!points?.length) return {
     precisionTargets: [], quickZones: { dorito: 0, snake: 0, center: 0 },
     zonesWithAccuracy: {
@@ -792,9 +866,22 @@ export function computeShotTargets(points, field) {
   const zonePointsWithShot = { dorito: 0, snake: 0, center: 0 };
   const zoneKills = { dorito: 0, snake: 0, center: 0 };
 
+  // Stage 2.5 — per-stage band-shot sources. Break = today's behavior (kf#0
+  // quick + obstacle merged → no regression for a Coach who never switches phase);
+  // Settle = the obstacle (at-position) band shots; Mid = the mid keyframe's band
+  // shots. Precision is point-level (keyframes carry no precision) → Break/Settle
+  // read it, Mid has none. Kills (opponentEliminations) stay point-level for all
+  // stages (an elimination is a point outcome, attributed to the stage's zones).
+  const bandSourcesFor = (pt) => {
+    if (stage === 'settle') return [pt.obstacleShots];
+    if (stage === 'mid') return [kfOf(pt, 'mid')?.quickShots];
+    return [pt.quickShots, pt.obstacleShots];   // break (today's merged kf#0)
+  };
+  const precisionFor = (pt) => (stage === 'mid' ? [] : (pt.shots || []));
+
   points.forEach(pt => {
     // Precision shots per player slot
-    const precShots = pt.shots || [[], [], [], [], []];
+    const precShots = precisionFor(pt) || [[], [], [], [], []];
     precShots.forEach(slotShots => {
       (slotShots || []).forEach(shot => {
         if (shot?.x == null || shot?.y == null) return;
@@ -804,28 +891,17 @@ export function computeShotTargets(points, field) {
       });
     });
 
-    // Per-point shot zones (union of quick + obstacle shots)
+    // Per-point shot zones (per-stage band sources)
     const shotZonesThisPoint = new Set();
-
-    // Quick shots (zone level)
-    const qShots = pt.quickShots || [[], [], [], [], []];
-    qShots.forEach(slotZones => {
-      (slotZones || []).forEach(z => {
-        qTotal++;
-        if (z === 'dorito') qd++;
-        else if (z === 'snake') qs++;
-        else if (z === 'center') qc++;
-        if (z === 'dorito' || z === 'snake' || z === 'center') shotZonesThisPoint.add(z);
-      });
-    });
-    const oShots = pt.obstacleShots || [[], [], [], [], []];
-    oShots.forEach(slotZones => {
-      (slotZones || []).forEach(z => {
-        qTotal++;
-        if (z === 'dorito') qd++;
-        else if (z === 'snake') qs++;
-        else if (z === 'center') qc++;
-        if (z === 'dorito' || z === 'snake' || z === 'center') shotZonesThisPoint.add(z);
+    bandSourcesFor(pt).forEach(src => {
+      (src || [[], [], [], [], []]).forEach(slotZones => {
+        (slotZones || []).forEach(z => {
+          qTotal++;
+          if (z === 'dorito') qd++;
+          else if (z === 'snake') qs++;
+          else if (z === 'center') qc++;
+          if (z === 'dorito' || z === 'snake' || z === 'center') shotZonesThisPoint.add(z);
+        });
       });
     });
 
@@ -1249,7 +1325,7 @@ export function computeBreakBunkers(points, field) {
  * eliminationTimes may be absent (binary fallback: eliminated=true → survived=false).
  * @returns Array<{name, side, type, count, pct, survivalPct}>
  */
-export function computeBreakSurvival(points, field) {
+export function computeBreakSurvival(points, field, stage = 'break') {
   if (!points?.length || !field?.bunkers?.length) return [];
 
   const bunkers = field.bunkers;
@@ -1258,9 +1334,14 @@ export function computeBreakSurvival(points, field) {
   const totalPoints = points.length;
 
   points.forEach(pt => {
-    const players = pt.players || [];
-    const elims = pt.eliminations || [];
-    const elimTimes = pt.eliminationTimes || [];
+    // Stage 2.5 — per-stage POSITIONS decide the held bunker (players relocate
+    // per stage). eliminations are read per-stage where the keyframe carries them;
+    // eliminationTimes exist only at kf#0 (Break) → the 10s survival window applies
+    // to Break; Settle/Mid survival = "not eliminated" (graceful, no time capture).
+    const side = stageSideData(pt, stage);
+    const players = side.players || [];
+    const elims = side.eliminations || [];
+    const elimTimes = side.eliminationTimes || [];
     const seenThisPoint = new Set();
 
     players.forEach((pos, i) => {
