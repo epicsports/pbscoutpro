@@ -46,31 +46,50 @@ test.describe('Stage 4.2 — ScoutedTeam landscape rail', () => {
   });
 
   // REGRESSION (Jacek 2026-06-17, tablet): the landscape report column (Breakouts/
-  // Shooting/…) was squeezed to a sliver because the Isolate zone rendered all 14
-  // roster players, eating the rail/overlay height. Fix: Isolate folds by default →
-  // the report column gets real estate. Fail-first: report-column height was ~0.
-  test('landscape report column keeps real estate; Isolate folds by default', async ({ page }) => {
+  // Shooting/…) was squeezed to a sliver when a rail zone (esp. the 14-player Isolate)
+  // expanded and ate the rail/overlay height. Fix: the WHOLE rail scrolls as one unit
+  // (zones content-height + report content-height) → expanding any zone never steals
+  // the report column's height. Every zone is independently collapsible.
+  // Fail-first: expanding Isolate dropped report-column height to ~a sliver.
+  test('expanding a rail zone never squeezes the report column; zones collapse independently', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.setViewportSize(TABLET_LS);          // Jacek's device class → §116 collapse
     await page.goto('/' + url);
     await expect(page.getByTestId('rail-strip-back')).toBeVisible({ timeout: 20000 });
 
-    // Open the full rail (☰) — that's where the report column + zones live when collapsed.
+    // Open the full rail (☰) — zones + report column live in one scroll unit here.
     await page.getByTestId('rail-strip-expand').click();
     await expect(page.getByTestId('rail-overlay-panel')).toBeVisible();
 
-    // Isolate is FOLDED by default → no player rows until expanded.
-    await expect(page.locator('[data-testid^="rail-item-"]')).toHaveCount(0);
-
-    // The report column renders WITH real estate (not the squished sliver of the bug).
     const report = page.getByTestId('scouted-report-column');
     await expect(report).toBeVisible();
-    const rBox = await report.boundingBox();
-    expect(rBox.height).toBeGreaterThan(220); // was ~0 when the 14-player isolate ate the height
+    const heightOf = async () => (await report.boundingBox()).height;
 
-    // Expanding Isolate reveals the player rows (the fold is a fold, not a removal).
+    // Isolate folded by default → no player rows; report has real estate.
+    await expect(page.locator('[data-testid^="rail-item-"]')).toHaveCount(0);
+    expect(await heightOf()).toBeGreaterThan(220);
+
+    // THE FIX: expand Isolate (all 14 players) → the report column STILL has its
+    // full content height (the rail scrolls; the column is not squeezed). RED before.
     await page.getByTestId('rail-isolate-toggle').click();
     await expect(page.locator('[data-testid^="rail-item-"]').first()).toBeVisible();
+    expect(await heightOf()).toBeGreaterThan(220);
+
+    // Independent collapse (NOT an accordion): Scope is open, Layers folded by default.
+    // Headers toggle their OWN aria-expanded; toggling one doesn't touch the others.
+    const scope = page.getByTestId('rail-scope-toggle');
+    const layers = page.getByTestId('rail-layers-toggle');
+    await expect(scope).toHaveAttribute('aria-expanded', 'true');
+    await expect(layers).toHaveAttribute('aria-expanded', 'false');
+    // Collapsed Layers shows its active-layer count in the header (3 on by default:
+    // positions + shots + coach-plan) so folding never hides that layers are engaged.
+    await expect(layers).toContainText('3');
+    await scope.click();
+    await expect(scope).toHaveAttribute('aria-expanded', 'false');
+    await expect(layers).toHaveAttribute('aria-expanded', 'false'); // unaffected — no accordion
+    await layers.click();
+    await expect(layers).toHaveAttribute('aria-expanded', 'true');
+    await expect(scope).toHaveAttribute('aria-expanded', 'false'); // still independent
   });
 
   // Field View shell (reference impl) — structured rail zones + floating phaseControl

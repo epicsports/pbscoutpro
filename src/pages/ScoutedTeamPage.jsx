@@ -1047,8 +1047,12 @@ export default function ScoutedTeamPage() {
         );
       })();
 
-  const columnEl = (
-      <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
+  // Portrait: the column IS the page scroller (flex:1, overflowY:auto). Landscape:
+  // the column is content-height (flex:0 0 auto) and the RAIL scrolls as one unit
+  // (zones + column) → expanding any zone grows the rail's scroll, never steals the
+  // report column's height (the expand→squeeze regression is gone structurally).
+  const renderColumn = (scroll) => (
+      <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ ...(scroll ? { flex: 1, overflowY: 'auto' } : { flex: '0 0 auto' }), display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}
         {heatmapPoints.length > 0 && (() => {
           const c = computeCompleteness(heatmapPoints);
@@ -2239,14 +2243,21 @@ export default function ScoutedTeamPage() {
     onSelect: () => setHmSelectedPlayer(hmSelectedPlayer === p.id ? null : p.id),
   }));
   const fvIsolateActive = hmSelectedPlayer ? roster.find(p => p.id === hmSelectedPlayer) : null;
+  const fvLayersActive = fvLayerItems.filter(it => (it.perTeam ? (it.a?.on || it.b?.on) : it.on)).length;
+  // Active-count pill shown in a collapsed zone header (so folding never hides that
+  // a control group is engaged). Amber + black = the active/brand chip language.
+  const railCountPill = { fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.black, background: COLORS.accent, borderRadius: RADIUS.full, minWidth: 18, textAlign: 'center', padding: '1px 6px' };
+  // Every rail zone is INDEPENDENTLY collapsible (each RailZone owns its useState) —
+  // NOT an accordion. The whole rail scrolls as one unit (see renderColumn(false) +
+  // the rail wrapper), so expanding any zone never squeezes the report column.
   const fvControlZonesEl = (
     <>
-      <RailZone label="Scope">{scopePillsEl}</RailZone>
-      <RailZone label={t('scouted_layer_layers')}><RailToggleList items={fvLayerItems} /></RailZone>
+      <RailZone label="Scope" collapsible testId="rail-scope-toggle">{scopePillsEl}</RailZone>
+      <RailZone label={t('scouted_layer_layers')} collapsible defaultCollapsed testId="rail-layers-toggle"
+        headerExtra={fvLayersActive > 0 ? <span style={railCountPill}>{fvLayersActive}</span> : null}>
+        <RailToggleList items={fvLayerItems} />
+      </RailZone>
       {roster.length > 0 && (
-        // Folded by default — a long player list here squeezes the report column
-        // (Breakouts/Shooting) below it to a sliver in landscape (Jacek regression
-        // 2026-06-17). Collapsed by default; the active isolate shows in the header.
         <RailZone label={t('scouted_layer_isolate')} last collapsible defaultCollapsed
           testId="rail-isolate-toggle"
           headerExtra={fvIsolateActive ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{fvIsolateActive.name || `#${fvIsolateActive.number}`}</span> : null}>
@@ -2291,7 +2302,7 @@ export default function ScoutedTeamPage() {
           artifact={heatmapHeroEl}
           phaseControl={fvPhaseControlEl}
           fieldTools={fvFieldToolsEl}
-          rail={<>{fvControlZonesEl}{columnEl}</>}
+          rail={<div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>{fvControlZonesEl}{renderColumn(false)}</div>}
           collapsed={{ tabs: [], pins: fvPins, count: null, onBack: () => navigate('/') }}
         />
         {modalsEl}
@@ -2304,7 +2315,7 @@ export default function ScoutedTeamPage() {
     <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       {pageHeaderEl}
       {scopePillsEl}
-      {columnEl}
+      {renderColumn(true)}
       {modalsEl}
     </div>
   );
