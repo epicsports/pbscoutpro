@@ -200,5 +200,15 @@ export function installTestBridge() {
       doc(db, 'leaderboards', 'readsSnake', 'scores', otherUid),
       { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
     ),
+
+    // Reads Invaders (§120) — same board infra, separate board (has Game A/B).
+    readsInvadersSubmit: (initials, score, mode) =>
+      ds.submitReadsInvadersScore(auth.currentUser.uid, { initials, score, mode }),
+    readsInvadersMyScore: () => ds.getReadsInvadersMyScore(auth.currentUser.uid),
+    readsInvadersTop: () => ds.getReadsInvadersTop(25),
+    readsInvadersRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readsInvaders', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
   };
 }

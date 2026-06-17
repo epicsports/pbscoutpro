@@ -9751,3 +9751,41 @@ submitReadsSnakeScore` (or a shared board-param helper the two games call). Read
 
 ### 119.6 Out of scope / parked
 - Background music for Snake (none provided). Optional wrap-around "Game B" mode — deferred (classic walls-kill kept). Everything else per §117.
+
+## 120. Reads Invaders — 3rd Arcade game (canvas field) (LOCKED 2026-06-17)
+
+> Space-invaders-style shooter, third "Take a Break" game. Brief: `CC_BRIEF_READS_INVADERS_INAPP`
+> (Opus, 2026-06-17). Ported from the approved prototype `docs/prototypes/reads_invaders.html`
+> (its constants ARE the spec). Reuses the §117/§119 Arcade scaffolding + the generic leaderboard
+> rule. **NOTE — brief authored pre-Snake:** it provisionally said "§118" and "add a 2nd
+> `MoreItem`"; both superseded — this is **§120**, and integration = a `GAMES` row in the §119
+> selector (`TakeABreakPage`) + a `/break/invaders` lazy route (NOT a `TakeABreakSection` item).
+>
+> **STATUS: built on `feat/reads-invaders` — branch + preview only; AWAITING GO to merge.**
+
+- **Render split (Architecture B):** the play-field is a single `<canvas>` (24 marching sprites +
+  bullets + auto-fire churn too many SVG nodes; `<canvas>` is a built-in, honors "no new dep" and
+  gives clean 60fps). ALL chrome/HUD/overlays are DOM+SVG, byte-for-byte the Reads Mini/Snake
+  treatment; the `SevenSeg` digits stay SVG. This is the first Arcade game on canvas (Mini/Snake
+  are SVG) — a deliberate, brief-authorized deviation from §117's "no canvas" tech note.
+- **No brand mark in-game (HARD RULE):** the Reads dot+seam is forbidden inside the game (distorts
+  when pixelated) — text wordmark only ("READS INVADERS" / "Invaders"). The selector tile glyph is
+  menu chrome and exempt. LCD palette = named constants (`AMBER`/`AMBER_DIM`/`LCD_GLASS`/`GHOST`,
+  + an `amberA(α)` helper for live-alpha canvas strokes) from theme — no scattered hex.
+- **Controls:** relative drag-to-steer on the canvas (`STEER_GAIN=1.35`, finger never occludes the
+  ship) + always-on auto-fire (`AUTOFIRE_MS=360`, max 2 bullets) + ◀▶ hold buttons + keyboard
+  (arrows/A-D + Space). iOS hardening (fixed full-screen, `touch-action:none`, global `touchmove`
+  preventDefault scoped to mount, `setPointerCapture`). Attract is **static** (Game A/B always
+  visible; HIGH SCORES a tapped toggle) — no auto-cycle (it hid the start buttons on iOS).
+- **Difficulty:** Game A classic / Game B fast (per-wave `stepMs` speed-up); `mode` persists (A|B)
+  — Invaders satisfies the rule's `validRow` `mode in ['A','B']` natively (no const-mode hack).
+- **Leaderboard:** `leaderboards/readsInvaders` (board id `readsInvaders`), client-only, mirrors
+  Reads Mini exactly; **fully independent** (HUD HI / table / myBest read ONLY from this board).
+  The generic `{board}` wildcard rule covers it → **no rules change**. App Check = shared STAGE 3.
+- **Audio:** procedural WebAudio SFX (shoot/hit/boom/ufo/march) + 1-bit square-wave music
+  (arpeggiated Am-F-G-E, `PAT`/`STEP=150ms`), plays only during `phase==='playing'`. Both default
+  on; toggles. AudioContext on first gesture; iOS silent-switch muting = expected.
+- e2e `reads-invaders.spec.js` (fail-first): selector(3 games) → Invaders → force-PB via an
+  emulator-gated `__pbInvadersTest` hook → GAME OVER → initials → **SAVE persists via the shared
+  submit path** + the rules path (create/reject-lower/cross-uid-denied). Gate 92/92. §27 PASS
+  (canvas LCD + nav-list chevron = flagged art-directed exceptions per §117).
