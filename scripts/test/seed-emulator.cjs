@@ -687,7 +687,10 @@ async function main() {
           players: [{ x: 0.4, y: 0.35 }, { x: 0.3, y: 0.65 }, null, null, null],
           assignments: [rosterA[0].id, rosterA[1].id, null, null, null],
           quickShots: { 0: ['center'], 1: ['snake'] },
-          bumpStops: E5N, eliminations: E5F, runners: E5F,
+          bumpStops: E5N, eliminations: [true, false, false, false, false], runners: E5F,
+          // § Stage 2.5 — per-stage elimination reason (2b taxonomy) for the
+          // coach-report reason breakdown; settle slot0 died in a gunfight.
+          eliminationReasons: ['gunfight', null, null, null, null],
           slotIds: PH_SLOTS_H,
         },
         away: {
@@ -705,6 +708,9 @@ async function main() {
           assignments: [rosterA[0].id, rosterA[1].id, null, null, null],
           quickShots: {},
           bumpStops: E5N, eliminations: [false, true, false, false, false], runners: E5F,
+          // § Stage 2.5 — mid slot1 died to a penalty (distinct from settle's reason
+          // so the per-phase reason breakdown is provably phase-specific).
+          eliminationReasons: [null, 'penalty', null, null, null],
           slotIds: PH_SLOTS_H,
         },
         away: null,

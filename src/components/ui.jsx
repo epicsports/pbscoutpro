@@ -718,6 +718,7 @@ export function SegmentedControl({ items = [], value, onChange, style }) {
           <div key={it.key}
             onClick={disabled ? undefined : () => onChange && onChange(it.key)}
             title={it.title || undefined}
+            data-testid={it.testId || undefined}
             style={{
               flex: 1, padding: '8px 0', textAlign: 'center', borderRadius: 6,
               fontFamily: FONT, fontSize: 12, fontWeight: 600,

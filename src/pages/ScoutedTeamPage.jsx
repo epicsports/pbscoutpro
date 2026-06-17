@@ -12,12 +12,13 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
-import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, computeEliminationReasons, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { ELIM_REASONS } from '../components/match/ReasonRadial';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
-import { Footprints, Crosshair, Route, Medal, Zap, Pencil } from 'lucide-react';
+import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Skull } from 'lucide-react';
 import { resolveZones } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
@@ -506,6 +507,10 @@ export default function ScoutedTeamPage() {
           runners: kf.runners || [],
           assignments: kf.assignments || [],
           slotIds: kf.slotIds || [],
+          // § Stage 2.5 — carry the captured-but-previously-DROPPED elimination
+          // reasons (2b taxonomy, per slot keyed by slotIds) so the coach report's
+          // per-stage reason breakdown can read them. Codes only → no mirroring.
+          eliminationReasons: kf.eliminationReasons || [],
         };
       }).filter(Boolean);
       // § 101 forward-compat — the coach "post-break" shot source resolves to
@@ -604,10 +609,14 @@ export default function ScoutedTeamPage() {
   const insights = useMemo(() => generateInsights(stats, heatmapPoints, field, roster, lang),
     [stats, heatmapPoints, field, roster, lang]);
   const counters = useMemo(() => generateCounters(insights, lang), [insights, lang]);
-  const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field), [heatmapPoints, field]);
+  // § Stage 2.5 — the global phase control (hmPhase) drives the numeric report
+  // tables too, not just the heatmap: Breakouts + Shooting + the elim-reason block
+  // all read the SELECTED phase so the field and the numbers always agree.
+  const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
   const sideTendency = useMemo(() => computeSideTendency(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
-  const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field), [heatmapPoints, field]);
+  const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
+  const elimReasons = useMemo(() => computeEliminationReasons(heatmapPoints, hmPhase), [heatmapPoints, hmPhase]);
   // § OSTRZAŁ 3a — callout-zone breakdown (carries player identity + inferred bunker)
   const calloutTargets = useMemo(() => computeCalloutZoneTargets(heatmapPoints, field), [heatmapPoints, field]);
   const topHeroes = useMemo(
@@ -829,9 +838,9 @@ export default function ScoutedTeamPage() {
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>{t('scouted_layer_stage')}</div>
         <SegmentedControl
           items={[
-            { key: 'break', label: 'Break' },
-            { key: 'settle', label: 'Settle' },
-            { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? t('scouted_no_mid') : undefined },
+            { key: 'break', label: 'Break', testId: 'hm-phase-break' },
+            { key: 'settle', label: 'Settle', testId: 'hm-phase-settle' },
+            { key: 'mid', label: 'Mid', disabled: !hasMid, title: !hasMid ? t('scouted_no_mid') : undefined, testId: 'hm-phase-mid' },
           ]}
           value={hmPhase}
           onChange={setHmPhase}
@@ -1371,6 +1380,41 @@ export default function ScoutedTeamPage() {
               </div>
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('shot_accuracy_overall', overallAcc)}
+              </div>
+            </>
+          );
+        })()}
+
+        {/* § Stage 2.5 — elimination-reason breakdown for the SELECTED phase.
+            The 2b taxonomy (przejście/kara/gunfight/przeszkoda/nie wiadomo) is
+            captured per Settle/Mid keyframe but was previously invisible (no
+            table). Break is implicit (no captured reasons) → empty → hidden.
+            Read-only, neutral styling (data, no amber); mirrors the table-row
+            idiom of Breakouts/Shooting. */}
+        {elimReasons.total > 0 && (() => {
+          const rows = ELIM_REASONS
+            .map(r => ({ code: r.code, label: t(r.key), count: elimReasons.counts[r.code] || 0 }))
+            .filter(r => r.count > 0)
+            .sort((a, b) => b.count - a.count);
+          if (!rows.length) return null;
+          const total = elimReasons.total;
+          return (
+            <>
+              <SectionHeader icon={Skull}>{t('section_elim_reasons')}</SectionHeader>
+              <div data-testid="elim-reasons" style={{ margin: '0 16px 12px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
+                {rows.map((r, i) => {
+                  const pct = total > 0 ? Math.round((r.count / total) * 100) : 0;
+                  return (
+                    <div key={r.code} data-testid={`elim-reason-${r.code}`} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                      borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
+                    }}>
+                      <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{r.label}</span>
+                      <span style={{ width: 48, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{pct}%</span>
+                      <span style={{ width: 28, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.text }}>{r.count}</span>
+                    </div>
+                  );
+                })}
               </div>
             </>
           );

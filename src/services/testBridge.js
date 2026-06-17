@@ -17,6 +17,7 @@ import { doc, getDoc, getDocs, setDoc, collection, collectionGroup, query, where
 import * as ds from './dataService';
 import { buildPlayerPointsFromMatch, computePlayerStats } from '../utils/playerStats';
 import { resolvePbliImport } from '../utils/playerImportDedup';
+import { computeBreakSurvival, computeShotTargets, computeEliminationReasons } from '../utils/generateInsights';
 
 export function installTestBridge() {
   if (typeof window === 'undefined') return;
@@ -170,6 +171,15 @@ export function installTestBridge() {
     // ── §117 Reads Mini leaderboard — exercise the REAL submit path against the
     //    REAL rules (create / monotonic update / reject-lower) deterministically,
     //    since reaching a personal-best via timed gameplay is non-deterministic. ──
+    // ── §117 / PaT Stage 2.5 — exercise the per-stage report aggregations
+    //    (pure fns) on a crafted point, deterministically (the repo has no unit
+    //    runner; this is the unit check, run in-browser where Vite imports resolve). ──
+    stage25: (points, field, stage) => ({
+      breakouts: computeBreakSurvival(points, field, stage).map(b => b.name),
+      shots: computeShotTargets(points, field, stage).zonesWithAccuracy,
+      reasons: computeEliminationReasons(points, stage),
+    }),
+
     readsMiniSubmit: (initials, score, mode) =>
       ds.submitReadsMiniScore(auth.currentUser.uid, { initials, score, mode }),
     readsMiniMyScore: () => ds.getReadsMiniMyScore(auth.currentUser.uid),
