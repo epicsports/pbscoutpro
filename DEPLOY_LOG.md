@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-17 — [FIX] ScoutedTeam landscape — report column squeezed by unfolded rail Isolate (Jacek regression, high)
+**App (auto-deploy). No rules/data.** Tier-1. Merge `8c8145fb` (live: chunk `ScoutedTeamPage-C2Y8XNtB.js`).
+- **Symptom:** landscape scouted-team showed only the Breakouts header (no rows); portrait fine (Jacek's key diagnostic → not a data/phase bug, a landscape layout bug).
+- **Brief root-cause was STALE:** the brief blamed the `!(landscape && heroAvailable)` guard at `:1199` for hiding the whole report column. Verified false — that guard wraps ONLY the heatmap section; `columnEl` (the report) IS passed to the rail in landscape (`rail={<>{fvControlZonesEl}{columnEl}</>}`).
+- **Actual cause:** the rail's Isolate `RailZone` rendered all 14 roster players (`RailItemList`), eating the rail/overlay height so `columnEl` (a `flex:1` sibling below the zones) collapsed to a sliver → only the Breakouts header peeked through. The earlier fold (`ca401205`/portrait) only touched `heatmapControlsEl`, never the rail zone.
+- **Fix (shell-level, reusable):** `RailZone` gained optional `collapsible`/`defaultCollapsed` (chevron header, active selection shown while folded). The ScoutedTeam Isolate zone now folds by default → the report column keeps its real estate. Match-review uses the same column-in-rail pattern but its rail column is a narrow points list, so it never hit the squeeze; the fold is now available to any long zone.
+- **Did NOT** re-litigate the phase anchor (breakouts stay per-phase per Jacek).
+- e2e: tablet-landscape (collapses → ☰ overlay) → `scouted-report-column` height >220 + Isolate folded by default, expands on tap. Gate **87/87**, §27 PASS.
+
 ## 2026-06-17 — [FIX] ScoutedTeam — Breakouts table anchored to Break + Isolate folded (Jacek feedback)
 **App (auto-deploy). No rules/migration.** Tier-1 follow-up to the same-day Stage 2.5 ship. Merge `27c43909`.
 - **Regression:** Jacek reported the breakout % table "disappeared" when exploring the new phase switcher on **legacy pre-phase data** (Czech/Prague — points have no `timeline[]`, and are per-coach single-side stream docs). Stage 2.5 had made the Breakouts memo follow `hmPhase`; on Settle/Mid the table shifted/looked lost.
