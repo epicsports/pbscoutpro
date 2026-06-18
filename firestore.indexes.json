@@ -80,6 +80,21 @@
         { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
         { "order": "DESCENDING", "queryScope": "COLLECTION" }
       ]
+    },
+    {
+      "collectionGroup": "tactics",
+      "fieldPath": "freehandStrokes",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "tactics",
+      "fieldPath": "strokes",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "tactics",
+      "fieldPath": "drawings",
+      "indexes": []
     }
   ]
 }

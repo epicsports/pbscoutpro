@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-18 — [FIX] Tactic save "too many index entries" — exempt freehandStrokes (Jacek prod report)
+**INDEXES (firestore:indexes deployed). No app/rules/data change.**
+- Saving a tactic with a dense perfect-freehand drawing failed: *"Save failed: too many index entries for entity /workspaces/ranger1996/layoutOverlays/…/tactics/…"*. Root cause: Firestore auto-indexes every array element, and `freehandStrokes` (thousands of stroke points via `strokesToFirestore`) blew past the **40,000 index-entries-per-document** write limit → the create was rejected (doc never written).
+- Fix: `firestore.indexes.json` `fieldOverrides` exempt `tactics.{freehandStrokes,strokes,drawings}` from single-field indexing (`"indexes": []`). These are drawing blobs, never queried by these fields → zero query impact. `firebase deploy --only firestore:indexes` (additive; exemptions apply immediately, no index build). Re-saving the tactic now succeeds.
+- Note: longer-term, packing `freehandStrokes` as a single string would avoid array-indexing entirely (optional follow-up; exemption is the correct immediate fix).
+
 ## 2026-06-18 — [PERF] Packed catalog cold-load — kill the players spinner (Jacek GO)
 **App (auto-deploy) + RULES + DATA (additive). Merge `eb59bf5f` (branch `feat/catalog-packed-load`).**
 - **Root:** the per-page loading spinner is the global `/players` cold-load — measured **2,579 docs / ~1.47 MB / ~2,579 reads** (`/teams` 307/100 KB is fine; cache works, this is the cold path / iOS IDB-eviction path). Firestore pagination rejected — it breaks complete `playersById` lookups (assignments/roster/opponent). Field-slimming rejected — audit showed most fields are used.
