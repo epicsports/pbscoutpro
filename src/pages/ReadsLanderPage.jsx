@@ -503,8 +503,8 @@ export default function ReadsLanderPage() {
       </div>
 
       {/* LCD */}
-      <div style={{ position: 'relative', width: '100%', maxWidth: 440, flex: '0 1 auto', padding: `0 ${SPACE.md}px`, display: 'flex', justifyContent: 'center', boxSizing: 'border-box' }}>
-        <div style={{ position: 'relative', maxHeight: '60vh', aspectRatio: '160 / 224', borderRadius: RADIUS.lg, overflow: 'hidden', border: `1px solid #241a08`, boxShadow: 'inset 0 0 40px rgba(0,0,0,.85)' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 440, flex: 1, minHeight: 0, padding: `0 ${SPACE.md}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
+        <div style={{ position: 'relative', maxHeight: '100%', maxWidth: '100%', height: '100%', aspectRatio: '160 / 224', borderRadius: RADIUS.lg, overflow: 'hidden', border: `1px solid #241a08`, boxShadow: 'inset 0 0 40px rgba(0,0,0,.85)' }}>
           <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H} data-testid="reads-lander-canvas"
             onPointerDown={(e) => { e.preventDefault(); advanceTap(); }}
             style={{ display: 'block', width: '100%', height: '100%', touchAction: 'none' }} />
