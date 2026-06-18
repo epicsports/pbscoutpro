@@ -370,16 +370,84 @@ export async function bumpCatalogVersion() {
     throw e;
   }
 }
+// ── Packed catalog (CC_BRIEF_CATALOG_PACKED_LOAD) ──
+// The catalog cold-load is the per-page spinner: ~2,579 /players docs / ~1.47 MB.
+// Collapse it into a few large docs to cut reads (~2,579 → ~3) and, more
+// importantly, the per-document SDK/parse/IndexedDB overhead. Version-gated by the
+// SAME /meta/catalogVersion marker as the IndexedDB cache, so packed is exactly as
+// fresh/stale as today. Packed is an OPTIMISATION layer only: absent / stale-version
+// / shape-invalid → fall back to the full getDocs (today's behaviour, no regression).
+// Layout: /catalog/{kind} manifest {version, chunkCount, count} + /catalog/{kind}/chunks/{i}
+// {version, items:[...full docs...]}. Writes are super_admin-gated (firestore.rules),
+// matching /meta — the same actor that bumps the version self-heals the pack on reload.
+const PACK_CHUNK = 1200; // ~597 B/player → ~700 KB/chunk, safely under the 1 MB doc cap
+
+async function readPackedCatalog(kind, version) {
+  if (version == null) return null;
+  try {
+    const man = await getDoc(doc(db, 'catalog', kind));
+    if (!man.exists()) return null;
+    const m = man.data();
+    if (m.version !== version || !Number.isInteger(m.chunkCount) || m.chunkCount < 1) return null;
+    const chunks = await Promise.all(
+      Array.from({ length: m.chunkCount }, (_, i) => getDoc(doc(db, 'catalog', kind, 'chunks', String(i)))),
+    );
+    const items = [];
+    for (const c of chunks) {
+      if (!c.exists()) return null;
+      const cd = c.data();
+      if (cd.version !== version || !Array.isArray(cd.items)) return null; // partial / stale write → fall back
+      items.push(...cd.items);
+    }
+    return items.length ? items : null;
+  } catch { return null; } // any read error → treat as no-pack, fall back to live
+}
+
+// Write the packed catalog (chunk docs first, manifest LAST so a half-write is
+// never read as complete). super_admin-gated by rules; non-super callers get
+// permission-denied → the caller swallows it. Exported for scripts/migration/pack-catalog.cjs.
+export async function writePackedCatalog(kind, docs, version) {
+  const chunkCount = Math.max(1, Math.ceil(docs.length / PACK_CHUNK));
+  for (let i = 0; i < chunkCount; i++) {
+    const items = docs.slice(i * PACK_CHUNK, (i + 1) * PACK_CHUNK);
+    await setDoc(doc(db, 'catalog', kind, 'chunks', String(i)), { version, items });
+  }
+  await setDoc(doc(db, 'catalog', kind), { version, chunkCount, count: docs.length, updatedAt: serverTimestamp() });
+}
+
 // One-shot GLOBAL-only catalog reads (replace the dual full-collection
 // onSnapshot in usePlayers/useTeams). Global is complete (fully twinned;
-// ws-only = 0), so global-only is loss-free today.
-export async function getCatalogPlayersOnce() {
-  const snap = await getDocs(query(collection(db, 'players'), orderBy('name', 'asc')));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+// ws-only = 0), so global-only is loss-free today. Now packed-first: read the
+// packed docs when current, else the full collection + self-heal the pack.
+async function fetchCatalogPacked(kind, liveFetch, version) {
+  const v = version === undefined ? await getCatalogVersion() : version;
+  const packed = await readPackedCatalog(kind, v);
+  if (packed) return packed;
+  const docs = await liveFetch();
+  // Self-heal so the NEXT cold-load is fast. The fallback already fetched the full
+  // catalog, so this is just the write. super_admin-only (rules) → others denied,
+  // swallow exactly like bumpCatalogVersion's non-super path.
+  if (v != null && docs.length) {
+    writePackedCatalog(kind, docs, v).catch((e) => {
+      if (e?.code !== 'permission-denied' && e?.code !== 'PERMISSION_DENIED') {
+        console.warn('[catalog] pack write skipped:', e?.code || e?.message);
+      }
+    });
+  }
+  return docs;
 }
-export async function getCatalogTeamsOnce() {
-  const snap = await getDocs(query(collection(db, 'teams'), orderBy('name', 'asc')));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+export async function getCatalogPlayersOnce(version) {
+  return fetchCatalogPacked('players', async () => {
+    const snap = await getDocs(query(collection(db, 'players'), orderBy('name', 'asc')));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }, version);
+}
+export async function getCatalogTeamsOnce(version) {
+  return fetchCatalogPacked('teams', async () => {
+    const snap = await getDocs(query(collection(db, 'teams'), orderBy('name', 'asc')));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }, version);
 }
 
 // § PWA_COLDBOOT STAGE 3 — eagerly read everything a scout needs at a venue so
