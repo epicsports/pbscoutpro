@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-18 — [FIX] Arcade game fields fill the screen + Read Warrior cut-off (night, Jacek report)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `e46cefab` (branch `feat/night-games-fill-screen`).
+- Games used only ~half the screen: the play field was `flex:'0 1 auto'` + a `maxHeight` vh cap (52–62vh). On **Read Warrior** (9/16 @ 62vh) chrome+field+controls exceeded `100dvh` → the bottom clipped under the root `overflow:hidden` (the "ucięty" report).
+- Fix: field wrapper → `flex:1 / minHeight:0 / centered`; field fills the available space. Tall-aspect canvases (Lander 160/224, Read Warrior 9/16) grow to the largest aspect-correct fit (**cut-off fixed**); width-bound games (Snake/Mini/Invaders) drop the vh cap + center. No model/testid/coordinate changes (Invaders keeps width-driven drag-steer). Gate: precommit + **all 5 games' emulator e2e 10/10**.
+- **Smoke owed (Jacek, device):** each game's field fills the screen; Read Warrior no longer cut off.
+
 ## 2026-06-18 — [FEATURE/Tier-2] ScoutedTeam/PlayerStats field-is-king (Jacek GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `707c227c` (branch `feat/scouted-field-is-king`).
 - **STAGE 1** — field-is-king restored on ScoutedTeam + PlayerStats: `railPriority` removed, §118.1 report-first split reverted (rationale in DESIGN_DECISIONS), rail e2e now asserts the field is HERO (fills height) in tablet-landscape; portrait unchanged.
