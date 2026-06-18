@@ -156,7 +156,7 @@ function fresh(m) {
     inv: spawnWave(), dir: 1, stepAcc: 0, frame: 0,
     px: W / 2, bullets: [], bombs: [], splats: [], fireTimer: 0, bombCd: 700,
     marker: null, markerCd: 6000, flash: 0, invuln: 0, stepLo: false,
-    final: 0, isPB: false,
+    final: 0, isPB: false, sky: genSky(),
   };
 }
 function aliveBounds(G) { let l = 1e9, r = -1e9, b = -1e9; for (const v of G.inv) if (v.alive) { l = Math.min(l, v.cx); r = Math.max(r, v.cx); b = Math.max(b, v.cy); } return { l, r, b }; }
@@ -230,9 +230,52 @@ function update(G, dt, sfx, input, best) {
   for (const s of G.splats) s.t += dt;
   G.splats = G.splats.filter((s) => s.t < 300);
 }
+// ── cosmic sky backdrop (1-bit, dim so the marching sprites stay readable) ───
+// night-mode beautify. Cosmetic only; stored per-game on G.sky (fresh()).
+function genSky() {
+  const stars = []; const N = 34 + ((Math.random() * 16) | 0);
+  for (let i = 0; i < N; i++) { const r = Math.random(); stars.push({ x: Math.random() * W, y: Math.random() * H, b: 0.18 + Math.random() * 0.8, big: r > 0.88, bright: r > 0.95, ph: Math.random() * 6.283 }); }
+  const neb = []; const nb = 1 + (Math.random() < 0.5 ? 1 : 0);
+  for (let k = 0; k < nb; k++) {
+    const cx = 22 + Math.random() * (W - 44), cy = 16 + Math.random() * (H * 0.40), rx = 24 + Math.random() * 30, ry = 15 + Math.random() * 18, rot = Math.random() * Math.PI, M = 44 + ((Math.random() * 40) | 0);
+    for (let i = 0; i < M; i++) { const u = Math.random(), ang = Math.random() * 6.283, ex = Math.cos(ang) * rx * u, ey = Math.sin(ang) * ry * u; neb.push({ x: cx + ex * Math.cos(rot) - ey * Math.sin(rot), y: cy + ex * Math.sin(rot) + ey * Math.cos(rot) }); }
+  }
+  let planet = null;
+  if (Math.random() < 0.7) {
+    const r = 11 + Math.random() * 9, cx = 16 + Math.random() * (W - 32), cy = 22 + Math.random() * (H * 0.26), dir = Math.random() < 0.5 ? 1 : -1, cres = 0.30 + Math.random() * 0.45, sh = r * (1.4 - 1.2 * cres) * dir, dots = [];
+    for (let gx = -r; gx <= r; gx += 1.5) for (let gy = -r; gy <= r; gy += 1.5) {
+      if (gx * gx + gy * gy > r * r) continue;
+      if ((gx - sh) * (gx - sh) + gy * gy < (r * 1.04) * (r * 1.04)) continue;
+      if (((Math.round(gx) + Math.round(gy)) & 1) && Math.random() > 0.55) continue;
+      dots.push({ x: cx + gx, y: cy + gy });
+    }
+    planet = { cx, cy, r, dots };
+  }
+  return { stars, neb, planet, shoot: null, shootT: 4 + Math.random() * 6 };
+}
+function drawShoot(ctx, sky, t) {
+  if (reducedMotion) return;
+  if (!sky.shoot && t > sky.shootT) { sky.shoot = { x0: Math.random() * W * 0.7, y0: 6 + Math.random() * 40, dx: 60, dy: 26, t0: t }; sky.shootT = t + 7 + Math.random() * 9; }
+  if (!sky.shoot) return; const sh = sky.shoot; const e = t - sh.t0, dur = 0.5; if (e > dur) { sky.shoot = null; return; }
+  const k = e / dur, hx = sh.x0 + sh.dx * k, hy = sh.y0 + sh.dy * k, nrm = Math.hypot(sh.dx, sh.dy), ux = -sh.dx / nrm, uy = -sh.dy / nrm, L = 8;
+  ctx.save(); ctx.globalAlpha = Math.sin(k * Math.PI); ctx.strokeStyle = AMBER; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + ux * L, hy + uy * L); ctx.stroke(); ctx.fillStyle = AMBER; ctx.fillRect(hx - 1, hy - 1, 2, 2); ctx.restore();
+}
+function drawSky(ctx, sky) {
+  if (!sky) return; const t = (typeof performance !== 'undefined' ? performance.now() : 0) / 1000;
+  ctx.fillStyle = 'rgba(245,158,11,0.05)'; for (const d of sky.neb) ctx.fillRect(d.x, d.y, 1, 1);
+  if (sky.planet) { const p = sky.planet; ctx.fillStyle = 'rgba(245,158,11,0.15)'; for (const d of p.dots) ctx.fillRect(d.x, d.y, 1, 1); ctx.strokeStyle = 'rgba(245,158,11,0.18)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(p.cx, p.cy, p.r, 0, 6.283); ctx.stroke(); }
+  for (const s of sky.stars) {
+    const lit = reducedMotion ? true : (s.b > 0.5 ? true : (Math.sin(t * 3 + s.ph) > 0)); if (!lit) continue;
+    ctx.fillStyle = s.bright ? AMBER : 'rgba(245,158,11,0.55)';
+    const sz = s.big ? 2 : 1; ctx.fillRect(s.x - sz / 2, s.y - sz / 2, sz, sz);
+    if (s.bright) { const k = reducedMotion ? 2 : (1.6 + Math.sin(t * 4 + s.ph) * 0.7); ctx.fillRect(s.x - k, s.y - 0.5, 2 * k, 1); ctx.fillRect(s.x - 0.5, s.y - k, 1, 2 * k); }
+  }
+  drawShoot(ctx, sky, t);
+}
 function drawField(ctx, G) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = LCD_GLASS; ctx.fillRect(0, 0, W, H);
+  if (G && G.sky) drawSky(ctx, G.sky);
   if (G) { ctx.fillStyle = GHOST; for (const v of G.inv) { ctx.beginPath(); ctx.arc(v.cx, v.cy, 8, 0, 7); ctx.fill(); } }
   if (G && G.phase !== 'attract') {
     for (const v of G.inv) { if (!v.alive) continue; const s = ROW_SPRITE[v.row][G.frame]; drawSprite(ctx, s, v.cx - spriteW(s) / 2, v.cy - spriteH(s) / 2, AMBER); }
