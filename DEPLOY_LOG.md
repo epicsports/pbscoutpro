@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-18 — [FEATURE/Tier-2] ScoutedTeam/PlayerStats field-is-king (Jacek GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `707c227c` (branch `feat/scouted-field-is-king`).
+- **STAGE 1** — field-is-king restored on ScoutedTeam + PlayerStats: `railPriority` removed, §118.1 report-first split reverted (rationale in DESIGN_DECISIONS), rail e2e now asserts the field is HERO (fills height) in tablet-landscape; portrait unchanged.
+- **STAGE 3** — dismissible confidence banner (44px X, per-view).
+- **STAGE 2** — all 11 report sections wrapped in a shared `<CollapsibleSection>` (breakouts `defaultOpen`, rest collapsed; 44px tap target + chevron); portrait heatmap header left as-is; `showAdditional` below-fold gate preserved.
+- **Re-validated on merged main** (clean merge atop today's catalog packed-load + arcade + scout/dev-snapshot ships): `npm run precommit` + **5/5** rail e2e green (scoutedteam-rail ×4 incl. coord guardrail + section collapse + banner dismiss; playerstats-rail ×1). §27 PASS.
+- **Smoke owed (Jacek, device):** tablet-landscape ScoutedTeam + PlayerStats → field fills height + §116 strip; report sections collapse/expand (breakouts open); confidence banner X dismisses.
+
 ## 2026-06-18 — [POLISH] Arcade 1-bit beautify ×4 — render + procedural music (night mode, Jacek prototypes)
 **App (auto-deploy, e2e-gated). No rules/data.** Merges `da69d59b` · `e8e7d4bc` · `d8e606d4` · `8a7d06e3`.
 - Render-only beautify of all 4 "Take a Break" games to Jacek's 1-bit prototypes — **model/physics/leaderboards/testids verbatim**; each shipped Tier-1 behind its own targeted emulator e2e (2/2 green, JAVA_HOME portable JRE):
