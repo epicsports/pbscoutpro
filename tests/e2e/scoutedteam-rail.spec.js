@@ -1,9 +1,10 @@
-// e2e — ScoutedTeam landscape = REPORT-FIRST CanvasRailLayout (§118 + §118.1).
-// Report screen → field + rail SHARE width (no §116 strip): the rail breathes, the
-// report column never clips/squeezes, every rail zone is independently collapsible,
-// and the field is the residual letterbox (still promotable on tap → coordinate
-// guardrail must survive). Portrait unchanged.
-// Fixture: TRN_PSTATS (base layout WITH fieldImage) — scouted Team Alpha + a point.
+// e2e — ScoutedTeam landscape = FIELD-IS-KING CanvasRailLayout (§118 canon; the
+// §118.1 report-first WIDTH split was REVERTED 2026-06-18 — it shrank the field
+// even on wide screens). Landscape: field=HERO (fills height, aspect drives width),
+// rail residual → §116 collapses to the 56px strip; report sections live in the
+// strip→overlay. Portrait unchanged. (The §116 strip/overlay mechanics are covered
+// by rail-collapse.spec.js; here we assert the field-is-king invariant + the
+// coach-draw coordinate guardrail.) Fixture: TRN_PSTATS (base layout WITH fieldImage).
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
 import { TEST_ACCOUNT, TRN_PSTATS, TEAM_A, WS } from './fixtures.js';
@@ -12,8 +13,8 @@ const url = `#/tournament/${TRN_PSTATS}/team/${TEAM_A}`;
 const TABLET_LS = { width: 1194, height: 834 };
 const PORTRAIT = { width: 414, height: 896 };
 
-test.describe('ScoutedTeam report-first rail', () => {
-  test('tablet-landscape: report-first split (rail breathes, no strip, field residual); Breakouts header no overflow; portrait unchanged', async ({ page }) => {
+test.describe('ScoutedTeam field-is-king rail', () => {
+  test('tablet-landscape: field is HERO (fills height) + §116 strip; portrait capped; portrait unchanged', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
 
     // PORTRAIT: capped hero, report stacked below (unchanged).
@@ -23,20 +24,12 @@ test.describe('ScoutedTeam report-first rail', () => {
     await expect(canvas).toBeVisible({ timeout: 20000 });
     expect((await canvas.boundingBox()).height).toBeLessThan(PORTRAIT.height * 0.7);
 
-    // TABLET-LANDSCAPE: report-first → NO §116 strip; rail breathes; field on the right.
+    // TABLET-LANDSCAPE: field-is-king → §116 strip present (rail collapsed to 56px),
+    // field fills the height (hero — NOT the report-first residual letterbox). RED while report-first.
     await page.setViewportSize(TABLET_LS);
     await page.waitForTimeout(400);
-    await expect(page.getByTestId('rail-strip-back')).toHaveCount(0); // report-first never strips
-    const report = page.getByTestId('scouted-report-column');
-    await expect(report).toBeVisible();
-    expect((await report.boundingBox()).width).toBeGreaterThan(200); // breathes (was strip/200)
-    expect((await canvas.boundingBox()).x).toBeGreaterThan(200);      // rail left, field right
-
-    // Breakouts "survival" header cell no longer overflows its column (widened + nowrap). RED before.
-    const surv = page.getByTestId('breakouts-col-surv');
-    await expect(surv).toBeVisible();
-    const cellOverflow = await surv.evaluate(el => el.scrollWidth - el.clientWidth);
-    expect(cellOverflow).toBeLessThanOrEqual(1);
+    await expect(page.getByTestId('rail-strip-back')).toBeVisible();          // rail collapsed → field is king
+    expect((await canvas.boundingBox()).height).toBeGreaterThan(TABLET_LS.height * 0.78); // field fills height (hero)
 
     // PORTRAIT again: unchanged stack.
     await page.setViewportSize(PORTRAIT);
@@ -44,52 +37,64 @@ test.describe('ScoutedTeam report-first rail', () => {
     expect((await canvas.boundingBox()).height).toBeLessThan(PORTRAIT.height * 0.7);
   });
 
-  // The rail scrolls as one unit (zones + report) and each zone collapses independently
-  // (NOT an accordion). Expanding a zone never squeezes the report column.
-  test('zones collapse independently; expanding a zone never squeezes the report column', async ({ page }) => {
+  // §118.2 — the data-confidence banner shows on screen-open and the X dismisses it
+  // (per-view, not persisted). Portrait, where the report column is stacked + visible.
+  test('confidence banner shows on open; X dismisses it', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
-    await page.setViewportSize(TABLET_LS);
+    await page.setViewportSize(PORTRAIT);
     await page.goto('/' + url);
-    const report = page.getByTestId('scouted-report-column');
-    await expect(report).toBeVisible({ timeout: 20000 });
-    const heightOf = async () => (await report.boundingBox()).height;
-
-    // Isolate folded by default → no player rows; report has real estate.
-    await expect(page.locator('[data-testid^="rail-item-"]')).toHaveCount(0);
-    expect(await heightOf()).toBeGreaterThan(220);
-
-    // Expand Isolate (14 players) → report column STILL has its full content height
-    // (the rail scrolls as one unit; the column is content-height). RED before §118.
-    await page.getByTestId('rail-isolate-toggle').click();
-    await expect(page.locator('[data-testid^="rail-item-"]').first()).toBeVisible();
-    expect(await heightOf()).toBeGreaterThan(220);
-
-    // Independent collapse (not accordion): Scope open, Layers folded; toggling one
-    // never touches the other.
-    const scope = page.getByTestId('rail-scope-toggle');
-    const layers = page.getByTestId('rail-layers-toggle');
-    await expect(scope).toHaveAttribute('aria-expanded', 'true');
-    await expect(layers).toHaveAttribute('aria-expanded', 'false');
-    await expect(layers).toContainText('3'); // active-layer count pill while collapsed
-    await scope.click();
-    await expect(scope).toHaveAttribute('aria-expanded', 'false');
-    await expect(layers).toHaveAttribute('aria-expanded', 'false'); // unaffected
+    const x = page.getByTestId('scouted-confidence-dismiss');
+    await expect(x).toBeVisible({ timeout: 20000 });
+    await x.click();
+    await expect(x).toHaveCount(0);
   });
 
-  // Coordinate guardrail in the report-first field (the residual letterbox on the
-  // right): a coach-draw at the canvas CENTER persists a stroke whose normalized
-  // coords land near center — the tap transform survives the share-width reflow.
-  // Restores annotations after (shared serial emulator state).
-  test('report-first field: coach-draw at center maps to ~center (coordinate guardrail)', async ({ page }) => {
+  // §118.2 STAGE 2 — report sections are individually collapsible. Breakouts is
+  // the only defaultOpen section (the headline read); every other section opens
+  // collapsed so the field stays king + the report is a scannable header list.
+  // Asserted in portrait, where the report column is stacked + visible.
+  test('report sections collapse/expand; breakouts open by default, shots collapsed', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    await page.setViewportSize(PORTRAIT);
+    await page.goto('/' + url);
+    await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20000 });
+
+    // Breakouts: defaultOpen → starts expanded; toggle closes then re-opens it.
+    const breakouts = page.getByTestId('sec-breakouts-toggle');
+    await expect(breakouts).toBeVisible({ timeout: 20000 });
+    await expect(breakouts).toHaveAttribute('aria-expanded', 'true');
+    await breakouts.click();
+    await expect(breakouts).toHaveAttribute('aria-expanded', 'false');
+    await breakouts.click();
+    await expect(breakouts).toHaveAttribute('aria-expanded', 'true');
+
+    // Every OTHER rendered section starts collapsed (field-is-king default). Which
+    // secondary sections render is fixture-data-dependent, so assert generically:
+    // take the first non-breakouts section toggle, prove it starts collapsed, then
+    // expanding it works. (`additional sections` below-fold toggle is revealed first
+    // so the below-fold sections are reachable too.)
+    const additional = page.getByText(/additional sections|dodatkowe sekcje/i).first();
+    if (await additional.count()) await additional.click();
+    const collapsed = page.locator(
+      '[data-testid^="sec-"][data-testid$="-toggle"]:not([data-testid="sec-breakouts-toggle"])'
+    ).first();
+    await expect(collapsed).toBeVisible();
+    await expect(collapsed).toHaveAttribute('aria-expanded', 'false');
+    await collapsed.click();
+    await expect(collapsed).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  // Coordinate guardrail in the field-is-king canvas: a coach-draw at the canvas
+  // CENTER persists a stroke whose normalized coords land near center — the tap
+  // transform survives. Restores annotations after (shared serial emulator state).
+  test('field: coach-draw at center maps to ~center (coordinate guardrail)', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
     await page.evaluate(s => window.__pbtest.setWorkspace(s), WS);
     await page.setViewportSize(TABLET_LS);
     await page.goto('/' + url);
 
-    // phaseControl (coach kind) floats ON the report-first field.
     await expect(page.getByTestId('field-phase')).toBeVisible({ timeout: 20000 });
-
     const canvas = page.locator('canvas').first();
     await expect(canvas).toBeVisible();
     await page.waitForTimeout(350);

@@ -19,7 +19,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../ut
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
-import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Skull } from 'lucide-react';
+import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Skull, X, ChevronDown } from 'lucide-react';
 import { resolveZones } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
@@ -58,6 +58,34 @@ const SectionHeader = ({ children, icon: Icon }) => {
       letterSpacing: 0.6, textTransform: 'uppercase',
       color: COLORS.textMuted, padding: '18px 16px 8px',
     }}>{children}</div>
+  );
+};
+
+// CollapsibleSection (§118.2): a report section that tucks away. Own useState
+// (NOT an accordion — consistent with the RailZone control zones). Header reuses
+// the SectionHeader visual (icon → 15px/700; no-icon → 11px uppercase muted) +
+// a 44px tap target + a chevron disclosure. Body (children) shows when open.
+const CollapsibleSection = ({ title, icon: Icon, defaultOpen = false, testId, children }) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div data-testid={testId}>
+      <div role="button" aria-expanded={open} data-testid={testId ? `${testId}-toggle` : undefined}
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', minHeight: 44,
+          cursor: 'pointer', WebkitTapHighlightColor: 'transparent', userSelect: 'none',
+        }}>
+        {Icon && <Icon size={18} color={COLORS.text} strokeWidth={2} style={{ flexShrink: 0 }} />}
+        <div style={{
+          flex: 1, fontFamily: FONT, fontSize: Icon ? 15 : 11, fontWeight: 700,
+          color: Icon ? COLORS.text : COLORS.textMuted,
+          letterSpacing: Icon ? '-0.01em' : 0.6, textTransform: Icon ? 'none' : 'uppercase',
+        }}>{title}</div>
+        <ChevronDown size={18} color={COLORS.textMuted}
+          style={{ flexShrink: 0, transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .15s ease' }} />
+      </div>
+      {open && children}
+    </div>
   );
 };
 
@@ -216,6 +244,9 @@ export default function ScoutedTeamPage() {
   const [newNumber, setNewNumber] = useState('');
   const [allHeatmapPoints, setAllHeatmapPoints] = useState([]);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
+  // §118.2 — confidence banner is dismissible per screen-open (not persisted): shows
+  // on entry, X tucks it for this view, re-shows on reopen.
+  const [confidenceDismissed, setConfidenceDismissed] = useState(false);
   // No-eternal-loading guard: if tournament/team never resolve, flip to an error
   // state after a bounded wait instead of spinning forever (the 2026-06-11
   // scouted-team bug — a createdAt-less scouted doc made the entry permanently
@@ -1068,7 +1099,9 @@ export default function ScoutedTeamPage() {
       // into a sea of empty space (§118.1). Portrait is already page-capped.
       <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ ...(scroll ? { flex: 1, overflowY: 'auto' } : { flex: '0 0 auto', maxWidth: 560 }), display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
         {/* Data confidence banner — contextual qualifier */}
-        {heatmapPoints.length > 0 && (() => {
+        {heatmapPoints.length > 0 && !confidenceDismissed && (
+          <div style={{ position: 'relative' }}>
+          {(() => {
           const c = computeCompleteness(heatmapPoints);
           if (!c) return null;
           const scoutSuffix = scoutNamesLabel ? t('scouted_by', scoutNamesLabel) : '';
@@ -1168,7 +1201,13 @@ export default function ScoutedTeamPage() {
               {pills}
             </div>
           );
-        })()}
+          })()}
+          <button type="button" data-testid="scouted-confidence-dismiss" aria-label={t('close') || 'Dismiss'} onClick={() => setConfidenceDismissed(true)}
+            style={{ position: 'absolute', top: 2, right: 2, minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', color: COLORS.textMuted, cursor: 'pointer' }}>
+            <X size={16} />
+          </button>
+          </div>
+        )}
 
         {/* Loading state */}
         {heatmapLoading && (
@@ -1296,8 +1335,7 @@ export default function ScoutedTeamPage() {
             pct >= thresholds[0] ? COLORS.success : pct >= thresholds[1] ? COLORS.accent : COLORS.danger;
 
           return (
-            <>
-              <SectionHeader icon={Footprints}>{t('section_breakouts')}</SectionHeader>
+            <CollapsibleSection icon={Footprints} title={t('section_breakouts')} defaultOpen testId="sec-breakouts">
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
                 {/* Column headers — § 60.4 added Played + In pts */}
                 <div style={{
@@ -1338,7 +1376,7 @@ export default function ScoutedTeamPage() {
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('breakout_survival_overall', overallSurvival)}
               </div>
-            </>
+            </CollapsibleSection>
           );
         })()}
 
@@ -1368,8 +1406,7 @@ export default function ScoutedTeamPage() {
           const reliabilityLow = reliabilityPct != null && reliabilityPct < 80;
 
           return (
-            <>
-              <SectionHeader icon={Crosshair}>{t('section_shots_v2')}</SectionHeader>
+            <CollapsibleSection icon={Crosshair} title={t('section_shots_v2')} testId="sec-shots">
               {reliabilityPct != null && (
                 <div style={{
                   margin: '0 16px 8px',
@@ -1425,7 +1462,7 @@ export default function ScoutedTeamPage() {
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('shot_accuracy_overall', overallAcc)}
               </div>
-            </>
+            </CollapsibleSection>
           );
         })()}
 
@@ -1443,8 +1480,7 @@ export default function ScoutedTeamPage() {
           if (!rows.length) return null;
           const total = elimReasons.total;
           return (
-            <>
-              <SectionHeader icon={Skull}>{t('section_elim_reasons')}</SectionHeader>
+            <CollapsibleSection icon={Skull} title={t('section_elim_reasons')} testId="sec-elim-reasons">
               <div data-testid="elim-reasons" style={{ margin: '0 16px 12px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
                 {rows.map((r, i) => {
                   const pct = total > 0 ? Math.round((r.count / total) * 100) : 0;
@@ -1460,7 +1496,7 @@ export default function ScoutedTeamPage() {
                   );
                 })}
               </div>
-            </>
+            </CollapsibleSection>
           );
         })()}
 
@@ -1557,12 +1593,11 @@ export default function ScoutedTeamPage() {
           ) : null;
 
           return (
-            <>
-              <SectionHeader icon={Crosshair}>{t('section_callout_zones')}</SectionHeader>
+            <CollapsibleSection icon={Crosshair} title={t('section_callout_zones')} testId="sec-callout-zones">
               {phaseTable('Break', breakRows)}
               {phaseTable('Settle', settleRows)}
               {phaseTable('Mid', midRows)}
-            </>
+            </CollapsibleSection>
           );
         })()}
 
@@ -1584,8 +1619,7 @@ export default function ScoutedTeamPage() {
           const avgDiff = topHeroes.reduce((sum, h) => sum + (h.diff || 0), 0) / topHeroes.length;
           const isWeakData = avgDiff < 0;
           return (
-            <>
-              <SectionHeader icon={Medal}>{t('section_key_players')}</SectionHeader>
+            <CollapsibleSection icon={Medal} title={t('section_key_players')} testId="sec-key-players">
               {isWeakData && (
                 <div style={{
                   margin: '0 16px 8px',
@@ -1644,14 +1678,13 @@ export default function ScoutedTeamPage() {
               <div style={{ margin: '0 16px 14px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('sorted_by_diff')}
               </div>
-            </>
+            </CollapsibleSection>
           );
         })()}
 
         {/* Section 5 — Big Moves (above fold only when detections exist) */}
         {bigMoves.hasZone && bigMoves.bunkers.length > 0 && (
-          <>
-            <SectionHeader icon={Zap}>{t('section_big_moves')}</SectionHeader>
+          <CollapsibleSection icon={Zap} title={t('section_big_moves')} testId="sec-big-moves">
             <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
@@ -1680,7 +1713,7 @@ export default function ScoutedTeamPage() {
             <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
               {t('big_moves_summary', bigMoves.totalPointsWithBigMove, bigMoves.totalPoints)}
             </div>
-          </>
+          </CollapsibleSection>
         )}
 
         {/* Section 6 — Notatki (Coach Notes) */}
@@ -1738,22 +1771,20 @@ export default function ScoutedTeamPage() {
 
         {/* Counter plan */}
         {counters.length > 0 && (
-          <>
-            <SectionHeader>{t('section_counter')}</SectionHeader>
+          <CollapsibleSection title={t('section_counter')} testId="sec-counter">
             {counters.map((c, i) => (
               <CounterCard key={i} counter={c} />
             ))}
-          </>
+          </CollapsibleSection>
         )}
 
         {/* Key insights */}
         {insights.length > 0 && (
-          <>
-            <SectionHeader>{t('section_insights')}</SectionHeader>
+          <CollapsibleSection title={t('section_insights')} testId="sec-insights">
             {insights.map((ins, i) => (
               <InsightCard key={i} type={ins.type} text={ins.text} detail={ins.detail} />
             ))}
-          </>
+          </CollapsibleSection>
         )}
 
         {/* 4b. Tactical signals — most eliminated, positions they hunt, 50 reach */}
@@ -1772,8 +1803,7 @@ export default function ScoutedTeamPage() {
           );
 
           return (
-            <>
-              <SectionHeader>{t('section_signals')}</SectionHeader>
+            <CollapsibleSection title={t('section_signals')} testId="sec-signals">
               <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
 
                 {/* Most eliminated player */}
@@ -1889,7 +1919,7 @@ export default function ScoutedTeamPage() {
                 )}
 
               </div>
-            </>
+            </CollapsibleSection>
           );
         })()}
 
@@ -1951,8 +1981,7 @@ export default function ScoutedTeamPage() {
           );
 
           return (
-            <>
-              <SectionHeader icon={Route}>{t('section_tendency')}</SectionHeader>
+            <CollapsibleSection icon={Route} title={t('section_tendency')} testId="sec-tendency">
               <div style={{ display: 'flex', gap: 8, margin: '0 16px 8px' }}>
                 <SideCard label={t('side_dorito_label')} side="dorito" data={sideTendency.dorito} />
                 <SideCard label={t('side_center_label')} side="center" data={sideTendency.center} />
@@ -1962,7 +1991,7 @@ export default function ScoutedTeamPage() {
                 <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text, marginBottom: 3 }}>{t(labelKey)}</div>
                 <div style={{ fontFamily: FONT, fontSize: 11, fontStyle: 'italic', color: COLORS.textMuted, lineHeight: 1.5 }}>{t(detailKey)}</div>
               </div>
-            </>
+            </CollapsibleSection>
           );
         })()}
 
@@ -2071,8 +2100,7 @@ export default function ScoutedTeamPage() {
 
         {/* Matches — below fold */}
         {showAdditional && (
-        <div>
-          <SectionHeader>{t('section_matches', teamMatches.length)}</SectionHeader>
+        <CollapsibleSection title={t('section_matches', teamMatches.length)} testId="sec-matches">
 
           {!teamMatches.length && <EmptyState icon="📋" text={t('b13_add_match_or_schedule')} />}
 
@@ -2119,7 +2147,7 @@ export default function ScoutedTeamPage() {
               </div>
             );
           })}
-        </div>
+        </CollapsibleSection>
         )}
         </div>
       </div>
@@ -2306,7 +2334,6 @@ export default function ScoutedTeamPage() {
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
         <CanvasRailLayout
           isLandscape
-          railPriority
           aspect={16 / 10}
           railMin={200}
           header={pageHeaderEl}

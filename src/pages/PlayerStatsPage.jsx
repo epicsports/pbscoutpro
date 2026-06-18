@@ -1470,7 +1470,6 @@ export default function PlayerStatsPage() {
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
         <CanvasRailLayout
           isLandscape
-          railPriority
           aspect={16 / 10}
           railMin={200}
           header={pageHeaderEl}

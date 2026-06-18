@@ -9658,7 +9658,16 @@ model:
    Deferred-if-needed: discrete snap presets (swap `railMin`) on tablet; a draggable divider
    only under `pointer:fine` if a desktop/mouse surface ever ships.
 
-### 118.1 Landscape-hero canon AMEND — report-first width mode (2026-06-17)
+### 118.1 Landscape-hero canon AMEND — report-first width mode (2026-06-17) — ⛔ REVERTED 2026-06-18
+
+> **REVERTED (Jacek 2026-06-18).** The report-first WIDTH split (`railPriority`) was removed from
+> PlayerStats + ScoutedTeam — it **shrank the field even where width was ample (wide-screen regression)**.
+> **Canon RESTORED: field = HERO (100% height, aspect drives width), rail = residual, §116 strip collapse
+> re-enabled** for ALL canvas screens. What's KEPT from this amendment = its responsive *content* (STAGE B):
+> stat grid `auto-fit minmax(96px)` + Breakouts table nowrap/widened/`maxWidth 560` — page-level, so the rail
+> content never clips in residual width. The `CanvasRailLayout railPriority` prop is now **dormant (no callers)**.
+> Replaced by §118.2 (collapsible report sections + dismissible confidence banner). The width-split text below
+> is HISTORICAL.
 
 The "field = HERO, rail = residual" canon is now SCOPED by archetype:
 
