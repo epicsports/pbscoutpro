@@ -65,9 +65,13 @@ function setDir(G, x, y) {
   G.nextDir = { x, y };
 }
 
-// ─── Audio (§119: SFX only — no bg music) ───────────────────────────────────
+// ─── Audio (SFX ported verbatim + procedural music loop, night-mode beautify) ──
+// Bouncy A-minor-pentatonic loop, one square channel, low gain under the SFX.
+// Gated by the same sound toggle as the SFX (sfxMuted stops both).
+const MUSIC_PAT = [330, 0, 392, 440, 392, 0, 330, 0, 294, 0, 330, 392, 440, 392, 294, 0];
+const MUSIC_STEP_MS = 160;
 function makeAudio() {
-  let ctx = null, sfxMuted = false, unlocked = false;
+  let ctx = null, sfxMuted = false, unlocked = false, musicTimer = null, mstep = 0;
   const ensureCtx = () => {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { ctx = null; } }
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -90,14 +94,26 @@ function makeAudio() {
       o.start(t0 + at); o.stop(t0 + at + dur + 0.02);
     });
   };
+  // One square-wave music note (under the SFX), gated by the same mute.
+  const mnote = (freq) => {
+    if (sfxMuted || !ctx || !freq) return;
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = 'square'; o.frequency.value = freq; g.gain.value = 0.0001;
+    const t = ctx.currentTime;
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.17);
+  };
   return {
     start() { ensureCtx(); },
     eat() { tone([[700, 0, 0.05], [1040, 0.045, 0.06]]); },
     die() { tone([[140, 0, 0.28]], 'sawtooth'); },
     over() { tone([[440, 0, 0.16], [330, 0.16, 0.16], [247, 0.32, 0.16], [196, 0.48, 0.26]]); },
     blip() { tone([[660, 0, 0.05]]); },
-    setSfxMuted(m) { sfxMuted = m; },
-    dispose() { try { if (ctx) ctx.close(); } catch {} },
+    musicStart() { if (musicTimer || sfxMuted) return; ensureCtx(); if (!ctx) return; mstep = 0; musicTimer = setInterval(() => { mnote(MUSIC_PAT[mstep % MUSIC_PAT.length]); mstep++; }, MUSIC_STEP_MS); },
+    musicStop() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } },
+    setSfxMuted(m) { sfxMuted = m; if (m) this.musicStop(); },
+    dispose() { this.musicStop(); try { if (ctx) ctx.close(); } catch {} },
   };
 }
 
@@ -141,26 +157,41 @@ const GHOST = (() => {
 })();
 function Field({ G, phase }) {
   const playing = phase === 'playing';
+  const n = G.snake.length;
   const head = G.snake[0];
   const hx = head.x * CELL + CELL / 2, hy = head.y * CELL + CELL / 2;
   const ex = hx + G.dir.x * 1.7, ey = hy + G.dir.y * 1.7;
   const px = -G.dir.y * 1.6, py = G.dir.x * 1.6;   // perpendicular offset for eyes
   const fx = G.food.x * CELL + CELL / 2, fy = G.food.y * CELL + CELL / 2;
+  // pulsing brand-dot food (recomputed each frame; the page re-renders via rAF)
+  const pulse = reducedMotion ? 3.6 : (3.5 + Math.sin((typeof performance !== 'undefined' ? performance.now() : 0) / 1000 * 4) * 0.45);
+  const A = COLORS.accent;
   return (
     <svg viewBox={`0 0 ${VB_W} ${VB_H}`} width="100%"
       style={{ display: 'block', maxHeight: '52vh', background: COLORS.surfaceBar, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'none' }}
       data-testid="reads-snake-field">
+      <defs>
+        {/* graded halftone tiles — dark dot punched out of amber (head→tail density) */}
+        <pattern id="snk-ht1" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill={A} /><circle cx="1.5" cy="1.5" r="0.5" fill={COLORS.surfaceBar} /></pattern>
+        <pattern id="snk-ht2" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill={A} /><circle cx="1.5" cy="1.5" r="0.86" fill={COLORS.surfaceBar} /></pattern>
+        <pattern id="snk-ht3" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill={A} /><circle cx="1.5" cy="1.5" r="1.16" fill={COLORS.surfaceBar} /></pattern>
+        <pattern id="snk-glow" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="0.5" fill={A} /></pattern>
+        <pattern id="snk-scan" width="3" height="3" patternUnits="userSpaceOnUse"><rect x="0" y="2" width="3" height="1" fill="rgba(0,0,0,0.14)" /></pattern>
+      </defs>
       {/* ghost dot-matrix (drawn once, faint) */}
-      <g aria-hidden opacity={0.05}>
-        {GHOST.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r={0.8} fill={COLORS.accent} />)}
+      <g aria-hidden opacity={0.13}>
+        {GHOST.map(([cx, cy], i) => <circle key={i} cx={cx} cy={cy} r={0.8} fill={A} />)}
       </g>
-      {/* food = Reads dot + seam */}
-      <circle cx={fx} cy={fy} r={3.6} fill={COLORS.accent} style={{ filter: 'drop-shadow(0 0 1px rgba(245,158,11,.8))' }} />
+      {/* food = Reads dot + dither glow halo + seam */}
+      <circle cx={fx} cy={fy} r={6.4} fill="url(#snk-glow)" opacity={0.5} />
+      <circle cx={fx} cy={fy} r={pulse} fill={A} />
       <rect x={fx - 3.6} y={fy - 0.6} width={7.2} height={1.2} rx={0.6} fill={COLORS.bg} />
-      {/* snake body (tail → head so head paints on top) */}
+      {/* snake body (tail → head so head paints on top); graded halftone */}
       {G.snake.slice().reverse().map((c, ri) => {
-        const i = G.snake.length - 1 - ri;
-        return <rect key={`${c.x}-${c.y}-${i}`} x={c.x * CELL + 1.2} y={c.y * CELL + 1.2} width={7.6} height={7.6} rx={2.2} fill={COLORS.accent} opacity={i === 0 ? 1 : 0.9} />;
+        const i = n - 1 - ri;
+        const frac = n > 1 ? i / (n - 1) : 0;
+        const fill = i === 0 ? A : (frac < 0.34 ? 'url(#snk-ht1)' : frac < 0.67 ? 'url(#snk-ht2)' : 'url(#snk-ht3)');
+        return <rect key={`${c.x}-${c.y}-${i}`} x={c.x * CELL + 1.2} y={c.y * CELL + 1.2} width={7.6} height={7.6} rx={2.2} fill={fill} />;
       })}
       {/* head eyes, oriented to travel */}
       {playing && (
@@ -169,6 +200,8 @@ function Field({ G, phase }) {
           <circle cx={ex - px} cy={ey - py} r={0.9} fill={COLORS.bg} />
         </g>
       )}
+      {/* scanlines (1-bit LCD) */}
+      {!reducedMotion && <rect x="0" y="0" width={VB_W} height={VB_H} fill="url(#snk-scan)" pointerEvents="none" />}
     </svg>
   );
 }
@@ -237,7 +270,8 @@ export default function ReadsSnakePage() {
         let guard = 0;
         while (G.acc >= G.speed && guard++ < 8) { G.acc -= G.speed; if (step(G, sfx) === 'die') break; }
         if (G.flash > 0) G.flash -= 1;
-      }
+        sfx.musicStart();
+      } else sfx.musicStop();
       if (G.phase !== phaseRef.current) {
         phaseRef.current = G.phase;
         if (G.phase === 'over') { setLastScore(G.score); setSubmitted(false); }
