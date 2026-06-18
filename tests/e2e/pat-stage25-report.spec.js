@@ -95,6 +95,10 @@ test.describe('PaT Stage 2.5 — per-stage report tables', () => {
 
     // Settle → reason block appears with the seeded gunfight.
     await page.getByTestId('hm-phase-settle').click();
+    // §118.2 field-is-king restructure — the elim-reasons section is collapsible
+    // (collapsed by default) and only MOUNTS for a phase that has reasons; expand it
+    // once it exists. The open state persists when switching Settle → Mid below.
+    await page.getByTestId('sec-elim-reasons-toggle').click();
     await expect(page.getByTestId('elim-reasons')).toBeVisible();
     await expect(page.getByTestId('elim-reason-gunfight')).toBeVisible();
     await expect(page.getByTestId('elim-reason-penalty')).toHaveCount(0);
