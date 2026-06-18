@@ -95,9 +95,14 @@ function snapCatcher(G, lane, sfx) {
   tryCatch(G, sfx);
 }
 
-// ─── Audio (§117.C): bg loop (graceful if asset absent) + WebAudio SFX ──────
+// ─── Audio (§117.C): procedural chiptune music + WebAudio SFX ───────────────
+// Night-mode: music is now a procedural square-wave chiptune (was the owed
+// sky-catcher-loop60.m4a asset that degraded silently). One square channel,
+// low gain under the SFX, gated by the Music toggle.
+const MINI_MUSIC = [262, 0, 330, 262, 392, 0, 330, 0, 294, 0, 349, 294, 440, 0, 349, 0];
+const MINI_STEP_MS = 152;
 function makeAudio() {
-  let ctx = null, music = null, musicMuted = false, sfxMuted = false, started = false;
+  let ctx = null, musicMuted = false, sfxMuted = false, started = false, musicTimer = null, mstep = 0;
   const ensureCtx = () => {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { ctx = null; } }
     if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
@@ -119,24 +124,28 @@ function makeAudio() {
       o.start(t0 + at); o.stop(t0 + at + dur + 0.02);
     });
   };
+  // One square-wave chiptune note (under the SFX), gated by the Music toggle.
+  const mnote = (freq) => {
+    if (musicMuted || !ctx || !freq) return;
+    const o = ctx.createOscillator(); const g = ctx.createGain();
+    o.type = 'square'; o.frequency.value = freq; g.gain.value = 0.0001;
+    const t = ctx.currentTime;
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.16);
+  };
   return {
-    // First in-game gesture: init ctx + start bg music (respects iOS silent switch).
-    start() {
-      if (started) return; started = true;
-      ensureCtx();
-      try {
-        music = new Audio(`${import.meta.env.BASE_URL}sounds/sky-catcher-loop60.m4a`);
-        music.loop = true; music.volume = 0.5;
-        if (!musicMuted) music.play().catch(() => {});   // 404 / autoplay block → silent
-      } catch { music = null; }
-    },
+    // First in-game gesture: init ctx (music is driven by the loop now).
+    start() { if (started) return; started = true; ensureCtx(); },
     catch() { tone([[880, 0, 0.08], [1318, 0.06, 0.1]]); },
     miss() { tone([[150, 0, 0.22]], 'sawtooth'); },
     over() { tone([[440, 0, 0.16], [330, 0.16, 0.16], [247, 0.32, 0.16], [196, 0.48, 0.26]]); },
     blip() { tone([[660, 0, 0.05]], 'square'); },
-    setMusicMuted(m) { musicMuted = m; if (music) { if (m) music.pause(); else music.play().catch(() => {}); } },
+    musicStart() { if (musicTimer || musicMuted) return; ensureCtx(); if (!ctx) return; mstep = 0; musicTimer = setInterval(() => { mnote(MINI_MUSIC[mstep % MINI_MUSIC.length]); mstep++; }, MINI_STEP_MS); },
+    musicStop() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } },
+    setMusicMuted(m) { musicMuted = m; if (m) this.musicStop(); },
     setSfxMuted(m) { sfxMuted = m; },
-    dispose() { try { if (music) { music.pause(); music.src = ''; } } catch {} try { if (ctx) ctx.close(); } catch {} },
+    dispose() { this.musicStop(); try { if (ctx) ctx.close(); } catch {} },
   };
 }
 
@@ -173,13 +182,18 @@ function GhostGrid() {
     </g>
   );
 }
+const BELTS = [[LANE[0] - 18, LANE[1] + 18], [LANE[2] - 18, LANE[3] + 18]];
 function Conveyors({ t }) {
   const dash = reducedMotion ? 0 : (t / 40) % 16;
   return (
     <g aria-hidden>
-      {[[LANE[0] - 18, LANE[1] + 18], [LANE[2] - 18, LANE[3] + 18]].map(([x1, x2], i) => (
+      {/* dithered machinery belts under the motion dashes */}
+      {BELTS.map(([x1, x2], i) => (
+        <rect key={`b${i}`} x={x1} y={CONVEYOR_Y - 3} width={x2 - x1} height={6} rx={3} fill="url(#mini-ht2)" opacity={0.5} />
+      ))}
+      {BELTS.map(([x1, x2], i) => (
         <line key={i} x1={x1} y1={CONVEYOR_Y} x2={x2} y2={CONVEYOR_Y}
-          stroke={`${COLORS.accent}40`} strokeWidth={3} strokeLinecap="round"
+          stroke={`${COLORS.accent}66`} strokeWidth={3} strokeLinecap="round"
           strokeDasharray="6 10" strokeDashoffset={-dash} />
       ))}
     </g>
@@ -190,7 +204,7 @@ function Feeders() {
     <g aria-hidden>
       {[LANE[0], LANE[3]].map((x, i) => (
         <rect key={i} x={x - 10} y={CONVEYOR_Y - 12} width={20} height={9} rx={2}
-          fill={COLORS.surface} stroke={`${COLORS.accent}55`} strokeWidth={1} />
+          fill="url(#mini-ht2)" stroke={`${COLORS.accent}55`} strokeWidth={1} />
       ))}
     </g>
   );
@@ -198,6 +212,8 @@ function Feeders() {
 function Ball({ x, y }) {
   return (
     <g aria-hidden>
+      {/* dither glow halo + solid ball + brand seam */}
+      <circle cx={x} cy={y} r={11} fill="url(#mini-glow)" opacity={0.45} />
       <circle cx={x} cy={y} r={8} fill={COLORS.accent} />
       <rect x={x - 8} y={y - 1} width={16} height={2} fill={COLORS.surfaceBar} />
     </g>
@@ -312,6 +328,7 @@ export default function ReadsMiniPage() {
         if (G.flash > 0) G.flash -= 1;
         if (G.splats.length) G.splats = G.splats.map((s) => ({ ...s, t: s.t - dt })).filter((s) => s.t > 0);
       }
+      if (G.phase === 'playing') sfx.musicStart(); else sfx.musicStop();
       // Mirror model phase → React (drives the over / initials transition).
       if (G.phase !== phaseRef.current) {
         phaseRef.current = G.phase;
@@ -436,6 +453,11 @@ export default function ReadsMiniPage() {
       {/* Play field */}
       <div style={{ position: 'relative', width: '100%', maxWidth: 480, flex: '0 1 auto', padding: `0 ${SPACE.md}px`, boxSizing: 'border-box' }}>
         <svg viewBox={`0 0 ${VB_W} ${VB_H}`} width="100%" style={{ display: 'block', maxHeight: '52vh', background: COLORS.surfaceBar, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'manipulation' }}>
+          <defs>
+            <pattern id="mini-ht2" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill={COLORS.accent} /><circle cx="1.5" cy="1.5" r="0.92" fill={COLORS.surfaceBar} /></pattern>
+            <pattern id="mini-glow" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="0.5" fill={COLORS.accent} /></pattern>
+            <pattern id="mini-scan" width="3" height="3" patternUnits="userSpaceOnUse"><rect x="0" y="2" width="3" height="1" fill="rgba(0,0,0,0.14)" /></pattern>
+          </defs>
           <GhostGrid />
           <Conveyors t={tRef.current} />
           <Feeders />
@@ -448,6 +470,7 @@ export default function ReadsMiniPage() {
           {G.balls.map((b) => <Ball key={b.id} x={LANE[b.lane]} y={STEP_Y[b.step] || STEP_Y[CATCH]} />)}
           {G.splats.map((s) => <Splat key={s.id} x={LANE[s.lane]} />)}
           {phase === 'playing' && <Catcher lane={G.catcher} />}
+          {!reducedMotion && <rect x={0} y={0} width={VB_W} height={VB_H} fill="url(#mini-scan)" pointerEvents="none" />}
         </svg>
 
         {/* Overlays */}
