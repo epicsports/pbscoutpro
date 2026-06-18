@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-19 — [FIX/Tier-1] Role grant co-writes members[] + prune orphan userRoles (G1, night)
+**App (auto-deploy, e2e-gated) + DATA (one-time --live migration). No rules change.** Merge `4570076e` (branch `feat/night-g1-role-members`).
+- **Root (Majma generalised):** `approveUserRoles` / `updateUserRoles` wrote `userRoles[uid]` but NOT `members[]`. The `/workspaces` read gate is `uid in resource.data.members`, so a role-granted user could see their role tab yet fail the workspace read → empty "no assignment" screen. The Majma scout fix (2026-06-18 auto-enter) treated the symptom for scouts; this fixes the **write path** so every role grant also grants access.
+- **Fix (code):** both functions now `members: arrayUnion(targetUid)` alongside the `userRoles` write (admin-branch rule already permits the combined write; arrayUnion idempotent). Co-write happens for approve (pending→granted) and direct role edits.
+- **DATA (migration, `scripts/migrate-prune-empty-roles.mjs --live`, ranger1996):** pruned **6 orphan** empty-role `userRoles` keys (empty roles AND not in members/pending — stale cruft). userRoles keys 22→16, now == 16 members, all aligned. **Left the 1 role-less MEMBER** (`DJISyG7…`, empty roles but a real member) untouched — its desired role is a Jacek decision, not cruft cleanup.
+- Gate: precommit + build + **FULL emulator e2e 98/98 green** (incl. `role-source-of-truth`, `scoutedteam-rail`). §27 PASS (no UI change). Diag: `scripts/diag-ranger-roles.mjs`.
+- **⚠ ESCALATE (Jacek):** `DJISyG7yo3NIBVrVvwl5IsJhTTt1` is a ranger1996 member with empty roles — assign a role or remove from members? (1 user.)
+- **Smoke owed (Jacek, prod):** grant a role to a fresh user in the admin panel → they immediately see events (no "no assignment").
+
 ## 2026-06-18 — [FIX] Arcade game fields fill the screen + Read Warrior cut-off (night, Jacek report)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `e46cefab` (branch `feat/night-games-fill-screen`).
 - Games used only ~half the screen: the play field was `flex:'0 1 auto'` + a `maxHeight` vh cap (52–62vh). On **Read Warrior** (9/16 @ 62vh) chrome+field+controls exceeded `100dvh` → the bottom clipped under the root `overflow:hidden` (the "ucięty" report).
