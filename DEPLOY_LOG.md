@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-18 — [POLISH] Arcade 1-bit beautify ×4 — render + procedural music (night mode, Jacek prototypes)
+**App (auto-deploy, e2e-gated). No rules/data.** Merges `da69d59b` · `e8e7d4bc` · `d8e606d4` · `8a7d06e3`.
+- Render-only beautify of all 4 "Take a Break" games to Jacek's 1-bit prototypes — **model/physics/leaderboards/testids verbatim**; each shipped Tier-1 behind its own targeted emulator e2e (2/2 green, JAVA_HOME portable JRE):
+  - **Snake** (`da69d59b`): graded halftone body (solid head → sparse tail), pulsing brand-dot food + dither glow, scanlines + a procedural A-minor-pentatonic music loop (page was SFX-only).
+  - **Lunar Lander** (`e8e7d4bc`): randomized cosmic sky (nebulae / planets w/ rings+phase / shooting stars) + Bayer-dither moon mass, solid lander w/ knocked-out window, halftone exhaust + a sparse minor music loop under the thrust bed.
+  - **Invaders** (`d8e606d4`): dim 1-bit cosmic sky backdrop behind the marchers (twinkle + cross-sparkle stars, nebula clouds, crescent planet, shooting star). Model + 1-bit music already matched the prototype.
+  - **Reads Mini** (`8a7d06e3`): halftone-dithered conveyors/feeders + dither glow on the falling balls + scanlines; **replaced the owed `sky-catcher-loop60.m4a` asset with a procedural square-wave chiptune** (kills the silent-degrade missing-asset residual).
+- Gate per game: `npm run precommit` + targeted emulator e2e (2/2). **Smoke owed (Jacek, device):** each game looks right + music/SFX play; iOS silent-switch caveat unchanged.
+
 ## 2026-06-18 — [FIX] Tactic save "too many index entries" — exempt freehandStrokes (Jacek prod report)
 **INDEXES (firestore:indexes deployed). No app/rules/data change.**
 - Saving a tactic with a dense perfect-freehand drawing failed: *"Save failed: too many index entries for entity /workspaces/ranger1996/layoutOverlays/…/tactics/…"*. Root cause: Firestore auto-indexes every array element, and `freehandStrokes` (thousands of stroke points via `strokesToFirestore`) blew past the **40,000 index-entries-per-document** write limit → the create was rejected (doc never written).
