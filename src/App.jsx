@@ -17,6 +17,7 @@ import ReviewRolesModal from './components/ReviewRolesModal';
 import RouteGuard from './components/RouteGuard';
 import { ViewAsProvider } from './contexts/ViewAsContext';
 import ViewAsIndicator from './components/ViewAsIndicator';
+import DevSnapshotButton from './components/dev/DevSnapshotButton';
 import { useViewAs } from './hooks/useViewAs';
 import { useIsSuperAdmin } from './hooks/useIsSuperAdmin';
 import { KioskProvider } from './contexts/KioskContext';
@@ -212,6 +213,9 @@ function AppRoutes() {
           </Routes>
         </Suspense>
         <OfflineBanner />
+        {/* Super-admin dev tool — global mount so it's available on EVERY screen
+            (not just MainPage). Self-gates via useIsSuperAdmin; inert otherwise. */}
+        <DevSnapshotButton />
         {/* Persistent, non-dismissable impersonation exit (§38.5 / CC_BRIEF_VIEWAS_REENABLE):
             top amber strip + bottom-right pill with × → exitImpersonation. Visible whenever
             an admin is impersonating — the escape hatch whose ABSENCE got view-as disabled in

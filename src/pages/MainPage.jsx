@@ -12,7 +12,6 @@ import TrainingScoutTab from '../components/tabs/TrainingScoutTab';
 import TrainingCoachTab from '../components/tabs/TrainingCoachTab';
 import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
 import WorkspaceLogo from '../components/settings/WorkspaceLogo';
-import DevSnapshotButton from '../components/dev/DevSnapshotButton';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -392,9 +391,6 @@ export default function MainPage({ onSignOut, workspaceName }) {
           setDeleteTournamentConfirm(false);
         }}
       />
-
-      {/* Super-admin dev tool — self-gates via useIsSuperAdmin, inert for everyone else. */}
-      <DevSnapshotButton />
     </AppShell>
   );
 }
