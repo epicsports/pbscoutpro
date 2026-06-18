@@ -59,8 +59,32 @@ function genLevel(G, level) {
   }
   for (const pad of pads) for (const s of surf) if (s.x >= pad.x1 && s.x <= pad.x2) s.y = pad.y;
   G.terrain = surf; G.pads = pads;
-  G.stars = [];
-  for (let i = 0; i < 14; i++) G.stars.push({ x: Math.random() * VW, y: Math.random() * (VH * 0.45) + 6, b: 0.25 + Math.random() * 0.5 });
+  genSky(G);
+}
+// Cosmic sky (night-mode beautify) — randomized star field (+optional cluster),
+// 1–3 nebulae, 0–2 planets. Cosmetic data only; sim/physics unchanged.
+function genSky(G) {
+  const stars = []; const N = 40 + ((Math.random() * 22) | 0);
+  for (let i = 0; i < N; i++) {
+    const r = Math.random();
+    stars.push({ x: Math.random() * VW, y: 5 + Math.random() * (VH * 0.47), b: 0.18 + Math.random() * 0.82, big: r > 0.84, bright: r > 0.93, ph: Math.random() * 6.2832 });
+  }
+  if (Math.random() < 0.5) {
+    const cx = 16 + Math.random() * (VW - 32), cy = 8 + Math.random() * (VH * 0.34), m = 5 + ((Math.random() * 6) | 0);
+    for (let i = 0; i < m; i++) stars.push({ x: cx + (Math.random() * 2 - 1) * 10, y: cy + (Math.random() * 2 - 1) * 7, b: 0.2 + Math.random() * 0.7, big: Math.random() > 0.8, bright: false, ph: Math.random() * 6.2832 });
+  }
+  G.stars = stars;
+  const neb = []; const nb = 1 + ((Math.random() * 3) | 0);
+  for (let i = 0; i < nb; i++) neb.push({ x: 16 + Math.random() * (VW - 32), y: 10 + Math.random() * (VH * 0.34), rx: 18 + Math.random() * 30, ry: 10 + Math.random() * 16, rot: Math.random() * Math.PI, d1: 0.07 + Math.random() * 0.08, d2: 0.16 + Math.random() * 0.12 });
+  G.neb = neb;
+  const planets = []; const pc = Math.random() < 0.20 ? 0 : (Math.random() < 0.74 ? 1 : 2);
+  for (let i = 0; i < pc; i++) {
+    let qx, qy, guard = 0;
+    do { qx = 14 + Math.random() * (VW - 28); qy = 40 + Math.random() * 34; guard++; }
+    while (planets.some((q) => Math.hypot(q.x - qx, q.y - qy) < 34) && guard < 20);
+    planets.push({ x: qx, y: qy, r: 9 + Math.random() * 10, phase: (Math.random() * 1.5 - 0.75), d: 0.34 + Math.random() * 0.22, ring: Math.random() < 0.28, ringTilt: 0.45 + Math.random() * 0.7 });
+  }
+  G.planets = planets;
 }
 function terrainYAt(G, x) {
   const t = G.terrain; if (!t.length) return VH;
@@ -132,24 +156,109 @@ function mkRender(ctx) {
     setFont(size, weight); ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic';
     ctx.globalAlpha = alpha == null ? 1 : alpha; ctx.fillStyle = AMBER; ctx.fillText(str, px(x), px(y)); ctx.globalAlpha = 1;
   };
+  // Ordered-dither (Bayer 4x4) pattern tiles — device-pixel grain, GPU-repeated.
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function mkDither(density, cell) {
+    const N = 4; cell = cell || 2;
+    const tile = document.createElement('canvas'); tile.width = N * cell; tile.height = N * cell;
+    const g = tile.getContext('2d'); g.fillStyle = AMBER; const th = density * 16;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (BAYER[y * N + x] < th) g.fillRect(x * cell, y * cell, cell, cell);
+    return ctx.createPattern(tile, 'repeat');
+  }
+  const dSparse = mkDither(0.26, 2), dMed = mkDither(0.50, 2), dDense = mkDither(0.78, 2), dGlow = mkDither(0.40, 2);
+  const ditherCache = {};
+  const ditherFor = (d) => { const k = Math.max(0.05, Math.min(0.92, Math.round(d * 20) / 20)); return ditherCache[k] || (ditherCache[k] = mkDither(k, 2)); };
+  let shootT = 4 + Math.random() * 6, shoot = null;
+  function drawNebula(G) {
+    if (!G.neb) return;
+    for (const nb of G.neb) {
+      const pad = nb.rx + nb.ry;
+      ctx.save(); ctx.beginPath(); ctx.ellipse(px(nb.x), px(nb.y), px(nb.rx), px(nb.ry), nb.rot, 0, 6.2832); ctx.clip();
+      ctx.fillStyle = ditherFor(nb.d1); ctx.fillRect(px(nb.x - pad), px(nb.y - pad), px(pad * 2), px(pad * 2)); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(px(nb.x), px(nb.y), px(nb.rx * 0.55), px(nb.ry * 0.55), nb.rot, 0, 6.2832); ctx.clip();
+      ctx.fillStyle = ditherFor(nb.d2); ctx.fillRect(px(nb.x - pad), px(nb.y - pad), px(pad * 2), px(pad * 2)); ctx.restore();
+    }
+  }
+  function drawPlanets(G) {
+    const arr = G.planets; if (!arr) return;
+    for (const p of arr) {
+      if (p.ring) { ctx.save(); ctx.strokeStyle = amberA(0.32); ctx.lineWidth = 1.0; ctx.beginPath(); ctx.ellipse(px(p.x), px(p.y), px(p.r * 1.7), px(p.r * 0.55 * p.ringTilt), 0.5, 0, 6.2832); ctx.stroke(); ctx.restore(); }
+      ctx.save(); ctx.beginPath(); ctx.arc(px(p.x), px(p.y), px(p.r), 0, 6.2832); ctx.clip();
+      ctx.fillStyle = ditherFor(p.d); ctx.fillRect(px(p.x - p.r), px(p.y - p.r), px(p.r * 2), px(p.r * 2));
+      const cres = Math.abs(p.phase), dir = p.phase >= 0 ? 1 : -1, off = p.r * (1.5 - 1.3 * cres) * dir;
+      ctx.fillStyle = LCD_GLASS; ctx.beginPath(); ctx.arc(px(p.x + off), px(p.y), px(p.r * 1.06), 0, 6.2832); ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = amberA(0.4); ctx.lineWidth = 1.0; ctx.beginPath(); ctx.arc(px(p.x), px(p.y), px(p.r), 0, 6.2832); ctx.stroke();
+    }
+  }
+  function drawShootingStar(G) {
+    if (reduceMotion) return;
+    if (!shoot && G.t > shootT) { shoot = { x0: Math.random() * VW * 0.7, y0: 6 + Math.random() * 34, dx: 46, dy: 20, t0: G.t }; shootT = G.t + 7 + Math.random() * 9; }
+    if (!shoot) return;
+    const e = G.t - shoot.t0, dur = 0.55; if (e > dur) { shoot = null; return; }
+    const k = e / dur; const hx = shoot.x0 + shoot.dx * k, hy = shoot.y0 + shoot.dy * k;
+    const nrm = Math.hypot(shoot.dx, shoot.dy), ux = -shoot.dx / nrm, uy = -shoot.dy / nrm, L = 5;
+    ctx.save(); ctx.globalAlpha = Math.sin(k * Math.PI);
+    ctx.strokeStyle = AMBER; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(px(hx), px(hy)); ctx.lineTo(px(hx + ux * L), px(hy + uy * L)); ctx.stroke();
+    ctx.fillStyle = AMBER; ctx.fillRect(px(hx) - 1.5, px(hy) - 1.5, 3, 3); ctx.restore();
+  }
+  function drawSky(G) {
+    drawNebula(G); drawPlanets(G);
+    ctx.fillStyle = AMBER;
+    for (const s of G.stars) {
+      const lit = reduceMotion ? true : (s.b > 0.5 ? true : (Math.sin(G.t * 3 + s.ph) > 0));
+      if (!lit) continue;
+      const sz = s.big ? Math.max(3, S * 0.8) : Math.max(2, S * 0.45);
+      ctx.fillRect(px(s.x) - sz / 2, px(s.y) - sz / 2, sz, sz);
+      if (s.bright) {
+        const k = reduceMotion ? 2.2 : (2.0 + Math.sin(G.t * 4 + s.ph) * 1.0);
+        ctx.fillRect(px(s.x) - sz * k, px(s.y) - 1, sz * 2 * k, 2);
+        ctx.fillRect(px(s.x) - 1, px(s.y) - sz * k, 2, sz * 2 * k);
+      }
+    }
+    drawShootingStar(G);
+  }
   function drawLander(x, y, ang, thrusting, ghost) {
     ctx.save(); ctx.translate(px(x), px(y)); ctx.rotate(ang); ctx.scale(S, S);
-    const col = ghost ? AM_GHOST : AMBER; ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 0.9;
-    ctx.beginPath(); ctx.moveTo(-2.4, -1.6); ctx.lineTo(2.4, -1.6); ctx.lineTo(3.2, 0.4); ctx.lineTo(2.0, 2.2); ctx.lineTo(-2.0, 2.2); ctx.lineTo(-3.2, 0.4); ctx.closePath(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, -1.7, 1.5, Math.PI, 2 * Math.PI); ctx.stroke();
+    const col = ghost ? AM_GHOST : AMBER;
+    ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-2.4, -1.6); ctx.lineTo(2.4, -1.6); ctx.lineTo(3.2, 0.4); ctx.lineTo(2.0, 2.2); ctx.lineTo(-2.0, 2.2); ctx.lineTo(-3.2, 0.4); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, -1.6, 1.5, Math.PI, 2 * Math.PI); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = LCD_GLASS; ctx.beginPath(); ctx.arc(0, -1.35, 0.85, 0, 2 * Math.PI); ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 0.9;
     ctx.beginPath(); ctx.moveTo(-2.4, 2.0); ctx.lineTo(-3.6, 4.2); ctx.lineTo(-4.6, 4.2); ctx.moveTo(2.4, 2.0); ctx.lineTo(3.6, 4.2); ctx.lineTo(4.6, 4.2); ctx.stroke();
-    if (thrusting) { const flick = reduceMotion ? 0.7 : (0.55 + Math.random() * 0.7); ctx.beginPath(); ctx.moveTo(-1.4, 2.4); ctx.lineTo(1.4, 2.4); ctx.lineTo(0, 2.4 + 3.2 * flick); ctx.closePath(); ctx.fillStyle = AMBER; ctx.fill(); }
+    if (thrusting) { const flick = reduceMotion ? 0.7 : (0.55 + Math.random() * 0.7); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(-1.2, 2.4); ctx.lineTo(1.2, 2.4); ctx.lineTo(0, 2.4 + 3.0 * flick); ctx.closePath(); ctx.fill(); }
     ctx.restore();
+  }
+  function drawExhaust(G) {
+    if (!(G.mode === 'play' && G.thrusting)) return;
+    const flick = reduceMotion ? 0.8 : (0.6 + Math.random() * 0.7);
+    ctx.save(); ctx.translate(px(G.x), px(G.y)); ctx.rotate(G.ang);
+    ctx.fillStyle = dGlow;
+    ctx.beginPath(); ctx.moveTo(px(-2.1), px(2.6)); ctx.lineTo(px(2.1), px(2.6)); ctx.lineTo(0, px(2.6 + 6.5 * flick)); ctx.closePath(); ctx.fill(); ctx.restore();
   }
   function drawTerrain(G) {
     const t = G.terrain; if (!t.length) return;
-    ctx.lineWidth = 1.4; ctx.strokeStyle = AMBER; ctx.fillStyle = AM_DIM;
-    ctx.beginPath(); ctx.moveTo(px(t[0].x), px(t[0].y)); for (let i = 1; i < t.length; i++) ctx.lineTo(px(t[i].x), px(t[i].y));
-    ctx.lineTo(px(VW), px(VH)); ctx.lineTo(0, px(VH)); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(px(t[0].x), px(t[0].y)); for (let i = 1; i < t.length; i++) ctx.lineTo(px(t[i].x), px(t[i].y)); ctx.stroke();
-    for (const p of G.pads) { ctx.lineWidth = 3; ctx.strokeStyle = AMBER; ctx.beginPath(); ctx.moveTo(px(p.x1), px(p.y)); ctx.lineTo(px(p.x2), px(p.y)); ctx.stroke(); text('x' + p.mult, (p.x1 + p.x2) / 2, p.y - 3, 6, 'center', 0.95); }
+    ctx.save();
+    ctx.beginPath(); ctx.moveTo(px(t[0].x), px(t[0].y));
+    for (let i = 1; i < t.length; i++) ctx.lineTo(px(t[i].x), px(t[i].y));
+    ctx.lineTo(px(VW), px(VH)); ctx.lineTo(0, px(VH)); ctx.closePath(); ctx.clip();
+    const top = px(VH * 0.50), h = px(VH) - top;
+    ctx.fillStyle = dSparse; ctx.fillRect(0, top, CANVAS_W, h * 0.34);
+    ctx.fillStyle = dMed; ctx.fillRect(0, top + h * 0.34, CANVAS_W, h * 0.33);
+    ctx.fillStyle = dDense; ctx.fillRect(0, top + h * 0.67, CANVAS_W, h * 0.34);
+    ctx.restore();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = AMBER; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(px(t[0].x), px(t[0].y));
+    for (let i = 1; i < t.length; i++) ctx.lineTo(px(t[i].x), px(t[i].y)); ctx.stroke();
+    for (const p of G.pads) {
+      ctx.lineWidth = 3; ctx.strokeStyle = AMBER;
+      ctx.beginPath(); ctx.moveTo(px(p.x1), px(p.y)); ctx.lineTo(px(p.x2), px(p.y)); ctx.stroke();
+      ctx.lineWidth = 1.1;
+      for (let xx = p.x1 + 1.4; xx < p.x2; xx += 3) { ctx.beginPath(); ctx.moveTo(px(xx), px(p.y)); ctx.lineTo(px(xx - 1.3), px(p.y + 2.6)); ctx.stroke(); }
+      text('x' + p.mult, (p.x1 + p.x2) / 2, p.y - 3, 6, 'center', 0.95);
+    }
   }
-  function drawStars(G) { for (const s of G.stars) { ctx.globalAlpha = s.b; ctx.fillStyle = AMBER; ctx.fillRect(px(s.x), px(s.y), Math.max(1, S * 0.5), Math.max(1, S * 0.5)); } ctx.globalAlpha = 1; }
   function drawHUD(G) {
     text('SCORE', 6, 9, 5.5, 'left', 0.6); text(String(G.score).padStart(5, '0'), 6, 16.5, 7.5, 'left', 1);
     const liveHi = Math.max(G.best, G.score); const hiBeaten = G.score > 0 && G.score >= G.best && G.best > 0;
@@ -176,8 +285,8 @@ function mkRender(ctx) {
   return function render(G, t) {
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H); ctx.fillStyle = LCD_GLASS; ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     ctx.save(); if (G.shake > 0) ctx.translate((Math.random() * 2 - 1) * G.shake, (Math.random() * 2 - 1) * G.shake);
-    drawStars(G); drawTerrain(G);
-    if (G.mode !== 'ready') drawLander(G.x, G.y, G.ang, (G.mode === 'play') && G.thrusting, false);
+    drawSky(G); drawTerrain(G);
+    if (G.mode !== 'ready') { drawLander(G.x, G.y, G.ang, (G.mode === 'play') && G.thrusting, false); drawExhaust(G); }
     ctx.restore();
     drawHUD(G);
     if (G.flash > 0) { ctx.fillStyle = amberA(G.flash * 0.5); ctx.fillRect(0, 0, CANVAS_W, CANVAS_H); }
@@ -216,6 +325,10 @@ function mkRender(ctx) {
 // ── audio (WebAudio thrust bed + blips; iOS-safe) ───────────────────────────
 function makeAudio() {
   let ctxA = null, master = null, thrustGain = null, lp = null, on = true;
+  let musicTimer = null, mstep = 0;
+  // Sparse minor wander under the thrust noise bed (night-mode beautify).
+  const MUSIC = [220, 0, 277, 0, 330, 277, 0, 196, 220, 0, 262, 0, 330, 392, 0, 247];
+  const MUSIC_STEP_MS = 210;
   function ensure() {
     if (ctxA) return;
     try {
@@ -235,9 +348,17 @@ function makeAudio() {
     const t = ctxA.currentTime; g.gain.exponentialRampToValueAtTime(0.4, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.frequency.exponentialRampToValueAtTime(freq * 0.6, t + dur); o.start(t); o.stop(t + dur + 0.02);
   }
+  function note(freq) {
+    if (!ctxA || !on || !freq) return; const o = ctxA.createOscillator(), g = ctxA.createGain();
+    o.type = 'square'; o.frequency.value = freq; g.gain.value = 0.0001; o.connect(g); g.connect(master);
+    const t = ctxA.currentTime; g.gain.exponentialRampToValueAtTime(0.06, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    o.start(t); o.stop(t + 0.22);
+  }
   return {
     resume() { ensure(); if (ctxA && ctxA.state === 'suspended') ctxA.resume().catch(() => {}); if (ctxA && !ctxA.__pbUnlocked) { ctxA.__pbUnlocked = true; try { const b = ctxA.createBuffer(1, 1, 22050); const s = ctxA.createBufferSource(); s.buffer = b; s.connect(ctxA.destination); s.start(0); } catch {} } },
     thrust(active, frac) { if (!ctxA || !on) { if (thrustGain) thrustGain.gain.value = 0; return; } const target = active ? 0.18 + 0.12 * frac : 0; thrustGain.gain.setTargetAtTime(target, ctxA.currentTime, 0.04); if (lp) lp.frequency.setTargetAtTime(active ? 520 : 420, ctxA.currentTime, 0.05); },
+    musicStart() { if (musicTimer || !ctxA || !on) return; mstep = 0; musicTimer = setInterval(() => { note(MUSIC[mstep % MUSIC.length]); mstep++; }, MUSIC_STEP_MS); },
+    musicStop() { if (musicTimer) { clearInterval(musicTimer); musicTimer = null; } },
     land() { blip(660, 0.12, 'square'); setTimeout(() => blip(990, 0.18, 'square'), 90); },
     crash() {
       if (!ctxA || !on) return; const o = ctxA.createOscillator(), g = ctxA.createGain(), f = ctxA.createBiquadFilter();
@@ -245,8 +366,8 @@ function makeAudio() {
       const t = ctxA.currentTime; g.gain.value = 0.0001; g.gain.exponentialRampToValueAtTime(0.5, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
       o.frequency.exponentialRampToValueAtTime(40, t + 0.5); o.start(t); o.stop(t + 0.55);
     },
-    setOn(v) { on = v; if (master) master.gain.value = on ? 0.5 : 0; },
-    dispose() { try { if (ctxA) ctxA.close(); } catch {} },
+    setOn(v) { on = v; if (master) master.gain.value = on ? 0.5 : 0; if (!on) this.musicStop(); },
+    dispose() { this.musicStop(); try { if (ctxA) ctxA.close(); } catch {} },
   };
 }
 
@@ -293,6 +414,7 @@ export default function ReadsLanderPage() {
       let dt = (now - (lastRef.current || now)) / 1000; lastRef.current = now; if (dt > 0.05) dt = 0.05;
       if (G.mode === 'gameover' || G.mode === 'landed') { if (G.score > bestRef.current) { G.best = bestRef.current = G.score; G.newBest = true; } }
       update(G, dt, inputRef.current, A);
+      if (G.mode === 'play') A.musicStart(); else A.musicStop();
       renderRef.current(G, t);
       if (G.mode !== mode) setMode(G.mode);
       setFrame((f) => (f + 1) % 1e6);
