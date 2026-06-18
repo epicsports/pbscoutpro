@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-18 — [FIX+FEATURE] Scout auto-enter active event (Majma) + super-admin Dev Snapshot button (Jacek GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `f3d24baa` (branch `feat/dev-snapshot-button`).
+- **Scout stranded on "Nie masz jeszcze przydziału" (Majma, ranger1996):** root cause was NOT his settings — his `userRoles=["player","scout"]` were correct and the workspace had 2 open tournaments. A scout-only user has no tournament picker (single-path B4 design) and there is no coach-side scout→event assignment, so `tournamentId` stayed null → `tournament` null → `ScoutWaitingEmptyState` even with open events. **Fix:** when `isScoutOnly` and no tournament selected, auto-select the most-recently-created `status==='open'` tournament (persisted). Waiting state now shows only when there is genuinely no active event; coaches/admins keep their picker flow. Added `scripts/diag/majma-scout-read.cjs` (read-only diagnostic).
+- **Dev Snapshot button (super-admin only):** floating ⌖ button (self-gates via `useIsSuperAdmin`, inert otherwise) — captures `document.body` via html2canvas + a JSON context bundle (route/page/device/lang/data) and exports ONE `.json` via the iOS Share Sheet (AirDrop/Files) or desktop download, to hand real screens to the design workspace. Mounted once in `MainPage`'s `AppShell`. No Firestore reads/writes, no rules change. `npm i html2canvas` (prod dep). Optional `__pbSnapshotContext` page-data publishing deferred to v1+ (needs PII anonymisation). §27 PASS.
+- Gate: `npm run precommit` (build + lint-ui) passed for both changes; e2e runs in the deploy workflow.
+- **Smoke owed (Jacek/Majma, prod):** Majma reloads → lands in an open tournament with events; super-admin sees the ⌖ button and a snapshot exports.
+
 ## 2026-06-18 — [FIX] Arcade: Lander title text + slower Read Warrior police (Jacek smoke)
 **App (auto-deploy). No rules/data.** Tier-1 bugfix. Merge `015a4ba2`.
 - **Lunar Lander title showed key NAMES** ("reads_lander_title" etc.) instead of text: the canvas state-screens called `t('reads_lander_*')` for keys never defined (only menu/chrome keys were added) → `t()` returns the key name. Canvas text is English-only arcade art → switched to literals (matches Read Warrior). DOM chrome/initials keep their (defined) i18n keys.
