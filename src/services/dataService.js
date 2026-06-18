@@ -2711,8 +2711,14 @@ export async function setWorkspaceLogo(slug, logoUrl) {
 }
 
 export async function approveUserRoles(wsSlug, targetUid, roles) {
+  // Co-write members[] alongside userRoles so the granted user passes the
+  // /workspaces read gate (`uid in resource.data.members`) and their events
+  // load — without this the assignee saw the role tab but an empty
+  // "no assignment" screen (Majma 2026-06-18). Admin-branch rule permits the
+  // combined write (isAdmin bypasses the non-admin hasOnly envelope).
   return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,
+    members: arrayUnion(targetUid),
     pendingApprovals: arrayRemove(targetUid),
   });
 }
@@ -2849,8 +2855,12 @@ export function subscribeWorkspaceEmailInvites(slug, cb) {
 }
 
 export async function updateUserRoles(wsSlug, targetUid, roles) {
+  // Co-write members[] so a role-assigned user always has workspace access
+  // (see approveUserRoles). arrayUnion is idempotent — re-assigning an
+  // existing member is a no-op on members.
   return updateDoc(doc(db, wsPath(wsSlug)), {
     [`userRoles.${targetUid}`]: roles,
+    members: arrayUnion(targetUid),
   });
 }
 
