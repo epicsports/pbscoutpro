@@ -451,8 +451,8 @@ export default function ReadsMiniPage() {
       </div>
 
       {/* Play field */}
-      <div style={{ position: 'relative', width: '100%', maxWidth: 480, flex: '0 1 auto', padding: `0 ${SPACE.md}px`, boxSizing: 'border-box' }}>
-        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} width="100%" style={{ display: 'block', maxHeight: '52vh', background: COLORS.surfaceBar, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'manipulation' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 480, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: `0 ${SPACE.md}px`, boxSizing: 'border-box' }}>
+        <svg viewBox={`0 0 ${VB_W} ${VB_H}`} width="100%" style={{ display: 'block', width: '100%', maxHeight: '100%', background: COLORS.surfaceBar, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'manipulation' }}>
           <defs>
             <pattern id="mini-ht2" width="3" height="3" patternUnits="userSpaceOnUse"><rect width="3" height="3" fill={COLORS.accent} /><circle cx="1.5" cy="1.5" r="0.92" fill={COLORS.surfaceBar} /></pattern>
             <pattern id="mini-glow" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="0.5" fill={COLORS.accent} /></pattern>

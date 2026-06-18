@@ -500,10 +500,10 @@ export default function ReadsInvadersPage() {
       </div>
 
       {/* Play field (canvas) + overlays */}
-      <div style={{ position: 'relative', width: '100%', maxWidth: 480, flex: '0 1 auto', padding: `0 ${SPACE.md}px`, boxSizing: 'border-box' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 480, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: `0 ${SPACE.md}px`, boxSizing: 'border-box' }}>
         <canvas ref={canvasRef} data-testid="reads-invaders-canvas"
           onPointerDown={onCvDown} onPointerMove={onCvMove} onPointerUp={onCvUp} onPointerCancel={onCvUp}
-          style={{ display: 'block', width: '100%', maxHeight: '56vh', background: LCD_GLASS, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'none' }} />
+          style={{ display: 'block', width: '100%', maxHeight: '100%', background: LCD_GLASS, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'none' }} />
         {phase === 'attract' && (
           <AttractOverlay tab={attractTab} setTab={setAttractTab} board={board} hi={hiVal} onStart={startGame} t={t} />
         )}

@@ -168,7 +168,7 @@ function Field({ G, phase }) {
   const A = COLORS.accent;
   return (
     <svg viewBox={`0 0 ${VB_W} ${VB_H}`} width="100%"
-      style={{ display: 'block', maxHeight: '52vh', background: COLORS.surfaceBar, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'none' }}
+      style={{ display: 'block', width: '100%', maxHeight: '100%', background: COLORS.surfaceBar, borderRadius: RADIUS.lg, border: `1px solid ${COLORS.border}`, touchAction: 'none' }}
       data-testid="reads-snake-field">
       <defs>
         {/* graded halftone tiles — dark dot punched out of amber (head→tail density) */}
@@ -411,7 +411,7 @@ export default function ReadsSnakePage() {
       </div>
 
       {/* Play field */}
-      <div style={{ position: 'relative', width: '100%', maxWidth: 480, flex: '0 1 auto', padding: `0 ${SPACE.md}px`, boxSizing: 'border-box' }}>
+      <div style={{ position: 'relative', width: '100%', maxWidth: 480, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: `0 ${SPACE.md}px`, boxSizing: 'border-box' }}>
         <div onPointerDown={onFieldDown} onPointerUp={onFieldUp}>
           <Field G={G} phase={phase} />
         </div>
