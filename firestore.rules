@@ -585,6 +585,22 @@ service cloud.firestore {
       allow write: if isSuperAdmin();
     }
 
+    // ─── /catalog/ (packed players/teams catalog — CC_BRIEF_CATALOG_PACKED_LOAD) ──
+    // Global, version-gated mirror of /players + /teams collapsed into a few large
+    // docs to cut the cold-load (~2,579 reads → ~3). Same trust model as /meta:
+    // any authed user reads it; only super_admin writes (the actor that bumps
+    // /meta/catalogVersion self-heals the pack on reload). NOT tenant-scoped, NOT a
+    // tenant-isolation predicate. Clients treat packed content as untrusted
+    // (shape + version validated, else fall back to the live /players read).
+    match /catalog/{kind} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
+      match /chunks/{chunkId} {
+        allow read: if request.auth != null;
+        allow write: if isSuperAdmin();
+      }
+    }
+
     // ─── /players/ (global resource per § 63.15.3) ──
     // Phase 2.2.b consumption (usePlayers hook reads here, dual-write from
     // dataService writes here in parallel with the legacy workspace path).

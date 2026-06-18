@@ -73,7 +73,9 @@ function fetchCatalogSingleFlight(kind, version, fetchDocs) {
   const existing = _catalogInflight.get(key);
   if (existing) return existing;
   const p = (async () => {
-    const fetched = await fetchDocs();
+    // Pass the resolved version so the packed-catalog read inside fetchDocs
+    // reuses it instead of re-reading /meta/catalogVersion (CC_BRIEF_CATALOG_PACKED_LOAD).
+    const fetched = await fetchDocs(version);
     // Only cache a non-empty fetch — a transient empty result must not poison
     // the version-gated cache (would strand teams/players empty).
     if (fetched.length) saveCatalogCache(kind, version, fetched); // fire-and-forget
