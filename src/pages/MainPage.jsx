@@ -12,6 +12,7 @@ import TrainingScoutTab from '../components/tabs/TrainingScoutTab';
 import TrainingCoachTab from '../components/tabs/TrainingCoachTab';
 import TrainingMoreTab from '../components/tabs/TrainingMoreTab';
 import WorkspaceLogo from '../components/settings/WorkspaceLogo';
+import DevSnapshotButton from '../components/dev/DevSnapshotButton';
 import { Btn, Modal, ConfirmModal, Input, Select, Icons } from '../components/ui';
 import { useTournaments, useTrainings, useMatches, useScoutedTeams, useLayouts, useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -198,6 +199,29 @@ export default function MainPage({ onSignOut, workspaceName }) {
   const configDone = layouts.some(l => (l.zones || []).length > 0 || (l.lines || []).length > 0);
   const isCoachish = isAdmin || hasAnyRole(roles, 'coach');
   const isScoutOnly = !isCoachish && hasAnyRole(roles, 'scout');
+
+  // A scout-only user has no tournament picker (single-path B4 design) and there
+  // is no coach-side "assign scout to event" flow — so a scout never selected a
+  // tournamentId and `tournament` stayed null, stranding them on
+  // ScoutWaitingEmptyState ("Nie masz jeszcze przydziału") even when the
+  // workspace has open events (Majma, ranger1996, 2026-06-17). Auto-enter the
+  // most-recently-created OPEN tournament so the waiting state only shows when
+  // there is genuinely no active event. Scoped to scouts: coaches/admins keep
+  // their picker-driven empty state.
+  useEffect(() => {
+    if (isTrainingMode || tournamentId || !isScoutOnly) return;
+    const open = tournaments
+      .filter(tn => tn.status === 'open')
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    if (open.length) {
+      setTournamentId(open[0].id);
+      try {
+        localStorage.setItem(TOURN_KEY, open[0].id);
+        localStorage.setItem(LAST_KIND_KEY, 'tournament');
+      } catch {}
+    }
+  }, [isScoutOnly, isTrainingMode, tournamentId, tournaments]);
+
   // "Zrobię to później" — session-scoped dismissal, no stored state beyond it.
   const [checklistLater, setChecklistLater] = useState(() => {
     try { return sessionStorage.getItem('pbscoutpro_b4_later') === '1'; } catch { return false; }
@@ -368,6 +392,9 @@ export default function MainPage({ onSignOut, workspaceName }) {
           setDeleteTournamentConfirm(false);
         }}
       />
+
+      {/* Super-admin dev tool — self-gates via useIsSuperAdmin, inert for everyone else. */}
+      <DevSnapshotButton />
     </AppShell>
   );
 }
