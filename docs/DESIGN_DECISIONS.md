@@ -9906,3 +9906,28 @@ Shared fixes across all 5 games after the first prod smoke:
   selector(5 games) → Warrior → force-PB via `__pbWarriorTest` → GAME OVER → initials → SAVE persists under
   `readWarrior` + rules path. Gate 96/96. §27 PASS (canvas + nav chevron = flagged art exceptions per §117).
 - **Orientation:** canvas letterboxed (9:16), never portrait-locked. App Check = shared STAGE 3.
+
+## § 123 — Role grant implies access: role-write co-writes `members[]` (shipped 2026-06-19)
+
+**Decision (resolves DECISION QUEUE G1, reconciles § 63.3).** Assigning a workspace role
+**always co-writes `members[]`**. A role can never lock a user out of their events.
+
+- **Model:** `members[]` is the access gate (the `/workspaces` read rule is
+  `uid in resource.data.members`); `userRoles[uid]` is the capability layer on top. The two
+  must not drift — a user with a role but no membership is a bug, not a state. So the canonical
+  role-write functions (`approveUserRoles`, `updateUserRoles` in `dataService.js`) now
+  `members: arrayUnion(targetUid)` alongside the `userRoles` write. `arrayUnion` is idempotent
+  (re-assigning an existing member is a no-op on members). The admin-branch rule already permits
+  the combined write (`isAdmin` bypasses the non-admin `hasOnly` envelope) — no rules change.
+- **Why:** the symptom was Majma (2026-06-18) — a scout granted `["player","scout"]` saw the
+  role tab but an empty "no assignment" screen because the grant never added him to `members[]`,
+  so he failed the workspace read. The 2026-06-18 scout auto-enter fix treated the *read* symptom
+  for scouts; this fixes the *write* path for every role and every user.
+- **Reverse direction NOT enforced in rules:** a `members[]` entry may legitimately carry empty
+  roles (pending assignment). We do NOT require every member to hold ≥1 role — that's a UI/product
+  concern, not an invariant. (One such member exists in ranger1996; left for Jacek to triage.)
+- **Cleanup (one-time, ranger1996):** pruned 6 ORPHAN empty-role `userRoles` keys (empty roles AND
+  not in members/pending — stale map cruft from the pre-B15 ~569-key era). The 1 empty-role *member*
+  was preserved (deleting it would either evict a real person or strand them role-less — the very
+  state this § prevents going forward). Script: `scripts/migrate-prune-empty-roles.mjs` (orphan-only,
+  dry-default). Gate: FULL emulator e2e 98/98 (incl. `role-source-of-truth`). § 27 PASS (no UI).
