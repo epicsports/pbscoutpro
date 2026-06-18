@@ -68,7 +68,7 @@ export default function DrawToolbar({
         }}
       >
         {/* Color swatches */}
-        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', justifyContent: 'center' }}>
           {STROKE_COLORS.map(c => {
             const active = c.value === color && !eraserActive;
             return (

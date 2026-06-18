@@ -20,15 +20,20 @@ import { getStroke } from 'perfect-freehand';
 // Match the values consumed by the toolbar's width pills + eraser radius.
 export const STROKE_SIZES = { thin: 3, medium: 6, thick: 10 };
 
-// § 77 — 5-color palette (amber default + white / red / cyan / green).
-// Amber is the same `COLORS.accent` used elsewhere; keeping literal here so
+// § 77 — drawing palette (amber default + white / red / cyan / green; extended
+// 2026-06-18 with blue / orange / purple / pink for richer coach annotations).
+// Amber is the same `COLORS.accent` used elsewhere; keeping literals here so
 // the palette is one source-of-truth for both DrawingOverlay + toolbar.
 export const STROKE_COLORS = [
-  { key: 'amber', label: 'Amber', value: '#f59e0b' },
-  { key: 'white', label: 'White', value: '#ffffff' },
-  { key: 'red',   label: 'Red',   value: '#ef4444' },
-  { key: 'cyan',  label: 'Cyan',  value: '#06b6d4' },
-  { key: 'green', label: 'Green', value: '#22c55e' },
+  { key: 'amber',  label: 'Amber',  value: '#f59e0b' },
+  { key: 'white',  label: 'White',  value: '#ffffff' },
+  { key: 'red',    label: 'Red',    value: '#ef4444' },
+  { key: 'orange', label: 'Orange', value: '#f97316' },
+  { key: 'cyan',   label: 'Cyan',   value: '#06b6d4' },
+  { key: 'blue',   label: 'Blue',   value: '#3b82f6' },
+  { key: 'green',  label: 'Green',  value: '#22c55e' },
+  { key: 'purple', label: 'Purple', value: '#a855f7' },
+  { key: 'pink',   label: 'Pink',   value: '#ec4899' },
 ];
 
 // perfect-freehand options tuned for finger input on a paintball field canvas.
