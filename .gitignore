@@ -31,3 +31,13 @@ scripts/migration/player_dedup_backup.*.json
 
 # Night-run intake (local coordination scratch; shipped work logged in DEPLOY_LOG)
 NIGHT_QUEUE.md
+
+# Night-mode scratch (game references; not shipped)
+.night/
+
+# design-sync (claude.ai/design) — staged scripts, build output, machine state
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
