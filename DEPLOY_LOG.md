@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-18 — [PERF] Packed catalog cold-load — kill the players spinner (Jacek GO)
+**App (auto-deploy) + RULES + DATA (additive). Merge `eb59bf5f` (branch `feat/catalog-packed-load`).**
+- **Root:** the per-page loading spinner is the global `/players` cold-load — measured **2,579 docs / ~1.47 MB / ~2,579 reads** (`/teams` 307/100 KB is fine; cache works, this is the cold path / iOS IDB-eviction path). Firestore pagination rejected — it breaks complete `playersById` lookups (assignments/roster/opponent). Field-slimming rejected — audit showed most fields are used.
+- **Fix:** packed catalog. `/players`+`/teams` collapsed into `/catalog/{kind}` manifest + `/catalog/{kind}/chunks/{i}` (full docs, ~526 KB/chunk). Cold load reads **~6 docs instead of ~2,886** — win is per-doc SDK/parse/IndexedDB overhead. **All fields kept → zero consumer changes.** Version-gated by the SAME `/meta/catalogVersion` marker → exactly as fresh/stale as today. **Fallback-safe:** absent/stale/invalid packed → live `getDocs` (today's behaviour) → no regression. Self-heal: a super_admin reload after a version bump rewrites the pack.
+- **RULES (deployed):** `match /catalog` read=authed, write=super_admin (mirrors `/meta`; global, **NOT** a tenant-isolation predicate). `firestore.rules` compiled + released.
+- **DATA (additive):** `pack-catalog.cjs --live` wrote `/catalog/players` (3 chunks/2,579) + `/catalog/teams` (1 chunk/307) @ version 1781645783776; read-back verified complete + version-matched. `/players`/`/teams` untouched.
+- Gate: precommit + build; packer dry+live verified. Brief: `docs/CC_BRIEF_CATALOG_PACKED_LOAD.md`. Diag: `scripts/diag/{catalog-coldload,scouted-subset}-read.cjs`.
+- **Smoke owed (Jacek, prod after the app deploy lands):** roster page (Players / a scouted team) loads noticeably faster; squads/rosters still resolve (no blank). Deferred follow-ups: scouted-subset+lazy picker, iOS IDB resilience.
+
 ## 2026-06-18 — [FIX+FEATURE] Scout auto-enter active event (Majma) + super-admin Dev Snapshot button (Jacek GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `f3d24baa` (branch `feat/dev-snapshot-button`).
 - **Scout stranded on "Nie masz jeszcze przydziału" (Majma, ranger1996):** root cause was NOT his settings — his `userRoles=["player","scout"]` were correct and the workspace had 2 open tournaments. A scout-only user has no tournament picker (single-path B4 design) and there is no coach-side scout→event assignment, so `tournamentId` stayed null → `tournament` null → `ScoutWaitingEmptyState` even with open events. **Fix:** when `isScoutOnly` and no tournament selected, auto-select the most-recently-created `status==='open'` tournament (persisted). Waiting state now shows only when there is genuinely no active event; coaches/admins keep their picker flow. Added `scripts/diag/majma-scout-read.cjs` (read-only diagnostic).
