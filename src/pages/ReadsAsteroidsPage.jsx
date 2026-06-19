@@ -274,17 +274,39 @@ export default function ReadsAsteroidsPage() {
         </div>
       </div>
 
-      {/* Controls: rotate ◀ ▶ · THRUST · FIRE · JUMP */}
-      <div style={{ width: '100%', maxWidth: 380, display: 'flex', gap: SPACE.sm, padding: SPACE.md, boxSizing: 'border-box' }}>
-        <button type="button" data-testid="reads-asteroids-left" aria-label={t('reads_asteroids_left') || 'Rotate left'} {...holdBtn('left')} style={ctrlBtn(1)}>◀</button>
-        <button type="button" data-testid="reads-asteroids-right" aria-label={t('reads_asteroids_right') || 'Rotate right'} {...holdBtn('right')} style={ctrlBtn(1)}>▶</button>
-        <button type="button" data-testid="reads-asteroids-thrust" aria-label={t('reads_asteroids_thrust') || 'Thrust'} {...holdBtn('thrust')} style={ctrlBtn(1.1)}>▲</button>
-        <button type="button" data-testid="reads-asteroids-fire" aria-label={t('reads_asteroids_fire') || 'Fire'} {...holdBtn('fire')} style={{ ...ctrlBtn(1.3), color: AMBER4, fontSize: FONT_SIZE.sm, letterSpacing: 1 }}>{t('reads_asteroids_fire') || 'FIRE'}</button>
-        <button type="button" data-testid="reads-asteroids-jump" aria-label={t('reads_asteroids_jump') || 'Jump'} {...tapBtn('tapJump')} style={{ ...ctrlBtn(0.9), fontSize: FONT_SIZE.xs, letterSpacing: 1 }}>{t('reads_asteroids_jump') || 'JUMP'}</button>
+      {/* Controls — icon buttons in a left cluster (rotate + jump) and a right
+          cluster (thrust + fire), matching the Lander deck (§121): no bare text
+          labels, 60–82px targets, space-between layout. */}
+      <div style={{ width: '100%', maxWidth: 440, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: SPACE.sm, padding: SPACE.lg, boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', gap: SPACE.sm }}>
+          <button type="button" data-testid="reads-asteroids-left" aria-label={t('reads_asteroids_left') || 'Rotate left'} {...holdBtn('left')} style={rotBtn}>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 6 3 12l6 6" /><path d="M3 12h13a4 4 0 0 1 0 8h-3" /></svg>
+          </button>
+          <button type="button" data-testid="reads-asteroids-right" aria-label={t('reads_asteroids_right') || 'Rotate right'} {...holdBtn('right')} style={rotBtn}>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 6 21 12l-6 6" /><path d="M21 12H8a4 4 0 0 0 0 8h3" /></svg>
+          </button>
+          <button type="button" data-testid="reads-asteroids-jump" aria-label={t('reads_asteroids_jump') || 'Jump'} {...tapBtn('tapJump')} style={jumpBtn}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden><path d="M12 2.5l1.9 6.6 6.6 1.9-6.6 1.9L12 19.5l-1.9-6.6L3.5 11l6.6-1.9z" /></svg>
+            <span style={lblStyle}>{t('reads_asteroids_jump') || 'JUMP'}</span>
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: SPACE.sm }}>
+          <button type="button" data-testid="reads-asteroids-thrust" aria-label={t('reads_asteroids_thrust') || 'Thrust'} {...holdBtn('thrust')} style={actBtn}>
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden><path d="M12 3l7 9h-4v9H9v-9H5z" /></svg>
+            <span style={lblStyle}>{t('reads_asteroids_thrust') || 'THRUST'}</span>
+          </button>
+          <button type="button" data-testid="reads-asteroids-fire" aria-label={t('reads_asteroids_fire') || 'Fire'} {...holdBtn('fire')} style={{ ...actBtn, color: AMBER4 }}>
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden><circle cx="12" cy="12" r="7" /></svg>
+            <span style={lblStyle}>{t('reads_asteroids_fire') || 'FIRE'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-const ctrlBtn = (flex) => ({ ...ARCADE_BTN, flex, height: 64, fontSize: 22, fontWeight: 700 });
+const rotBtn = { ...ARCADE_BTN, width: 60, height: 60 };
+const jumpBtn = { ...ARCADE_BTN, width: 58, height: 60, flexDirection: 'column', gap: 2 };
+const actBtn = { ...ARCADE_BTN, width: 82, height: 72, flexDirection: 'column', gap: 3 };
+const lblStyle = { fontSize: 9, letterSpacing: 1.5, fontWeight: 700 };
 const iniBtn = { ...ARCADE_BTN, minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, borderRadius: RADIUS.md };
