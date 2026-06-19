@@ -69,7 +69,7 @@ export default function TrainingMoreTab({
       setEditOpen(false);
     } catch (e) {
       console.error(e);
-      alert('Błąd zapisu: ' + (e.message || e));
+      alert(t('save_failed') + ': ' + (e.message || e));
     }
     setEditSaving(false);
   };

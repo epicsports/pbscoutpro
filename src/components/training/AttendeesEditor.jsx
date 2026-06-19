@@ -273,6 +273,7 @@ function SubHeader({ label, count, color, inline }) {
 }
 
 function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
+  const { t } = useLanguage();
   // Back-compat: legacy `active` prop maps to variant
   const v = variant !== 'inactive' ? variant : (active ? 'active' : 'inactive');
   return (
@@ -307,7 +308,7 @@ function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
               </span>
               {showSub && (
                 <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>
-                  {p._missing ? '(usunięty z workspace)' : `z ${p._homeTeamName}`}
+                  {p._missing ? t('removed_from_workspace') : `z ${p._homeTeamName}`}
                 </span>
               )}
             </div>

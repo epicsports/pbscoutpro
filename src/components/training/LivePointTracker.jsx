@@ -205,7 +205,7 @@ export default function LivePointTracker({
       });
     } catch (e) {
       console.error(e);
-      alert('Błąd zapisu: ' + (e?.message || 'nieznany'));
+      alert(t('save_failed') + ': ' + (e?.message || '?'));
       setSaving(false);
     }
   };
