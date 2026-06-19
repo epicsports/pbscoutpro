@@ -3,103 +3,91 @@
 > **Canonical-board rule.** If something is *actionable and open*, it lives **here**. `DEPLOY_LOG.md` is the ship ledger (newest-first, full detail); `HANDOVER.md` is narrative state. Zero actionable items living ONLY in DEPLOY_LOG/HANDOVER. Kept current on every doc-closeout.
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active brief. See `CLAUDE.md`.
 
-**Last synced:** 2026-06-18 · main HEAD `b61c3246` · reconciled against git log. Full ship detail in `DEPLOY_LOG.md` (newest-first) + git. This board lists only **verified-open** work.
+**Last synced:** 2026-06-19 · main HEAD `327fcd3b` · **reconciled via a full 6-agent backlog audit** (every historical candidate from DEPLOY_LOG / DESIGN_DECISIONS / HANDOVER / code TODOs re-checked against live code + git + prod; STALE/DONE entries pruned). This board now lists only **verified-open** work.
 
 ---
 
-## ✅ DONE 2026-06-18 — verified against main, detail in DEPLOY_LOG
-- **Tactic save "too many index entries" — FIXED** (`b61c3246`, Jacek prod report) — a dense perfect-freehand drawing blew past Firestore's 40k index-entries-per-document write limit (`freehandStrokes` auto-indexed element-wise). `fieldOverrides` exempt `tactics.{freehandStrokes,strokes,drawings}` from indexing; `firestore:indexes` deployed (additive). Optional follow-up: store `freehandStrokes` as one packed string (no array indexing at all).
-- **Packed catalog cold-load — SHIPPED + rules/indexes/data** (`eb59bf5f`, Jacek GO) — the per-page players spinner (2,579 docs/~1.47 MB) collapsed into `/catalog/{kind}` manifest + chunks → cold load ~6 reads vs ~2,886. All fields kept (zero consumer changes), version-gated, **fallback-safe** (absent/stale → live getDocs). Rules `/catalog` (read=authed, write=super_admin) deployed; `pack-catalog.cjs --live` wrote players(3 chunks)/teams(1) @ current version (read-back verified). Brief `docs/CC_BRIEF_CATALOG_PACKED_LOAD.md`. Smoke owed: roster page faster.
-- **Dev Snapshot button (super-admin) — SHIPPED** (`f3d24baa` + global-mount `b6ce1ae1`, Jacek GO) — floating ⌖ (self-gated `useIsSuperAdmin`) captures `document.body` (html2canvas) + JSON context → one `.json` via iOS Share Sheet / desktop download, on EVERY screen (mounted in `App`). No Firestore/rules. Optional v1+: `__pbSnapshotContext` page-data publishing (needs PII anonymisation).
-- **Scout stranded on "Nie masz jeszcze przydziału" (Majma) — FIXED** (`f3d24baa`, Jacek GO) — NOT his settings (roles `["player","scout"]` correct, 2 open tournaments). A scout-only user had no tournament auto-selected (single-path B4, no coach→scout event assignment) → `tournament` null → waiting screen. Fix: auto-enter the most-recent OPEN tournament for `isScoutOnly`; waiting state only when no open event. Smoke owed: Majma lands in event.
+## ✅ DONE 2026-06-19 (night) — verified against main
+- **G1 — role grant co-writes `members[]` + orphan-roles prune** (`072abe73`, Tier-1) — `approveUserRoles`/`updateUserRoles` now `arrayUnion(uid)` into `members[]` so a role grant always grants workspace access (Majma class fixed at the write path). Migration pruned 6 orphan empty-role `userRoles` keys in ranger1996; 1 role-less *member* preserved → **Jacek triage (open, below)**. FULL e2e 98/98. DESIGN_DECISIONS §123. Smoke owed: grant a role → user sees events.
+- **Arcade games fill the screen + Read Warrior cut-off fix** (`e46cefab`, Tier-1, night) — field wrapper `flex:1/minHeight:0/centered`; tall-aspect canvases grow to aspect-correct fit. Smoke owed (device).
+- **Draw palette 5→9 colors** (`0e4a0d62`+merge, Tier-1, night) — added orange/blue/purple/pink + swatch wrap. §77 palette one-source.
+- **ScoutedTeam/PlayerStats field-is-king** (`707c227c`, Tier-2 Jacek GO) — field-hero restored; collapsible report sections; dismissible confidence banner. Smoke owed (tablet-landscape, device).
+- **Arcade 1-bit beautify ×4** (`da69d59b`·`e8e7d4bc`·`d8e606d4`·`8a7d06e3`, Tier-1) — render+music only, model verbatim. **Reads Mini `.m4a` retired → procedural chiptune** (the old "audio asset owed" residual is CLOSED).
 
-## ✅ DONE since the last sync (2026-06-13) — verified against main, detail in DEPLOY_LOG
-- **🏎️ Read Warrior — 5th Arcade game + `RoadEvents.js` reusable module** SHIPPED (`813d28c3`, 2026-06-17) — canvas road racer, `/break/warrior`, `leaderboards/readWarrior`, brand mark kept in-game, no rules change. §122 canon (arcade registry + per-gameId score scoping; consolidated account-doc = available follow-up, not built). Gate 96/96. Smoke owed: Take a Break → Read Warrior → drive.
-- **👾 Reads Invaders — 3rd Arcade game** SHIPPED (`40b30690`, 2026-06-17) — canvas space-invaders + Mini chrome, selector row + `/break/invaders`, `leaderboards/readsInvaders` (Game A/B), no rules change, no mark in-game. §120 / §27 PASS. Smoke owed: Take a Break → Invaders → play.
-- **🌙 Reads Lunar Lander — 4th Arcade game** SHIPPED (merged same session, 2026-06-17) — canvas lander + LCD chrome, selector row + `/break/lander`, `leaderboards/readsLander` (const mode:'A'), new-best initials overlay, no rules change, no mark in-game. §121 / §27 PASS. Smoke owed: Take a Break → Lunar Lander → land.
-- **🐍 Reads Snake — 2nd mini-game + game selector** SHIPPED (`59441c23`, 2026-06-17) — classic Snake at `/break/snake` + data-driven game selector at `/break` (Reads Mini → `/break/reads`); `leaderboards/readsSnake`, no rules change (shared `{board}` wildcard; Snake writes constant `mode:'A'`). SFX only. §119 / §27 PASS. Gate 90/90 (Snake T1-T5 fail-first). Shares Reads Mini's STAGE 3 App Check. Smoke owed: tap Take a Break → Snake row → play.
-- **Role Visibility Audit — discovery** LANDED (2026-06-17, read-only) — `docs/architecture/ROLE_VISIBILITY_AUDIT.md` (verbatim) + live admin-SDK drift scan (`scripts/migration/role_membership_drift_audit.cjs`). **0 live role-only-without-member accounts** → reported scout lockout not reproducible now (userRoles ~569→22 since B15 cleanup). G1 = preventive policy decision (role-assign co-write members[]? + 7 empty-role keys + 1 member-no-role); G2 = cross-tenant catalog → sequence isolation cutover before FIT; G3 = per-role surface set. **Decisions owed (Jacek/Opus), no app/rules change shipped.**
-- **PaT — canonical `pointPhases.js` module + consumer migration** SHIPPED (`7baaf9e3`, 2026-06-17) — single-source phase axis + selectors; migrated MatchPage/StageSwitcher/dataService/generateInsights/HeatmapCanvas/ScoutedTeam off scattered literals. Fixed the object-vs-key `.map(toPersistedLiteral)` bug that crashed the phase row ("Element type is invalid … MatchPage") + emptied the concurrent-merge timeline. `endgame` reserved (`captureEnabled:false`) per ratified D4 — model phase only, no capture/report UI. Tier-1, no rules/data. Gate 88/88. Smoke owed (see DEPLOY_LOG).
-- **PaT Stage 2.5 — coach-report per-stage tables** SHIPPED (`da06f0e9`, 2026-06-17) — global `hmPhase` control now drives Breakouts + Shooting + a new elim-reason breakdown (heatmap-per-phase was already done). Stage-aware `computeBreakSurvival`/`computeShotTargets` + `computeEliminationReasons`; carried the previously-dropped keyframe `eliminationReasons` through normalization (read-side). Tier-1, no rules/capture/migration. Gate 86/86. **Charter Stage 2.5 closed.** Smoke owed: switch Break/Settle/Mid on a scouted team with Settle/Mid points.
-- **Tactics — all data purged** (`326e4343`, 2026-06-17) — Jacek "nie potrzebujemy tych danych"; OP2 orphan-cleanup then full purge of all 35 (ranger1996 only). Feature code intact (empty stores). Optional future Tier-1: unify the dual-store code.
-- **Packing Checklist "Checklista wyjazdowa" (player)** SHIPPED + rules deployed (`a73a7744`, 2026-06-17) — in-app travel checklist (static catalog v1, 3 templates, binary/counted, critical sheet, custom items, progress ring), per-user `users/{uid}/appState/packing` (degrade-to-memory), owner-only rule live. e2e fail-first caught 3 real bugs (t() call-shape crash · `Btn` testid-drop → added `testId`/`ariaLabel` to shared Btn · undefined `FONT_SIZE.md`). Phase 2 parked in `docs/PACKING_CHECKLIST.md`.
-- **view-as (role impersonation) RE-ENABLED** (`f45086ea`) — real impersonation + persistent visible exit; admin-guarded; e2e green. (Closes the "Podgląd jako broken" bug.)
-- **Playbooks coach-framed door** (`de9f16bb`) — coach drawer entry + role-branded LayoutsPage; e2e green. (Discharges "role-scoped layout-library visibility".)
-- **Reads Mini "Take a Break" STAGE 2 build SHIPPED + rules deployed** (`186071e6`, 2026-06-17) — Game&Watch catch game (pure DOM/SVG, lazy chunk) + global leaderboard `leaderboards/readsMini/scores/{uid}` (anti-cheat rules live), entry at the very bottom of both More drawers, e2e (UI flow + leaderboard write vs real rules) green, gate 84/84. **Residual:** (a) audio asset `public/sounds/sky-catcher-loop60.m4a` owed (music degrades silently until dropped); (b) STAGE 3 App Check = separate GO. `lint-ui` skips `src/data/` catalogs now (`30fa3996`).
-- **i18n draw aria-labels wrapped** (`fcc62b3d`). **Reads Mini STAGE 1 docs** (`b0022305`, §117) — spec only.
-- **Onboarding arc CLOSED** — durable email-link invite (express-reg + email-keyed self-claim; verified-email tenant-isolation rules deployed) `a8ed9cad`; source-of-truth ENTRY fix (userRoles authoritative) `4ddbf0b2`; already-member self-claim `b81fc558`; idempotent re-send `7f4a0f40`; 4 account-stranding fixes + recovery (Maks +3 stamped). **biuro verified `claimed`+coach in prod 2026-06-16.**
-- **arc-B `<Screen>` model-C migration TRACK CLOSED** — `Screen.jsx` model C (`8b4ab8e8`, "Jacek decision") + 15 pages live (Teams/Players/Layouts/Members/Profile/TeamDetail/TrainingResults/UserDetail/ScoutDetail/Ranking/Issues + 4 admin). Migration-diff 24/24 (re-baselined `9bdba6cc` for the p-selfedit fixture row).
-- **phase-view + nav-drawer** SHIPPED + merged (`154934a4` §B; NavDrawer live). i18n crash classes (t-scope + call-shape) fixed + lints shipped. ITEM-1 drawing unify (`4ae31cfc`); tactics `freehandStrokes` drift fix (`96809879`); Polish-lint refine (`fefcbc7c`); player self-edit catalog-bump best-effort (`db8d4fc2`).
+## ✅ DONE 2026-06-18 — verified, detail in DEPLOY_LOG
+- **Tactic save "too many index entries" — FIXED** (`b61c3246`) — `fieldOverrides` exempt `tactics.{freehandStrokes,strokes,drawings}` from indexing; `firestore:indexes` deployed.
+- **Packed catalog cold-load — SHIPPED + rules/indexes/data** (`eb59bf5f`, Jacek GO) — `/catalog/{kind}` manifest+chunks → cold load ~6 reads vs ~2,886, all fields kept, version-gated, fallback-safe.
+- **Dev Snapshot button (super-admin) — SHIPPED** (`f3d24baa` + global-mount `b6ce1ae1`) — floating ⌖, html2canvas + JSON context export, on every screen.
+- **Scout stranded "Nie masz przydziału" (Majma) — FIXED** (`f3d24baa`) — auto-enter most-recent OPEN tournament for `isScoutOnly`.
+
+## ✅ DONE since 2026-06-13 — verified, detail in DEPLOY_LOG
+- 5 Arcade games (Read Warrior `813d28c3` · Invaders `40b30690` · Lander · Snake `59441c23` + Reads Mini) at `/break`, 5 per-game boards, §119-§122 canon.
+- PaT `pointPhases.js` canonical module + consumer migration (`7baaf9e3`); **PaT Stage 2.5 coach-report per-stage tables** (`da06f0e9`); **Stage 6-lite replay** (HeatmapCanvas `buildReplayModel` + ▶ pill).
+- Tactics data fully purged (`326e4343`); Packing Checklist (`a73a7744`); view-as re-enabled (`f45086ea`); Playbooks coach door (`de9f16bb`); Onboarding arc CLOSED (durable email-link invite); arc-B `<Screen>` model-C migration CLOSED (15 pages + 6 canvas-page exclusions registered `c5303ec9`); phase-view + nav-drawer (`154934a4`).
+
+## 🧹 Audit 2026-06-19 — items found ALREADY DONE (pruned from open backlog)
+_Historical docs still mentioned these as "deferred/owed"; the audit confirmed each shipped. Listed once so they don't resurface._
+- Workspace-logo iPhone fallback (code) — PWA image-cache fix `93f8c872` (only a device *smoke* remains). §78 draw arbiter — present+functional in HeatmapCanvas. Child-team tournament picker — fixed (PROJECT_GUIDELINES §4.4 note is stale). `updatePlayer` catalog-version bump — bumps. MatchPage archetype — correctly stayed field-hero (no flip needed). arc-B canvas-page width + HeatmapCanvas landscape overflow (`sizingStrategy='fit'`). EN translation pass — real translations live. §70 Stage-2 `propagateMatchup`. CoachTabContent `--:--` score bug (`629edc8`). ViewAs (live infra, not dormant). `t()`-scope precommit lint. DPR `window.devicePixelRatio||2`. Team-ownership transfer UI (`transferAdmin`+`RoleTransferModal`). Phase 2.x twin-path cleanup + dead `subscribeTeams` (removed 2026-06-05). Manifest/title rebrand to "reads ⊖". Reads Mini `.m4a` (chiptune).
 
 ---
 
-## 🔴 OPEN — Bugs (prod / UX)
-- **✅ B26 — "Repair scouted rosters" box — CLOSED (2026-06-16).** Investigation ruled out all framed suspects (live tournament subscription; super passes `isScout` via `isSuperAdmin` so the stamp is permitted; super correctly saw box #2) and reframed it: the box MISFRAMED the real problem — scouted-roster "duplicates" are a **player-identity** issue (pbliId-as-primary-key), not roster narrowing. **Resolution: the permanent super-admin box was RETIRED** from `CoachTabContent` (couldn't cheaply self-collapse + misled). The narrowing fn (`repairScoutedRostersForTournament`) stays in dataService (non-destructive — orphan-preserving union — and e2e-covered). Real work → **player-dedup brief** below.
-- **✅ Player-identity dedup (pbliId primary key) — COMPLETE (2026-06-16).** `docs/briefs/CC_BRIEF_PLAYER_DEDUP.md`.
-  - ✅ **Item 1 prevention LIVE** — `resolvePbliImport` + `CSVImport`: a lone exact-name pbliId-less namesake is claimed (not duplicated); ambiguous → import-log flag. e2e all 4 decisions.
-  - ✅ **Item 3 migration DONE** — `--live` merged the **13 obvious** dups (2592→2579; aliasIds preserved; catalogVersion bumped; backup gitignored). 0 pbliId-collisions, 61 namesakes left (real people).
-  - ⏭ **Item 2 reconcile UI SKIPPED** (Jacek) — over-engineering for **4 ambiguous**; they go through the existing AdminPlayersPage `MergePlayersModal` if/when wanted (low priority, no ticket).
-- **Workspace logo phone fallback (med, §93).** House-icon fallback on iPhone — URL/CORS/cache-headers/PWA cache. Jacek smokes iPhone Safari/PWA.
-- **B4 Home role-aware dashboard remainder (med, awaiting Opus mockup).** Cold-open-on-Settings already fixed (`0c4852a2`); the role-aware "get started" home + `NoTournamentEmptyState` copy/CTA still needs a mockup.
-- **B8 Strzela% denominator (med, deferred).** Parked in the "data-trust/validation" workstream (Jacek doesn't trust scouted data yet).
+## 🔴 OPEN — Bugs (verified)
+- **Loupe pan-lag (low perf).** `BaseCanvas` `loupeSourceRef` is never populated → `drawLoupe` reads back the full main canvas every frame. Needs a pre-baked offscreen source / throttle.
+- **B8 Strzela% denominator (med, deferred).** Parked in the data-trust/validation workstream (Jacek doesn't trust scouted data yet).
 - **B20 cross-device same-UID presence (low).** No contention signal after Brief F retired match-claim; passive-presence design.
-- **Loupe pan-lag (low perf).** Canvas redraws everything per frame; needs an overlay layer / throttle.
-- ✅ **ci-flake `hitability-responsive.spec.js` — FIXED (2026-06-17).** Root cause: fixed `waitForTimeout(350)` before measuring the canvas rect → under full-suite load the ResizeObserver hadn't settled → tap missed the target → exact-count poll timed out. Fix: deterministic `waitForStableBox` (poll boundingBox until two reads match ±1px) + baseline-relative hit counts (spec no longer assumes a 0-hit slate) + 15s poll headroom. Coordinate-mapping assertion unchanged. Validated `--repeat-each=4` + full suite 84/84.
+
+## 🚦 OPEN — Decisions owed (Jacek) — these gate real work
+- **G1 leftover.** ranger1996 member `DJISyG7yo3NIBVrVvwl5IsJhTTt1` has empty roles: assign a role, or remove from `members`? (1 user; we don't enforce ≥1-role-per-member.)
+- **G2 cross-tenant catalog.** `players/teams/layouts/leagues` read = any authed user (Path-A interim, intentional). Sequence the Phase 2.2.d/2.3.d isolation cutover before FIT. *Architecture — needs an Opus brief.*
+- **G3 per-role nav surface.** What should scout/coach/player each see (e.g. full layouts library for a scout)? `AppShell` is "admin sees all" today. Product decision.
+- **freehand-as-string.** Annotations store as a map today (+ index exemption shipped). Want (a) keep map + exemption (done, safe) or (b) full string-pack rewrite? (b) touches the un-e2e-gated concurrent-merge path → escalated.
+- **iOS `storage.persist()`.** Add it to harden the catalog IndexedDB cache against Safari's 7-day eviction? (Not implemented; I recommend yes — cheap.)
+- **`chore/design-sync-inputs` push.** Branch `ae46d530` committed locally, NOT on main/remote. Awaiting GO to push the claude.ai/design sync inputs.
 
 ## 🔴 OPEN — Product / Tier-2 (need Opus brief and/or Jacek gate)
-- **MatchPage review — report-first archetype call (Jacek).** §118.1 made PlayerStats + ScoutedTeam report-first (`railPriority`); MatchPage review was deliberately NOT flipped (capture-adjacent, not a pure report). Decide: keep field-hero, or flip to report-first. (Its B1 stat grid already reflows via `auto-fit`.)
-- **Durable follow-up — shared `<ReportTable>` primitive.** The Breakouts/Shooting/big-moves tables (ScoutedTeam) + the PlayerStats grids are copy-pasted fixed-width-right-column patterns. Extract one component (col defs + nowrap + maxWidth) so header-width/clip fixes aren't per-table. Not urgent; do when a 3rd consumer appears.
-- **🎮 Reads Mini "Take a Break" — STAGE 2 build SHIPPED (`186071e6`).** Residual: (a) **audio asset** `public/sounds/sky-catcher-loop60.m4a` (60s AAC loop) — drop in; bg music degrades silently until then (SFX already work). (b) **STAGE 3 App Check** (reCAPTCHA v3 web, app-wide enforcement) — separate Jacek GO. Spec `DESIGN_DECISIONS §117`.
-- **Field View archetypes — CANON (ratified, not debt).** `docs/architecture/FIELD_VIEW_ARCHETYPES.md`: TWO archetypes — RAIL-NATIVE `CanvasRailLayout` (Match-review/ScoutedTeam wired `d5a67999`; PlayerStats/Hitability already-compliant; shell API + `FieldPhaseControl`/`RailZones`/`fieldViewConfig` `8e8a3885`) + §76 IMMERSIVE `useLandscapeMode` (editors LayoutDetail/Tactic stay immersive — NOT migrations). BunkerEditor/Ballistics = plain/query (no rail); TrainingResults = dashboard. Phase C closed.
-  - 🔮 **Future (separate brief, NOT now):** Scout-point capture structural rail-migration (highest-risk; bespoke flow; PaT "E" is §8-owned).
-- **Catalog cold-load follow-ups** (after 2026-06-18 packed-catalog ship) — (a) **scouted-subset + lazy picker** — load only the workspace's scouted teams/players for normal use, lazy-load the full (packed) catalog only when the add-to-roster/add-team picker opens; measured ~2× for the heavy ws (ranger1996: 1,177/2,579 players) + needs the picker → on-demand search. Own brief. (b) **iOS IndexedDB eviction resilience** — if Safari/iOS evicts the custom IDB catalog cache, the cold-load repeats every visit; investigate pinning/Firestore-persistence. (c) optional field-slimming on top of packing (small). Diag: `scripts/diag/{catalog-coldload,scouted-subset}-read.cjs`.
-- **Dev Snapshot v1+** — optional `__pbSnapshotContext` page-data publishing on the pages we iterate on (richer snapshots); needs PII anonymisation per page. Low priority.
-- **`chore/design-sync-inputs` branch — awaiting GO to push** — claude.ai/design sync inputs (config/previews/conventions for `ui.jsx` → "reads ⊖ Design System" project). Committed locally, not pushed.
-- **splash (READS_SPLASH)** — Tier-2/1.5, spec in repo (`docs/briefs/CC_BRIEF_READS_SPLASH.md`), **NOT built.** Jacek build GO/gate. (rebrand brick 1.)
-- **tactics consolidation — DATA SIDE CLOSED (`--live` 2026-06-17).** Jacek: "wyrzucić wszystkie taktyki / nie potrzebujemy tych danych." All 35 tactics (all `ranger1996`, zero customer docs) PURGED — OP2 (24 orphans) then full purge (26 overlay + 9 tournament). Final: 0 tactics. Supersedes OP1 (no migration). `scripts/migration/tactics_purge_all.cjs` (+ `tactics_orphan_cleanup.cjs`); backups outside-repo. **Residual (low, optional Tier-1):** the dual-store CODE (`subscribeTactics`+`subscribeLayoutTactics`/`addTactic`+`addLayoutTactic`/TacticPage two routes) is now feeding empty stores — a future writer-layer unify would remove the debt, but harmless as-is. Discovery: `docs/architecture/TACTICS_TWO_STORE_DISCOVERY.md`.
-- **canvas-unify phase-1 — ALREADY DONE by §64** (Interactive→BaseCanvas; 4/5 interactive views migrated). Residual = migrate **BallisticsPage** `FieldCanvas`→`InteractiveCanvas` + delete FieldCanvas. **Gated:** FieldCanvas is marked "Opus territory, off-limits" in-source (`InteractiveCanvas.jsx:29-34`) AND the migration trips a guaranteed DPR pixel-change on non-2-DPR devices (the ×2→`devicePixelRatio` correctness fix). Needs Opus brief + GO; not a pixel-diff=0 autonomous merge. **[→ folds into Field View shell]** Discovery: `docs/architecture/FIELD_VIEW_INVENTORY.md` + CANVAS_MERGE notes.
-- **ITEM-2 folded-rail opponent controls** — propagate the mockup-6 phase-view composite into the folded rail. Needs phase-view ratified on MatchPage review + an Opus mockup (56px strip + overlay). **[→ folds into Field View shell]**
-- **ScoutedTeam aggregate-phase vs MatchPage review-phase model** — unify into one visual language? Tier-2 redesign (Opus/Jacek), not a propagation. `docs/architecture/CONTROL_LANGUAGE_INVENTORY.md`. **[→ folds into Field View shell]**
-- **kiosk join-by-code** [arc E etap 2] — build the flow (code on kiosk lobby + scout join route), then flip `b4-scout-join-disabled` live. Opus brief.
-- **events-list redesign** [arc D] — Jacek "przebudować docelowo"; dual-badge OK for now. Opus design brief.
-- **arc-B phase-2 "untangle-then-wrap"** — WorkspacesAdmin · LayoutAnalytics · TrainingSetup · LayoutWizard: tangled shell/flex must be restructured before a clean `<Screen>` wrap. Each its own ticket.
-- **TrainingSquadsPage → arc-D tool-screen track** (drag-drop builder; `<Screen>` tiering is the wrong frame).
-- **AnalyticsCanvas extraction** from LayoutAnalyticsPage (§64.1/64.8.2 canvas-class roadmap).
-- **Fold reads-ball into PageHeader app-wide** [arc B] — PPT shows a double bar; fold the drawer trigger into PageHeader. Touches every header.
-- **F2 §116 manual-collapse ("focus mode")** + toggle e2e — still TODO.
-- **Custom zones** (`docs/product/CUSTOM_ZONES_SPEC.md`) — design pass owed before implementation.
-- **Hitability density UX** — at N>5, tap-a-connection-line to record + skip the pick (canvas-archetype interaction). Own brief.
+- **Catalog cold-load follow-ups.** (a) scouted-subset + lazy picker — **I recommend SKIP** (would regress to ~1,351 reads vs the ~6 the packed catalog already does); (b) iOS IDB resilience (see decision above); (c) optional field-slimming.
+- **READS_SPLASH (partial).** Login-screen `ReadsWelcomeSplash` is live; the full cold-start splash brief (`docs/briefs/CC_BRIEF_READS_SPLASH.md`) is NOT built. Jacek GO.
+- **kiosk join-by-code** [arc E etap 2] — code on lobby + scout join route; flow does not exist (FreshWorkspaceChecklist CTA disabled until it ships). Opus brief.
+- **events-list redesign** [arc D] — Jacek "przebudować docelowo"; dual-badge OK for now.
+- **Custom zones** — `docs/product/CUSTOM_ZONES_SPEC.md` spec exists; no builder code. Design pass owed.
+- **Hitability density UX** — at N>5, tap-a-connection-line to record + skip the pick. Own brief.
+- **B4 role-aware home (partial).** `NoTournamentEmptyState` + `ScoutWaitingEmptyState` are functional; the role-aware "get started" home + final copy/CTA needs a mockup.
+- **Shared `<ReportTable>` primitive** — breakouts/shooting + PlayerStats grids are copy-pasted; extract when a 3rd consumer appears. Not urgent.
+- **Dev Snapshot v1+** — `__pbSnapshotContext` page-data publishing (button reads it; nothing publishes). Needs PII anonymisation. Low.
+- **Reads Mini STAGE 3 App Check** — reCAPTCHA v3 app-wide (`initializeAppCheck` absent). Separate GO.
+- **arc-B phase-2 "untangle-then-wrap"** — WorkspacesAdmin · LayoutAnalytics · TrainingSetup · LayoutWizard tangled shells. Each its own ticket. + AnalyticsCanvas extraction · Fold reads-ball into PageHeader · F2 §116 manual-collapse ("focus mode") + toggle e2e.
 
-## 🔴 OPEN — i18n
-- **Residual ~63 hardcoded-PL** — attended batch (NOT unattended): mixed with domain-data traps (CSVImport `detect:` arrays — must NOT extract) + interpolated log messages. Lint output (post-`fefcbc7c` refine) is the clean candidate list to triage; flag the ~10 ambiguous for ruling. Plus 2 clean aria-labels (`"Rysuj"` MatchPage / `"Rysuj plan coacha"` ScoutedTeam).
-- **EN translation pass** — real EN review (EN values currently mirror extraction originals). Owner Opus translates, CC wires.
-- **5 differing duplicate keys** — Jacek value-ruling: `no_matches` · `display_name_ph` · `password_changed` · `avatar_coming` · `not_signed_in` (app shows the LAST/live value; confirm or pick the alt). Add a dup-key precommit guard once cleaned.
-- **DE/FR/ES + pseudoloc + i18next migration** — after the EN pass (far future).
+## 🧵 OPEN — Point-as-Timeline ladder (charter `docs/POINT_AS_TIMELINE.md`, D1-D3 LOCKED)
+**Shipped:** Stage 2 (phase-spine, scout-side), Stage 2.5 (per-stage coach tables), Stage 6-lite (replay marker animation). Stage 7 infra (`useEvents`, `events_index`) exists but **gated** (`selfLog.enabled:false`, zero consumers).
+- **Stage 4 — typed move-sequence** (hop/stretch/run vocabulary). Design locked (Model A); build PARKED on Jacek's vocabulary input + the §79-secondary-bump question.
+- **Stage 5 — time axis** (timer + timestamped delta-events; reuse `LivePointTracker`).
+- **Stage 7 — self-log + kiosk + cross-source unification** (flip flag; events A/B/C; reconciliation). Biggest; adoption-gated.
+- **Stage 8 — conditional-move analytics.** Future.
 
-## 🔴 OPEN — Decisions / verification owed (Jacek)
-- **arc-B canvas-page width** — confirm CanvasRailLayout-owns-sizing is the intended answer (no tier cap on the 7 canvas-primary pages). One-word confirm.
-- **2 isolation audits** (read-only, before any Phase 2.2.d cutover date) — (a) scouting-data isolation map; (b) layout-overlay shape. Then Jacek sets the date.
-- **Phase 2.2.d/2.3.d isolation cutover** — deferred to the production-version push (§90.12, Path A interim accepted); trigger = first tenant doing private scouting that must be invisible.
-- **GDPR build** — BLOCKED-ON-LEGAL (Q1-Q2 in `docs/architecture/GDPR_DATA_MAP.md`): (c) privacy/consent page first · (a) delete-user+cascade · (b) export. Plus account-deletion (B) + the guarded free-email script (C).
-- **Spark cost ladder #2-4** — trigger ~N=40-50 or peak days (league-scoped catalog · match-listener scoping · version-read caching). `docs/architecture/COST_PROJECTION_SPARK.md`.
-- **Per-team setup checklist + cloneable layout library** — trigger when the 2nd-3rd team makes manual onboarding expensive. Opus brief.
-- **`defaultWorkspace` in `/users/{uid}` self-update rule** — deferred (lets the auto-enter stamp persist; not load-bearing given membership fallback). Rules-change → CONFIRM.
+## 🖼️ OPEN — Field View shell (one Opus brief folds these in)
+- Ballistics→InteractiveCanvas migration + delete `FieldCanvas.jsx` (+ DPR pixel-change; FieldCanvas marked "Opus territory").
+- Folded-rail opponent controls (ITEM-2). · ScoutedTeam-aggregate vs MatchPage-review phase-language unification.
+
+## 🌍 OPEN — i18n (much smaller than the docs implied)
+- **~8 true hardcoded-PL violations** (not ~63): `PlayerStatsPage.jsx` CAUSE_META `'Przejście'`/`'za Karę'` + `'Trening'` template; `alert('Błąd zapisu: …')` in LivePointTracker + TrainingMoreTab; AttendeesEditor `'(usunięty z workspace)'`; ScheduleCSVImport two error strings. Attended batch.
+- **Optional:** add a dup-key precommit guard + de-dupe the one semantic near-dup (`no_matches` vs `picker_no_matches`). The "5 differing keys" are NOT conflicting — mostly a non-issue.
+- DE/FR/ES + pseudoloc + i18next migration — far future.
+
+## 🧹 OPEN — Code / arch residuals (low-priority, verified still-present)
+- vite dynamic-import code-split (chunk limit raised to 600kB) · `isFreePlay` matchup-list hide · invite resend-with-role-change + cleanup · `externalId` admin-dedup tooling · PPT failed-queue auto-retry · `divisionAliases` derive-year-from-tournament-date + expand division buckets · OlderPointsSection `onTapPoint` lobby-context wiring · §112 "akwizycja killi" tab · TeamDuplicateResolution tournament/player re-pointing (disabled) · `hmVisibility` localStorage persistence · `defaultWorkspace` in `/users/{uid}` self-update rule (CONFIRM-gated) · point-count composite indexes (low).
+
+## 🗄️ OPEN — Multi-tenant / security roadmap (architectural, held)
+- **Brief G — schema unification** (partial today): retire `members[]`/`adminUid`/`passwordHash`, lowercase-slug normalize, make `users.workspaces` the single membership source. Needs Admin SDK + multi-checkpoint review.
+- **Cross-workspace player identity bridge** — `pbliId` key exists + `/players` is global; the `pbliId`-keyed overlay doc + `/players/{pid}/workspaceNotes` annotations layer (Phase 3.1+) do NOT.
+- **Route-level guards expansion** — `/teams`, `/players`, `/my-issues` unguarded (12 routes guarded today); needs player-allowlist extension first.
+- **Per-workspace admin via custom claims** — still ADMIN_EMAILS allowlist only (`globalRole` is a Firestore field, not an Auth claim; no `setCustomUserClaims`).
+- **2 isolation audits** (read-only, before any cutover date): scouting-data isolation map + layout-overlay shape.
 
 ## 🟡 Smokes owed (Jacek, prod)
-- **2026-06-18 ships:** (a) **Majma / scout** → reload lands in an open tournament with events (not "Nie masz jeszcze przydziału"); (b) **Dev Snapshot ⌖** visible for super-admin on multiple screens → tap exports a `.json`; (c) **packed catalog** → Players / a scouted team loads noticeably faster, squads still resolve; (d) **tactic save** → re-save a tactic with a dense drawing succeeds (index-exemption fix).
-- **ITEM-1** — open a tactic with an existing drawing → renders OK under perfect-freehand; duplicate keeps the drawing; new draw+save+reload persists.
-- **player profile save** (player-self-edit) · **email-invite end-to-end** (fresh email, different browser) · **Maks/Tymek relogin** (biuro ✅ verified).
-- **defaultWorkspace multi-ws switcher** (#4) — other-account prod test → switcher shows >1 ws.
-- Carry-over: §98 layout-config (admin edit/coach view-only + flag G §61 iPhone deaths-heatmap coord) · B24 team-name mojibake scan · PWA airplane-mode cold-boot · older §76-§81 checklists (line in DEPLOY_LOG history).
+- **Tonight (2026-06-19):** grant a role to a fresh user → they immediately see events.
+- **2026-06-18 batch:** games fill screen / Read Warrior not cut off · 9-color pen · field-is-king tablet-landscape · 4 games look+sound · Majma auto-enter · Dev Snapshot ⌖ + export · packed-catalog faster roster · tactic dense-drawing saves · per-stage coach report (Break/Settle/Mid numbers track).
+- **Carry-over:** §98 layout-config full pass · multi-ws switcher for non-super-admins · player profile/email-invite/relogin · service-worker + offline banner · player color badge persist · admin teams parity detail · iPhone logo PWA-cache render · B24 team-name mojibake · PWA airplane-mode cold-boot.
 
 ## ⏸ Far-future / parked (out of current sprint)
-- **rebrand "reads"** (manifest · name · icons · strings · store listing) — formal track, Opus/Jacek.
-- **LP v1 landing page** — Jacek review → domain + waitlist.
-- **arc E narratives (w/ Sławek) + onboarding content** — Jacek gathers, then content per narrative.
-- **FIT-readiness checklist** — Opus to author ("co musi być prawdą, żeby pierwsza obca drużyna weszła").
-- **Switcher UI brief** (Slack-style workspace picker) · **Layout insights monetization** (Blaze) · **US PRO team onboarding** (post isolation-verify) · **B23 F5/F6/F7** (re-validate post-FIT).
-
----
-
-## 🧵 Active workstream — "Point as Timeline" (charter `docs/POINT_AS_TIMELINE.md`, D1-D3 LOCKED)
-Current = **Stage 2** (phase-spine + end-state, scout-side, additive). Opus writes the Stage 2 build brief. (Phase-view display layer already shipped; this is the capture/event-sourcing side.)
+- **GDPR build** — BLOCKED-ON-LEGAL (`docs/architecture/GDPR_DATA_MAP.md`, doc only): consent page · delete-user+cascade · export.
+- **Rebrand "reads" — store-listing only** (manifest/title/icons already "reads ⊖"). LP v1 landing page · FIT-readiness checklist · predictive-tactics engine (flagged off, no code) · video-CV system (no code) · concurrent-editing reliability flag (spec `concurrent-merge.spec.js` guards it; no circuit-breaker) · Spark→Blaze cost ladder (on Spark, `COST_PROJECTION_SPARK.md`) · Switcher UI brief · per-team setup checklist + cloneable layout library · arc E narratives (w/ Sławek).
