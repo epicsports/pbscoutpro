@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-20 — [FIX/Tier-1] Tournament Teams list vanishes (denormalize scouted name) + arcade i18n/labels + controls (Jacek prod reports)
+**App (auto-deploy, e2e-gated) + DATA (additive --live backfill). No rules.** Merges `18ab9297` (scouted names), `3268ea94` (arcade i18n+labels), `6c892e4e` (Asteroids icon controls).
+- **"Added teams to DPL #2 but don't see them" (+ DPL 1 Ballistics/Consilium gone) — FIXED** (`18ab9297`). Data was always intact (verified: 6 DPL#2 scouted teams present, resolve to real names, `DPL:Div.1` matches the filter). Root cause: `CoachTabContent` resolved each scouted team's NAME only via the global catalog (`useActiveTeams`) and **dropped any row whose teamId didn't resolve** (`if (!gt) return null`); scouted docs carried **no name** (0/180). So any client-side catalog miss (cold load / iOS IDB eviction / stale bundle) made the whole roster vanish (header "Teams (6)", zero rows). **Fix:** `addScoutedTeam` + `buildScoutedPayload` now denormalize `name`; the render falls back to it (only drops a row with no name at all). **Backfill (`scripts/migration/backfill-scouted-names.cjs --live`, ranger1996):** stamped `name` onto **176** scouted docs across all tournaments (4 orphans w/ deleted teams skipped). Diag: `scripts/diag/dpl-teams-read.cjs`.
+- **Arcade i18n key-name leak — FIXED** (`3268ea94`). The in-game keys (`reads_asteroids_*`, `readbert_*`) were never added; `t()` returns the KEY for a missing key (`?? key`), so `t('x') || 'FALLBACK'` rendered `'x'` — visible on the control labels, SAVE button, "ENTER INITIALS" of both new games. Added all keys (pl+en). Also removed the visible THRUST/FIRE/JUMP text labels (icon-only buttons per Jacek).
+- **Asteroids controls** (`6c892e4e`): reworked from 5 cramped text buttons to SVG icon buttons (60–82px, left/right clusters, Lander §121 pattern).
+- Gate (each): precommit + **FULL emulator e2e 102/102**. §27 PASS.
+- **Smoke owed (Jacek, after reload):** DPL #2 Teams list shows the 6 teams; arcade controls are clean icon buttons; SAVE/initials show real text.
+
 ## 2026-06-19 — [FEATURE/Tier-2] Reads Asteroids + Readbert — Arcade games 6 & 7 (Jacek prototypes, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `f4477ffe` (branch `feat/arcade-asteroids-readbert`).
 - Two new "Take a Break" games ported 1:1 from Jacek's pasted prototypes, modeled on the ReadWarrior shell (vanilla `<canvas>` + procedural WebAudio, lazy own chunks — Asteroids 20.4 kB / Readbert 19.6 kB raw, **zero app-entry weight**). Both appear in the Reads Arcade Collection list (`GAMES[]`) alongside Snake/Invaders/Lander/Warrior/Mini.
