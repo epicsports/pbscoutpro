@@ -13,6 +13,7 @@
 - **Draw palette 5→9 colors** (`0e4a0d62`+merge, Tier-1, night) — added orange/blue/purple/pink + swatch wrap. §77 palette one-source.
 - **ScoutedTeam/PlayerStats field-is-king** (`707c227c`, Tier-2 Jacek GO) — field-hero restored; collapsible report sections; dismissible confidence banner. Smoke owed (tablet-landscape, device).
 - **Arcade 1-bit beautify ×4** (`da69d59b`·`e8e7d4bc`·`d8e606d4`·`8a7d06e3`, Tier-1) — render+music only, model verbatim. **Reads Mini `.m4a` retired → procedural chiptune** (the old "audio asset owed" residual is CLOSED).
+- **Catalog IDB `storage.persist()` + §4.4 doc fix** (`53ef9eda`, Tier-1, night) — `navigator.storage.persist()` (guarded, once on first cache write) upgrades the catalog IndexedDB to durable storage so iOS/Safari ITP no longer evicts it after ~7 days idle (the cold-load-repeat root cause). Stale PROJECT_GUIDELINES §4.4 child-team-picker note corrected.
 
 ## ✅ DONE 2026-06-18 — verified, detail in DEPLOY_LOG
 - **Tactic save "too many index entries" — FIXED** (`b61c3246`) — `fieldOverrides` exempt `tactics.{freehandStrokes,strokes,drawings}` from indexing; `firestore:indexes` deployed.
@@ -41,11 +42,10 @@ _Historical docs still mentioned these as "deferred/owed"; the audit confirmed e
 - **G2 cross-tenant catalog.** `players/teams/layouts/leagues` read = any authed user (Path-A interim, intentional). Sequence the Phase 2.2.d/2.3.d isolation cutover before FIT. *Architecture — needs an Opus brief.*
 - **G3 per-role nav surface.** What should scout/coach/player each see (e.g. full layouts library for a scout)? `AppShell` is "admin sees all" today. Product decision.
 - **freehand-as-string.** Annotations store as a map today (+ index exemption shipped). Want (a) keep map + exemption (done, safe) or (b) full string-pack rewrite? (b) touches the un-e2e-gated concurrent-merge path → escalated.
-- **iOS `storage.persist()`.** Add it to harden the catalog IndexedDB cache against Safari's 7-day eviction? (Not implemented; I recommend yes — cheap.)
 - **`chore/design-sync-inputs` push.** Branch `ae46d530` committed locally, NOT on main/remote. Awaiting GO to push the claude.ai/design sync inputs.
 
 ## 🔴 OPEN — Product / Tier-2 (need Opus brief and/or Jacek gate)
-- **Catalog cold-load follow-ups.** (a) scouted-subset + lazy picker — **I recommend SKIP** (would regress to ~1,351 reads vs the ~6 the packed catalog already does); (b) iOS IDB resilience (see decision above); (c) optional field-slimming.
+- **Catalog cold-load follow-ups.** (a) scouted-subset + lazy picker — **I recommend SKIP** (would regress to ~1,351 reads vs the ~6 the packed catalog already does); (b) iOS IDB resilience — **`storage.persist()` shipped `53ef9eda`** (the main eviction mitigation); deeper Firestore-persistence pinning still optional; (c) optional field-slimming.
 - **READS_SPLASH (partial).** Login-screen `ReadsWelcomeSplash` is live; the full cold-start splash brief (`docs/briefs/CC_BRIEF_READS_SPLASH.md`) is NOT built. Jacek GO.
 - **kiosk join-by-code** [arc E etap 2] — code on lobby + scout join route; flow does not exist (FreshWorkspaceChecklist CTA disabled until it ships). Opus brief.
 - **events-list redesign** [arc D] — Jacek "przebudować docelowo"; dual-badge OK for now.
