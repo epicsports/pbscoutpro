@@ -829,7 +829,12 @@ export async function fetchScoutedTeams(tid) {
 }
 export async function addScoutedTeam(tid, data) {
   return addDoc(collection(db, bp(), 'tournaments', tid, 'scouted'), {
-    teamId: data.teamId, division: data.division || null, roster: data.roster || [], createdAt: serverTimestamp(),
+    // `name` is denormalized at add-time so the tournament roster renders even
+    // when the global team catalog is momentarily unavailable (cold load / IDB
+    // eviction) — without it, a transient catalog miss made the whole Teams list
+    // vanish (the consumer dropped any scouted row whose teamId didn't resolve).
+    teamId: data.teamId, name: data.name || null, division: data.division || null,
+    roster: data.roster || [], createdAt: serverTimestamp(),
   });
 }
 export async function updateScoutedTeam(tid, sid, data) {
