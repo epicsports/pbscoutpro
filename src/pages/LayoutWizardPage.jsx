@@ -156,7 +156,14 @@ export default function LayoutWizardPage() {
     bunkers: [],
   });
 
-  const handleFinish = async () => {
+  // § 90 Phase 2.2.d — useLayouts is OVERLAY-DRIVEN: a layout only appears in a
+  // workspace once a `layoutOverlays/{id}` doc references its base. Creating the
+  // global base alone left the new layout invisible to useLayouts, so the
+  // post-create redirect to /layout/:id hit `!layout` → "Nie można załadować
+  // tego układu" (Jacek 2026-06-19). Seed the workspace overlay right after
+  // createBaseLayout (idempotent merge; mirrors LayoutsPage "add to workspace")
+  // so the creator immediately sees + configures the new layout.
+  const createAndEnter = async (bunkers) => {
     const ref = await ds.createBaseLayout({
       name: data.name.trim(),
       league: data.league === 'Other' ? data.customLeague.trim() : data.league,
@@ -165,12 +172,15 @@ export default function LayoutWizardPage() {
       fieldCalibration: data.calibration,
       doritoSide: data.doritoSide,
       mirrorMode: data.mirrorMode,
-      bunkers: data.bunkers,
+      bunkers,
       discoLine: 0.30,
       zeekerLine: 0.80,
     });
+    await ds.addLayoutToWorkspace(ref.id);
     navigate(`/layout/${ref.id}/bunkers`);
   };
+
+  const handleFinish = () => createAndEnter(data.bunkers);
 
   const handleBack = () => {
     if (step === 1) navigate('/layouts');
@@ -242,20 +252,7 @@ export default function LayoutWizardPage() {
           doritoSide={data.doritoSide}
           onComplete={async (bunkers) => {
             setData(prev => ({ ...prev, bunkers }));
-            // Finish wizard
-            const ref = await ds.createBaseLayout({
-              name: data.name.trim(),
-              league: data.league === 'Other' ? data.customLeague.trim() : data.league,
-              year: Number(data.year),
-              fieldImage: data.image,
-              fieldCalibration: data.calibration,
-              doritoSide: data.doritoSide,
-              mirrorMode: data.mirrorMode,
-              bunkers,
-              discoLine: 0.30,
-              zeekerLine: 0.80,
-            });
-            navigate(`/layout/${ref.id}/bunkers`);
+            await createAndEnter(bunkers);   // create base + seed workspace overlay + enter
           }}
           onSkip={handleFinish}
         />
