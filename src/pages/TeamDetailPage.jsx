@@ -75,8 +75,18 @@ export default function TeamDetailPage() {
   // won't refetch until a remount, so reflect the pick locally for instant
   // feedback. `undefined` = no draft (use team.color); `null` = explicit Default.
   const [colorDraft, setColorDraft] = useState(undefined);
+  // § Multi-league / division — same optimistic pattern as colorDraft. The
+  // version-gated useTeams cache won't refetch this mount, so a toggle's write
+  // never lit the chip (and the NEXT toggle recomputed from the STALE base,
+  // dropping the prior pick — "chips not active"). Drafts hold the live
+  // selection; reset on team switch. null = no draft (use the team's value).
+  const [leaguesDraft, setLeaguesDraft] = useState(null);
+  const [divisionsDraft, setDivisionsDraft] = useState(null);
+  useEffect(() => { setLeaguesDraft(null); setDivisionsDraft(null); }, [teamId]);
 
   const team = teams.find(t => t.id === teamId);
+  const effLeagues = leaguesDraft ?? team?.leagues ?? [];
+  const effDivisions = divisionsDraft ?? team?.divisions ?? {};
   const teamPlayers = players
     .filter(p => playerOnTeam(p, teamId))
     .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
@@ -159,10 +169,19 @@ export default function TeamDetailPage() {
   };
 
   const handleToggleLeague = async (league) => {
-    const next = team.leagues.includes(league)
-      ? team.leagues.filter(l => l !== league)
-      : [...team.leagues, league];
-    if (next.length > 0) await ds.updateTeam(teamId, { leagues: next });
+    const base = effLeagues;
+    const next = base.includes(league) ? base.filter(l => l !== league) : [...base, league];
+    if (!next.length) return;                  // keep at least one league
+    setLeaguesDraft(next);                      // optimistic — the cache won't refetch this mount
+    try { await ds.updateTeam(teamId, { leagues: next }); }
+    catch { setLeaguesDraft(base); }            // revert on failure
+  };
+  const handleToggleDivision = async (l, name) => {
+    const cur = effDivisions[l];
+    const next = { ...effDivisions, [l]: cur === name ? null : name };
+    setDivisionsDraft(next);
+    try { await ds.updateTeam(teamId, { divisions: next }); }
+    catch { setDivisionsDraft(effDivisions); }
   };
 
   // § Team branding — set/clear the brand color. Optimistic: reflect the pick
@@ -282,22 +301,22 @@ export default function TeamDetailPage() {
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {leaguesList.map(L => {
               const l = L.shortName;
-              const a = team.leagues.includes(l);
+              const a = effLeagues.includes(l);
               return <Btn key={L.id} variant="default" size="sm" active={a}
                 style={{ borderColor: a ? LEAGUE_COLORS[l] : COLORS.border, color: a ? LEAGUE_COLORS[l] : COLORS.textDim }}
                 onClick={() => handleToggleLeague(l)}>{l}</Btn>;
             })}
           </div>
-          {team.leagues.filter(l => (divisionsByShortName[l] || []).length > 0).length > 0 && (
+          {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).length > 0 && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
-              {team.leagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
+              {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
                 <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 30 }}>{l}:</span>
                   {(divisionsByShortName[l] || []).map(d => {
-                    const cur = (team.divisions || {})[l];
+                    const cur = effDivisions[l];
                     return <Btn key={d.id} variant="default" size="sm" active={cur === d.name}
-                      onClick={() => ds.updateTeam(teamId, { divisions: { ...(team.divisions || {}), [l]: cur === d.name ? null : d.name } })}
+                      onClick={() => handleToggleDivision(l, d.name)}
                       style={{ fontSize: FONT_SIZE.xxs, padding: '2px 10px', minHeight: 44, minWidth: 44 }}>{d.name}</Btn>;
                   })}
                 </div>

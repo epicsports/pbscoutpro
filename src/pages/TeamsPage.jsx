@@ -202,7 +202,7 @@ export default function TeamsPage() {
           <Input value={externalId} onChange={setExternalId} placeholder={t('teams_external_id_ph')} />
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 6 }}>{t('teams_leagues_label')}</div>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {leaguesList.map(L => {
                 const l = L.shortName;
                 const a = leagues.includes(l);
