@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-19 — [FIX/Tier-1] New layout "Nie można załadować tego układu" + 3 i18n strings (Jacek prod report)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `e1f7b6af` (branches `feat/night-layout-create-fix` + `feat/night-i18n-safe-strings`).
+- **Layout-create bug (root cause):** `useLayouts` is **overlay-driven** (§90 Phase 2.2.d) — it maps over the workspace's `layoutOverlays` and only surfaces a layout once an overlay references the global base. The creation wizard (`LayoutWizardPage`) called `createBaseLayout` (writes global `/layouts`) but **never seeded a workspace overlay**, so the post-create redirect to `/layout/:id` found no matching layout → `!layout` → the "cannot load this layout" error screen. (Latent since the overlay-driven merge refactor; surfaced now.)
+- **Fix:** both wizard finish paths (manual finish + `VisionScan onComplete`) now call `addLayoutToWorkspace(ref.id)` after `createBaseLayout` (idempotent merge, mirrors `LayoutsPage` "add existing base to workspace"); the two duplicated create+navigate blocks folded into one `createAndEnter()` helper. `subscribeBaseLayouts` is a live `onSnapshot` (not the gated catalog) so base + overlay both reflect immediately on the redirect.
+- **Test gap noted:** no UI-level wizard e2e (the flow needs an image + vision/skip); covered by the root-cause reasoning + full-suite green. Candidate follow-up: a bridge-level "create base without overlay → invisible; with overlay → visible" assertion.
+- **i18n (same push):** wrapped 3 safe hardcoded-PL strings — `LivePointTracker`+`TrainingMoreTab` save-error `alert`s reuse the existing `save_failed` key; `AttendeesEditor` "(usunięty z workspace)" → new `removed_from_workspace` key (pl+en), with `const { t }` added to the `ChipGrid` sub-component (t-scope). Left the `CAUSE_META` module-scope domain labels + `ScheduleCSVImport` interpolated trap for the attended pass.
+- Gate: precommit + **FULL emulator e2e 98/98** (on merged main). §27 PASS (no UI surface change).
+- **Smoke owed (Jacek, prod):** create a brand-new layout via the wizard → it opens straight into the bunker editor (no "Nie można załadować") and appears in the layouts list.
+
 ## 2026-06-19 — [FIX/Tier-1] Role grant co-writes members[] + prune orphan userRoles (G1, night)
 **App (auto-deploy, e2e-gated) + DATA (one-time --live migration). No rules change.** Merge `4570076e` (branch `feat/night-g1-role-members`).
 - **Root (Majma generalised):** `approveUserRoles` / `updateUserRoles` wrote `userRoles[uid]` but NOT `members[]`. The `/workspaces` read gate is `uid in resource.data.members`, so a role-granted user could see their role tab yet fail the workspace read → empty "no assignment" screen. The Majma scout fix (2026-06-18 auto-enter) treated the symptom for scouts; this fixes the **write path** so every role grant also grants access.

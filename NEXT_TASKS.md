@@ -14,6 +14,8 @@
 - **ScoutedTeam/PlayerStats field-is-king** (`707c227c`, Tier-2 Jacek GO) — field-hero restored; collapsible report sections; dismissible confidence banner. Smoke owed (tablet-landscape, device).
 - **Arcade 1-bit beautify ×4** (`da69d59b`·`e8e7d4bc`·`d8e606d4`·`8a7d06e3`, Tier-1) — render+music only, model verbatim. **Reads Mini `.m4a` retired → procedural chiptune** (the old "audio asset owed" residual is CLOSED).
 - **Catalog IDB `storage.persist()` + §4.4 doc fix** (`53ef9eda`, Tier-1, night) — `navigator.storage.persist()` (guarded, once on first cache write) upgrades the catalog IndexedDB to durable storage so iOS/Safari ITP no longer evicts it after ~7 days idle (the cold-load-repeat root cause). Stale PROJECT_GUIDELINES §4.4 child-team-picker note corrected.
+- **New-layout "Nie można załadować tego układu" — FIXED** (`e1f7b6af`, Tier-1, Jacek prod report) — `useLayouts` is overlay-driven; the wizard created the global base but never seeded the workspace overlay → the new layout was invisible → load error. Both wizard finish paths now `addLayoutToWorkspace(ref.id)` after `createBaseLayout`. Smoke owed: create a layout → opens straight into bunker editor.
+- **3 safe i18n strings wrapped** (`e1f7b6af`, Tier-1) — `save_failed` reuse (LivePointTracker/TrainingMoreTab alerts) + new `removed_from_workspace` (AttendeesEditor). i18n residual now down to ~5 (CAUSE_META + ScheduleCSVImport traps).
 
 ## ✅ DONE 2026-06-18 — verified, detail in DEPLOY_LOG
 - **Tactic save "too many index entries" — FIXED** (`b61c3246`) — `fieldOverrides` exempt `tactics.{freehandStrokes,strokes,drawings}` from indexing; `firestore:indexes` deployed.
@@ -69,7 +71,7 @@ _Historical docs still mentioned these as "deferred/owed"; the audit confirmed e
 - Folded-rail opponent controls (ITEM-2). · ScoutedTeam-aggregate vs MatchPage-review phase-language unification.
 
 ## 🌍 OPEN — i18n (much smaller than the docs implied)
-- **~8 true hardcoded-PL violations** (not ~63): `PlayerStatsPage.jsx` CAUSE_META `'Przejście'`/`'za Karę'` + `'Trening'` template; `alert('Błąd zapisu: …')` in LivePointTracker + TrainingMoreTab; AttendeesEditor `'(usunięty z workspace)'`; ScheduleCSVImport two error strings. Attended batch.
+- **~5 hardcoded-PL violations left** (3 wrapped 2026-06-19 `e1f7b6af`): remaining = `PlayerStatsPage.jsx` CAUSE_META `'Przejście'`/`'za Karę'` + `'Trening'` template (module-scope domain labels — need care); ScheduleCSVImport two interpolated error strings (`t` shadowed locally + interpolation trap). Attended batch.
 - **Optional:** add a dup-key precommit guard + de-dupe the one semantic near-dup (`no_matches` vs `picker_no_matches`). The "5 differing keys" are NOT conflicting — mostly a non-issue.
 - DE/FR/ES + pseudoloc + i18next migration — far future.
 
