@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-19 — [FEATURE/Tier-2] Reads Asteroids + Readbert — Arcade games 6 & 7 (Jacek prototypes, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `f4477ffe` (branch `feat/arcade-asteroids-readbert`).
+- Two new "Take a Break" games ported 1:1 from Jacek's pasted prototypes, modeled on the ReadWarrior shell (vanilla `<canvas>` + procedural WebAudio, lazy own chunks — Asteroids 20.4 kB / Readbert 19.6 kB raw, **zero app-entry weight**). Both appear in the Reads Arcade Collection list (`GAMES[]`) alongside Snake/Invaders/Lander/Warrior/Mini.
+  - **Reads Asteroids** (`/break/asteroids`): rotate/thrust/fire/hyperspace, waves, UFO, cosmic sky, screen-anchored dither, canvas seven-seg HUD. FIRE is a held button (auto-fire w/ cooldown; quick tap still fires once); JUMP tap.
+  - **Readbert** (`/break/readbert`): Q*bert-style — 7-row cube pyramid, diagonal hops, redballs, coily egg→snake chase, flying discs, dither cube faces. 2×2 diagonal tap pad. **Fixed a first-frame crash** (`drawCube` read the board before `initBoard()` — seeded the board before the first render).
+- **Hi-score (Jacek's "sprawdź czy mają hi score"):** the prototypes had an **in-memory `hi` only** (reset on reload). Now each has a real persistent board — `leaderboards/readsAsteroids` + `leaderboards/readbert` via the shared `_submitArcadeScore` infra + a `[A-Z]{3}` new-best initials overlay + the `getArcadeBests` account mirror. **NO rules change** — the `leaderboards/{board}` wildcard rule already covers both boards (mode `'A'`).
+- Wiring: 2 lazy routes, 2 `GAMES[]` entries + menu glyphs, i18n name/sub keys (pl+en), `testBridge` hooks. Fail-first e2e for each (selector → force PB → SAVE persists under the right board + rules create/update/reject-lower/cross-uid-denied).
+- Gate: precommit + **FULL emulator e2e 102/102** (98 + 4 new). §27 PASS (canvas art exceptions per §117).
+- **Smoke owed (Jacek, prod):** More → Take a Break → both new rows open; play each; on a new best, enter initials + SAVE → HI shows on the menu row after reload.
+
 ## 2026-06-19 — [FIX/Tier-1] Drawer double workspace-switcher + lazy-chunk crash self-heal (Jacek iPhone report)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `f984ba6d` (branch `fix/night-drawer-switcher-and-stale-chunk`).
 - **Double workspace-switcher in the slide-out menu (bug 1):** `NavDrawer` (§C restructure) renders `<WorkspaceSwitcher variant="drawer">` once at the TOP, under the workspace identity header. Its children (`MoreTabContent`/`TrainingMoreTab`) STILL carried the legacy §92 in-section `<WorkspaceSwitcher>` → it appeared twice (top + bottom) for >1-workspace accounts. Removed both legacy in-section copies + now-unused imports. Single-ws accounts unaffected (the switcher renders only at >1 membership).
