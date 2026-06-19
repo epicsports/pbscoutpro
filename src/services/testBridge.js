@@ -231,6 +231,26 @@ export function installTestBridge() {
       { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
     ),
 
+    // Reads Asteroids (§123A) — same board infra, separate board.
+    readsAsteroidsSubmit: (initials, score) =>
+      ds.submitReadsAsteroidsScore(auth.currentUser.uid, { initials, score }),
+    readsAsteroidsMyScore: () => ds.getReadsAsteroidsMyScore(auth.currentUser.uid),
+    readsAsteroidsTop: () => ds.getReadsAsteroidsTop(25),
+    readsAsteroidsRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readsAsteroids', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
+
+    // Readbert (§123B) — same board infra, separate board.
+    readbertSubmit: (initials, score) =>
+      ds.submitReadbertScore(auth.currentUser.uid, { initials, score }),
+    readbertMyScore: () => ds.getReadbertMyScore(auth.currentUser.uid),
+    readbertTop: () => ds.getReadbertTop(25),
+    readbertRawWriteOther: (otherUid, score) => setDoc(
+      doc(db, 'leaderboards', 'readbert', 'scores', otherUid),
+      { uid: otherUid, initials: 'ZZZ', score, mode: 'A', createdAt: serverTimestamp(), updatedAt: serverTimestamp() },
+    ),
+
     // §122.1 consolidated account mirror — all games' bests in one place.
     arcadeBests: () => ds.getArcadeBests(auth.currentUser.uid),
   };

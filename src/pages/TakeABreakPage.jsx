@@ -66,6 +66,27 @@ function WarriorGlyph({ size = 26 }) {
   );
 }
 
+// Asteroids glyph (menu tile — chrome; a little ship + rock).
+function AsteroidsGlyph({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }} aria-hidden>
+      <path d="M5 9l3-2 3 2 1 3-2 3-3 .5L5 13Z" />
+      <path d="M18 5.5l1.6 1.2-.4 2-1.8.6-1.6-1 .2-2Z" />
+      <path d="M14.5 16.5l2 1.5-1 2-2.2-.3-.5-2Z" />
+    </svg>
+  );
+}
+// Readbert glyph (menu tile — chrome; isometric cube + the bert ball on top).
+function ReadbertGlyph({ size = 26 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={COLORS.accent} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }} aria-hidden>
+      <path d="M12 12l6 3.2v4L12 22l-6-2.8v-4Z" />
+      <path d="M6 15.2 12 18l6-2.8M12 18v4" />
+      <circle cx="12" cy="8" r="3" fill={COLORS.accent} stroke="none" />
+    </svg>
+  );
+}
+
 // Data-driven game registry. New games append here + add a lazy /break/<id> route.
 const GAMES = [
   { id: 'snake', route: '/break/snake', Icon: SnakeGlyph, nameKey: 'reads_snake_name', nameFallback: 'side is the best!', subKey: 'reads_snake_sub', subFallback: 'Classic snake', top: ds.getReadsSnakeTop },
@@ -73,6 +94,8 @@ const GAMES = [
   { id: 'lander', route: '/break/lander', Icon: LanderGlyph, nameKey: 'reads_lander_name', nameFallback: 'Lunar Lander', subKey: 'reads_lander_menu_sub', subFallback: 'Land soft', top: ds.getReadsLanderTop },
   { id: 'warrior', route: '/break/warrior', Icon: WarriorGlyph, nameKey: 'read_warrior_name', nameFallback: 'Read Warrior', subKey: 'read_warrior_menu_sub', subFallback: 'Road racer', top: ds.getReadWarriorTop },
   { id: 'reads', route: '/break/reads', Icon: ReadsGlyph, nameKey: 'reads_mini_name', nameFallback: 'Reads Mini', subKey: 'reads_mini_sub', subFallback: 'Catch the drops', top: ds.getReadsMiniTop },
+  { id: 'asteroids', route: '/break/asteroids', Icon: AsteroidsGlyph, nameKey: 'reads_asteroids_name', nameFallback: 'Asteroids', subKey: 'reads_asteroids_sub', subFallback: 'Blast the rocks', top: ds.getReadsAsteroidsTop },
+  { id: 'readbert', route: '/break/readbert', Icon: ReadbertGlyph, nameKey: 'readbert_name', nameFallback: 'Readbert', subKey: 'readbert_sub', subFallback: 'Hop every cube', top: ds.getReadbertTop },
 ];
 
 export default function TakeABreakPage() {
