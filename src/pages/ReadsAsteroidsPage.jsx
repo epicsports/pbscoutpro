@@ -286,18 +286,15 @@ export default function ReadsAsteroidsPage() {
             <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M15 6 21 12l-6 6" /><path d="M21 12H8a4 4 0 0 0 0 8h3" /></svg>
           </button>
           <button type="button" data-testid="reads-asteroids-jump" aria-label={t('reads_asteroids_jump') || 'Jump'} {...tapBtn('tapJump')} style={jumpBtn}>
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden><path d="M12 2.5l1.9 6.6 6.6 1.9-6.6 1.9L12 19.5l-1.9-6.6L3.5 11l6.6-1.9z" /></svg>
-            <span style={lblStyle}>{t('reads_asteroids_jump') || 'JUMP'}</span>
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden><path d="M12 2.5l1.9 6.6 6.6 1.9-6.6 1.9L12 19.5l-1.9-6.6L3.5 11l6.6-1.9z" /></svg>
           </button>
         </div>
         <div style={{ display: 'flex', gap: SPACE.sm }}>
           <button type="button" data-testid="reads-asteroids-thrust" aria-label={t('reads_asteroids_thrust') || 'Thrust'} {...holdBtn('thrust')} style={actBtn}>
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden><path d="M12 3l7 9h-4v9H9v-9H5z" /></svg>
-            <span style={lblStyle}>{t('reads_asteroids_thrust') || 'THRUST'}</span>
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor" aria-hidden><path d="M12 3l7 9h-4v9H9v-9H5z" /></svg>
           </button>
           <button type="button" data-testid="reads-asteroids-fire" aria-label={t('reads_asteroids_fire') || 'Fire'} {...holdBtn('fire')} style={{ ...actBtn, color: AMBER4 }}>
-            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden><circle cx="12" cy="12" r="7" /></svg>
-            <span style={lblStyle}>{t('reads_asteroids_fire') || 'FIRE'}</span>
+            <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor" aria-hidden><circle cx="12" cy="12" r="7" /></svg>
           </button>
         </div>
       </div>
@@ -306,7 +303,6 @@ export default function ReadsAsteroidsPage() {
 }
 
 const rotBtn = { ...ARCADE_BTN, width: 60, height: 60 };
-const jumpBtn = { ...ARCADE_BTN, width: 58, height: 60, flexDirection: 'column', gap: 2 };
-const actBtn = { ...ARCADE_BTN, width: 82, height: 72, flexDirection: 'column', gap: 3 };
-const lblStyle = { fontSize: 9, letterSpacing: 1.5, fontWeight: 700 };
+const jumpBtn = { ...ARCADE_BTN, width: 58, height: 60 };
+const actBtn = { ...ARCADE_BTN, width: 82, height: 72 };
 const iniBtn = { ...ARCADE_BTN, minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, borderRadius: RADIUS.md };
