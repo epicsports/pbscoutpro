@@ -328,7 +328,7 @@ All components live in `src/components/ui.jsx`. Import from there, NEVER re-crea
 - Parent team (e.g. "Ranger Warsaw") has child teams (Ring, Rage, Rebel, Rush)
 - Each child team assigned to specific leagues + divisions
 - Child teams MUST appear in tournament team picker for their assigned division/league
-- **Known bug:** child teams not appearing in tournament team picker — fix pending
+- **Fixed (verified 2026-06-19 audit):** child teams surface in the add-team picker via parent-child grouping (`_isChild` flag) + a `[teamId, ...childIds]` union with § 83 division narrowing in `ScoutTabContent.jsx`. (Earlier "fix pending" note was stale.)
 
 ### 4.5 File Structure
 
