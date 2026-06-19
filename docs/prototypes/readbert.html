@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Reads · Readbert</title>
+<style>
+  :root{ --bg:#0a0e17; --bg2:#0d1117; --accent:#f59e0b; --amber4:#fbbf24; --dim:#b47708; --text:#e2e8f0; --muted:#64748b; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; }
+  html,body{ margin:0; height:100%; background:#000; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow:hidden; touch-action:none; }
+  #app{ position:relative; max-width:480px; height:100dvh; margin:0 auto; background:var(--bg); overflow:hidden; }
+  canvas{ display:block; width:100%; height:100%; }
+  .hud{ position:absolute; top:0; left:0; right:0; padding:12px 14px; display:flex; align-items:flex-start; justify-content:space-between; pointer-events:none; z-index:5; }
+  .hud .lives{ display:flex; gap:5px; align-items:center; height:24px; }
+  .hud .lvl{ font-size:11px; font-weight:800; letter-spacing:2px; color:var(--muted); text-align:right; }
+  .hud .lvl b{ display:block; color:var(--dim); font-size:13px; }
+  .wordmark{ position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:10px; font-weight:800; letter-spacing:5px; color:#3a4658; pointer-events:none; z-index:5; }
+  .sound{ position:absolute; top:46px; right:14px; z-index:7; pointer-events:auto; border:1px solid #2a3548; background:rgba(13,17,23,.5); color:var(--muted); border-radius:8px; padding:5px 9px; font-size:10px; font-weight:700; letter-spacing:1px; cursor:pointer; }
+  .sound.on{ color:var(--accent); border-color:var(--dim); }
+  /* diagonal pad */
+  .pad{ position:absolute; right:18px; bottom:26px; width:188px; height:188px; z-index:6; }
+  .dbtn{ position:absolute; width:84px; height:84px; pointer-events:auto; display:flex; align-items:center; justify-content:center; border:1.5px solid #2a3548; background:rgba(13,17,23,.5); color:var(--accent); border-radius:18px; backdrop-filter:blur(3px); transition:background .07s, transform .07s; }
+  .dbtn:active,.dbtn.on{ background:rgba(245,158,11,.18); border-color:var(--accent); transform:scale(.95); }
+  .dbtn svg{ width:30px; height:30px; }
+  .dbtn.ul{ left:0; top:0; } .dbtn.ur{ right:0; top:0; } .dbtn.dl{ left:0; bottom:0; } .dbtn.dr{ right:0; bottom:0; }
+  .overlay{ position:absolute; inset:0; z-index:12; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(10,14,23,.8); text-align:center; padding:24px; }
+  .overlay.hidden{ display:none; }
+  .overlay h1{ margin:0; font-size:30px; font-weight:900; letter-spacing:7px; color:var(--accent); text-shadow:0 0 22px rgba(245,158,11,.4); }
+  .overlay .tag{ font-size:11px; letter-spacing:4px; color:var(--muted); margin-top:-8px; }
+  .overlay .big{ font-size:13px; letter-spacing:2px; color:var(--text); }
+  .overlay .cta{ margin-top:6px; font-size:12px; letter-spacing:3px; color:var(--dim); animation:blink 1.1s steps(1) infinite; }
+  .overlay .keys{ font-size:10px; letter-spacing:1px; color:#46546a; margin-top:4px; line-height:1.7; }
+  @keyframes blink{ 50%{ opacity:.25; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+  <div class="hud"><div class="lives" id="lives"></div><div class="lvl">LEVEL<b id="level">1</b></div></div>
+  <button class="sound on" id="sound">♪ ON</button>
+  <div class="wordmark">R E A D S</div>
+  <div class="pad" id="pad">
+    <div class="dbtn ul" data-k="ul"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17V7h10"/><path d="M7 7l10 10"/></svg></div>
+    <div class="dbtn ur" data-k="ur"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M17 7L7 17"/></svg></div>
+    <div class="dbtn dl" data-k="dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 7L7 17"/><path d="M7 7v10h10"/></svg></div>
+    <div class="dbtn dr" data-k="dr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10"/><path d="M17 7v10H7"/></svg></div>
+  </div>
+  <div class="overlay" id="ov">
+    <h1>READBERT</h1><div class="tag">READS · TAKE A BREAK</div>
+    <div class="cta" id="cta">TAP TO START</div>
+    <div class="keys">DIAGONALS &nbsp;·&nbsp; ↑↗ &nbsp; ↓↙ &nbsp; ←↖ &nbsp; →↘ &nbsp;·&nbsp; Q E Z C</div>
+  </div>
+</div>
+<script>
+"use strict";
+(function(){
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+const AMBER='#f59e0b', AMBER4='#fbbf24', DIM='#b47708', DARK='#0a0e17';
+const ROWS=7;
+let W=400,H=600,DPR=1, cw=56, ch=28, sh=26, cx=200, topY=120;
+
+// dither tiles (screen-anchored): dense (left face) + sparse (right face)
+function mkTile(dots,r){ const t=document.createElement('canvas'); t.width=t.height=6; const x=t.getContext('2d'); x.fillStyle='rgba(245,158,11,0.55)';
+  dots.forEach(p=>{ x.beginPath(); x.arc(p[0],p[1],r,0,7); x.fill(); }); return t; }
+const tileDense=mkTile([[1,1],[4,4],[1,4],[4,1],[2.5,2.5]],0.95), tileSparse=mkTile([[1.5,1.5],[4.5,4.5]],0.9);
+let patDense=null, patSparse=null;
+
+function resize(){ DPR=Math.min(window.devicePixelRatio||1,2); const r=cv.getBoundingClientRect(); W=Math.round(r.width); H=Math.round(r.height);
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+  patDense=ctx.createPattern(tileDense,'repeat'); patSparse=ctx.createPattern(tileSparse,'repeat');
+  cw=Math.min(Math.floor(W/8.6), 64); ch=Math.round(cw/2); sh=Math.round(cw*0.5);
+  const vstep=sh+ch/2; const pyH=(ROWS-1)*vstep+ch+sh; cx=Math.round(W/2); topY=Math.max(96, Math.round((H-pyH)/2 - 24)); }
+window.addEventListener('resize', resize);
+
+// ───────── audio (procedural) ─────────
+const A={ctx:null,master:null,on:true};
+function aInit(){ if(A.ctx)return; const AC=window.AudioContext||window.webkitAudioContext; A.ctx=new AC(); A.master=A.ctx.createGain(); A.master.gain.value=0.26; A.master.connect(A.ctx.destination); }
+let _audioUnlocked=false;
+function unlockAudio(){ aInit(); if(!A.ctx)return; if(A.ctx.state==='suspended')A.ctx.resume();
+  if(!_audioUnlocked){ try{ const b=A.ctx.createBuffer(1,1,22050),s=A.ctx.createBufferSource(); s.buffer=b; s.connect(A.ctx.destination); s.start(0); }catch(e){} _audioUnlocked=true; } }
+function blip(f,d,type='square',vol=0.4,slide){ if(!A.on||!A.ctx)return; const c=A.ctx,t=c.currentTime,o=c.createOscillator(),g=c.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t); if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+d);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+0.012); g.gain.exponentialRampToValueAtTime(0.0008,t+d);
+  o.connect(g); g.connect(A.master); o.start(t); o.stop(t+d+0.03); }
+function noise(d,vol=0.4,lp=1200){ if(!A.on||!A.ctx)return; const c=A.ctx,t=c.currentTime,n=Math.floor(c.sampleRate*d),b=c.createBuffer(1,n,c.sampleRate),dt=b.getChannelData(0);
+  for(let i=0;i<n;i++)dt[i]=(Math.random()*2-1)*(1-i/n); const s=c.createBufferSource(); s.buffer=b; const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=lp;
+  const g=c.createGain(); g.gain.value=vol; s.connect(f); f.connect(g); g.connect(A.master); s.start(t); }
+const sHop=()=>blip(420,0.13,'square',0.3,200);
+const sLight=()=>blip(700,0.09,'square',0.26,920);
+const sFall=()=>{ blip(380,0.5,'sawtooth',0.32,60); noise(0.4,0.25,700); };
+const sHatch=()=>{ blip(200,0.18,'square',0.3,520); };
+const sDisc=()=>{ [392,523,659,880].forEach((f,i)=>setTimeout(()=>blip(f,0.16,'triangle',0.26),i*70)); };
+const sCoilyDie=()=>blip(700,0.6,'sawtooth',0.3,80);
+const sDeath=()=>{ [233,277,220,330,196].forEach((f,i)=>setTimeout(()=>blip(f,0.22,'square',0.34),i*110)); noise(0.5,0.2,800); };
+const sLevel=()=>{ [523,659,784,1047,784,1047].forEach((f,i)=>setTimeout(()=>blip(f,0.16,'square',0.3),i*90)); };
+const sLife=()=>{ blip(523,0.1,'square',0.3); setTimeout(()=>blip(784,0.14,'square',0.3),110); };
+// bouncy 1-bit melody (C major pentatonic), gentle under play
+function mNote(f,d,type,vol){ if(!A.on||!A.ctx)return; const c=A.ctx,t=c.currentTime,o=c.createOscillator(),g=c.createGain();
+  o.type=type; o.frequency.setValueAtTime(f,t); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+0.02); g.gain.exponentialRampToValueAtTime(0.0008,t+d);
+  o.connect(g); g.connect(A.master); o.start(t); o.stop(t+d+0.03); }
+const M={acc:0,step:0,dur:0.2};
+const MB={0:131,4:165,8:147,12:165};                 // bouncy bass C E D E
+const ML={0:523,2:659,4:784,6:659,8:587,10:784,12:880,14:659}; // playful lead
+function mTick(dt){ if(!A.on||!A.ctx||state==='over')return; M.acc+=dt; if(M.acc<M.dur)return; M.acc-=M.dur; const i=M.step%16;
+  if(MB[i])mNote(MB[i],0.34,'triangle',0.08); if(ML[i])mNote(ML[i],0.16,'square',0.055); M.step++; }
+
+// ───────── geometry ─────────
+const lerp=(a,b,t)=>a+(b-a)*t;
+function topVertex(r,c){ return { x: cx + (2*c - r)*(cw/2), y: topY + r*(sh+ch/2) }; }
+function topCenter(r,c){ const v=topVertex(r,c); return { x:v.x, y:v.y+ch/2 }; }
+function blobPos(r,c){ const p=topCenter(r,c); return { x:p.x, y:p.y - ch*0.34 }; }
+
+// ───────── state ─────────
+let cubes=[], qb=null, redballs=[], coily=null, discs=[];
+let score=0, hi=0, lives=3, level=1, state='start', invuln=0, curse=0, flash=0;
+let rbTimer=0, coilyTimer=0, busy=0;
+
+function initBoard(){ cubes=[]; for(let r=0;r<ROWS;r++){ const row=[]; for(let c=0;c<=r;c++) row.push({lit:false}); cubes.push(row); } }
+function makeDiscs(){ discs=[ {r:2,c:-1,alive:true,side:-1}, {r:2,c:3,alive:true,side:1} ]; }
+function newActor(r,c){ const p=blobPos(r,c); return { r,c,x:p.x,y:p.y,hopping:false,t:0,dur:0.2,from:null,to:null,arc:0,onLand:null,fall:false }; }
+
+function resetGame(){ initBoard(); makeDiscs(); qb=newActor(0,0); redballs=[]; coily=null; score=0; lives=3; level=1; invuln=1.2; curse=0;
+  rbTimer=3.2; coilyTimer=4.5; busy=0; document.getElementById('level').textContent=level; }
+
+function startHop(actor,tr,tc,dur,onLand){ actor._tr=tr; actor._tc=tc; actor.from={x:actor.x,y:actor.y}; actor.to=blobPos(tr,tc);
+  actor.t=0; actor.dur=dur; actor.arc=ch*0.7; actor.onLand=onLand||null; actor.hopping=true; actor.fall=false; }
+function startFall(actor,dur,onLand){ actor.from={x:actor.x,y:actor.y}; const dir=actor._dir||'dl'; const dx=(dir==='ul'||dir==='dl')?-cw:cw;
+  actor.to={x:actor.x+dx*0.7, y:actor.y+H*0.7}; actor.t=0; actor.dur=dur; actor.arc=ch*0.5; actor.onLand=onLand||null; actor.hopping=true; actor.fall=true; }
+function stepActor(actor,dt){ if(!actor.hopping)return; actor.t+=dt/actor.dur; const t=Math.min(1,actor.t);
+  actor.x=lerp(actor.from.x,actor.to.x,t); actor.y=lerp(actor.from.y,actor.to.y,t)-actor.arc*Math.sin(t*Math.PI);
+  if(actor.t>=1){ actor.hopping=false; actor.x=actor.to.x; actor.y=actor.to.y; if(!actor.fall){ actor.r=actor._tr; actor.c=actor._tc; }
+    const cb=actor.onLand; actor.onLand=null; if(cb)cb(); } }
+
+// ───────── Readbert hop ─────────
+function tryHop(dir){ if(state!=='play'||qb.hopping||busy>0||curse>0)return; let tr=qb.r,tc=qb.c;
+  if(dir==='ul'){tr--;tc--;} else if(dir==='ur'){tr--;} else if(dir==='dl'){tr++;} else if(dir==='dr'){tr++;tc++;}
+  qb._dir=dir; const disc=discs.find(d=>d.alive&&d.r===tr&&d.c===tc);
+  if(disc){ rideDisc(disc); return; }
+  const valid = tr>=0&&tr<ROWS&&tc>=0&&tc<=tr;
+  if(valid){ startHop(qb,tr,tc,0.2,()=>landCube(tr,tc)); sHop(); }
+  else { startFall(qb,0.34,()=>death('fall')); sFall(); } }
+function landCube(r,c){ if(!cubes[r][c].lit){ cubes[r][c].lit=true; score+=25; sLight(); if(allLit()){ nextLevel(); return; } } checkHit(); }
+function allLit(){ return cubes.every(row=>row.every(cell=>cell.lit)); }
+function rideDisc(disc){ disc.alive=false; busy=1; sDisc(); blip(300,0.2,'sine',0.2,800);
+  // coily lured off if snake
+  if(coily&&coily.phase==='snake'){ coily=null; score+=500; sCoilyDie(); coilyTimer=3.5; }
+  // animate qbert rising to top
+  qb.from={x:qb.x,y:qb.y}; const p=blobPos(0,0); qb.to={x:p.x,y:p.y}; qb.t=0; qb.dur=0.6; qb.arc=ch*1.4; qb.hopping=true; qb.fall=false;
+  qb.onLand=()=>{ qb.r=0; qb.c=0; busy=0; }; }
+
+// ───────── enemies ─────────
+function spawnRedball(){ if(redballs.length>=3)return; const rb=newActor(0,0); rb.kind='rb'; rb.delay=0.2; redballs.push(rb); }
+function updateRedball(rb,dt){ if(rb.hopping){ stepActor(rb,dt); return; } if(rb.dead)return; rb.delay-=dt; if(rb.delay>0)return;
+  const tr=rb.r+1; if(tr>=ROWS){ rb._dir=Math.random()<0.5?'dl':'dr'; startFall(rb,0.3,()=>{rb.dead=true;}); return; }
+  const goRight=Math.random()<0.5; const tc=goRight?rb.c+1:rb.c; rb._dir=goRight?'dr':'dl';
+  startHop(rb,tr,tc,0.22-level*0.004,()=>{ rb.delay=Math.max(0.16,0.42-level*0.02); checkHit(); }); blip(160,0.07,'square',0.16,90); }
+function spawnCoily(){ if(coily)return; coily=newActor(0,0); coily.phase='egg'; coily.hops=0; coily.delay=0.3; sHatch(); }
+function updateCoily(dt){ if(!coily)return; if(coily.hopping){ stepActor(coily,dt); return; } coily.delay-=dt; if(coily.delay>0)return;
+  if(coily.phase==='egg'){ const tr=coily.r+1; if(tr>=ROWS||coily.hops>=4){ coily.phase='snake'; coily.delay=0.4; sHatch(); return; }
+    const goRight=Math.random()<0.5; const tc=goRight?coily.c+1:coily.c; coily._dir=goRight?'dr':'dl'; coily.hops++;
+    startHop(coily,tr,tc,0.24,()=>{ coily.delay=Math.max(0.3,0.5-level*0.02); checkHit(); }); blip(150,0.08,'square',0.18,90); return; }
+  // snake: chase Readbert
+  let tr=coily.r,tc=coily.c,dir;
+  if(qb.r>coily.r){ if(qb.c> coily.c){ tr++;tc++;dir='dr'; } else { tr++;dir='dl'; } }
+  else if(qb.r<coily.r){ if(qb.c>=coily.c){ tr--;dir='ur'; } else { tr--;tc--;dir='ul'; } }
+  else { if(qb.c>coily.c){ tr++;tc++;dir='dr'; } else { tr++;dir='dl'; } }
+  if(!(tr>=0&&tr<ROWS&&tc>=0&&tc<=tr)){ // clamp: pick a valid downward move
+    if(coily.r+1<ROWS){ tr=coily.r+1; tc=Math.min(coily.c,tr); dir='dl'; } else { tr=coily.r; tc=coily.c; } }
+  coily._dir=dir; startHop(coily,tr,tc,Math.max(0.18,0.4-level*0.02),()=>{ coily.delay=Math.max(0.22,0.46-level*0.02); checkHit(); }); blip(240,0.08,'sawtooth',0.16); }
+
+function checkHit(){ if(state!=='play'||invuln>0||qb.hopping)return;
+  if(coily&&!coily.hopping&&coily.r===qb.r&&coily.c===qb.c){ death('coily'); return; }
+  for(const rb of redballs){ if(!rb.dead&&!rb.hopping&&rb.r===qb.r&&rb.c===qb.c){ death('ball'); return; } } }
+
+function death(){ lives--; curse=1.1; sDeath(); renderLives();
+  redballs=[]; coily=null; coilyTimer=3.5; rbTimer=2.5;
+  if(lives<=0){ setTimeout(gameOver, 700); } else { setTimeout(()=>{ qb=newActor(0,0); invuln=1.6; curse=0; }, 700); } }
+function nextLevel(){ level++; document.getElementById('level').textContent=level; sLevel(); flash=1.2; busy=1.2;
+  setTimeout(()=>{ initBoard(); makeDiscs(); qb=newActor(0,0); redballs=[]; coily=null; invuln=1.4; rbTimer=2.6; coilyTimer=4; busy=0; }, 900); }
+function gameOver(){ state='over'; hi=Math.max(hi,score); const ov=document.getElementById('ov'); ov.classList.remove('hidden');
+  ov.innerHTML='<h1>GAME OVER</h1><div class="big">SCORE '+score+'</div><div class="tag">BEST '+hi+'</div><div class="cta">TAP TO RETRY</div>'; }
+
+// ───────── update ─────────
+function update(dt){ if(state!=='play')return; invuln=Math.max(0,invuln-dt); curse=Math.max(0,curse-dt); flash=Math.max(0,flash-dt); if(busy>0)busy=Math.max(0,busy-dt);
+  stepActor(qb,dt);
+  rbTimer-=dt; if(rbTimer<=0&&!busy){ spawnRedball(); rbTimer=Math.max(1.4,3.4-level*0.15); }
+  coilyTimer-=dt; if(coilyTimer<=0&&!coily&&!busy){ spawnCoily(); coilyTimer=99; }
+  redballs.forEach(rb=>updateRedball(rb,dt)); redballs=redballs.filter(rb=>!rb.dead);
+  updateCoily(dt); }
+
+// ───────── render ─────────
+function cubePath(pts){ ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y); ctx.closePath(); }
+function drawCube(r,c){ const v=topVertex(r,c); const T={x:v.x,y:v.y}, R={x:v.x+cw/2,y:v.y+ch/2}, B={x:v.x,y:v.y+ch}, L={x:v.x-cw/2,y:v.y+ch/2};
+  const Lb={x:L.x,y:L.y+sh}, Bb={x:B.x,y:B.y+sh}, Rb={x:R.x,y:R.y+sh};
+  // left face (dense dither)
+  cubePath([L,B,Bb,Lb]); ctx.fillStyle='#0c1119'; ctx.fill(); ctx.fillStyle=patDense||'rgba(245,158,11,.25)'; ctx.fill();
+  ctx.strokeStyle=DIM; ctx.lineWidth=1; ctx.stroke();
+  // right face (sparse dither)
+  cubePath([B,R,Rb,Bb]); ctx.fillStyle='#0a0e16'; ctx.fill(); ctx.fillStyle=patSparse||'rgba(245,158,11,.16)'; ctx.fill();
+  ctx.strokeStyle=DIM; ctx.lineWidth=1; ctx.stroke();
+  // top face
+  cubePath([T,R,B,L]); if(cubes[r][c].lit){ ctx.fillStyle=AMBER; ctx.fill(); ctx.strokeStyle=AMBER4; }
+  else { ctx.fillStyle='#11161f'; ctx.fill(); ctx.strokeStyle=DIM; } ctx.lineWidth=1.4; ctx.stroke(); }
+
+function drawDisc(d){ if(!d.alive)return; const p=topCenter(d.r,d.c); ctx.save(); ctx.translate(p.x,p.y);
+  ctx.fillStyle=patSparse||'rgba(245,158,11,.2)'; ctx.beginPath(); ctx.ellipse(0,0,cw*0.42,ch*0.5,0,0,6.28); ctx.fill();
+  ctx.strokeStyle=AMBER4; ctx.lineWidth=1.6; ctx.beginPath(); ctx.ellipse(0,0,cw*0.42,ch*0.5,0,0,6.28); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0,0,cw*0.22,ch*0.26,0,0,6.28); ctx.stroke(); ctx.restore(); }
+
+function drawReadbert(){ const blink=invuln>0&&Math.floor(invuln*12)%2===0; if(blink)return;
+  const x=qb.x,y=qb.y,r=cw*0.27; ctx.save(); ctx.translate(x,y);
+  // legs splay while hopping, tuck when grounded
+  const splay = qb.hopping ? r*0.52 : r*0.3, legLen = qb.hopping ? r*0.46 : r*0.6, ly=r*0.5;
+  ctx.strokeStyle=AMBER; ctx.lineWidth=Math.max(2.2,r*0.2); ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(-r*0.28,ly); ctx.lineTo(-splay,ly+legLen); ctx.moveTo(r*0.28,ly); ctx.lineTo(splay,ly+legLen); ctx.stroke();
+  ctx.fillStyle=AMBER; ctx.beginPath(); ctx.ellipse(-splay,ly+legLen,r*0.2,r*0.1,0,0,6.28); ctx.ellipse(splay,ly+legLen,r*0.2,r*0.1,0,0,6.28); ctx.fill(); // feet
+  // ball body
+  ctx.fillStyle=AMBER; ctx.beginPath(); ctx.arc(0,0,r,0,6.28); ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(-r*0.36,-r*0.4,r*0.22,r*0.13,-0.6,0,6.28); ctx.fill(); // sheen
+  // eyes glance toward travel direction
+  const dx=(qb._dir==='ur'||qb._dir==='dr')?r*0.12:(qb._dir==='ul'||qb._dir==='dl')?-r*0.12:0;
+  ctx.fillStyle=DARK; ctx.beginPath(); ctx.arc(-r*0.2+dx,-r*0.06,r*0.11,0,6.28); ctx.arc(r*0.2+dx,-r*0.06,r*0.11,0,6.28); ctx.fill();
+  ctx.restore(); }
+function drawCoily(){ if(!coily)return; const x=coily.x,y=coily.y,rad=cw*0.24; ctx.save(); ctx.translate(x,y);
+  if(coily.phase==='egg'){ ctx.fillStyle=AMBER4; ctx.beginPath(); ctx.ellipse(0,0,rad*0.7,rad,0,0,6.28); ctx.fill();
+    ctx.strokeStyle=DARK; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(-rad*0.5,0); ctx.lineTo(rad*0.5,0); ctx.stroke(); }
+  else { ctx.fillStyle=AMBER4; ctx.beginPath(); ctx.arc(0,rad*0.5,rad*0.8,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(0,-rad*0.4,rad*0.7,0,6.28); ctx.fill();
+    ctx.fillStyle=DARK; ctx.beginPath(); ctx.arc(-rad*0.25,-rad*0.5,rad*0.14,0,6.28); ctx.arc(rad*0.25,-rad*0.5,rad*0.14,0,6.28); ctx.fill();
+    ctx.strokeStyle=AMBER4; ctx.lineWidth=1.4; ctx.beginPath(); ctx.moveTo(0,-rad*0.9); ctx.lineTo(0,-rad*1.3); ctx.stroke(); } ctx.restore(); }
+function drawBall(rb){ if(rb.dead)return; const rad=cw*0.2; ctx.save(); ctx.translate(rb.x,rb.y); ctx.fillStyle=AMBER; ctx.beginPath(); ctx.arc(0,0,rad,0,6.28); ctx.fill();
+  ctx.fillStyle=DARK; ctx.beginPath(); ctx.arc(rad*0.3,-rad*0.3,rad*0.28,0,6.28); ctx.fill(); ctx.restore(); }
+
+// seven-seg score
+const SEG={'0':[1,1,1,1,1,1,0],'1':[0,1,1,0,0,0,0],'2':[1,1,0,1,1,0,1],'3':[1,1,1,1,0,0,1],'4':[0,1,1,0,0,1,1],'5':[1,0,1,1,0,1,1],'6':[1,0,1,1,1,1,1],'7':[1,1,1,0,0,0,0],'8':[1,1,1,1,1,1,1],'9':[1,1,1,1,0,1,1]};
+function drawDigit(x,y,w,h,s){ const t=Math.max(1.6,w*0.16),on=AMBER,off='rgba(245,158,11,0.07)'; const sg=(i,a,b,c,d)=>{ctx.fillStyle=s[i]?on:off; ctx.fillRect(a,b,c,d);};
+  sg(0,x+t,y,w-2*t,t); sg(1,x+w-t,y+t,t,h/2-t); sg(2,x+w-t,y+h/2,t,h/2-t); sg(3,x+t,y+h-t,w-2*t,t); sg(4,x,y+h/2,t,h/2-t); sg(5,x,y+t,t,h/2-t); sg(6,x+t,y+h/2-t/2,w-2*t,t); }
+function drawScore(){ const str=String(score).padStart(6,'0'),dw=14,dh=22,gap=4,tot=str.length*(dw+gap)-gap; let x=W/2-tot/2,y=12; for(const ch of str){ drawDigit(x,y,dw,dh,SEG[ch]||SEG['0']); x+=dw+gap; } }
+
+function render(){ ctx.fillStyle=DARK; ctx.fillRect(0,0,W,H);
+  if(flash>0){ ctx.fillStyle='rgba(245,158,11,'+(0.08*flash)+')'; ctx.fillRect(0,0,W,H); }
+  for(let r=0;r<ROWS;r++) for(let c=0;c<=r;c++) drawCube(r,c);
+  discs.forEach(drawDisc);
+  // actors sorted by y (painter)
+  const acts=[]; redballs.forEach(rb=>{ if(!rb.dead)acts.push({y:rb.y,fn:()=>drawBall(rb)}); }); if(coily)acts.push({y:coily.y,fn:drawCoily}); if(qb)acts.push({y:qb.y,fn:drawReadbert});
+  acts.sort((a,b)=>a.y-b.y).forEach(a=>a.fn());
+  // curse bubble
+  if(curse>0&&qb){ ctx.save(); ctx.translate(qb.x+cw*0.3,qb.y-cw*0.5); ctx.fillStyle=AMBER; ctx.strokeStyle=DARK;
+    ctx.beginPath(); ctx.roundRect?ctx.roundRect(-4,-16,52,22,5):ctx.rect(-4,-16,52,22); ctx.fill();
+    ctx.fillStyle=DARK; ctx.font='900 13px Inter,sans-serif'; ctx.fillText('@!#?@!',0,0); ctx.restore(); }
+  drawScore(); }
+
+let last=performance.now();
+function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; update(dt); render(); mTick(dt); requestAnimationFrame(loop); }
+
+function renderLives(){ const el=document.getElementById('lives'); el.innerHTML=''; for(let i=0;i<Math.max(0,lives);i++){ const s=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  s.setAttribute('viewBox','0 0 24 24'); s.setAttribute('width','15'); s.setAttribute('height','16');
+  s.innerHTML='<circle cx="12" cy="10" r="7" fill="#f59e0b"/><line x1="9.5" y1="15" x2="7.5" y2="22" stroke="#f59e0b" stroke-width="2.4" stroke-linecap="round"/><line x1="14.5" y1="15" x2="16.5" y2="22" stroke="#f59e0b" stroke-width="2.4" stroke-linecap="round"/><circle cx="10" cy="9" r="1.5" fill="#0a0e17"/><circle cx="14" cy="9" r="1.5" fill="#0a0e17"/>'; el.appendChild(s); } }
+
+// ───────── input ─────────
+function startGame(){ unlockAudio(); resetGame(); state='play'; document.getElementById('ov').classList.add('hidden'); renderLives(); }
+document.getElementById('ov').addEventListener('click', ()=>{ if(state!=='play') startGame(); });
+const km={ ArrowUp:'ur', ArrowRight:'dr', ArrowDown:'dl', ArrowLeft:'ul', q:'ul', e:'ur', z:'dl', c:'dr', Q:'ul', E:'ur', Z:'dl', C:'dr' };
+window.addEventListener('keydown', e=>{ if(state!=='play'){ if(e.key===' '||e.code==='Space'||km[e.key]){ e.preventDefault(); startGame(); } return; }
+  const d=km[e.key]||km[e.code]; if(d){ e.preventDefault(); tryHop(d); } });
+document.querySelectorAll('.pad .dbtn').forEach(btn=>{ const k=btn.dataset.k;
+  btn.addEventListener('pointerdown', e=>{ e.preventDefault(); if(state!=='play'){ startGame(); return; } tryHop(k); btn.classList.add('on'); });
+  const up=e=>{ e.preventDefault(); btn.classList.remove('on'); }; btn.addEventListener('pointerup',up); btn.addEventListener('pointercancel',up); btn.addEventListener('pointerleave',up); });
+document.getElementById('sound').addEventListener('click', ()=>{ A.on=!A.on; if(A.on)unlockAudio(); const b=document.getElementById('sound'); b.classList.toggle('on',A.on); b.textContent=A.on?'♪ ON':'♪ OFF'; });
+
+resize(); initBoard(); makeDiscs(); qb=newActor(0,0); renderLives();
+['pointerdown','touchend','keydown'].forEach(ev=>window.addEventListener(ev, unlockAudio, true));
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

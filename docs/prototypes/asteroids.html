@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Reads · Asteroids</title>
+<style>
+  :root{ --bg:#0a0e17; --bg2:#0d1117; --accent:#f59e0b; --amber4:#fbbf24; --dim:#b47708; --text:#e2e8f0; --muted:#64748b; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none; }
+  html,body{ margin:0; height:100%; background:#000; font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; overflow:hidden; touch-action:none; }
+  #app{ position:relative; max-width:480px; height:100dvh; margin:0 auto; background:var(--bg); overflow:hidden; }
+  canvas{ display:block; width:100%; height:100%; }
+  /* HUD */
+  .hud{ position:absolute; top:0; left:0; right:0; padding:12px 14px; display:flex; align-items:flex-start; justify-content:space-between; pointer-events:none; z-index:5; }
+  .hud .lives{ display:flex; gap:5px; align-items:center; height:26px; }
+  .hud .wave{ font-size:11px; font-weight:800; letter-spacing:2px; color:var(--muted); text-align:right; }
+  .hud .wave b{ display:block; color:var(--dim); font-size:13px; }
+  .wordmark{ position:absolute; bottom:8px; left:0; right:0; text-align:center; font-size:10px; font-weight:800; letter-spacing:5px; color:#3a4658; pointer-events:none; z-index:5; }
+  /* controls */
+  .pad{ position:absolute; bottom:0; left:0; right:0; height:168px; z-index:6; pointer-events:none; }
+  .btn{ position:absolute; pointer-events:auto; display:flex; align-items:center; justify-content:center; border:1.5px solid #2a3548; background:rgba(13,17,23,.5); color:var(--accent); border-radius:16px; backdrop-filter:blur(3px); transition:background .08s, transform .08s; }
+  .btn:active,.btn.on{ background:rgba(245,158,11,.18); border-color:var(--accent); transform:scale(.96); }
+  .btn svg{ width:26px; height:26px; }
+  .btn.rotL{ left:14px; bottom:78px; width:62px; height:62px; }
+  .btn.rotR{ left:84px; bottom:78px; width:62px; height:62px; }
+  .btn.thr{ right:14px; bottom:118px; width:74px; height:62px; }
+  .btn.fire{ right:14px; bottom:30px; width:74px; height:78px; color:var(--amber4); }
+  .btn.hyp{ left:24px; bottom:18px; width:50px; height:46px; font-size:9px; font-weight:800; letter-spacing:1px; border-radius:12px; }
+  .btn .lab{ position:absolute; bottom:5px; font-size:8px; letter-spacing:1px; color:var(--muted); }
+  /* overlays */
+  .overlay{ position:absolute; inset:0; z-index:12; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:rgba(10,14,23,.78); text-align:center; padding:24px; }
+  .overlay.hidden{ display:none; }
+  .overlay h1{ margin:0; font-size:30px; font-weight:900; letter-spacing:8px; color:var(--accent); text-shadow:0 0 22px rgba(245,158,11,.4); }
+  .overlay .tag{ font-size:11px; letter-spacing:4px; color:var(--muted); margin-top:-8px; }
+  .overlay .big{ font-size:13px; letter-spacing:2px; color:var(--text); }
+  .overlay .cta{ margin-top:6px; font-size:12px; letter-spacing:3px; color:var(--dim); animation:blink 1.1s steps(1) infinite; }
+  .overlay .keys{ font-size:10px; letter-spacing:1px; color:#46546a; margin-top:4px; line-height:1.7; }
+  @keyframes blink{ 50%{ opacity:.25; } }
+  .sound{ position:absolute; top:46px; right:14px; z-index:7; pointer-events:auto; border:1px solid #2a3548; background:rgba(13,17,23,.5); color:var(--muted); border-radius:8px; padding:5px 9px; font-size:10px; font-weight:700; letter-spacing:1px; cursor:pointer; }
+  .sound.on{ color:var(--accent); border-color:var(--dim); }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="c"></canvas>
+  <div class="hud">
+    <div class="lives" id="lives"></div>
+    <div class="wave">WAVE<b id="wave">1</b></div>
+  </div>
+  <button class="sound on" id="sound">♪ ON</button>
+  <div class="wordmark">R E A D S</div>
+
+  <div class="pad" id="pad">
+    <div class="btn rotL" data-k="left" aria-label="rotate left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v3"/></svg></div>
+    <div class="btn rotR" data-k="right" aria-label="rotate right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 0 0-5 5v3"/></svg></div>
+    <div class="btn thr" data-k="thrust" aria-label="thrust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 9h-4v9H9v-9H5z"/></svg><span class="lab">THRUST</span></div>
+    <div class="btn fire" data-k="fire" aria-label="fire"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg><span class="lab">FIRE</span></div>
+    <div class="btn hyp" data-k="hyper" aria-label="hyperspace">JUMP</div>
+  </div>
+
+  <div class="overlay" id="ov">
+    <h1>ASTEROIDS</h1>
+    <div class="tag">READS · TAKE A BREAK</div>
+    <div class="cta" id="cta">TAP TO START</div>
+    <div class="keys">← → ROTATE &nbsp;·&nbsp; ↑ THRUST &nbsp;·&nbsp; SPACE FIRE &nbsp;·&nbsp; H JUMP</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const AMBER='#f59e0b', AMBER4='#fbbf24', DARKBG='#0a0e17';
+let W=400, H=600, DPR=1;
+
+// screen-anchored dither tile (amber dots on transparent) for asteroid interiors
+const tile = document.createElement('canvas'); tile.width=tile.height=6; const tctx=tile.getContext('2d');
+function buildTile(){ tctx.clearRect(0,0,6,6); tctx.fillStyle='rgba(245,158,11,0.5)';
+  [[1,1],[4,4],[1,4],[4,1],[2.5,2.5]].forEach(p=>{ tctx.beginPath(); tctx.arc(p[0],p[1],0.85,0,7); tctx.fill(); }); }
+buildTile();
+let ditherPat=null;
+
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1, 2);
+  const r=cv.getBoundingClientRect(); W=Math.round(r.width); H=Math.round(r.height);
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ditherPat=ctx.createPattern(tile,'repeat');
+}
+window.addEventListener('resize', resize);
+
+// ───────── procedural audio ─────────
+const Audio_={ ctx:null, master:null, on:true, hb:0, hbTog:false, thrustNode:null, thrustGain:null, ufoOsc:null, ufoGain:null };
+function aInit(){ if(Audio_.ctx) return; const AC=window.AudioContext||window.webkitAudioContext; Audio_.ctx=new AC();
+  Audio_.master=Audio_.ctx.createGain(); Audio_.master.gain.value=0.26; Audio_.master.connect(Audio_.ctx.destination); }
+let _audioUnlocked=false;
+function unlockAudio(){ aInit(); if(!Audio_.ctx) return; if(Audio_.ctx.state==='suspended') Audio_.ctx.resume();
+  if(!_audioUnlocked){ try{ const b=Audio_.ctx.createBuffer(1,1,22050), s=Audio_.ctx.createBufferSource(); s.buffer=b; s.connect(Audio_.ctx.destination); s.start(0); }catch(e){} _audioUnlocked=true; } }
+function blip(freq, dur, type='square', vol=0.5, slideTo){ if(!Audio_.on||!Audio_.ctx) return; const c=Audio_.ctx, t=c.currentTime;
+  const o=c.createOscillator(), g=c.createGain(); o.type=type; o.frequency.setValueAtTime(freq,t);
+  if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t+dur);
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0008, t+dur);
+  o.connect(g); g.connect(Audio_.master); o.start(t); o.stop(t+dur+0.02); }
+function noise(dur, vol=0.5, lp=1200){ if(!Audio_.on||!Audio_.ctx) return; const c=Audio_.ctx,t=c.currentTime;
+  const n=Math.floor(c.sampleRate*dur), buf=c.createBuffer(1,n,c.sampleRate), d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+  const s=c.createBufferSource(); s.buffer=buf; const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=lp;
+  const g=c.createGain(); g.gain.value=vol; s.connect(f); f.connect(g); g.connect(Audio_.master); s.start(t); }
+function sFire(){ blip(680,0.16,'square',0.32,180); }
+function sBoom(size){ const v=size===3?0.62:size===2?0.5:0.4; noise(size===3?0.42:size===2?0.3:0.22, v, size===3?900:1500);
+  blip(size===3?90:140,0.18,'triangle',0.3, 40); }
+function sThrust(on){ if(!Audio_.ctx) return; const c=Audio_.ctx;
+  if(on && !Audio_.thrustNode){ const n=Math.floor(c.sampleRate*0.5), buf=c.createBuffer(1,n,c.sampleRate), d=buf.getChannelData(0);
+      for(let i=0;i<n;i++) d[i]=(Math.random()*2-1); const s=c.createBufferSource(); s.buffer=buf; s.loop=true;
+      const f=c.createBiquadFilter(); f.type='lowpass'; f.frequency.value=380; const g=c.createGain(); g.gain.value=Audio_.on?0.12:0;
+      s.connect(f); f.connect(g); g.connect(Audio_.master); s.start(); Audio_.thrustNode=s; Audio_.thrustGain=g; }
+  else if(!on && Audio_.thrustNode){ try{Audio_.thrustNode.stop();}catch(e){} Audio_.thrustNode=null; Audio_.thrustGain=null; } }
+function sUFO(on){ if(!Audio_.ctx) return; const c=Audio_.ctx;
+  if(on && !Audio_.ufoOsc){ const o=c.createOscillator(), g=c.createGain(); o.type='sawtooth'; o.frequency.value=420;
+      const lfo=c.createOscillator(), lg=c.createGain(); lfo.frequency.value=7; lg.gain.value=120; lfo.connect(lg); lg.connect(o.frequency);
+      g.gain.value=Audio_.on?0.08:0; o.connect(g); g.connect(Audio_.master); o.start(); lfo.start(); Audio_.ufoOsc=o; Audio_.ufoGain=g; }
+  else if(!on && Audio_.ufoOsc){ try{Audio_.ufoOsc.stop();}catch(e){} Audio_.ufoOsc=null; Audio_.ufoGain=null; } }
+function sLife(){ blip(523,0.1,'square',0.3); setTimeout(()=>blip(784,0.14,'square',0.3),110); }
+function heartbeat(dt){ if(state!=='play'||!Audio_.on||!Audio_.ctx) return;
+  const interval=Math.max(0.34, 0.4 + 0.085*asteroids.length); // fewer rocks → faster
+  Audio_.hb+=dt; if(Audio_.hb>=interval){ Audio_.hb=0; Audio_.hbTog=!Audio_.hbTog; blip(Audio_.hbTog?70:55, 0.13,'sine',0.42); } }
+// cosmic 1-bit melody — soft procedural loop (A-minor pentatonic), same spirit as Lander
+function musicNote(freq,dur,type,vol){ if(!Audio_.on||!Audio_.ctx) return; const c=Audio_.ctx,t=c.currentTime;
+  const o=c.createOscillator(), g=c.createGain(); o.type=type; o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(vol,t+0.03); g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
+  o.connect(g); g.connect(Audio_.master); o.start(t); o.stop(t+dur+0.04); }
+const Music_={acc:0,step:0,dur:0.33};
+const M_BASS={0:110,4:87,8:98,12:82};                         // A2 · F2 · G2 · E2 (drifting roots)
+const M_LEAD={0:440,2:523,5:587,8:523,10:440,13:392};          // sparse floaty lead
+function musicTick(dt){ if(!Audio_.on||!Audio_.ctx||state==='over') return;
+  Music_.acc+=dt; if(Music_.acc<Music_.dur) return; Music_.acc-=Music_.dur;
+  const i=Music_.step%16;
+  if(M_BASS[i]) musicNote(M_BASS[i],0.62,'triangle',0.09);     // bass pad
+  if(M_LEAD[i]) musicNote(M_LEAD[i],0.5,'square',0.066);        // lead
+  if(Music_.step%32===20) musicNote(880,0.4,'sine',0.05);       // twinkle
+  if(Music_.step%32===28) musicNote(1047,0.4,'sine',0.045);
+  Music_.step++; }
+
+// ───────── cosmic backdrop (screen-anchored, re-rolled per wave) ─────────
+let sky={stars:[],nebulae:[],planets:[],shoot:null};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function genSky(){
+  const stars=[]; const n=Math.floor(rnd(46,64));
+  for(let i=0;i<n;i++) stars.push({x:rnd(0,W),y:rnd(0,H),s:Math.random()<0.18?1.6:0.9,ph:rnd(0,6.28),tw:rnd(0.6,1.6)});
+  const nebulae=[]; const nn=Math.floor(rnd(1,3.2));
+  for(let i=0;i<nn;i++) nebulae.push({x:rnd(0,W),y:rnd(0,H*0.8),r:rnd(60,120),rot:rnd(0,6.28),a:rnd(0.05,0.11)});
+  const planets=[]; if(Math.random()<0.7){ planets.push({x:rnd(W*0.55,W*0.92),y:rnd(H*0.12,H*0.34),r:rnd(16,30),ring:Math.random()<0.5,a:rnd(0.5,0.85)}); }
+  sky={stars,nebulae,planets,shoot:null,shootT:rnd(3,7)};
+}
+function drawSky(dt){
+  ctx.fillStyle=DARKBG; ctx.fillRect(0,0,W,H);
+  // nebulae (dithered patches)
+  sky.nebulae.forEach(nb=>{ ctx.save(); ctx.globalAlpha=nb.a; ctx.translate(nb.x,nb.y); ctx.rotate(nb.rot);
+    ctx.fillStyle=ditherPat||AMBER; ctx.beginPath(); ctx.ellipse(0,0,nb.r,nb.r*0.6,0,0,6.28); ctx.fill(); ctx.restore(); });
+  // planets
+  sky.planets.forEach(p=>{ ctx.save(); ctx.globalAlpha=p.a*0.5; ctx.translate(p.x,p.y);
+    ctx.fillStyle=ditherPat||AMBER; ctx.beginPath(); ctx.arc(0,0,p.r,0,6.28); ctx.fill();
+    ctx.globalAlpha=p.a; ctx.strokeStyle=AMBER; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(0,0,p.r,-0.6,2.2); ctx.stroke();
+    if(p.ring){ ctx.globalAlpha=p.a*0.7; ctx.beginPath(); ctx.ellipse(0,0,p.r*1.8,p.r*0.5,0.3,0,6.28); ctx.stroke(); } ctx.restore(); });
+  // stars (twinkle)
+  const t=performance.now()/1000;
+  sky.stars.forEach(s=>{ const a=0.4+0.5*Math.abs(Math.sin(t*s.tw+s.ph)); ctx.globalAlpha=a; ctx.fillStyle=s.s>1?AMBER4:AMBER;
+    ctx.fillRect(s.x-s.s/2, s.y-s.s/2, s.s, s.s); });
+  ctx.globalAlpha=1;
+  // shooting star
+  sky.shootT-=dt; if(!sky.shoot && sky.shootT<=0){ sky.shoot={x:rnd(0,W*0.5),y:rnd(0,H*0.4),vx:rnd(160,240),vy:rnd(80,150),life:0.7}; }
+  if(sky.shoot){ const sh=sky.shoot; ctx.globalAlpha=Math.min(1,sh.life*2); ctx.strokeStyle=AMBER4; ctx.lineWidth=1.4;
+    ctx.beginPath(); ctx.moveTo(sh.x,sh.y); ctx.lineTo(sh.x-sh.vx*0.06, sh.y-sh.vy*0.06); ctx.stroke(); ctx.globalAlpha=1;
+    sh.x+=sh.vx*dt; sh.y+=sh.vy*dt; sh.life-=dt; if(sh.life<=0){ sky.shoot=null; sky.shootT=rnd(4,9); } }
+}
+
+// ───────── entities ─────────
+let ship=null, bullets=[], asteroids=[], ufo=null, ufoBullets=[], particles=[];
+let score=0, hi=0, lives=3, wave=1, invuln=0, ufoTimer=0, state='start', waveFlash=0;
+const keys={left:false,right:false,thrust:false,fire:false};
+let fireCD=0;
+
+function newShip(){ return {x:W/2,y:H/2,a:-Math.PI/2,vx:0,vy:0,r:13}; }
+function makeAsteroid(x,y,size){
+  const r=size===3?46:size===2?26:15; const verts=[]; const n=Math.floor(rnd(9,13));
+  for(let i=0;i<n;i++){ const ang=i/n*6.28; const rad=r*rnd(0.74,1.12); verts.push([Math.cos(ang)*rad, Math.sin(ang)*rad]); }
+  const sp=rnd(16,40)*(1+ (wave-1)*0.06) * (size===1?1.7:size===2?1.3:1);
+  const dir=rnd(0,6.28);
+  return {x,y,vx:Math.cos(dir)*sp,vy:Math.sin(dir)*sp,a:rnd(0,6.28),va:rnd(-1,1),r,size,verts};
+}
+function spawnWave(){
+  asteroids=[]; const count=Math.min(3+wave, 9);
+  for(let i=0;i<count;i++){ let x,y; do{ x=rnd(0,W); y=rnd(0,H); }while(Math.hypot(x-W/2,y-H/2)<130); asteroids.push(makeAsteroid(x,y,3)); }
+  genSky(); waveFlash=1.4;
+}
+function resetGame(){ ship=newShip(); bullets=[]; ufoBullets=[]; particles=[]; ufo=null; score=0; lives=3; wave=1; invuln=2.2; ufoTimer=rnd(16,26); spawnWave(); }
+
+function splat(x,y,n,spread){ for(let i=0;i<n;i++){ const a=rnd(0,6.28), s=rnd(20,spread); particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rnd(0.4,0.9),r:rnd(1,2.6)}); } }
+function wrap(o){ if(o.x<0)o.x+=W; else if(o.x>W)o.x-=W; if(o.y<0)o.y+=H; else if(o.y>H)o.y-=H; }
+
+function fire(){ if(bullets.length>=5) return; const nx=ship.x+Math.cos(ship.a)*ship.r, ny=ship.y+Math.sin(ship.a)*ship.r;
+  bullets.push({x:nx,y:ny,vx:Math.cos(ship.a)*430+ship.vx, vy:Math.sin(ship.a)*430+ship.vy, life:0.95}); sFire(); }
+function hyperspace(){ ship.x=rnd(30,W-30); ship.y=rnd(30,H-30); ship.vx=ship.vy=0; invuln=1.4; blip(300,0.18,'sawtooth',0.3,900);
+  if(Math.random()<0.06){ loseLife(); } }
+function loseLife(){ splat(ship.x,ship.y,26,160); sBoom(3); lives--; sThrust(false); keys.thrust=false;
+  if(lives<=0){ gameOver(); } else { ship=newShip(); invuln=2.4; } syncHUD(); }
+function gameOver(){ state='over'; hi=Math.max(hi,score); sUFO(false); sThrust(false);
+  const ov=document.getElementById('ov'); ov.classList.remove('hidden');
+  ov.innerHTML='<h1>GAME OVER</h1><div class="big">SCORE '+score+'</div><div class="tag">BEST '+hi+'</div><div class="cta">TAP TO RETRY</div>'; }
+
+function spawnUFO(){ const fromL=Math.random()<0.5; ufo={x:fromL?-20:W+20, y:rnd(H*0.15,H*0.7), vx:(fromL?1:-1)*rnd(55,80), vy:0, r:15, fire:rnd(0.8,1.6), wig:rnd(0,6.28)}; sUFO(true); }
+
+// ───────── update ─────────
+function update(dt){
+  if(state!=='play') return;
+  waveFlash=Math.max(0,waveFlash-dt); invuln=Math.max(0,invuln-dt); heartbeat(dt);
+  // ship
+  if(keys.left) ship.a-=4.6*dt; if(keys.right) ship.a+=4.6*dt;
+  if(keys.thrust){ ship.vx+=Math.cos(ship.a)*240*dt; ship.vy+=Math.sin(ship.a)*240*dt; }
+  const sp=Math.hypot(ship.vx,ship.vy), MAX=320; if(sp>MAX){ ship.vx*=MAX/sp; ship.vy*=MAX/sp; }
+  ship.vx*=Math.pow(0.45,dt); ship.vy*=Math.pow(0.45,dt); ship.x+=ship.vx*dt; ship.y+=ship.vy*dt; wrap(ship);
+  fireCD-=dt; if(keys.fire && fireCD<=0){ fire(); fireCD=0.28; }
+  // bullets
+  for(let i=bullets.length-1;i>=0;i--){ const b=bullets[i]; b.x+=b.vx*dt; b.y+=b.vy*dt; wrap(b); b.life-=dt; if(b.life<=0) bullets.splice(i,1); }
+  // asteroids
+  asteroids.forEach(a=>{ a.x+=a.vx*dt; a.y+=a.vy*dt; a.a+=a.va*dt; wrap(a); });
+  // ufo
+  ufoTimer-=dt; if(!ufo && ufoTimer<=0 && asteroids.length>0){ spawnUFO(); }
+  if(ufo){ ufo.wig+=dt*2; ufo.x+=ufo.vx*dt; ufo.y+=Math.sin(ufo.wig)*22*dt; ufo.fire-=dt;
+    if(ufo.fire<=0){ const ang=Math.atan2(ship.y-ufo.y, ship.x-ufo.x)+rnd(-0.25,0.25);
+      ufoBullets.push({x:ufo.x,y:ufo.y,vx:Math.cos(ang)*220,vy:Math.sin(ang)*220,life:2.4}); blip(520,0.12,'square',0.25,260); ufo.fire=rnd(1.0,1.8); }
+    if(ufo.x< -40 || ufo.x>W+40){ ufo=null; sUFO(false); ufoTimer=rnd(18,30); } }
+  for(let i=ufoBullets.length-1;i>=0;i--){ const b=ufoBullets[i]; b.x+=b.vx*dt; b.y+=b.vy*dt; wrap(b); b.life-=dt; if(b.life<=0) ufoBullets.splice(i,1); }
+  // particles
+  for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.94; p.vy*=0.94; p.life-=dt; if(p.life<=0) particles.splice(i,1); }
+  // collisions: bullet × asteroid
+  for(let i=asteroids.length-1;i>=0;i--){ const a=asteroids[i];
+    for(let j=bullets.length-1;j>=0;j--){ const b=bullets[j];
+      if(Math.hypot(a.x-b.x,a.y-b.y)<a.r){ bullets.splice(j,1); destroyAsteroid(i); break; } } }
+  // bullet × ufo
+  if(ufo){ for(let j=bullets.length-1;j>=0;j--){ const b=bullets[j]; if(Math.hypot(ufo.x-b.x,ufo.y-b.y)<ufo.r){ bullets.splice(j,1);
+        splat(ufo.x,ufo.y,22,150); sBoom(2); score+=200; ufo=null; sUFO(false); ufoTimer=rnd(18,30); break; } } }
+  // ship × asteroid / ufoBullet
+  if(invuln<=0){
+    for(const a of asteroids){ if(Math.hypot(a.x-ship.x,a.y-ship.y)<a.r+ship.r*0.7){ loseLife(); break; } }
+    if(state==='play' && ufo && Math.hypot(ufo.x-ship.x,ufo.y-ship.y)<ufo.r+ship.r){ loseLife(); }
+    if(state==='play') for(let j=ufoBullets.length-1;j>=0;j--){ const b=ufoBullets[j]; if(Math.hypot(b.x-ship.x,b.y-ship.y)<ship.r){ ufoBullets.splice(j,1); loseLife(); break; } }
+  }
+  if(state==='play' && asteroids.length===0){ wave++; document.getElementById('wave').textContent=wave; ufoTimer=rnd(14,24); spawnWave(); }
+}
+function destroyAsteroid(i){ const a=asteroids[i]; score += a.size===3?20:a.size===2?50:100; splat(a.x,a.y,a.size*7, 60+a.size*30); sBoom(a.size);
+  asteroids.splice(i,1); if(a.size>1){ for(let k=0;k<2;k++) asteroids.push(makeAsteroid(a.x,a.y,a.size-1)); }
+  const ml=Math.floor(score/10000); if(ml>extraLifeAt){ extraLifeAt=ml; lives++; sLife(); } }
+let extraLifeAt=0;
+
+// ───────── render ─────────
+function drawShipShape(x,y,a,scale){ ctx.save(); ctx.translate(x,y); ctx.rotate(a); ctx.scale(scale,scale);
+  ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(-10,-9); ctx.lineTo(-6,0); ctx.lineTo(-10,9); ctx.closePath();
+  ctx.fillStyle='rgba(245,158,11,0.16)'; ctx.fill(); ctx.strokeStyle=AMBER4; ctx.lineWidth=1.8; ctx.lineJoin='round'; ctx.stroke(); ctx.restore(); }
+function render(dt){
+  drawSky(dt);
+  // asteroids — crisp outline + screen-anchored dither fill
+  asteroids.forEach(a=>{ ctx.save(); const pts=a.verts.map(v=>{ const c=Math.cos(a.a), s=Math.sin(a.a); return [a.x+v[0]*c-v[1]*s, a.y+v[0]*s+v[1]*c]; });
+    ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]); ctx.closePath();
+    ctx.fillStyle=ditherPat||'rgba(245,158,11,0.2)'; ctx.fill();           // screen-anchored dots
+    ctx.strokeStyle=AMBER; ctx.lineWidth=1.7; ctx.lineJoin='round'; ctx.stroke(); ctx.restore(); });
+  // ufo (dithered saucer)
+  if(ufo){ ctx.save(); ctx.translate(ufo.x,ufo.y);
+    ctx.fillStyle=ditherPat||'rgba(245,158,11,0.2)'; ctx.beginPath(); ctx.ellipse(0,2,16,6,0,0,6.28); ctx.fill();
+    ctx.strokeStyle=AMBER4; ctx.lineWidth=1.6; ctx.beginPath(); ctx.ellipse(0,2,16,6,0,0,6.28); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0,-3,8,5,0,Math.PI,0); ctx.stroke(); ctx.restore(); }
+  // bullets
+  ctx.fillStyle=AMBER4; bullets.forEach(b=>{ ctx.beginPath(); ctx.arc(b.x,b.y,2.2,0,6.28); ctx.fill(); });
+  ctx.fillStyle=AMBER; ufoBullets.forEach(b=>{ ctx.beginPath(); ctx.arc(b.x,b.y,2.4,0,6.28); ctx.fill(); });
+  // particles (paint splatter)
+  particles.forEach(p=>{ ctx.globalAlpha=Math.min(1,p.life*2); ctx.fillStyle=AMBER; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fill(); });
+  ctx.globalAlpha=1;
+  // ship (actor — crisp), thrust flame, invuln blink
+  if(ship && (state==='play'||state==='over')){ const blink = invuln>0 && Math.floor(invuln*12)%2===0;
+    if(!blink){ if(keys.thrust && state==='play'){ ctx.save(); ctx.translate(ship.x,ship.y); ctx.rotate(ship.a);
+        ctx.strokeStyle=AMBER4; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(-6,-4); ctx.lineTo(-6-rnd(6,12),0); ctx.lineTo(-6,4); ctx.stroke(); ctx.restore(); }
+      drawShipShape(ship.x,ship.y,ship.a,1); } }
+  // wave flash
+  if(waveFlash>0 && state==='play'){ ctx.globalAlpha=Math.min(1,waveFlash); ctx.fillStyle=AMBER; ctx.font='900 22px Inter, sans-serif'; ctx.textAlign='center';
+    ctx.fillText('WAVE '+wave, W/2, H*0.4); ctx.globalAlpha=1; ctx.textAlign='left'; }
+  drawScore();
+}
+// seven-segment score (top center)
+const SEG={'0':[1,1,1,1,1,1,0],'1':[0,1,1,0,0,0,0],'2':[1,1,0,1,1,0,1],'3':[1,1,1,1,0,0,1],'4':[0,1,1,0,0,1,1],'5':[1,0,1,1,0,1,1],'6':[1,0,1,1,1,1,1],'7':[1,1,1,0,0,0,0],'8':[1,1,1,1,1,1,1],'9':[1,1,1,1,0,1,1]};
+function drawDigit(x,y,w,h,segs){ const t=Math.max(1.6,w*0.16); const on=AMBER, off='rgba(245,158,11,0.07)';
+  const seg=(i,hx,hy,hw,hh)=>{ ctx.fillStyle=segs[i]?on:off; ctx.fillRect(hx,hy,hw,hh); };
+  seg(0,x+t,y,w-2*t,t); seg(1,x+w-t,y+t,t,h/2-t); seg(2,x+w-t,y+h/2,t,h/2-t); seg(3,x+t,y+h-t,w-2*t,t);
+  seg(4,x,y+h/2,t,h/2-t); seg(5,x,y+t,t,h/2-t); seg(6,x+t,y+h/2-t/2,w-2*t,t); }
+function drawScore(){ const str=String(score).padStart(5,'0'); const dw=15,dh=24,gap=4; const total=str.length*(dw+gap)-gap;
+  let x=W/2-total/2, y=14; for(const ch of str){ drawDigit(x,y,dw,dh,SEG[ch]||SEG['0']); x+=dw+gap; } }
+function drawLives(){ const el=document.getElementById('lives'); }
+
+// ───────── loop ─────────
+let last=performance.now();
+function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; update(dt); render(dt); musicTick(dt); requestAnimationFrame(loop); }
+
+// lives HUD as small ship glyphs
+function renderLivesHUD(){ const el=document.getElementById('lives'); el.innerHTML='';
+  for(let i=0;i<Math.max(0,lives);i++){ const s=document.createElementNS('http://www.w3.org/2000/svg','svg'); s.setAttribute('viewBox','0 0 24 24'); s.setAttribute('width','16'); s.setAttribute('height','18');
+    s.innerHTML='<path d="M20 12 L6 5 L9 12 L6 19 Z" fill="rgba(245,158,11,0.15)" stroke="#fbbf24" stroke-width="1.6" stroke-linejoin="round"/>'; el.appendChild(s); } }
+function syncHUD(){ renderLivesHUD(); document.getElementById('wave').textContent=wave; }
+
+// ───────── input ─────────
+function startGame(){ unlockAudio();
+  resetGame(); state='play'; document.getElementById('ov').classList.add('hidden'); syncHUD(); }
+document.getElementById('ov').addEventListener('click', ()=>{ if(state!=='play') startGame(); });
+
+const km={ ArrowLeft:'left', ArrowRight:'right', ArrowUp:'thrust', a:'left', d:'right', w:'thrust', KeyA:'left', KeyD:'right', KeyW:'thrust' };
+window.addEventListener('keydown', e=>{
+  if(e.code==='Space'){ e.preventDefault(); if(state==='play') keys.fire=true; else startGame(); return; }
+  if(e.key==='h'||e.key==='H'){ if(state==='play') hyperspace(); return; }
+  const k=km[e.key]||km[e.code]; if(k){ e.preventDefault(); keys[k]=true; if(k==='thrust') sThrust(true); }
+});
+window.addEventListener('keyup', e=>{ if(e.code==='Space'){ keys.fire=false; return; } const k=km[e.key]||km[e.code]; if(k){ keys[k]=false; if(k==='thrust') sThrust(false); } });
+
+// touch buttons
+document.querySelectorAll('.pad .btn').forEach(btn=>{ const k=btn.dataset.k;
+  const down=e=>{ e.preventDefault(); if(state!=='play'){ startGame(); return; }
+    if(k==='fire'){ keys.fire=true; } else if(k==='hyper'){ hyperspace(); } else { keys[k]=true; if(k==='thrust') sThrust(true); } btn.classList.add('on'); };
+  const up=e=>{ e.preventDefault(); if(k==='fire') keys.fire=false; else if(k!=='hyper'){ keys[k]=false; if(k==='thrust') sThrust(false); } btn.classList.remove('on'); };
+  btn.addEventListener('pointerdown',down); btn.addEventListener('pointerup',up); btn.addEventListener('pointercancel',up); btn.addEventListener('pointerleave',up);
+});
+// sound toggle
+document.getElementById('sound').addEventListener('click', ()=>{ Audio_.on=!Audio_.on; const b=document.getElementById('sound');
+  b.classList.toggle('on',Audio_.on); b.textContent=Audio_.on?'♪ ON':'♪ OFF';
+  if(Audio_.on){ unlockAudio(); } else { sThrust(false); sUFO(false); if(Audio_.thrustGain)Audio_.thrustGain.gain.value=0; } });
+
+resize(); genSky(); renderLivesHUD();
+['pointerdown','touchend','keydown'].forEach(ev=>window.addEventListener(ev, unlockAudio, true));
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
