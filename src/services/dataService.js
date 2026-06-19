@@ -3354,6 +3354,50 @@ export async function submitReadWarriorScore(uid, { initials, score }) {
   return _submitArcadeScore(READ_WARRIOR_BOARD, uid, { initials, score, mode: 'A' });
 }
 
+// ─── Reads Asteroids global leaderboard (§123A) ────────────────────────────
+// 6th Arcade game, SAME infra/rules as Reads Mini (the leaderboards/{board}
+// wildcard already covers it) — separate board. Wave-survival score (no Game
+// A/B), so it carries a constant `mode:'A'` to satisfy the rule's validRow.
+const READS_ASTEROIDS_BOARD = 'readsAsteroids';
+
+export async function getReadsAsteroidsTop(topN = 25) {
+  const col = collection(db, 'leaderboards', READS_ASTEROIDS_BOARD, 'scores');
+  const snap = await getDocs(query(col, orderBy('score', 'desc'), limit(topN)));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+export async function getReadsAsteroidsMyScore(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'leaderboards', READS_ASTEROIDS_BOARD, 'scores', uid));
+  return snap.exists() ? { uid, ...snap.data() } : null;
+}
+
+export async function submitReadsAsteroidsScore(uid, { initials, score }) {
+  return _submitArcadeScore(READS_ASTEROIDS_BOARD, uid, { initials, score, mode: 'A' });
+}
+
+// ─── Readbert global leaderboard (§123B) ───────────────────────────────────
+// 7th Arcade game (Q*bert-style), SAME infra/rules as Reads Mini (the
+// leaderboards/{board} wildcard already covers it) — separate board. Level-
+// based (no Game A/B), so it carries a constant `mode:'A'` for the rule's validRow.
+const READBERT_BOARD = 'readbert';
+
+export async function getReadbertTop(topN = 25) {
+  const col = collection(db, 'leaderboards', READBERT_BOARD, 'scores');
+  const snap = await getDocs(query(col, orderBy('score', 'desc'), limit(topN)));
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+
+export async function getReadbertMyScore(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'leaderboards', READBERT_BOARD, 'scores', uid));
+  return snap.exists() ? { uid, ...snap.data() } : null;
+}
+
+export async function submitReadbertScore(uid, { initials, score }) {
+  return _submitArcadeScore(READBERT_BOARD, uid, { initials, score, mode: 'A' });
+}
+
 // ─── Shared arcade-score core + per-account "one place" mirror (§122.1) ─────
 // All 5 games' submit fns delegate here: the canonical per-game board write
 // (create vs update, monotonic, 0..9999, [A-Z]{3}, mode A|B) — behaviour is

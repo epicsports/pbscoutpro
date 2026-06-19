@@ -689,6 +689,10 @@ const T = {
     /* ─── Read Warrior (§122) — "Read Warrior" English; canvas text English ─── */
     read_warrior_name:        'Read Warrior',
     read_warrior_menu_sub:    'Wyścig',
+    reads_asteroids_name:     'Asteroids',
+    reads_asteroids_sub:      'Rozwal skały',
+    readbert_name:            'Readbert',
+    readbert_sub:             'Skacz po kostkach',
     read_warrior_back:        'Wstecz',
     read_warrior_sound:       'Dźwięk',
     read_warrior_left:        'Lewo',
@@ -2681,6 +2685,10 @@ const T = {
     /* ─── Read Warrior (§122) — "Read Warrior" English; canvas text English ─── */
     read_warrior_name:        'Read Warrior',
     read_warrior_menu_sub:    'Road racer',
+    reads_asteroids_name:     'Asteroids',
+    reads_asteroids_sub:      'Blast the rocks',
+    readbert_name:            'Readbert',
+    readbert_sub:             'Hop every cube',
     read_warrior_back:        'Back',
     read_warrior_sound:       'Sound',
     read_warrior_left:        'Left',
