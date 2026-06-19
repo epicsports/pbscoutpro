@@ -21,12 +21,24 @@ const KEY = 'staleChunkReloadAt';
 // deploy (not a stale cache) → stop reloading and let the error surface.
 const GUARD_WINDOW_MS = 20_000;
 
+// The last alternative (`_result\.default`) is the React.lazy payload signature
+// of the SAME stale-chunk failure: when a hashed page chunk 404s after a deploy,
+// React.lazy's payload never resolves and a re-render reads `_result.default` on
+// an undefined payload → Safari "undefined is not an object (evaluating
+// 'd._result.default')" / Chrome "Cannot read properties of undefined (reading
+// 'default')" with `_result` in the stack. The network-style messages below only
+// fire when the import REJECTS cleanly; this one fires when it surfaces as a
+// React-internal property access instead (Jacek iOS PWA report 2026-06-19).
 export const STALE_CHUNK_RE =
-  /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|ChunkLoadError/i;
+  /Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module|ChunkLoadError|_result\.default/i;
 
 export function isStaleChunkError(err) {
-  const msg = (err && (err.message || (typeof err === 'string' ? err : ''))) || '';
-  return STALE_CHUNK_RE.test(msg);
+  if (!err) return false;
+  const msg = (err.message || (typeof err === 'string' ? err : '')) || '';
+  const stack = err.stack || '';
+  // Check the stack too: Chrome's message ("…reading 'default'") is generic, but
+  // its stack carries the `_result.default` frame from the lazy initializer.
+  return STALE_CHUNK_RE.test(msg) || STALE_CHUNK_RE.test(stack);
 }
 
 /**

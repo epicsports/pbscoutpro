@@ -8,7 +8,6 @@ import { Modal, Btn, Input, Select, EmptyState, ConfirmModal } from '../ui';
 import * as ds from '../../services/dataService';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import TakeABreakSection from './TakeABreakSection';
-import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
 import { hasAnyRole, getRolesForUser, ADMIN_EMAILS, canEditTactics } from '../../utils/roleUtils';
@@ -335,7 +334,9 @@ function TrainingWorkspaceSection({ workspace, user, userProfile, workspaceName,
 
   return (
     <MoreSection title={t('workspace_section_settings') || 'Workspace'}>
-      <WorkspaceSwitcher />
+      {/* WorkspaceSwitcher removed here — NavDrawer renders it once at the top
+          (§92 variant="drawer"). Legacy in-section copy caused the double-switcher
+          in the drawer for >1-ws accounts (Jacek 2026-06-19). */}
       <MoreItem
         icon="🚪"
         label={t('leave_workspace_row') || 'Wyjdź z workspace'}

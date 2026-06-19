@@ -11,7 +11,6 @@ import ViewAsPill from '../ViewAsPill';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import TakeABreakSection from './TakeABreakSection';
 import { ConfirmModal } from '../ui';
-import WorkspaceSwitcher from '../settings/WorkspaceSwitcher';
 import * as ds from '../../services/dataService';
 
 /**
@@ -275,7 +274,10 @@ function WorkspaceSection({ workspace, user, userProfile, workspaceName, effecti
 
   return (
     <MoreSection title={t('workspace_section_settings') || 'Workspace'}>
-      <WorkspaceSwitcher />
+      {/* WorkspaceSwitcher removed here — NavDrawer renders it once at the top
+          (under the workspace identity header, §92 variant="drawer"). Keeping
+          this legacy in-section copy showed it TWICE in the drawer for >1-ws
+          accounts (Jacek 2026-06-19). */}
       <MoreItem
         icon="🚪"
         label={t('leave_workspace_row') || 'Wyjdź z workspace'}
