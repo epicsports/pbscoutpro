@@ -236,7 +236,10 @@ export default function CoachTabContent({ tournamentId }) {
           </div>
         )}
         {visibleScouted.map(st => {
-          const gt = teams.find(g => g.id === st.teamId);
+          // Resolve via the global catalog; fall back to the name denormalized on
+          // the scouted doc so a transient catalog miss (cold load / IDB eviction)
+          // never makes the whole roster vanish. Only drop a row with no name at all.
+          const gt = teams.find(g => g.id === st.teamId) || (st.name ? { id: st.teamId, name: st.name } : null);
           if (!gt) return null;
           const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
           return (

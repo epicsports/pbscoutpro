@@ -209,7 +209,7 @@ export default function ScoutTabContent({ tournamentId }) {
     const teamRoster = players
       .filter(p => finalIds.some(id => playerOnTeam(p, id)))
       .map(p => p.id);
-    return { teamId, roster: teamRoster, division: finalDivision };
+    return { teamId, name: team?.name || null, roster: teamRoster, division: finalDivision };
   };
 
   const toggleTeamSelection = (teamId) => {
