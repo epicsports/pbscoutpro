@@ -1,9 +1,10 @@
 import React from 'react';
-import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
+import { COLORS, ELEV, FONT, TRACKING } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import WorkspaceLogo from './settings/WorkspaceLogo';
 import WorkspaceSwitcher from './settings/WorkspaceSwitcher';
+import RdIcon from './RdIcon';
 
 // Build-time define (vite.config.js) — package.json version. Guarded so the
 // component also renders in tooling contexts where the define is absent.
@@ -46,41 +47,47 @@ export default function NavDrawer({ open, onClose, children }) {
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0,
-          background: 'rgba(5,8,15,.45)', backdropFilter: 'blur(1px)',
-          zIndex: 80,
+          background: 'rgba(0,0,0,.6)', backdropFilter: 'blur(2px)',
+          zIndex: 80, animation: 'rdFade .18s ease',
         }}
       />
       <div
         data-testid="nav-drawer"
         style={{
           position: 'fixed', top: 0, bottom: 0, left: 0,
-          width: 'min(300px, 84vw)', zIndex: 81,
-          background: COLORS.surfaceBar,
-          borderRight: `1px solid ${COLORS.border}`,
-          boxShadow: '8px 0 40px rgba(0,0,0,.5)',
+          width: 'min(392px, 87vw)', zIndex: 81,
+          background: ELEV.bg,
+          borderRight: `1px solid ${ELEV.hairlineStrong}`,
+          boxShadow: ELEV.shadow3,
           display: 'flex', flexDirection: 'column', minHeight: 0,
           paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {/* Workspace identity header + explicit close affordance */}
+        {/* Premium identity header — workspace crest + name + roles + close */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 6px 10px 14px',
-          borderBottom: `1px solid ${COLORS.surfaceLight}`,
+          display: 'flex', alignItems: 'center', gap: 13,
+          padding: '18px 12px 15px 16px',
+          borderBottom: `1px solid ${ELEV.hairline}`,
           flexShrink: 0,
         }}>
-          <WorkspaceLogo url={workspace?.logoUrl} size={38} />
+          <div style={{
+            width: 46, height: 46, borderRadius: 13, flexShrink: 0, overflow: 'hidden',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: ELEV.innerTop,
+          }}>
+            <WorkspaceLogo url={workspace?.logoUrl} size={46} />
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800,
-              color: COLORS.text, letterSpacing: '-.1px',
+              fontFamily: FONT, fontSize: 19, fontWeight: 800,
+              color: COLORS.text, letterSpacing: TRACKING.tight,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>{workspace?.name || workspace?.slug || ''}</div>
             {roleLine && (
               <div style={{
-                fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted,
-                marginTop: 1,
+                fontFamily: FONT, fontSize: 12, color: COLORS.textDim,
+                marginTop: 2,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>{roleLine}</div>
             )}
@@ -91,31 +98,38 @@ export default function NavDrawer({ open, onClose, children }) {
             data-testid="nav-drawer-close"
             onClick={onClose}
             style={{
-              minWidth: 44, minHeight: 44,
+              width: 44, height: 44, minWidth: 44, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: COLORS.textMuted, fontSize: 20, cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent', flexShrink: 0,
+              cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
             }}
-          >×</div>
+          >
+            {/* 34px visual tile inside a 44px hit area (§27) */}
+            <span style={{
+              width: 34, height: 34, borderRadius: 9,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+            }}><RdIcon name="close" size={16} /></span>
+          </div>
         </div>
 
         {/* Workspace switcher — renders ONLY at >1 membership (§92 reuse) */}
         <WorkspaceSwitcher variant="drawer" />
 
         {/* Settings content BY REFERENCE (MoreTabContent / TrainingMoreTab) */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div className="rd-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {children}
         </div>
 
         {/* Brand footer — non-interactive, muted (never amber per §27) */}
         <div style={{
-          padding: '12px 14px',
-          fontFamily: FONT, fontSize: 9, fontWeight: 600,
-          color: COLORS.textMuted, letterSpacing: '.5px',
-          borderTop: `1px solid ${COLORS.surfaceLight}`,
+          padding: '13px 18px',
+          display: 'flex', alignItems: 'center', gap: 8,
+          borderTop: `1px solid ${ELEV.hairline}`,
           flexShrink: 0,
         }}>
-          {`reads · v${APP_VERSION} · PAINTBALL INTELLIGENCE`}
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '.5px' }}>{`reads · v${APP_VERSION}`}</span>
+          <span style={{ width: 3, height: 3, borderRadius: '50%', background: COLORS.textMuted }} />
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '1px' }}>PAINTBALL INTELLIGENCE</span>
         </div>
       </div>
     </>
