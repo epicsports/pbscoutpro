@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-20 — [FIX/Tier-1] DrawToolbar amber-safe selection ring + arcade portrait aspect-stretch (Jacek report, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/drawtoolbar-ring-arcade-aspect`. Two independent fixes.
+- **FIX A — DrawToolbar selected-swatch ring invisible on amber.** The active indicator was a `2px accent` border + `accent33` glow → invisible when the swatch ≈ accent (amber/white). **Fix:** color-INDEPENDENT gap ring `boxShadow: 0 0 0 2px ${COLORS.bg}, 0 0 0 4px ${COLORS.accent}` (bg gap → accent ring) — reads on any swatch. Swatch fill stays its own color. §27 PASS (amber = active-state).
+- **FIX B — arcade games stretch vertically in portrait/tablet.** The LCD box used `height:100% + aspectRatio + maxWidth:100%`; when the aspect-derived width exceeded the parent, `maxWidth` clamped width while height stayed 100% → ratio broke → canvas stretched tall. These are width-capped portrait games → **drive by WIDTH:** `width:100% + aspectRatio + maxHeight:100%` (dropped `height:100%`). `ReadWarriorPage` (9/16) + `ReadsLanderPage` (160/224). ReadsMini untouched (SVG viewBox already uniform).
+- Gate: precommit + `arcade-portrait-aspect.spec.js` **2/2** (fail-first; instrument log: warrior 356×633=0.563, lander 414×580=0.713 — match intrinsic; pre-fix ~0.39). §27 PASS.
+- **Smoke owed (Jacek, prod):** draw toolbar → tap the amber swatch → ring clearly visible; Read Warrior/Lander on a tablet in PORTRAIT → field undistorted (not stretched); landscape doesn't overflow.
+
 ## 2026-06-20 — [FIX/Tier-1] Tactics board: present black-field + ✕ corner collision + edit door (Jacek report, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/tactics-board-present-x-edit`. Follows up the §124 board shipped earlier today.
 - **FIX 1 — present-mode BLACK field.** The present `InteractiveCanvas` sat in a bare `flexDirection:column` parent with no sized/aspect box; `BaseCanvas` sizes off its `width:100%` container's `clientWidth` (width-first), so without the box it measured degenerate → black. **Fix:** wrap the present canvas in the SAME hero box browse gets from `CanvasRailLayout` (`height:100%`+`aspectRatio:16/10`+`maxWidth:100%`), and move `DrawToolbar` to a screen-level overlay (`position:absolute` on the `position:fixed` present container) instead of a flex sibling. Present field now substantially sized (e2e asserts >500×300 landscape). Portrait letterboxes (field visible, not black); present is landscape-primary.
