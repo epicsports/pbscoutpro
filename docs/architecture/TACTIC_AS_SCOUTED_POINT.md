@@ -3,6 +3,18 @@
 **Status:** APPROVED (design gate, Jacek 2026-06-20). Staged implementation; each stage
 GATE-d to Jacek. Stage 0 is a read-only discovery gate (no code).
 
+**As-built progress:**
+- ✅ **Stage 1** — `useCaptureDraft` extracted from MatchPage, behavior-identical (golden-master
+  + full e2e). Live (`55dfd496`).
+- ✅ **Stage 2.0** — tactic engine branches (`capturePhases`/`rootPhase`, `teams:'single'`,
+  `outcomeEnabled:false`); tactic golden; point golden byte-identical. Live (`dd59ece0`).
+- ✅ **Stage 2.1** — phased tactic doc (`schemaVersion:2` + `phases`), serialize/hydrate via the
+  shared point helpers, hook `initial` param, legacy→`phases.breakout` (Q1) compat. `src/utils/
+  tacticDoc.js`; e2e `tactic-doc.spec.js`. (No destructive migration; result-side + obstacle +
+  bumpShots/curve dropped per Q2.)
+- ⏳ **Stage 2.2** — tactic editor screen (next). · **Stage 2.3** — integration + retirement. ·
+  **Stage 2.4** — #1 layout (independent branch).
+
 ---
 
 ## 1. Intent
