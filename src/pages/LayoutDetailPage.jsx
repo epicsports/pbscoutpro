@@ -346,7 +346,7 @@ export default function LayoutDetailPage() {
         bumps: [null, null, null, null, null],
       });
       setNewTacticName('');
-      navigate(`/layout/${layoutId}/tactic/${ref.id}`);
+      navigate(`/layout/${layoutId}/tactic-edit/${ref.id}`);
     } catch (e) {
       console.error('Create tactic failed:', e);
       alert('Failed to create tactic: ' + e.message);
@@ -360,7 +360,7 @@ export default function LayoutDetailPage() {
         steps: t.steps || [],
         freehandStrokes: t.freehandStrokes || null,
       });
-      navigate(`/layout/${layoutId}/tactic/${ref.id}`);
+      navigate(`/layout/${layoutId}/tactic-edit/${ref.id}`);
     } catch (e) {
       console.error('Duplicate tactic failed:', e);
     }
@@ -849,7 +849,7 @@ export default function LayoutDetailPage() {
                 background: COLORS.surfaceDark, border: `1px solid ${isPreviewing ? COLORS.accent + '60' : COLORS.border}`,
                 marginBottom: 6, cursor: 'pointer',
               }}
-                onClick={() => navigate(`/layout/${layoutId}/tactic/${tactic.id}`)}
+                onClick={() => navigate(`/layout/${layoutId}/tactic-edit/${tactic.id}`)}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontFamily: FONT, fontWeight: 600, fontSize: FONT_SIZE.sm, color: COLORS.text,
@@ -964,7 +964,7 @@ export default function LayoutDetailPage() {
 
       {/* ═══ ACTION SHEET — tactic menu ═══ */}
       <ActionSheet open={!!tacticMenu} onClose={() => setTacticMenu(null)} actions={[
-        { label: t('edit'), onPress: () => navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}`) },
+        { label: t('edit'), onPress: () => navigate(`/layout/${layoutId}/tactic-edit/${tacticMenu?.id}`) },
         { label: t('layout_detail_tactic_duplicate'), onPress: () => duplicateTactic(tacticMenu) },
         { label: t('layout_detail_tactic_print'), onPress: () => { setTacticMenu(null); navigate(`/layout/${layoutId}/tactic/${tacticMenu?.id}?print=1`); } },
         { separator: true },
@@ -1097,7 +1097,7 @@ export default function LayoutDetailPage() {
                 const tPlayers = (tactic.players || tactic.steps?.[0]?.players || []).filter(Boolean);
                 const isPrev = previewTacticId === tactic.id;
                 return (
-                  <div key={tactic.id} onClick={() => { navigate(`/layout/${layoutId}/tactic/${tactic.id}`); setTacticsDrawer(false); }}
+                  <div key={tactic.id} onClick={() => { navigate(`/layout/${layoutId}/tactic-edit/${tactic.id}`); setTacticsDrawer(false); }}
                     style={{
                       padding: '10px 12px', borderRadius: RADIUS.md, marginBottom: 4, cursor: 'pointer',
                       background: isPrev ? COLORS.accent + '15' : COLORS.surfaceDark,
