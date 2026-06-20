@@ -84,8 +84,11 @@ export default function DrawToolbar({
                 <div style={{
                   width: 24, height: 24, borderRadius: '50%',
                   background: c.value,
-                  border: active ? `2px solid ${COLORS.accent}` : `1px solid ${COLORS.borderLight}`,
-                  boxShadow: active ? `0 0 0 2px ${COLORS.accent}33` : 'none',
+                  border: `1px solid ${COLORS.borderLight}`,
+                  // Color-INDEPENDENT selection ring: a bg-colored gap then an accent
+                  // ring — reads on ANY swatch incl. amber (a `2px accent` border is
+                  // invisible on the amber swatch since swatch ≈ accent).
+                  boxShadow: active ? `0 0 0 2px ${COLORS.bg}, 0 0 0 4px ${COLORS.accent}` : 'none',
                   transition: 'box-shadow .12s',
                 }} />
               </div>

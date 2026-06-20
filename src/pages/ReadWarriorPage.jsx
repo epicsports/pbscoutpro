@@ -289,7 +289,7 @@ export default function ReadWarriorPage() {
 
       {/* LCD (letterbox 9:16) */}
       <div style={{ position: 'relative', width: '100%', maxWidth: 380, flex: 1, minHeight: 0, padding: `0 ${SPACE.md}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}>
-        <div style={{ position: 'relative', maxHeight: '100%', maxWidth: '100%', height: '100%', aspectRatio: '9 / 16', borderRadius: RADIUS.lg, overflow: 'hidden', background: FIELD, boxShadow: 'inset 0 0 0 2px #000, inset 0 0 24px rgba(0,0,0,.5)' }}>
+        <div style={{ position: 'relative', width: '100%', maxWidth: '100%', maxHeight: '100%', aspectRatio: '9 / 16', borderRadius: RADIUS.lg, overflow: 'hidden', background: FIELD, boxShadow: 'inset 0 0 0 2px #000, inset 0 0 24px rgba(0,0,0,.5)' }}>
           <canvas ref={canvasRef} data-testid="read-warrior-canvas"
             onPointerDown={(e) => { e.preventDefault(); apiRef.current?.startOrAdvance(); }}
             style={{ display: 'block', width: '100%', height: '100%', imageRendering: 'pixelated', touchAction: 'none' }} />
