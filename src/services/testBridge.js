@@ -63,6 +63,63 @@ export function installTestBridge() {
     },
     // Seed one on-board tactic (for the present-mode + edit-door UI e2e).
     seedLayoutTactic: (layoutId, name) => ds.addLayoutTactic(layoutId, { name: name || 'Seeded tactic' }),
+    // Stage 2.1 — phased tactic doc serialize/hydrate + legacy compat round-trip
+    // through the REAL Firestore path. Builds a tactic phase state, persists
+    // (schemaVersion:2 + phases), reads back + hydrates, and proves: setup-side
+    // round-trip identity, result-side fields EXCLUDED, and a legacy (flat) doc
+    // hydrates into phases.breakout (Q1).
+    tacticDocRoundtrip: async (slug, layoutId) => {
+      const { tacticStateToDoc, tacticDocToPhases } = await import('../utils/tacticDoc');
+      const { emptyTeam } = await import('../hooks/useCaptureDraft');
+      const tacCol = collection(db, 'workspaces', slug, 'layoutOverlays', layoutId, 'tactics');
+      const mk = (x) => ({
+        ...emptyTeam(),
+        players: [{ x, y: 0.3 }, null, null, null, null],
+        assign: ['p1', null, null, null, null],
+        bumps: [{ x, y: 0.5 }, null, null, null, null],
+        runners: [true, false, false, false, false],
+        shots: [[{ x: 0.5, y: 0.2 }], [], [], [], []],
+        quickShots: [['dorito'], [], [], [], []],
+        zoneShots: [['zoneA'], [], [], [], []],
+        // result-side intentionally populated to prove it's DROPPED on serialize:
+        elim: [true, false, false, false, false], penalty: '241',
+      });
+      const phases = { preBreakout: mk(0.2), breakout: null, settle: mk(0.4), mid: null, endgame: null };
+
+      const ref = await ds.addLayoutTactic(layoutId, { name: 'Phased RT' });
+      await ds.updateLayoutTactic(layoutId, ref.id, tacticStateToDoc(phases));
+      const back = (await getDoc(ref)).data();
+      const hy = tacticDocToPhases(back);
+
+      const schemaOk = back.schemaVersion === 2 && !!back.phases;
+      const shapeOk = !!back.phases.preBreakout && back.phases.breakout === null && !!back.phases.settle;
+      const eqJSON = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+      const rootRoundtrip = eqJSON(hy.preBreakout.players, phases.preBreakout.players)
+        && eqJSON(hy.preBreakout.shots, phases.preBreakout.shots)
+        && eqJSON(hy.preBreakout.quickShots, phases.preBreakout.quickShots)
+        && eqJSON(hy.preBreakout.zoneShots, phases.preBreakout.zoneShots)
+        && eqJSON(hy.preBreakout.runners, phases.preBreakout.runners)
+        && eqJSON(hy.preBreakout.assign, phases.preBreakout.assign)
+        && eqJSON(hy.preBreakout.bumps, phases.preBreakout.bumps);
+      const settleRoundtrip = eqJSON(hy.settle.players, phases.settle.players);
+      // result-side + legacy-RO fields must NOT be persisted in a phase doc
+      const pd = back.phases.preBreakout;
+      const excludedDropped = !('eliminations' in pd) && !('penalty' in pd) && !('obstacleShots' in pd)
+        && !('zoneObstacleShots' in pd) && !('elim' in pd) && !('outcome' in pd);
+      // hydrated draft is emptyTeam-shaped (handlers need elim/penalty defaults)
+      const hydrateDefaults = Array.isArray(hy.preBreakout.elim) && hy.preBreakout.elim.every(e => e === false)
+        && hy.preBreakout.penalty === '';
+
+      // Legacy compat (Q1): a flat doc (no schemaVersion) → phases.breakout.
+      const legacyRef = doc(tacCol);
+      await setDoc(legacyRef, { name: 'Legacy flat', players: [{ x: 0.7, y: 0.7 }, null, null, null, null], runners: [false, true, false, false, false], createdAt: serverTimestamp() });
+      const legHy = tacticDocToPhases((await getDoc(legacyRef)).data());
+      const legacyToBreakout = !legHy.preBreakout && !!legHy.breakout
+        && eqJSON(legHy.breakout.players[0], { x: 0.7, y: 0.7 })
+        && eqJSON(legHy.breakout.runners, [false, true, false, false, false]);
+
+      return { schemaOk, shapeOk, rootRoundtrip, settleRoundtrip, excludedDropped, hydrateDefaults, legacyToBreakout };
+    },
     // Coach Tactics board data contract (rail-native): create on-board tactics
     // (onBoard:true + order=max+1), seed a LEGACY doc (no onBoard/order) and prove
     // the client-side read rules include it, reorder + persist, and remove =

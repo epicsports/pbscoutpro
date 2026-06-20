@@ -54,15 +54,23 @@ export default function useCaptureDraft({
   // the Stage-1 point golden). Tactic passes teams='single', outcomeEnabled=false,
   // capturePhases=the positional set.
   target = 'point', teams = 'AB', outcomeEnabled = true, capturePhases = POINT_PHASES,
+  // Stage 2.1 hydrate — a per-phase draft map { [phase]: draft|null } to seed the
+  // initial state (tactic editor passes tacticDocToPhases(doc)). null → empty (the
+  // point never passes it → byte-identical scouting start). Read ONCE (lazy init).
+  initial = null,
 } = {}) {
-  void target; // reserved label (persistence shape decided by the consumer, Stage 2.1)
+  void target; // reserved label
   const rootPhase = capturePhases[0]; // 'break' (point) | 'preBreakout' (tactic)
 
-  const [draftA, setDraftA] = useState(emptyTeam());
+  const [draftA, setDraftA] = useState(() => (initial && initial[rootPhase]) || emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
   const [captureStage, setCaptureStage] = useState(rootPhase); // root | non-root stage
-  const [stageDraftsA, setStageDraftsA] = useState(() => mkStageMap(capturePhases, () => null));
+  const [stageDraftsA, setStageDraftsA] = useState(() => (
+    initial
+      ? Object.fromEntries(capturePhases.slice(1).map(k => [k, initial[k] || null]))
+      : mkStageMap(capturePhases, () => null)
+  ));
   const [stageDraftsB, setStageDraftsB] = useState(() => mkStageMap(capturePhases, () => null));
   const [stageAnnotations, setStageAnnotations] = useState(() => mkStageMap(capturePhases, () => []));
   const [reasonMenu, setReasonMenu] = useState(null);
