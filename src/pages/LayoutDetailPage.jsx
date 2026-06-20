@@ -14,6 +14,7 @@ import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import BunkerCard from '../components/BunkerCard';
 import OCRBunkerDetect from '../components/OCRBunkerDetect';
+import OpenTacticsAction from '../components/OpenTacticsAction';
 import PageHeader from '../components/PageHeader';
 import { Btn, EmptyState, SkeletonList, Modal, Input, Select, Icons, LeagueBadge, YearBadge, ActionSheet, MoreBtn, ConfirmModal } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
@@ -815,6 +816,12 @@ export default function LayoutDetailPage() {
               <Icons.Plus /> {t('layout_detail_new_btn')}
             </Btn>
           </div>
+
+          {/* Coach Tactics board — rail-native present/annotate surface for these
+              tactics. Calm (default-variant) full-width entry so it doesn't compete
+              with the amber "New" CTA above (§27). Layout is already in scope. */}
+          <OpenTacticsAction layoutId={layoutId} variant="default" size="md"
+            style={{ width: '100%', justifyContent: 'center', marginBottom: 8 }} />
 
           {tacticsLoading && <SkeletonList count={2} />}
           {!tacticsLoading && (squadCode ? tactics.filter(tc => tc.squadCode === squadCode) : tactics.filter(tc => !tc.squadCode)).length === 0 && (

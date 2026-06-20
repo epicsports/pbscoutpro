@@ -37,6 +37,7 @@ const LayoutsPage = lazy(() => import('./pages/LayoutsPage'));
 const LayoutDetailPage = lazy(() => import('./pages/LayoutDetailPage'));
 const LayoutWizardPage = lazy(() => import('./pages/LayoutWizardPage'));
 const TacticPage = lazy(() => import('./pages/TacticPage'));
+const LayoutTacticsBoardPage = lazy(() => import('./pages/LayoutTacticsBoardPage'));
 const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
 const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
 const LayoutAnalyticsPage = lazy(() => import('./pages/LayoutAnalyticsPage'));
@@ -182,6 +183,7 @@ function AppRoutes() {
             <Route path="/tournament/:tournamentId/match/:matchId" element={<RouteGuard><MatchPage /></RouteGuard>} />
             <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
             <Route path="/layout/:layoutId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
+            <Route path="/layout/:layoutId/tactics" element={<RouteGuard><LayoutTacticsBoardPage /></RouteGuard>} />
             <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
             <Route path="/player/checklist" element={<PackingChecklistPage />} />
             <Route path="/break" element={<TakeABreakPage />} />

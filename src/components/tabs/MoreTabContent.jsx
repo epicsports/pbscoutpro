@@ -8,6 +8,7 @@ import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { leagueDisplayName } from '../../hooks/useLeagues';
 import { hasAnyRole, getRolesForUser, ADMIN_EMAILS, canEditTactics } from '../../utils/roleUtils';
 import ViewAsPill from '../ViewAsPill';
+import OpenTacticsAction from '../OpenTacticsAction';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import TakeABreakSection from './TakeABreakSection';
 import { ConfirmModal } from '../ui';
@@ -88,7 +89,12 @@ export default function MoreTabContent({
           brief). Gated canEditTactics(admin|coach) — hidden from scout. */}
       {canEditTactics(effectiveRoles) && (
         <MoreSection title={t('playbooks_label')}>
-          <MoreItem icon="📖" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} isLast />
+          <MoreItem icon="📖" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} />
+          {/* Coach Tactics board — same affordance as Konfig / tournament / training.
+              No layoutId → resolves the field itself (1 → go, N → picker). */}
+          <div style={{ padding: '8px 12px' }}>
+            <OpenTacticsAction variant="default" size="md" style={{ width: '100%', justifyContent: 'center' }} />
+          </div>
         </MoreSection>
       )}
 

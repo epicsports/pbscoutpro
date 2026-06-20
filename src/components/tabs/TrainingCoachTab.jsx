@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SectionTitle, Input, Btn, Card, ConfirmModal } from '../ui';
 import PlayerAvatar from '../PlayerAvatar';
+import OpenTacticsAction from '../OpenTacticsAction';
 import { usePlayers, useMatchups, useLayoutInsights } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';
@@ -154,6 +155,14 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
             subtitle={t('hitability_card_sub')}
             actions={<span style={{ color: COLORS.textMuted, fontSize: 20, flexShrink: 0 }}>›</span>}
           />
+        </div>
+      )}
+
+      {/* Coach Tactics board — same contextual door (this training's layout). */}
+      {layoutId && (
+        <div style={{ marginBottom: SPACE.lg }}>
+          <OpenTacticsAction layoutId={layoutId} variant="default" size="md"
+            style={{ width: '100%', justifyContent: 'center' }} />
         </div>
       )}
 

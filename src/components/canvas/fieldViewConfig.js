@@ -114,11 +114,24 @@ export const FIELD_VIEWS = {
     pinned: ['labels', 'zones', 'lines'],
     railZones: [{ type: 'layers', key: 'layers' }],
   },
-  'tactic': {                         // migrated LAST; SHELL only, internals untouched
+  'tactic': {                         // TacticPage editor — §76 immersive (NOT rail)
     phaseControl: 'setup',            // pick-a-phase-to-PLACE-positions — NO ▶ (nothing to replay)
     primaryAction: 'save',            // Save
     pinned: ['players', 'coachPlan'],
     railZones: [{ type: 'layers', key: 'layers' }],
+  },
+  'tactic-board': {                   // Coach Tactics board (rail-native) — BUILT
+                                      // 2026-06-20. LayoutTacticsBoardPage: field
+                                      // HERO = read-only preview of the selected
+                                      // tactic; rail = the ordered on-board list
+                                      // (select / reorder / remove / + new / library).
+                                      // Present/annotate = full-bleed immersive draw
+                                      // (NOT the §116 manual strip — F2 unbuilt).
+    phaseControl: null,               // no phase axis — one tactic at a time
+    primaryAction: null,              // the rail "+ New tactic" footer owns create;
+                                      // present-mode Save is floating in immersive
+    pinned: [],                       // tab-less rail → generic expand when collapsed
+    railZones: [{ type: 'tabs', key: 'tactics' }],   // the tactic list itself
   },
 };
 

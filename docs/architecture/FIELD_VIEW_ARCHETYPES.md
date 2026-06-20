@@ -25,6 +25,11 @@ also needing persistent side controls + report content.
   - **PlayerStats** (`PlayerStatsPage.jsx`) — already compliant (report-column rail; no phase/
     layer controls to wire — hardcoded heatmap layers).
   - **Hitability** (`HitabilityPage.jsx`) — already compliant (config/track/sum `collapsed.tabs`).
+  - **Tactics board** (`LayoutTacticsBoardPage.jsx`, route `/layout/:id/tactics`) — NEW 2026-06-20
+    (`tactic-board` descriptor). Field HERO = read-only preview of the selected tactic; rail = the
+    ordered on-board list. Its PRESENT/annotate mode is **full-bleed §76 immersive** (draw surface),
+    NOT a rail state — so the board spans both archetypes by design (browse=rail, present=immersive).
+    The immersive `TacticPage` editor (below) is unchanged and COEXISTS.
 
 ### 2. §76 IMMERSIVE — `useLandscapeMode`
 **For: EDITORS** — you EDIT the field geometry/setup and want the maximum uninterrupted canvas;
