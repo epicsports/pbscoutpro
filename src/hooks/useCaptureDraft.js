@@ -38,22 +38,33 @@ function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
 const ERASER_REF_W = 1000;
 const ERASER_REF_H = 500;
 
+// The point's INTERNAL capture stage literals (root 'break' = keyframe #0 +
+// settle/mid/endgame). NOT the canonical pointPhases keys — the point keeps its
+// 'break' literal/alias undisturbed. The tactic passes the canonical positional
+// set ['preBreakout','breakout','settle','mid','endgame'] (root 'preBreakout').
+const POINT_PHASES = ['break', 'settle', 'mid', 'endgame'];
+// stage map keyed by the NON-root phases → initial value (fresh per key).
+const mkStageMap = (phases, makeVal) => Object.fromEntries(phases.slice(1).map(k => [k, makeVal()]));
+
 export default function useCaptureDraft({
   onFieldRoster = [], lastAssignA, lastAssignB,
   setAssignTarget = () => {}, playerDeleteConfirm,
   outcome = null, setOutcome = () => {},
-  // Stage-1 config (point-preserving defaults; non-default branches arrive Stage 2)
-  target = 'point', teams = 'AB', outcomeEnabled = true,
+  // Config. Point-preserving defaults → byte-identical scouting path (proven by
+  // the Stage-1 point golden). Tactic passes teams='single', outcomeEnabled=false,
+  // capturePhases=the positional set.
+  target = 'point', teams = 'AB', outcomeEnabled = true, capturePhases = POINT_PHASES,
 } = {}) {
-  void target; void teams; // reserved for Stage 2 (tactic: 'tactic'/'single')
+  void target; // reserved label (persistence shape decided by the consumer, Stage 2.1)
+  const rootPhase = capturePhases[0]; // 'break' (point) | 'preBreakout' (tactic)
 
   const [draftA, setDraftA] = useState(emptyTeam());
   const [draftB, setDraftB] = useState(emptyTeam());
   const [activeTeam, setActiveTeam] = useState('A');
-  const [captureStage, setCaptureStage] = useState('break'); // 'break'|'settle'|'mid'|'endgame'
-  const [stageDraftsA, setStageDraftsA] = useState({ settle: null, mid: null, endgame: null });
-  const [stageDraftsB, setStageDraftsB] = useState({ settle: null, mid: null, endgame: null });
-  const [stageAnnotations, setStageAnnotations] = useState({ settle: [], mid: [], endgame: [] });
+  const [captureStage, setCaptureStage] = useState(rootPhase); // root | non-root stage
+  const [stageDraftsA, setStageDraftsA] = useState(() => mkStageMap(capturePhases, () => null));
+  const [stageDraftsB, setStageDraftsB] = useState(() => mkStageMap(capturePhases, () => null));
+  const [stageAnnotations, setStageAnnotations] = useState(() => mkStageMap(capturePhases, () => []));
   const [reasonMenu, setReasonMenu] = useState(null);
   const [selPlayer, setSelPlayer] = useState(null);
   const [mode, setMode] = useState('place');
@@ -90,52 +101,57 @@ export default function useCaptureDraft({
   const stageDrafts = activeTeam === 'A' ? stageDraftsA : stageDraftsB;
   const setStageDrafts = activeTeam === 'A' ? setStageDraftsA : setStageDraftsB;
   const breakDraft = activeTeam === 'A' ? draftA : draftB;
-  const draft = captureStage === 'break' ? breakDraft : (stageDrafts[captureStage] || breakDraft);
-  const setDraft = captureStage === 'break'
+  const draft = captureStage === rootPhase ? breakDraft : (stageDrafts[captureStage] || breakDraft);
+  const setDraft = captureStage === rootPhase
     ? breakSetDraft
     : (updater) => setStageDrafts(prev => {
         const cur = prev[captureStage] || seedStageDraft(breakDraft);
         const next = typeof updater === 'function' ? updater(cur) : updater;
         return { ...prev, [captureStage]: next };
       });
-  // Per-stage drawings: break = top-level `annotations`; settle/mid = stageAnnotations[stage].
-  const activeAnnotations = captureStage === 'break' ? annotations : (stageAnnotations[captureStage] || []);
-  const setActiveAnnotations = captureStage === 'break'
+  // Per-stage drawings: root = top-level `annotations`; non-root = stageAnnotations[stage].
+  const activeAnnotations = captureStage === rootPhase ? annotations : (stageAnnotations[captureStage] || []);
+  const setActiveAnnotations = captureStage === rootPhase
     ? setAnnotations
     : (updater) => setStageAnnotations(prev => ({
         ...prev,
         [captureStage]: typeof updater === 'function' ? updater(prev[captureStage] || []) : updater,
       }));
   const switchStage = (next) => {
-    if (next !== 'break') {
-      const priorBase = (drafts, fallback) =>
-        next === 'endgame' ? (drafts.mid || drafts.settle || fallback)
-        : next === 'mid' ? (drafts.settle || fallback)
-        : fallback;
+    if (next !== rootPhase) {
+      // Seed from the nearest PRIOR non-root stage that exists, else the root
+      // draft. Generalized over capturePhases order — for POINT this is exactly
+      // endgame←mid||settle||break · mid←settle||break · settle←break (verbatim);
+      // for TACTIC, breakout←preBreakout, settle←breakout||preBreakout, etc.
+      const idx = capturePhases.indexOf(next);
+      const priorBase = (drafts, fallback) => {
+        for (let i = idx - 1; i >= 1; i--) { const d = drafts[capturePhases[i]]; if (d) return d; }
+        return fallback;
+      };
       const baseA = priorBase(stageDraftsA, draftA);
       const baseB = priorBase(stageDraftsB, draftB);
       if (!stageDraftsA[next]) setStageDraftsA(prev => ({ ...prev, [next]: seedStageDraft(baseA) }));
-      if (!stageDraftsB[next]) setStageDraftsB(prev => ({ ...prev, [next]: seedStageDraft(baseB) }));
+      if (teams === 'AB' && !stageDraftsB[next]) setStageDraftsB(prev => ({ ...prev, [next]: seedStageDraft(baseB) }));
     }
     setCaptureStage(next);
     setSelPlayer(null); setQuickShotPlayer(null); setToolbarPlayer(null); setRedoStack([]); setReasonMenu(null);
   };
   const stageHasData = (drafts, anns) => !!(drafts?.players?.some(Boolean) || anns?.length);
-  const stageDone = {
-    break: draftA.players.some(Boolean) || draftB.players.some(Boolean),
-    settle: stageHasData(stageDraftsA.settle, stageAnnotations.settle) || stageHasData(stageDraftsB.settle, stageAnnotations.settle),
-    mid: stageHasData(stageDraftsA.mid, stageAnnotations.mid) || stageHasData(stageDraftsB.mid, stageAnnotations.mid),
-    endgame: stageHasData(stageDraftsA.endgame, stageAnnotations.endgame) || stageHasData(stageDraftsB.endgame, stageAnnotations.endgame),
-  };
+  const stageDone = Object.fromEntries(capturePhases.map(ph => {
+    if (ph === rootPhase) return [ph, draftA.players.some(Boolean) || (teams === 'AB' && draftB.players.some(Boolean))];
+    return [ph, stageHasData(stageDraftsA[ph], stageAnnotations[ph]) || (teams === 'AB' && stageHasData(stageDraftsB[ph], stageAnnotations[ph]))];
+  }));
 
-  // Mirrored opponent for canvas overlay
+  // Mirrored opponent for canvas overlay (AB only — single-team has no opponent).
   const mirroredOpp = useMemo(() => {
+    if (teams !== 'AB') return E5();
     const src = activeTeam === 'A' ? draftB : draftA;
     return src.players.map(p => p ? mirrorX(p) : null);
-  }, [activeTeam, draftA.players, draftB.players]);
+  }, [teams, activeTeam, draftA.players, draftB.players]);
   const mirroredOppElim = useMemo(() => {
+    if (teams !== 'AB') return E5B();
     return (activeTeam === 'A' ? draftB : draftA).elim || E5B();
-  }, [activeTeam, draftA.elim, draftB.elim]);
+  }, [teams, activeTeam, draftA.elim, draftB.elim]);
 
   const toolbarItems = useMemo(() => {
     if (toolbarPlayer === null) return [];

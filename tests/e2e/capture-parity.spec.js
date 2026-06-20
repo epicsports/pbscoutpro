@@ -24,10 +24,11 @@ import { login } from '../helpers/auth.js';
 import { TEST_ACCOUNT, WS, TRN, MATCH, TEAM_A } from './fixtures.js';
 
 const GOLDEN = path.join(process.cwd(), 'tests/e2e/golden/capture-parity.json');
+const GOLDEN_TACTIC = path.join(process.cwd(), 'tests/e2e/golden/capture-parity-tactic.json');
 const scoutUrl = `#/tournament/${TRN}/match/${MATCH}?scout=${TEAM_A}&mode=new`;
 
 // Call a probe driver, then wait for the resulting re-render (v increment) so the
-// next read/driver sees committed state.
+// next read/driver sees committed state. (point probe = window.__pbCapture)
 async function act(page, method, args = []) {
   const v0 = await page.evaluate(() => window.__pbCapture?.v ?? 0);
   await page.evaluate(([m, a]) => window.__pbCapture[m](...a), [method, args]);
@@ -35,6 +36,15 @@ async function act(page, method, args = []) {
 }
 async function snap(page, label, out) {
   out.push({ label, state: await page.evaluate(() => window.__pbCapture.state()) });
+}
+// Same, for the TACTIC probe (window.__pbCaptureTactic, Stage 2.0 rig).
+async function actT(page, method, args = []) {
+  const v0 = await page.evaluate(() => window.__pbCaptureTactic?.v ?? 0);
+  await page.evaluate(([m, a]) => window.__pbCaptureTactic[m](...a), [method, args]);
+  await page.waitForFunction(v => (window.__pbCaptureTactic?.v ?? 0) > v, v0, { timeout: 6000 });
+}
+async function snapT(page, label, out) {
+  out.push({ label, state: await page.evaluate(() => window.__pbCaptureTactic.state()) });
 }
 
 test('capture orchestration golden-master (draft tree byte-identical)', async ({ page }) => {
@@ -95,6 +105,64 @@ test('capture orchestration golden-master (draft tree byte-identical)', async ({
   } else {
     expect(fs.existsSync(GOLDEN), 'golden fixture must exist (run with CAPTURE_GOLDEN_WRITE=1 first)').toBe(true);
     const golden = JSON.parse(fs.readFileSync(GOLDEN, 'utf8'));
+    expect(out).toEqual(golden);
+  }
+});
+
+// Stage 2.0 — the TACTIC battery: single team, ALL FIVE positional phases
+// (preBreakout·breakout·settle·mid·endgame), place / runner / shoot[zone band +
+// callout · precise] / bump — and NO hit/elim/reason (outcome:false). Drives the
+// NEW engine branches via the emulator-only /test/capture rig, snapshots the
+// single-team draft tree → its own byte-stable golden. Proves the tactic branches
+// are exercised + deterministic before any editor screen exists.
+test('tactic capture golden-master (single team, 5 positional phases, no outcome)', async ({ page }) => {
+  test.setTimeout(60000);
+  await login(page, TEST_ACCOUNT);
+  await page.goto('/#/test/capture');
+  await page.waitForFunction(() => typeof window.__pbCaptureTactic?.placePlayer === 'function', { timeout: 25000 });
+
+  // outcome:false → the player action menu EXCLUDES hit/reason; keeps setup actions.
+  await actT(page, 'placePlayer', [{ x: 0.2, y: 0.3 }]);
+  await actT(page, 'selectPlayer', [0]);
+  const menu = await page.evaluate(() => window.__pbCaptureTactic.toolbarItems());
+  expect(menu).not.toContain('hit');
+  expect(menu).not.toContain('reason');
+  expect(menu).toEqual(expect.arrayContaining(['assign', 'runner', 'late', 'shoot', 'remove']));
+  await actT(page, 'selectPlayer', [0]); // close toolbar
+
+  const out = [];
+  // ── ROOT = preBreakout ──
+  await snapT(page, 'pre.place1', out);                        // (player 0 already placed)
+  await actT(page, 'placePlayer', [{ x: 0.4, y: 0.5 }]);     await snapT(page, 'pre.place2', out);
+  await actT(page, 'placePlayer', [{ x: 0.6, y: 0.7 }]);     await snapT(page, 'pre.place3', out);
+  await actT(page, 'toolbarAction', ['runner', 1]);          await snapT(page, 'pre.runner', out);
+  await actT(page, 'toolbarAction', ['shoot', 0]);
+  await actT(page, 'toggleQuickZone', ['dorito', 'band']);   await snapT(page, 'pre.zoneBand', out);
+  await actT(page, 'toggleQuickZone', ['zoneA', 'callout']); await snapT(page, 'pre.zoneCallout', out);
+  await actT(page, 'placeShot', [0, { x: 0.5, y: 0.2 }]);    await snapT(page, 'pre.shot', out);
+  await actT(page, 'toolbarAction', ['late', 2]);            await snapT(page, 'pre.bump', out);
+
+  // ── breakout (seeds from preBreakout) ──
+  await actT(page, 'switchStage', ['breakout']);             await snapT(page, 'breakout.seeded', out);
+  await actT(page, 'placePlayer', [{ x: 0.3, y: 0.3 }]);     await snapT(page, 'breakout.place', out);
+  // ── settle (seeds from breakout) ──
+  await actT(page, 'switchStage', ['settle']);               await snapT(page, 'settle.seeded', out);
+  await actT(page, 'placeShot', [1, { x: 0.4, y: 0.4 }]);    await snapT(page, 'settle.shot', out);
+  // ── mid ──
+  await actT(page, 'switchStage', ['mid']);                  await snapT(page, 'mid.seeded', out);
+  await actT(page, 'placePlayer', [{ x: 0.7, y: 0.6 }]);     await snapT(page, 'mid.place', out);
+  // ── endgame ──
+  await actT(page, 'switchStage', ['endgame']);              await snapT(page, 'endgame.seeded', out);
+  await actT(page, 'toolbarAction', ['runner', 0]);          await snapT(page, 'endgame.runner', out);
+
+  if (process.env.CAPTURE_GOLDEN_WRITE === '1') {
+    fs.mkdirSync(path.dirname(GOLDEN_TACTIC), { recursive: true });
+    fs.writeFileSync(GOLDEN_TACTIC, JSON.stringify(out, null, 2));
+    // eslint-disable-next-line no-console
+    console.log(`[capture-parity] TACTIC golden written: ${out.length} steps → ${GOLDEN_TACTIC}`);
+  } else {
+    expect(fs.existsSync(GOLDEN_TACTIC), 'tactic golden must exist (run with CAPTURE_GOLDEN_WRITE=1 first)').toBe(true);
+    const golden = JSON.parse(fs.readFileSync(GOLDEN_TACTIC, 'utf8'));
     expect(out).toEqual(golden);
   }
 });
