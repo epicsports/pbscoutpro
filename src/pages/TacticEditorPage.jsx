@@ -9,7 +9,7 @@
  * grammar as scouting (one brain) minus the result side. Persists phase-keyed via
  * updateLayoutTactic; per-phase freehand (R3) rides the hook's activeAnnotations seam.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Pencil } from 'lucide-react';
 
@@ -22,7 +22,6 @@ import StageSwitcher from '../components/match/StageSwitcher';
 import PageHeader from '../components/PageHeader';
 import { Btn, EmptyState } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
-import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import useCaptureDraft from '../hooks/useCaptureDraft';
 import { TACTIC_PHASE_KEYS, tacticDocToPhases, tacticDocToAnnotations, tacticStateToDoc } from '../utils/tacticDoc';
 import { label as phaseLabelFn } from '../utils/pointPhases';
@@ -61,7 +60,20 @@ export default function TacticEditorPage() {
 function TacticEditorInner({ layout, layoutId, tacticId, tactic }) {
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { canvasMaxHeight } = useLandscapeMode();
+  // This screen KEEPS its chrome (header + phase spine + bottom bar), unlike the
+  // immersive MatchPage. So the field must fit the AVAILABLE (flex-slot) height, NOT
+  // window.innerHeight. Measure the field wrapper; 'fit' (contain) then keeps the
+  // field inside BOTH its width and that height — no downward spill over the bar.
+  const fieldWrapRef = useRef(null);
+  const [fieldH, setFieldH] = useState(0);
+  useEffect(() => {
+    const el = fieldWrapRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => setFieldH(el.clientHeight));
+    ro.observe(el);
+    setFieldH(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
 
   // Hydrate the per-phase drafts + annotations ONCE (the key prop re-mounts on
   // tactic switch). eslint deps intentionally empty — `tactic` is fixed per mount.
@@ -113,11 +125,12 @@ function TacticEditorInner({ layout, layoutId, tacticId, tactic }) {
         <StageSwitcher stage={eng.captureStage} onChange={eng.switchStage} done={eng.stageDone} stages={stages} />
       </div>
 
-      {/* Canvas */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0 }}>
+      {/* Canvas — bounded to THIS wrapper's available height (chrome stays visible) */}
+      <div ref={fieldWrapRef} data-testid="tactic-editor-field" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', minHeight: 0, overflow: 'hidden' }}>
         <InteractiveCanvas
           fieldImage={field.fieldImage}
-          maxCanvasHeight={canvasMaxHeight(0, 200)}
+          sizingStrategy="fit"
+          maxCanvasHeight={fieldH || undefined}
           players={eng.draft.players} shots={eng.draft.shots} bumpStops={eng.draft.bumps}
           eliminations={E5B} eliminationPositions={E5}
           runners={eng.draft.runners || []}

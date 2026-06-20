@@ -48,3 +48,33 @@ test('tactic editor mounts — field + 5-phase spine + save (no outcome node)', 
   await expect(page.getByRole('tab')).toHaveCount(5);
   await expect(page.locator('canvas').first()).toBeVisible();
 });
+
+// Bugfix — the editor keeps its chrome (header + phase spine + bottom bar), so the
+// field must fit the AVAILABLE flex height, not window.innerHeight. Before the fix
+// the landscape canvas was sized to the full viewport → it spilled DOWN over the
+// bottom bar. After: 'fit' bounded to the measured wrapper → canvas ≤ wrapper, and
+// the Save bar stays visible + un-overlapped.
+test('tactic editor — field fits its slot in landscape (no spill over the bottom bar)', async ({ page }) => {
+  await login(page, TEST_ACCOUNT);
+  await page.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
+  await page.evaluate(s => window.__pbtest.setWorkspace(s), WS);
+  const tacId = await page.evaluate(id => window.__pbtest.seedLayoutTactic(id, 'Fit E2E').then(r => r.id), BASE_LAYOUT);
+
+  await page.setViewportSize({ width: 1194, height: 834 }); // tablet landscape
+  await page.goto('/' + `#/layout/${BASE_LAYOUT}/tactic-edit/${tacId}`);
+  await expect(page.getByTestId('tactic-editor-loaded')).toBeVisible({ timeout: 20000 });
+
+  const canvas = page.getByTestId('tactic-editor-field').locator('canvas').first();
+  await expect(canvas).toBeVisible();
+  const wrapBox = await page.getByTestId('tactic-editor-field').boundingBox();
+  const canvasBox = await canvas.boundingBox();
+  const saveBox = await page.getByTestId('tactic-editor-save').boundingBox();
+
+  // Canvas fits INSIDE its slot (no downward spill) …
+  expect(canvasBox.height).toBeLessThanOrEqual(wrapBox.height + 1);
+  expect(canvasBox.y + canvasBox.height).toBeLessThanOrEqual(saveBox.y + 1);
+  // … and the Save bar is fully on-screen (not pushed below the viewport).
+  expect(saveBox.y + saveBox.height).toBeLessThanOrEqual(834 + 1);
+  // The field is still substantial (didn't collapse).
+  expect(canvasBox.height).toBeGreaterThan(300);
+});
