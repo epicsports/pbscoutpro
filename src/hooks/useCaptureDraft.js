@@ -53,11 +53,14 @@ export default function useCaptureDraft({
   // Config. Point-preserving defaults → byte-identical scouting path (proven by
   // the Stage-1 point golden). Tactic passes teams='single', outcomeEnabled=false,
   // capturePhases=the positional set.
-  target = 'point', teams = 'AB', outcomeEnabled = true, capturePhases = POINT_PHASES,
+  target = 'point', teams = 'AB', outcomeEnabled = true, allowAssign = true, capturePhases = POINT_PHASES,
   // Stage 2.1 hydrate — a per-phase draft map { [phase]: draft|null } to seed the
   // initial state (tactic editor passes tacticDocToPhases(doc)). null → empty (the
   // point never passes it → byte-identical scouting start). Read ONCE (lazy init).
   initial = null,
+  // Stage 2.2 — per-phase annotations { [phase]: strokes[] } (R3 per-phase freehand).
+  // null → []/empty (point never passes it → byte-identical). Read ONCE (lazy init).
+  initialAnnotations = null,
 } = {}) {
   void target; // reserved label
   const rootPhase = capturePhases[0]; // 'break' (point) | 'preBreakout' (tactic)
@@ -72,12 +75,16 @@ export default function useCaptureDraft({
       : mkStageMap(capturePhases, () => null)
   ));
   const [stageDraftsB, setStageDraftsB] = useState(() => mkStageMap(capturePhases, () => null));
-  const [stageAnnotations, setStageAnnotations] = useState(() => mkStageMap(capturePhases, () => []));
+  const [stageAnnotations, setStageAnnotations] = useState(() => (
+    initialAnnotations
+      ? Object.fromEntries(capturePhases.slice(1).map(k => [k, initialAnnotations[k] || []]))
+      : mkStageMap(capturePhases, () => [])
+  ));
   const [reasonMenu, setReasonMenu] = useState(null);
   const [selPlayer, setSelPlayer] = useState(null);
   const [mode, setMode] = useState('place');
   const [drawMode, setDrawMode] = useState(false);
-  const [annotations, setAnnotations] = useState([]);
+  const [annotations, setAnnotations] = useState(() => (initialAnnotations && initialAnnotations[rootPhase]) || []);
   const [redoStack, setRedoStack] = useState([]);
   const [currentStroke, setCurrentStroke] = useState(null);
   const [drawColor, setDrawColor] = useState(STROKE_COLORS[0].value);
@@ -167,7 +174,9 @@ export default function useCaptureDraft({
     const isRunner = draft.runners?.[toolbarPlayer];
     const isLate = !!draft.bumps?.[toolbarPlayer];
     return [
-      { icon: '👤', label: 'Assign', color: COLORS.accent, action: 'assign' },
+      // § allowAssign — roster assignment is omitted for the tactic editor (Stage
+      // 2.2; the phase schema keeps `assign` for later). Default true → point identical.
+      ...(allowAssign ? [{ icon: '👤', label: 'Assign', color: COLORS.accent, action: 'assign' }] : []),
       // § outcomeEnabled — result-side (Hit) is omitted for outcome-less capture
       // (tactic, Stage 2). Default true → point toolbar identical.
       ...(outcomeEnabled ? [{ icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: COLORS.danger, action: 'hit' }] : []),
@@ -179,7 +188,7 @@ export default function useCaptureDraft({
       ...(outcomeEnabled && isElim && isReasonRadial(captureStage) ? [{ icon: '🏷️', label: 'Reason', color: COLORS.danger, action: 'reason' }] : []),
       { icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' },
     ];
-  }, [toolbarPlayer, draft.elim, draft.runners, draft.bumps, captureStage, outcomeEnabled]);
+  }, [toolbarPlayer, draft.elim, draft.runners, draft.bumps, captureStage, outcomeEnabled, allowAssign]);
 
   // Undo: snapshot before each mutation (deep-cloned to detach from live state).
   const pushUndo = () => undoStack.push({

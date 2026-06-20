@@ -17,8 +17,9 @@
 import {
   shotsToFirestore, shotsFromFirestore, quickShotsToFirestore, quickShotsFromFirestore,
 } from '../services/dataService';
+import { strokesToFirestore, strokesFromFirestore } from '../components/canvas/drawStrokes';
 import { emptyTeam, E5, E5B } from '../hooks/useCaptureDraft';
-import { tacticToCanvasProps } from './tacticState';
+import { tacticToCanvasProps, normalizeFreehandStrokes } from './tacticState';
 
 // Canonical positional play set (tactic root = preBreakout). Mirrors
 // TestCaptureHarness.TACTIC_PHASES — kept here as the persistence contract.
@@ -55,13 +56,37 @@ export function tacticPhaseDocToDraft(p) {
 
 /**
  * The hook's per-phase tactic state → the tactic doc payload (additive — merge
- * onto the doc, leaving name/onBoard/order/freehandStrokes intact).
- * `phases` = { preBreakout: draft|null, breakout: draft|null, … }.
+ * onto the doc, leaving name/onBoard/order intact). `phases` = { [phase]: draft|null };
+ * `annsByPhase` = { [phase]: strokes[] } (R3 per-phase freehand). A phase with
+ * annotations but no draft still persists (annotations-only phase).
  */
-export function tacticStateToDoc(phases) {
+export function tacticStateToDoc(phases, annsByPhase = {}) {
   const out = {};
-  TACTIC_PHASE_KEYS.forEach(k => { out[k] = tacticDraftToPhaseDoc(phases?.[k] || null); });
+  TACTIC_PHASE_KEYS.forEach(k => {
+    const pd = tacticDraftToPhaseDoc(phases?.[k] || null);
+    const anns = strokesToFirestore(annsByPhase[k] || []); // null when empty
+    if (pd) out[k] = { ...pd, annotations: anns };
+    else if (anns) out[k] = { annotations: anns };
+    else out[k] = null;
+  });
   return { schemaVersion: 2, phases: out };
+}
+
+/**
+ * A tactic doc → the per-phase annotations { [phase]: strokes[] }. schemaVersion:2
+ * → each phase's `annotations`. Legacy → the top-level freehand maps to the
+ * breakout phase (Q1-aligned), the rest empty.
+ */
+export function tacticDocToAnnotations(tac) {
+  if (tac && tac.schemaVersion === 2 && tac.phases) {
+    const out = {};
+    TACTIC_PHASE_KEYS.forEach(k => { out[k] = strokesFromFirestore(tac.phases[k]?.annotations); });
+    return out;
+  }
+  return {
+    preBreakout: [], breakout: normalizeFreehandStrokes(tac?.freehandStrokes),
+    settle: [], mid: [], endgame: [],
+  };
 }
 
 /**

@@ -69,7 +69,7 @@ export function installTestBridge() {
     // round-trip identity, result-side fields EXCLUDED, and a legacy (flat) doc
     // hydrates into phases.breakout (Q1).
     tacticDocRoundtrip: async (slug, layoutId) => {
-      const { tacticStateToDoc, tacticDocToPhases } = await import('../utils/tacticDoc');
+      const { tacticStateToDoc, tacticDocToPhases, tacticDocToAnnotations } = await import('../utils/tacticDoc');
       const { emptyTeam } = await import('../hooks/useCaptureDraft');
       const tacCol = collection(db, 'workspaces', slug, 'layoutOverlays', layoutId, 'tactics');
       const mk = (x) => ({
@@ -85,11 +85,19 @@ export function installTestBridge() {
         elim: [true, false, false, false, false], penalty: '241',
       });
       const phases = { preBreakout: mk(0.2), breakout: null, settle: mk(0.4), mid: null, endgame: null };
+      // per-phase freehand (R3): a stroke on preBreakout + one on settle.
+      const stroke = (c) => [{ color: c, size: 6, pts: [{ x: 0.1, y: 0.1 }, { x: 0.3, y: 0.2 }, { x: 0.5, y: 0.4 }] }];
+      const anns = { preBreakout: stroke('#f59e0b'), breakout: [], settle: stroke('#ef4444'), mid: [], endgame: [] };
 
       const ref = await ds.addLayoutTactic(layoutId, { name: 'Phased RT' });
-      await ds.updateLayoutTactic(layoutId, ref.id, tacticStateToDoc(phases));
+      await ds.updateLayoutTactic(layoutId, ref.id, tacticStateToDoc(phases, anns));
       const back = (await getDoc(ref)).data();
       const hy = tacticDocToPhases(back);
+      const hyAnns = tacticDocToAnnotations(back);
+      // annotations round-trip (per-phase) + empty phase has no strokes
+      const annsRoundtrip = hyAnns.preBreakout.length === 1 && hyAnns.preBreakout[0].color === '#f59e0b'
+        && hyAnns.settle.length === 1 && hyAnns.settle[0].color === '#ef4444'
+        && hyAnns.breakout.length === 0 && hyAnns.mid.length === 0;
 
       const schemaOk = back.schemaVersion === 2 && !!back.phases;
       const shapeOk = !!back.phases.preBreakout && back.phases.breakout === null && !!back.phases.settle;
@@ -110,15 +118,23 @@ export function installTestBridge() {
       const hydrateDefaults = Array.isArray(hy.preBreakout.elim) && hy.preBreakout.elim.every(e => e === false)
         && hy.preBreakout.penalty === '';
 
-      // Legacy compat (Q1): a flat doc (no schemaVersion) → phases.breakout.
+      // Legacy compat (Q1): a flat doc (no schemaVersion) + top-level freehand →
+      // phases.breakout (positions) + breakout annotations (freehand).
       const legacyRef = doc(tacCol);
-      await setDoc(legacyRef, { name: 'Legacy flat', players: [{ x: 0.7, y: 0.7 }, null, null, null, null], runners: [false, true, false, false, false], createdAt: serverTimestamp() });
-      const legHy = tacticDocToPhases((await getDoc(legacyRef)).data());
+      await setDoc(legacyRef, {
+        name: 'Legacy flat', players: [{ x: 0.7, y: 0.7 }, null, null, null, null], runners: [false, true, false, false, false],
+        freehandStrokes: { 0: { color: '#22c55e', size: 6, pts: [{ x: 0.2, y: 0.2 }, { x: 0.4, y: 0.4 }] } },
+        createdAt: serverTimestamp(),
+      });
+      const legBack = (await getDoc(legacyRef)).data();
+      const legHy = tacticDocToPhases(legBack);
+      const legAnns = tacticDocToAnnotations(legBack);
       const legacyToBreakout = !legHy.preBreakout && !!legHy.breakout
         && eqJSON(legHy.breakout.players[0], { x: 0.7, y: 0.7 })
         && eqJSON(legHy.breakout.runners, [false, true, false, false, false]);
+      const legacyFreehandToBreakout = legAnns.breakout.length === 1 && legAnns.preBreakout.length === 0;
 
-      return { schemaOk, shapeOk, rootRoundtrip, settleRoundtrip, excludedDropped, hydrateDefaults, legacyToBreakout };
+      return { schemaOk, shapeOk, rootRoundtrip, settleRoundtrip, excludedDropped, hydrateDefaults, annsRoundtrip, legacyToBreakout, legacyFreehandToBreakout };
     },
     // Coach Tactics board data contract (rail-native): create on-board tactics
     // (onBoard:true + order=max+1), seed a LEGACY doc (no onBoard/order) and prove
