@@ -34,18 +34,18 @@ _Historical docs still mentioned these as "deferred/owed"; the audit confirmed e
 
 ---
 
-## 🟢 READY (awaiting Jacek GO — Tier-2, new design)
-- **Coach Tactics board (rail-native) — built on a branch, NOT merged.** `LayoutTacticsBoardPage`
-  (`/layout/:layoutId/tactics`): browse rail (select / drag-reorder / remove→library / + new / library
-  picker) + read-only field preview; **full-bleed present/annotate** (immersive draw, reuses
-  DrawToolbar). Data model additive+legacy-safe (`onBoard`/`order`, `utils/tacticState` client-side
-  read; `reorderLayoutTactics` writeBatch; no migration). One contextual `<OpenTacticsAction>` in
-  tournament/Konfig/training/coach-home. **LayoutDetailPage tactic-list COEXISTS** (structured
-  position-editing door → `TacticPage`). e2e `tactics-board.spec.js`. Decision: DESIGN_DECISIONS
-  **§124**; archetype: `FIELD_VIEW_ARCHETYPES.md` (rail-native member). Build+precommit green.
-  **Present-mode "full-bleed" = §76 immersive, NOT §116 manual collapse** (F2 unbuilt). Smoke owed
-  on GO: open board → select → preview → reorder persists → ✕→library→re-add → + new → full-bleed
-  draw saves.
+## ✅ DONE 2026-06-20 — verified against main
+- **[DONE] Coach Tactics board (rail-native) + one contextual entry** (merge `feat/coach-tactics-board`,
+  Tier-2 chat GO) — `LayoutTacticsBoardPage` (`/layout/:layoutId/tactics`): browse rail (select /
+  drag-reorder / remove→library / + new / library picker) + read-only field preview; **full-bleed
+  present/annotate** (§76 immersive draw, reuses DrawToolbar). Data additive+legacy-safe
+  (`onBoard`/`order`, `utils/tacticState` client read; `reorderLayoutTactics`; no migration; no rules
+  change). One contextual `<OpenTacticsAction>` in tournament/Konfig/training/coach-home.
+  **LayoutDetailPage tactic-list COEXISTS** (structured position-editing → `TacticPage`). e2e
+  `tactics-board.spec.js` green. DESIGN_DECISIONS §124, FIELD_VIEW_ARCHETYPES, fieldViewConfig
+  `tactic-board`. **Smoke owed (prod):** open board → select → preview → reorder persists →
+  ✕→library→re-add → + new → full-bleed draw saves. (Present "full-bleed" = §76 immersive, not the
+  §116 manual collapse — F2 still open below.)
 
 ## 🔴 OPEN — Bugs (verified)
 - **Loupe pan-lag (low perf).** `BaseCanvas` `loupeSourceRef` is never populated → `drawLoupe` reads back the full main canvas every frame. Needs a pre-baked offscreen source / throttle.
