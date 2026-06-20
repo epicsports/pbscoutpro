@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-20 — [REFACTOR/Tier-2] Tactic-as-Point Stage 2.1: phased tactic doc + serialize/hydrate + legacy compat (Opus brief, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data** (the `/layoutOverlays/{lid}/tactics` catch-all already allows the new keys; no migration). Merge `feat/tactic-stage2-1-doc`. Scouting UNTOUCHED.
+- **`src/utils/tacticDoc.js`** — persistence contract for an outcome-less single-team phased tactic (§3). Doc = `{ schemaVersion:2, phases:{preBreakout,breakout,settle,mid,endgame} }`; `PHASE = {players, assign, bumps, runners, shots, quickShots, zoneShots}` — MY-TEAM + SETUP-SIDE only, serialized via the SHARED point helpers (`shotsToFirestore`/`quickShotsToFirestore`) → zero divergence. EXCLUDES elim/elimPos/elimReasons/penalty/outcome + obstacle layers + bumpShots/curve (Q2). `tacticStateToDoc`/`tacticDocToPhases` serialize/hydrate.
+- **Legacy compat (Q1):** no `schemaVersion:2` → flat/`steps[0]` arrangement → `phases.breakout`; freehand → the annotation layer. **No destructive migration** — legacy opens as a one-phase tactic.
+- **`useCaptureDraft` `initial` param** — lazy per-phase hydrate (default null → point byte-identical; the editor passes `tacticDocToPhases(doc)`).
+- **PROOF:** `testBridge.tacticDocRoundtrip` drives the REAL Firestore path — setup-side round-trip identity, result-side/legacy-RO fields DROPPED, emptyTeam-shaped hydrate, legacy→breakout — `tactic-doc.spec` green. POINT golden **byte-identical**; **FULL e2e 110/110**; build + precommit green.
+- **Next (gated):** Stage 2.2 tactic editor screen on the shared engine. → Jacek GATE.
+
 ## 2026-06-20 — [REFACTOR/Tier-2] Tactic-as-Point Stage 2.0: tactic engine branches + tactic golden (Opus brief, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tactic-editor-stage2`. Scouting path UNTOUCHED (AB/outcome=on defaults).
 - **The Stage-1-deferred engine branches, now written + proven** in `useCaptureDraft`: `capturePhases` param + `rootPhase` — the root + seed/carry-forward chain are generalized over the passed phase list. POINT keeps `root='break'` + the verbatim `endgame←mid‖settle‖break · mid←settle‖break · settle←break` chain; TACTIC passes the canonical positional set `[preBreakout,breakout,settle,mid,endgame]` (root preBreakout; breakout seeds from preBreakout). The point's internal `'break'` literal/alias is undisturbed. `teams:'single'` (switchStage/stageDone/mirroredOpp skip team B); `outcomeEnabled:false` (toolbarItems exclude hit/reason). Stage maps + stageDone derived from `capturePhases` (point defaults → byte-identical literals).
