@@ -85,6 +85,11 @@ export default function InteractiveCanvas({
   pendingBunkerPos = null,
   viewportSide = null,
   maxCanvasHeight = null,
+  // BaseCanvas sizing. Default 'height-first' (h capped at maxCanvasHeight, w=h×aspect
+  // — the scouting/Match behavior, unchanged). 'fit' = object-fit:contain (fits BOTH
+  // container width AND maxCanvasHeight) — the TacticEditor uses it so the field never
+  // overflows a chrome-bounded flex slot.
+  sizingStrategy = 'height-first',
   fillHeight = false,
   onBumpPlayer,
   toolbarPlayer = null,
@@ -325,7 +330,7 @@ export default function InteractiveCanvas({
 
   return (
     <BaseCanvas
-      sizingStrategy="height-first"
+      sizingStrategy={sizingStrategy}
       maxCanvasHeight={maxCanvasHeight}
       fieldImage={fieldImage}
       viewportSide={viewportSide}
