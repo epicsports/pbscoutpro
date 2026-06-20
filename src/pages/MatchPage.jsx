@@ -1828,6 +1828,33 @@ export default function MatchPage() {
     setReasonMenu(null);
   };
 
+  // ── Capture characterization probe (EMULATOR-ONLY) ──
+  // Publishes the deterministic draft tree + the REAL capture handlers so the
+  // golden-master harness (tests/e2e/capture-parity.spec.js) can drive the genuine
+  // capture path and snapshot it pre/post the `useCaptureDraft` extraction (Stage 1
+  // parity gate). Dead-eliminated from prod/dev builds (guarded on VITE_USE_EMULATOR,
+  // same as the testBridge). Deliberately a PLAIN render-time assignment, NOT a hook
+  // — a guard `return` sits above this point, so adding a hook here would be a
+  // conditional-hook violation. It runs only on the full (handlers-defined) render,
+  // republishing fresh closures; `v` (a window counter) lets the harness await the
+  // re-render after each action.
+  if (typeof window !== 'undefined' && import.meta.env.VITE_USE_EMULATOR === 'true') {
+    window.__pbCapture = {
+      v: (window.__pbCaptureV = (window.__pbCaptureV || 0) + 1),
+      // the raw draft tree fully determines the persisted shape modulo savePoint's
+      // random slotIds/meta-timestamps (untouched by the extraction) → byte-stable.
+      state: () => JSON.parse(JSON.stringify({
+        activeTeam, captureStage, outcome,
+        draftA, draftB, stageDraftsA, stageDraftsB, stageAnnotations,
+      })),
+      setActiveTeam, switchStage, setOutcome,
+      placePlayer: handlePlacePlayer, movePlayer: handleMovePlayer,
+      selectPlayer: handleSelectPlayer, toolbarAction: handleToolbarAction,
+      toggleQuickZone: handleToggleQuickZone, placeShot: handlePlaceShot,
+      deleteShot: handleDeleteShot, toggleElim, setElimReason, removePlayer,
+    };
+  }
+
   const getChipLabel = (idx) => {
     const ap = draft.assign[idx];
     const rp = ap ? roster.find(p => p.id === ap) : null;
