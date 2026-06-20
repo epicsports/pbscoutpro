@@ -38,6 +38,7 @@ const LayoutDetailPage = lazy(() => import('./pages/LayoutDetailPage'));
 const LayoutWizardPage = lazy(() => import('./pages/LayoutWizardPage'));
 const TacticPage = lazy(() => import('./pages/TacticPage'));
 const LayoutTacticsBoardPage = lazy(() => import('./pages/LayoutTacticsBoardPage'));
+const TestCaptureHarness = lazy(() => import('./pages/TestCaptureHarness'));
 const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
 const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
 const LayoutAnalyticsPage = lazy(() => import('./pages/LayoutAnalyticsPage'));
@@ -184,6 +185,8 @@ function AppRoutes() {
             <Route path="/tournament/:tournamentId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
             <Route path="/layout/:layoutId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
             <Route path="/layout/:layoutId/tactics" element={<RouteGuard><LayoutTacticsBoardPage /></RouteGuard>} />
+            {/* EMULATOR-ONLY capture-engine test rig (Stage 2.0 tactic golden) — dead in prod */}
+            {import.meta.env.VITE_USE_EMULATOR === 'true' && <Route path="/test/capture" element={<TestCaptureHarness />} />}
             <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
             <Route path="/player/checklist" element={<PackingChecklistPage />} />
             <Route path="/break" element={<TakeABreakPage />} />

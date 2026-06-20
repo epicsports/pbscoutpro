@@ -1,0 +1,3850 @@
+[
+  {
+    "label": "pre.place1",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          null,
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "pre.place2",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "pre.place3",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "shots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "pre.runner",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "shots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "pre.zoneBand",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "shots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "pre.zoneCallout",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "shots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "pre.shot",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "pre.bump",
+    "state": {
+      "captureStage": "preBreakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": null,
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "breakout.seeded",
+    "state": {
+      "captureStage": "breakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            null,
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "breakout.place",
+    "state": {
+      "captureStage": "breakout",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": null,
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "settle.seeded",
+    "state": {
+      "captureStage": "settle",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "settle.shot",
+    "state": {
+      "captureStage": "settle",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [
+              {
+                "x": 0.4,
+                "y": 0.4
+              }
+            ],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "mid": null,
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "mid.seeded",
+    "state": {
+      "captureStage": "mid",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [
+              {
+                "x": 0.4,
+                "y": 0.4
+              }
+            ],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "mid": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "mid.place",
+    "state": {
+      "captureStage": "mid",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [
+              {
+                "x": 0.4,
+                "y": 0.4
+              }
+            ],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "mid": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            {
+              "x": 0.7,
+              "y": 0.6
+            },
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "endgame": null
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "endgame.seeded",
+    "state": {
+      "captureStage": "endgame",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [
+              {
+                "x": 0.4,
+                "y": 0.4
+              }
+            ],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "mid": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            {
+              "x": 0.7,
+              "y": 0.6
+            },
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "endgame": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            {
+              "x": 0.7,
+              "y": 0.6
+            },
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        }
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  },
+  {
+    "label": "endgame.runner",
+    "state": {
+      "captureStage": "endgame",
+      "draftA": {
+        "players": [
+          {
+            "x": 0.2,
+            "y": 0.3
+          },
+          {
+            "x": 0.4,
+            "y": 0.5
+          },
+          null,
+          null,
+          null
+        ],
+        "shots": [
+          [
+            {
+              "x": 0.5,
+              "y": 0.2
+            }
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "quickShots": [
+          [
+            "dorito"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "obstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneShots": [
+          [
+            "zoneA"
+          ],
+          [],
+          [],
+          [],
+          []
+        ],
+        "zoneObstacleShots": [
+          [],
+          [],
+          [],
+          [],
+          []
+        ],
+        "assign": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "bumps": [
+          null,
+          null,
+          {
+            "x": 0.6,
+            "y": 0.7
+          },
+          null,
+          null
+        ],
+        "elim": [
+          false,
+          false,
+          false,
+          false,
+          false
+        ],
+        "elimPos": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "elimReasons": [
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "runners": [
+          false,
+          true,
+          false,
+          false,
+          false
+        ],
+        "penalty": ""
+      },
+      "stageDraftsA": {
+        "breakout": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "settle": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            null,
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [
+              {
+                "x": 0.4,
+                "y": 0.4
+              }
+            ],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "mid": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            {
+              "x": 0.7,
+              "y": 0.6
+            },
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            false,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        },
+        "endgame": {
+          "players": [
+            {
+              "x": 0.2,
+              "y": 0.3
+            },
+            {
+              "x": 0.4,
+              "y": 0.5
+            },
+            {
+              "x": 0.3,
+              "y": 0.3
+            },
+            {
+              "x": 0.7,
+              "y": 0.6
+            },
+            null
+          ],
+          "assign": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "runners": [
+            true,
+            true,
+            false,
+            false,
+            false
+          ],
+          "elim": [
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "elimPos": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "elimReasons": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "shots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "quickShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "obstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "zoneObstacleShots": [
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "bumps": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "penalty": ""
+        }
+      },
+      "stageAnnotations": {
+        "breakout": [],
+        "settle": [],
+        "mid": [],
+        "endgame": []
+      }
+    }
+  }
+]
