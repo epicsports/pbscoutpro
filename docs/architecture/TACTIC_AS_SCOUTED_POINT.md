@@ -12,8 +12,14 @@ GATE-d to Jacek. Stage 0 is a read-only discovery gate (no code).
   shared point helpers, hook `initial` param, legacy→`phases.breakout` (Q1) compat. `src/utils/
   tacticDoc.js`; e2e `tactic-doc.spec.js`. (No destructive migration; result-side + obstacle +
   bumpShots/curve dropped per Q2.)
-- ⏳ **Stage 2.2** — tactic editor screen (next). · **Stage 2.3** — integration + retirement. ·
-  **Stage 2.4** — #1 layout (independent branch).
+- ✅ **Stage 2.2** — tactic editor screen (`TacticEditorPage`, `/layout/:layoutId/tactic-edit/
+  :tacticId`) on `useCaptureDraft({target:'tactic', teams:'single', outcomeEnabled:false,
+  allowAssign:false, capturePhases:positional, initial, initialAnnotations})`. 5-phase
+  StageSwitcher (generalized via a `stages` prop; NO outcome node), place→runner/shoot[band·
+  callout·precise]/bump, per-phase freehand (R3), persists via `updateLayoutTactic`. e2e:
+  editor mount + per-phase annotation round-trip + legacy freehand→breakout.
+- ⏳ **Stage 2.3** — integration: wire the board edit-door → this editor, retire TacticPage +
+  the old present mode. · **Stage 2.4** — #1 layout (independent branch).
 
 ---
 

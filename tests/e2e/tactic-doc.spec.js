@@ -8,7 +8,7 @@
 // LEGACY flat doc (no schemaVersion) hydrates into phases.breakout (Q1).
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, WS, LAYOUT } from './fixtures.js';
+import { TEST_ACCOUNT, WS, LAYOUT, BASE_LAYOUT } from './fixtures.js';
 
 test('phased tactic doc — serialize/hydrate round-trip + result-side dropped + legacy→breakout', async ({ page }) => {
   await login(page, TEST_ACCOUNT);
@@ -26,5 +26,25 @@ test('phased tactic doc — serialize/hydrate round-trip + result-side dropped +
   expect(r.settleRoundtrip).toBe(true);   // a non-root phase round-trips too
   expect(r.excludedDropped).toBe(true);   // elim/penalty/outcome/obstacleShots NOT persisted
   expect(r.hydrateDefaults).toBe(true);   // hydrated draft is emptyTeam-shaped (elim=[]/penalty='')
+  expect(r.annsRoundtrip).toBe(true);     // per-phase freehand (R3) round-trips
   expect(r.legacyToBreakout).toBe(true);  // legacy flat doc → phases.breakout (Q1)
+  expect(r.legacyFreehandToBreakout).toBe(true); // legacy top-level freehand → breakout annotations
+});
+
+// Stage 2.2 — the tactic editor screen mounts on the shared engine.
+test('tactic editor mounts — field + 5-phase spine + save (no outcome node)', async ({ page }) => {
+  await login(page, TEST_ACCOUNT);
+  await page.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
+  await page.evaluate(s => window.__pbtest.setWorkspace(s), WS);
+  // Seed a tactic on the RESOLVABLE layout (base-demo) so useLayouts finds it.
+  const tacId = await page.evaluate(id => window.__pbtest.seedLayoutTactic(id, 'Editor E2E').then(r => r.id), BASE_LAYOUT);
+
+  await page.setViewportSize({ width: 414, height: 896 });
+  await page.goto('/' + `#/layout/${BASE_LAYOUT}/tactic-edit/${tacId}`);
+
+  await expect(page.getByTestId('tactic-editor-loaded')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('tactic-editor-save')).toBeVisible();
+  // 5-phase spine, NO outcome node.
+  await expect(page.getByRole('tab')).toHaveCount(5);
+  await expect(page.locator('canvas').first()).toBeVisible();
 });

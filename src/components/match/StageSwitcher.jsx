@@ -20,11 +20,12 @@ import { capturePhases, toPersistedLiteral, label } from '../../utils/pointPhase
  *   done     — { break, settle, mid } booleans: stage has captured data
  *   device-agnostic: each node is a ≥44px tap target; scales by flex.
  */
-export default function StageSwitcher({ stage = 'break', onChange, done = {} }) {
+export default function StageSwitcher({ stage = 'break', onChange, done = {}, stages = null }) {
   const { t } = useLanguage();
-  // PaT D4 — capture nodes from the canonical module (single source). Keys are the
-  // persisted literals (break/settle/mid + endgame); labels via the module.
-  const STAGES = capturePhases().map(p => ({ key: toPersistedLiteral(p.key), label: label(p.key, t) }));
+  // PaT D4 — default capture nodes from the canonical module (single source); keys
+  // are the persisted literals (break/settle/mid + endgame). The TACTIC editor
+  // passes its own 5 positional stages [{key,label}] (Stage 2.2) via `stages`.
+  const STAGES = stages || capturePhases().map(p => ({ key: toPersistedLiteral(p.key), label: label(p.key, t) }));
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} role="tablist" aria-label={t('b13_capture_stage')}>
       {STAGES.map((s, i) => {
