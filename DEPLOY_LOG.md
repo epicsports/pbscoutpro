@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-20 — [FEATURE/Tier-2] Tactic-as-Point Stage 2.2: tactic editor screen on the shared engine (Opus brief, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tactic-stage2-2-editor`. Scouting UNTOUCHED. **Ships dark** — the editor route is live but NOT yet wired to the board (that's Stage 2.3), so nothing user-facing changed.
+- **`TacticEditorPage`** (`/layout/:layoutId/tactic-edit/:tacticId`) assembles the shared pieces on `useCaptureDraft({target:'tactic', teams:'single', outcomeEnabled:false, allowAssign:false, capturePhases:positional, initial, initialAnnotations})`: InteractiveCanvas (single-team) + 5-phase StageSwitcher (NO outcome node) + place→runner/shoot[band·callout·precise]/bump menu (no hit/elim/reason/assign) + QuickShotPanel + ShotDrawer + per-phase freehand (R3). Hydrates from the doc (legacy→breakout, Q1); persists phase-keyed via `updateLayoutTactic`.
+- **Additive branches (all default point-identical):** hook `allowAssign` + `initialAnnotations`; `StageSwitcher` optional `stages` prop; `tacticDoc` per-phase annotation serialize/hydrate (legacy top-level freehand → breakout).
+- **PROOF:** `tactic-doc.spec` — phased round-trip incl. per-phase annotations + legacy freehand→breakout; editor mount (field + 5-phase spine + save, `<tab>`×5, no outcome node). POINT golden **byte-identical**; **FULL e2e 111/111**; build + precommit green.
+- **Next (gated):** Stage 2.3 wire board edit-door → editor + retire TacticPage/present mode. → Jacek GATE.
+
 ## 2026-06-20 — [REFACTOR/Tier-2] Tactic-as-Point Stage 2.1: phased tactic doc + serialize/hydrate + legacy compat (Opus brief, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data** (the `/layoutOverlays/{lid}/tactics` catch-all already allows the new keys; no migration). Merge `feat/tactic-stage2-1-doc`. Scouting UNTOUCHED.
 - **`src/utils/tacticDoc.js`** — persistence contract for an outcome-less single-team phased tactic (§3). Doc = `{ schemaVersion:2, phases:{preBreakout,breakout,settle,mid,endgame} }`; `PHASE = {players, assign, bumps, runners, shots, quickShots, zoneShots}` — MY-TEAM + SETUP-SIDE only, serialized via the SHARED point helpers (`shotsToFirestore`/`quickShotsToFirestore`) → zero divergence. EXCLUDES elim/elimPos/elimReasons/penalty/outcome + obstacle layers + bumpShots/curve (Q2). `tacticStateToDoc`/`tacticDocToPhases` serialize/hydrate.
