@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-20 — [FIX/Tier-1] TacticEditor field overflowed its slot in landscape (Jacek report, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/tactic-editor-field-fit`.
+- **Root cause:** `TacticEditorPage` sized the canvas via `canvasMaxHeight(0,200)` → in landscape (immersive offset 0) that's the FULL `window.innerHeight`. But the editor KEEPS its chrome (PageHeader + 5-phase spine + bottom bar) visible (unlike immersive MatchPage), so the viewport-tall canvas overflowed the `flex:1` field wrapper and slid down over the Save bar.
+- **Fix:** bound the canvas to its FLEX SLOT, not the viewport. Measure the field wrapper (ResizeObserver) + render with a new **`fit`** (object-fit:contain) sizing so the field stays inside BOTH the wrapper width AND its measured height. `InteractiveCanvas` forwards a `sizingStrategy` prop — default `'height-first'` → **scouting/Match byte-identical**; the editor opts into `'fit'`. + wrapper `overflow:hidden`.
+- **PROOF:** e2e (landscape) — canvas height ≤ wrapper, canvas bottom ≤ Save-bar top, Save bar fully on-screen, field still substantial (>300px). **FULL e2e 113/113** (scouting + all canvas views unaffected); build + precommit green.
+- **Smoke owed (Jacek, prod):** open a tactic → Edit → tablet LANDSCAPE: field fills the available height, bottom bar visible + not overlapped; placement panel works (tap→place→action menu→QuickShotPanel→phases). Portrait unchanged.
+
 ## 2026-06-20 — [FEATURE/Tier-2] Tactic-as-Point Stage 2.4: #1 board layout (crop + inline two-state rail) — WORKSTREAM COMPLETE (Opus brief, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tactic-stage2-4-layout`. Final stage of the Tactic-as-Point arc. Scouting UNTOUCHED.
 - **The Coach Tactics board gets the #1 layout** (its OWN bespoke layout — no longer the shared `CanvasRailLayout`, so **zero blast radius** on ScoutedTeam/PlayerStats/MatchPage-review/Hitability). LANDSCAPE: field HERO fills 100% height (height-first + field-box `overflow:hidden` crops the horizontal excess — no letterbox/shrink); INLINE two-state rail (expanded 300px ↔ 56px strip, always visible & one-tap expandable, **NO overlay panel**); tap field → minimize, tap strip → expand. Branch on viewport GEOMETRY (innerWidth>innerHeight) → tablet AND desktop landscape; PORTRAIT = stacked. Redundant present/full-screen button gone (present retired 2.3).
