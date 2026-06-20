@@ -198,7 +198,10 @@ export function MoreBtn({ onClick, testId }) {
 }
 
 // ─── Swipe-to-Delete Wrapper ───
-export function SwipeDelete({ onDelete, children }) {
+// `label`/`bg`/`color` are optional overrides (default = destructive red "Delete")
+// so the same gesture can drive a NON-destructive action (e.g. "Remove" from a
+// board) without a red/Delete mislabel — § 27 keeps red for destructive only.
+export function SwipeDelete({ onDelete, children, label, bg, color, testId }) {
   const { t } = useLanguage();
   const ref = useRef(null);
   const startX = useRef(0);
@@ -223,15 +226,15 @@ export function SwipeDelete({ onDelete, children }) {
 
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 10, marginBottom: 6 }}>
-      {/* Red delete zone behind */}
+      {/* Action zone behind (default = destructive red "Delete") */}
       <div style={{
         position: 'absolute', right: 0, top: 0, bottom: 0, width: THRESHOLD,
-        background: COLORS.danger, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: bg || COLORS.danger, display: 'flex', alignItems: 'center', justifyContent: 'center',
         borderRadius: '0 10px 10px 0',
       }}>
-        <span onClick={() => { reset(); onDelete(); }}
-          style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: COLORS.white, cursor: 'pointer' }}>
-          {t('delete')}
+        <span data-testid={testId} onClick={() => { reset(); onDelete(); }}
+          style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: color || COLORS.white, cursor: 'pointer' }}>
+          {label || t('delete')}
         </span>
       </div>
       {/* Sliding content */}

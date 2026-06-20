@@ -61,6 +61,8 @@ export function installTestBridge() {
       const d = snap.exists() ? snap.data() : null;
       return { id: ref.id, hasFreehand: !!(d && d.freehandStrokes) };
     },
+    // Seed one on-board tactic (for the present-mode + edit-door UI e2e).
+    seedLayoutTactic: (layoutId, name) => ds.addLayoutTactic(layoutId, { name: name || 'Seeded tactic' }),
     // Coach Tactics board data contract (rail-native): create on-board tactics
     // (onBoard:true + order=max+1), seed a LEGACY doc (no onBoard/order) and prove
     // the client-side read rules include it, reorder + persist, and remove =

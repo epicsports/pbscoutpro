@@ -18,14 +18,14 @@
  */
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pencil } from 'lucide-react';
+import { Pencil, Move } from 'lucide-react';
 
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import DrawingOverlay from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import PageHeader from '../components/PageHeader';
-import { Btn, Modal, EmptyState } from '../components/ui';
+import { Btn, Modal, EmptyState, SwipeDelete } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import * as ds from '../services/dataService';
@@ -229,52 +229,59 @@ export default function LayoutTacticsBoardPage() {
   if (present && selectedTactic) {
     return (
       <div data-testid="tactics-present" style={{
-        position: 'fixed', inset: 0, height: '100dvh', zIndex: 100,
-        background: COLORS.bg, display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        position: 'fixed', inset: 0, height: '100dvh', zIndex: 100, background: COLORS.bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
       }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          <InteractiveCanvas
-            fieldImage={field.fieldImage}
-            players={preview.players}
-            shots={preview.shots}
-            bumpShots={preview.bumpShots}
-            bumpStops={preview.bumps}
-            runners={preview.runners}
-            quickShots={preview.quickShots}
-            obstacleShots={preview.obstacleShots}
-            eliminations={[false, false, false, false, false]}
-            eliminationPositions={[null, null, null, null, null]}
-            doritoSide={field.doritoSide}
-            bunkers={field.bunkers}
-            showBunkers={false}
-            fieldCalibration={field.fieldCalibration}
-            discoLine={0}
-            zeekerLine={0}
-            editable={false}
-            drawMode
-            onDrawStart={handleDrawStart}
-            onDrawMove={handleDrawMove}
-            onDrawEnd={handleDrawEnd}
-            onDrawAbort={handleDrawAbort}
-          >
-            <DrawingOverlay strokes={freehandStrokes} currentStroke={freehandCurrent} />
-          </InteractiveCanvas>
-          <DrawToolbar
-            color={drawColor}
-            onColorChange={setDrawColor}
-            sizeKey={drawSizeKey}
-            onSizeChange={setDrawSizeKey}
-            eraserActive={drawEraser}
-            onEraserToggle={setDrawEraser}
-            canUndo={freehandStrokes.length > 0}
-            canRedo={freehandRedo.length > 0}
-            hasStrokes={freehandStrokes.length > 0}
-            onUndo={handleDrawUndo}
-            onRedo={handleDrawRedo}
-            onClear={handleDrawClear}
-            onDone={async () => { await handleSaveAnnotation(); exitPresent(); }}
-          />
+        {/* Hero box — the SAME sized field box browse gets from CanvasRailLayout, so
+            BaseCanvas measures real dims (was a bare flex:1 column → 0-height canvas →
+            black field). Letterboxed centered, like the §116 collapsed hero. */}
+        <div style={{ height: '100%', aspectRatio: '16 / 10', maxWidth: '100%', display: 'flex', position: 'relative' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex' }}>
+            <InteractiveCanvas
+              fieldImage={field.fieldImage}
+              players={preview.players}
+              shots={preview.shots}
+              bumpShots={preview.bumpShots}
+              bumpStops={preview.bumps}
+              runners={preview.runners}
+              quickShots={preview.quickShots}
+              obstacleShots={preview.obstacleShots}
+              eliminations={[false, false, false, false, false]}
+              eliminationPositions={[null, null, null, null, null]}
+              doritoSide={field.doritoSide}
+              bunkers={field.bunkers}
+              showBunkers={false}
+              fieldCalibration={field.fieldCalibration}
+              discoLine={0}
+              zeekerLine={0}
+              editable={false}
+              drawMode
+              onDrawStart={handleDrawStart}
+              onDrawMove={handleDrawMove}
+              onDrawEnd={handleDrawEnd}
+              onDrawAbort={handleDrawAbort}
+            >
+              <DrawingOverlay strokes={freehandStrokes} currentStroke={freehandCurrent} />
+            </InteractiveCanvas>
+          </div>
         </div>
+        {/* DrawToolbar = a screen-level overlay (position:absolute anchors to this fixed
+            container → screen bottom-center), NOT a flex sibling stealing field height. */}
+        <DrawToolbar
+          color={drawColor}
+          onColorChange={setDrawColor}
+          sizeKey={drawSizeKey}
+          onSizeChange={setDrawSizeKey}
+          eraserActive={drawEraser}
+          onEraserToggle={setDrawEraser}
+          canUndo={freehandStrokes.length > 0}
+          canRedo={freehandRedo.length > 0}
+          hasStrokes={freehandStrokes.length > 0}
+          onUndo={handleDrawUndo}
+          onRedo={handleDrawRedo}
+          onClear={handleDrawClear}
+          onDone={async () => { await handleSaveAnnotation(); exitPresent(); }}
+        />
         {/* Floating back + title (top-left) */}
         <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 8, zIndex: 50 }}>
           <Btn variant="default" size="sm" testId="tactics-present-back"
@@ -347,17 +354,27 @@ export default function LayoutTacticsBoardPage() {
     </div>
   );
 
-  // Pencil → present/annotate, only when a tactic is selected (floats on field).
+  // Field tools (float on the field when a tactic is selected):
+  //   • Move (positions) → the STRUCTURED editor (TacticPage: editable positions + draw)
+  //   • Pencil → present/annotate (full-bleed draw on the read-only tactic)
+  const fieldToolBtn = {
+    minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    background: 'rgba(13,17,23,0.92)', border: `1px solid ${COLORS.border}`, borderRadius: 8,
+    color: COLORS.text, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', backdropFilter: 'blur(8px)',
+  };
   const fieldToolsEl = selectedTactic ? (
-    <div role="button" aria-label="Present and annotate" data-testid="tactics-present-enter"
-      onClick={() => enterPresent(selectedTactic)}
-      style={{
-        minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(13,17,23,0.92)', border: `1px solid ${COLORS.border}`, borderRadius: 8,
-        color: COLORS.text, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', backdropFilter: 'blur(8px)',
-      }}>
-      <Pencil size={18} strokeWidth={2.25} />
-    </div>
+    <>
+      <div role="button" aria-label="Edit tactic positions" data-testid="tactics-edit-enter"
+        onClick={() => navigate(`/layout/${layoutId}/tactic/${selectedTactic.id}`)}
+        style={fieldToolBtn}>
+        <Move size={18} strokeWidth={2.25} />
+      </div>
+      <div role="button" aria-label="Present and annotate" data-testid="tactics-present-enter"
+        onClick={() => enterPresent(selectedTactic)}
+        style={fieldToolBtn}>
+        <Pencil size={18} strokeWidth={2.25} />
+      </div>
+    </>
   ) : null;
 
   const railEl = (
@@ -377,34 +394,37 @@ export default function LayoutTacticsBoardPage() {
           if (!tactic) return null;
           const active = id === selectedId;
           return (
-            <div key={id} ref={el => { rowRefs.current[id] = el; }} data-testid={`tactic-row-${id}`}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, marginBottom: 6,
-                borderRadius: RADIUS.md, background: active ? COLORS.surfaceLight : COLORS.surfaceDark,
-                border: `1px solid ${active ? COLORS.accent + '55' : COLORS.border}`,
-                opacity: dragId === id ? 0.6 : 1,
-              }}>
-              {/* Drag handle (reorder) — ≥44px (§27) */}
-              <div role="button" aria-label="Reorder" data-testid={`tactic-drag-${id}`}
-                onPointerDown={(e) => onHandlePointerDown(e, id)}
-                style={{ minWidth: 44, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: COLORS.textMuted, cursor: 'grab', touchAction: 'none', fontSize: 16 }}>⠿</div>
-              {/* Tap body = select */}
-              <div role="button" data-testid={`tactic-select-${id}`}
-                onClick={() => setSelectedId(id)}
-                style={{ flex: 1, minWidth: 0, minHeight: 52, display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                  cursor: 'pointer', padding: '8px 2px' }}>
-                <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                  color: active ? COLORS.text : COLORS.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {tactic.name || 'Untitled'}
-                </span>
+            // Remove = swipe-left (app's established SwipeDelete), NOT a corner ✕ — so it
+            // never shares the rail's top-right collapse/close corner. Non-destructive →
+            // amber "Remove" (stays in the library), NOT red "Delete" (§27).
+            <SwipeDelete key={id} onDelete={() => removeFromBoard(id)} label="Remove"
+              bg={COLORS.surfaceLight} color={COLORS.accent} testId={`tactic-remove-${id}`}>
+              <div ref={el => { rowRefs.current[id] = el; }} data-testid={`tactic-row-${id}`}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  borderRadius: RADIUS.md, background: active ? COLORS.surfaceLight : COLORS.surfaceDark,
+                  border: `1px solid ${active ? COLORS.accent + '55' : COLORS.border}`,
+                  opacity: dragId === id ? 0.6 : 1,
+                }}>
+                {/* Drag handle (reorder) — ≥44px (§27). stopPropagation on touchstart so a
+                    vertical reorder drag never triggers the horizontal swipe-to-remove. */}
+                <div role="button" aria-label="Reorder" data-testid={`tactic-drag-${id}`}
+                  onPointerDown={(e) => onHandlePointerDown(e, id)}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  style={{ minWidth: 44, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: COLORS.textMuted, cursor: 'grab', touchAction: 'none', fontSize: 16 }}>⠿</div>
+                {/* Tap body = select */}
+                <div role="button" data-testid={`tactic-select-${id}`}
+                  onClick={() => setSelectedId(id)}
+                  style={{ flex: 1, minWidth: 0, minHeight: 52, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                    cursor: 'pointer', padding: '8px 2px' }}>
+                  <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+                    color: active ? COLORS.text : COLORS.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {tactic.name || 'Untitled'}
+                  </span>
+                </div>
               </div>
-              {/* Selected-row remove (split-tap exception) — non-destructive (→ library) */}
-              {active && (
-                <div role="button" aria-label="Remove from board" data-testid={`tactic-remove-${id}`} onClick={() => removeFromBoard(id)}
-                  style={{ minWidth: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted, cursor: 'pointer', fontSize: 16 }}>✕</div>
-              )}
-            </div>
+            </SwipeDelete>
           );
         })}
       </div>
