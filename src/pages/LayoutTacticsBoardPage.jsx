@@ -2,35 +2,29 @@
  * LayoutTacticsBoardPage — the Coach Tactics board (rail-native).
  * Route: /layout/:layoutId/tactics
  *
- * Completes the 'tactic' archetype shell migration (fieldViewConfig). Two modes,
- * one screen:
- *   BROWSE  → CanvasRailLayout: field HERO = read-only InteractiveCanvas preview
- *             of the SELECTED tactic; rail = the ordered on-board tactic list
- *             (drag-to-reorder, tap=select, ✕=remove-from-board → onBoard:false)
- *             + a pinned "+ NEW TACTIC" footer (new blank / add from library).
- *   PRESENT → full-bleed immersive: chrome hidden, field 100%, floating DrawToolbar
- *             for live annotation over the selected tactic. Draw persists via the
- *             existing updateLayoutTactic path. "full-bleed present" is realized
- *             via §76 immersive (NOT §116 manual rail-collapse, which is unbuilt
- *             F2) — same end-user result, proven TacticPage pattern.
+ * Completes the 'tactic' archetype shell migration (fieldViewConfig). BROWSE only:
+ * CanvasRailLayout — field HERO = read-only InteractiveCanvas preview of the
+ * SELECTED tactic (phased OR legacy via tacticPreviewProps); rail = the ordered
+ * on-board list (drag-to-reorder, tap=select, swipe=remove→onBoard:false) + a
+ * pinned "+ NEW TACTIC" footer (new blank → editor / add from library). The Edit
+ * door (Move icon) → the phased TacticEditorPage.
  *
- * LayoutDetailPage's tactic list COEXISTS (structured position-editing door).
+ * Stage 2.3 — the old full-bleed PRESENT/annotate mode is RETIRED; edit + per-phase
+ * freehand live in TacticEditorPage. LayoutDetailPage's tactic list COEXISTS.
  */
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Pencil, Move } from 'lucide-react';
+import { Move } from 'lucide-react';
 
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
-import DrawingOverlay from '../components/canvas/DrawingOverlay';
-import DrawToolbar from '../components/canvas/DrawToolbar';
 import PageHeader from '../components/PageHeader';
 import { Btn, Modal, EmptyState, SwipeDelete } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import * as ds from '../services/dataService';
-import { STROKE_COLORS, STROKE_SIZES, strokesToFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
-import { tacticToCanvasProps, onBoardTactics, offBoardTactics, sortBoardTactics } from '../utils/tacticState';
+import { onBoardTactics, offBoardTactics, sortBoardTactics } from '../utils/tacticState';
+import { tacticPreviewProps } from '../utils/tacticDoc';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 
 export default function LayoutTacticsBoardPage() {
@@ -54,20 +48,10 @@ export default function LayoutTacticsBoardPage() {
     setSelectedId(boardTactics[0]?.id || null);
   }, [boardTactics, selectedId]);
   const selectedTactic = boardTactics.find(t => t.id === selectedId) || null;
-  const preview = useMemo(() => tacticToCanvasProps(selectedTactic), [selectedTactic]);
+  // Read-only preview — handles BOTH phased (schemaVersion:2) and legacy tactics.
+  const preview = useMemo(() => tacticPreviewProps(selectedTactic), [selectedTactic]);
 
-  // ── Present / annotate (full-bleed draw) ──
-  const [present, setPresent] = useState(false);
-  const [freehandStrokes, setFreehandStrokes] = useState([]);
-  const [freehandCurrent, setFreehandCurrent] = useState(null);
-  const [freehandRedo, setFreehandRedo] = useState([]);
-  const [drawColor, setDrawColor] = useState(STROKE_COLORS[0].value);
-  const [drawSizeKey, setDrawSizeKey] = useState('medium');
-  const [drawEraser, setDrawEraser] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [savedFlash, setSavedFlash] = useState(false);
-
-  // Library picker + create
+  // Library picker
   const [libraryOpen, setLibraryOpen] = useState(false);
 
   // Field geometry from the layout (read-time displayName-resolved bunkers).
@@ -78,64 +62,9 @@ export default function LayoutTacticsBoardPage() {
     doritoSide: layout?.doritoSide || 'top',
   };
 
-  const enterPresent = (tactic) => {
-    if (!tactic) return;
-    setFreehandStrokes(tacticToCanvasProps(tactic).freehandStrokes);
-    setFreehandRedo([]);
-    setFreehandCurrent(null);
-    setDrawEraser(false);
-    setSelectedId(tactic.id);
-    setPresent(true);
-  };
-  const exitPresent = () => { setPresent(false); setFreehandCurrent(null); setDrawEraser(false); };
-
-  // ── Draw handlers (shared DrawingOverlay stack — verbatim from TacticPage) ──
-  const handleDrawStart = (pos) => {
-    if (drawEraser) { setFreehandStrokes(prev => eraseAcrossStrokes(prev, pos, STROKE_SIZES[drawSizeKey] * 2, 1000, 500)); setFreehandRedo([]); return; }
-    setFreehandCurrent({ color: drawColor, size: STROKE_SIZES[drawSizeKey], pts: [pos] });
-  };
-  const handleDrawMove = (pos) => {
-    if (drawEraser) { setFreehandStrokes(prev => eraseAcrossStrokes(prev, pos, STROKE_SIZES[drawSizeKey] * 2, 1000, 500)); return; }
-    setFreehandCurrent(prev => (prev ? { ...prev, pts: [...prev.pts, pos] } : prev));
-  };
-  const handleDrawEnd = () => {
-    if (drawEraser) return;
-    setFreehandCurrent(prev => {
-      if (!prev || prev.pts.length < 2) return null;
-      setFreehandStrokes(p => [...p, prev]);
-      setFreehandRedo([]);
-      return null;
-    });
-  };
-  const handleDrawAbort = () => setFreehandCurrent(null);
-  const handleDrawUndo = () => setFreehandStrokes(prev => {
-    if (prev.length === 0) return prev;
-    const last = prev[prev.length - 1];
-    setFreehandRedo(r => [...r, last]);
-    return prev.slice(0, -1);
-  });
-  const handleDrawRedo = () => setFreehandRedo(prev => {
-    if (prev.length === 0) return prev;
-    const last = prev[prev.length - 1];
-    setFreehandStrokes(s => [...s, last]);
-    return prev.slice(0, -1);
-  });
-  const handleDrawClear = () => { setFreehandStrokes([]); setFreehandRedo([]); };
-
-  const handleSaveAnnotation = async () => {
-    if (!selectedId) return;
-    setSaving(true);
-    try {
-      await ds.updateLayoutTactic(layoutId, selectedId, { freehandStrokes: strokesToFirestore(freehandStrokes) });
-      setSavedFlash(true);
-      setTimeout(() => setSavedFlash(false), 1800);
-    } catch (e) {
-      console.error('Save annotation error:', e);
-      alert('Save failed: ' + (e.message || 'Unknown error'));
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Edit / annotate now happens in the phased TacticEditorPage (Stage 2.3 — the old
+  // full-bleed present mode is retired; per-phase freehand lives in the editor).
+  const openEditor = (tacId) => navigate(`/layout/${layoutId}/tactic-edit/${tacId}`);
 
   // ── Board mutations ──
   const removeFromBoard = async (tacId) => {
@@ -151,7 +80,7 @@ export default function LayoutTacticsBoardPage() {
   const createBlankTactic = async () => {
     const n = boardTactics.length + libraryTactics.length + 1;
     const ref = await ds.addLayoutTactic(layoutId, { name: `Tactic ${n}`, onBoard: true });
-    enterPresent({ id: ref.id, name: `Tactic ${n}`, freehandStrokes: null });
+    openEditor(ref.id); // straight into the phased editor
   };
 
   // ── Drag-to-reorder (pointer-based; ▲▼ on the selected row for precise/a11y) ──
@@ -224,91 +153,6 @@ export default function LayoutTacticsBoardPage() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // PRESENT / ANNOTATE — full-bleed immersive draw surface
-  // ═══════════════════════════════════════════════════════════════════════
-  if (present && selectedTactic) {
-    return (
-      <div data-testid="tactics-present" style={{
-        position: 'fixed', inset: 0, height: '100dvh', zIndex: 100, background: COLORS.bg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-      }}>
-        {/* Hero box — the SAME sized field box browse gets from CanvasRailLayout, so
-            BaseCanvas measures real dims (was a bare flex:1 column → 0-height canvas →
-            black field). Letterboxed centered, like the §116 collapsed hero. */}
-        <div style={{ height: '100%', aspectRatio: '16 / 10', maxWidth: '100%', display: 'flex', position: 'relative' }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex' }}>
-            <InteractiveCanvas
-              fieldImage={field.fieldImage}
-              players={preview.players}
-              shots={preview.shots}
-              bumpShots={preview.bumpShots}
-              bumpStops={preview.bumps}
-              runners={preview.runners}
-              quickShots={preview.quickShots}
-              obstacleShots={preview.obstacleShots}
-              eliminations={[false, false, false, false, false]}
-              eliminationPositions={[null, null, null, null, null]}
-              doritoSide={field.doritoSide}
-              bunkers={field.bunkers}
-              showBunkers={false}
-              fieldCalibration={field.fieldCalibration}
-              discoLine={0}
-              zeekerLine={0}
-              editable={false}
-              drawMode
-              onDrawStart={handleDrawStart}
-              onDrawMove={handleDrawMove}
-              onDrawEnd={handleDrawEnd}
-              onDrawAbort={handleDrawAbort}
-            >
-              <DrawingOverlay strokes={freehandStrokes} currentStroke={freehandCurrent} />
-            </InteractiveCanvas>
-          </div>
-        </div>
-        {/* DrawToolbar = a screen-level overlay (position:absolute anchors to this fixed
-            container → screen bottom-center), NOT a flex sibling stealing field height. */}
-        <DrawToolbar
-          color={drawColor}
-          onColorChange={setDrawColor}
-          sizeKey={drawSizeKey}
-          onSizeChange={setDrawSizeKey}
-          eraserActive={drawEraser}
-          onEraserToggle={setDrawEraser}
-          canUndo={freehandStrokes.length > 0}
-          canRedo={freehandRedo.length > 0}
-          hasStrokes={freehandStrokes.length > 0}
-          onUndo={handleDrawUndo}
-          onRedo={handleDrawRedo}
-          onClear={handleDrawClear}
-          onDone={async () => { await handleSaveAnnotation(); exitPresent(); }}
-        />
-        {/* Floating back + title (top-left) */}
-        <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', alignItems: 'center', gap: 8, zIndex: 50 }}>
-          <Btn variant="default" size="sm" testId="tactics-present-back"
-            onClick={exitPresent}
-            style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>
-            ‹ Board
-          </Btn>
-          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
-            background: COLORS.surface + 'cc', backdropFilter: 'blur(8px)', padding: '6px 10px', borderRadius: RADIUS.sm }}>
-            {selectedTactic.name}
-          </span>
-        </div>
-        {/* Floating save (bottom-right) */}
-        <div style={{ position: 'fixed', bottom: 12, right: 12, zIndex: 50 }}>
-          <Btn variant={savedFlash ? 'default' : 'accent'} testId="tactics-present-save"
-            style={{ padding: '10px 20px', fontSize: FONT_SIZE.sm, fontWeight: 700, backdropFilter: 'blur(8px)',
-              ...(savedFlash ? { background: COLORS.success + '20', borderColor: COLORS.success, color: COLORS.success } : {}) }}
-            onClick={handleSaveAnnotation}
-            disabled={saving}>
-            {saving ? '...' : savedFlash ? '✓' : 'Save'}
-          </Btn>
-        </div>
-      </div>
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════════════════════
   // BROWSE — CanvasRailLayout (field hero preview + tactic rail)
   // ═══════════════════════════════════════════════════════════════════════
   const headerEl = !immersive ? (
@@ -354,27 +198,19 @@ export default function LayoutTacticsBoardPage() {
     </div>
   );
 
-  // Field tools (float on the field when a tactic is selected):
-  //   • Move (positions) → the STRUCTURED editor (TacticPage: editable positions + draw)
-  //   • Pencil → present/annotate (full-bleed draw on the read-only tactic)
+  // Field tool — the single Edit door → the phased TacticEditorPage (edit positions
+  // per phase + per-phase freehand). The old separate present/annotate mode is retired.
   const fieldToolBtn = {
     minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: 'rgba(13,17,23,0.92)', border: `1px solid ${COLORS.border}`, borderRadius: 8,
     color: COLORS.text, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', backdropFilter: 'blur(8px)',
   };
   const fieldToolsEl = selectedTactic ? (
-    <>
-      <div role="button" aria-label="Edit tactic positions" data-testid="tactics-edit-enter"
-        onClick={() => navigate(`/layout/${layoutId}/tactic/${selectedTactic.id}`)}
-        style={fieldToolBtn}>
-        <Move size={18} strokeWidth={2.25} />
-      </div>
-      <div role="button" aria-label="Present and annotate" data-testid="tactics-present-enter"
-        onClick={() => enterPresent(selectedTactic)}
-        style={fieldToolBtn}>
-        <Pencil size={18} strokeWidth={2.25} />
-      </div>
-    </>
+    <div role="button" aria-label="Edit tactic" data-testid="tactics-edit-enter"
+      onClick={() => openEditor(selectedTactic.id)}
+      style={fieldToolBtn}>
+      <Move size={18} strokeWidth={2.25} />
+    </div>
   ) : null;
 
   const railEl = (

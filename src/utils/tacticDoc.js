@@ -18,7 +18,7 @@ import {
   shotsToFirestore, shotsFromFirestore, quickShotsToFirestore, quickShotsFromFirestore,
 } from '../services/dataService';
 import { strokesToFirestore, strokesFromFirestore } from '../components/canvas/drawStrokes';
-import { emptyTeam, E5, E5B } from '../hooks/useCaptureDraft';
+import { emptyTeam, E5, E5A, E5B } from '../hooks/useCaptureDraft';
 import { tacticToCanvasProps, normalizeFreehandStrokes } from './tacticState';
 
 // Canonical positional play set (tactic root = preBreakout). Mirrors
@@ -77,6 +77,37 @@ export function tacticStateToDoc(phases, annsByPhase = {}) {
  * → each phase's `annotations`. Legacy → the top-level freehand maps to the
  * breakout phase (Q1-aligned), the rest empty.
  */
+/**
+ * Board PREVIEW props (read-only) for a tactic — handles BOTH legacy (flat/steps[0])
+ * and phased (schemaVersion:2) docs. For a phased tactic the most representative
+ * phase is shown (breakout buzzer positions → preBreakout → first phase with
+ * players), with that phase's freehand. Returns the InteractiveCanvas-renderable
+ * shape (matching tacticToCanvasProps) so the board preview is one call site.
+ */
+export function tacticPreviewProps(tac) {
+  if (!(tac && tac.schemaVersion === 2 && tac.phases)) {
+    return tacticToCanvasProps(tac); // legacy / flat / steps[0]
+  }
+  const order = ['breakout', 'preBreakout', 'settle', 'mid', 'endgame'];
+  const chosen = order.find(k => {
+    const pd = tac.phases[k];
+    return pd && Array.isArray(pd.players) && pd.players.some(Boolean);
+  }) || null;
+  if (!chosen) {
+    // positions empty everywhere — show the breakout freehand (if any) over an empty field.
+    return {
+      players: E5(), shots: E5A(), bumpShots: E5A(), bumps: E5(), runners: E5B(),
+      quickShots: [], obstacleShots: [], freehandStrokes: strokesFromFirestore(tac.phases.breakout?.annotations),
+    };
+  }
+  const d = tacticPhaseDocToDraft(tac.phases[chosen]);
+  return {
+    players: d.players, shots: d.shots, bumpShots: E5A(), bumps: d.bumps, runners: d.runners,
+    quickShots: d.quickShots, obstacleShots: E5A(),
+    freehandStrokes: strokesFromFirestore(tac.phases[chosen].annotations),
+  };
+}
+
 export function tacticDocToAnnotations(tac) {
   if (tac && tac.schemaVersion === 2 && tac.phases) {
     const out = {};

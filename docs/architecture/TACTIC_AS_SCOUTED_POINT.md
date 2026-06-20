@@ -18,8 +18,15 @@ GATE-d to Jacek. Stage 0 is a read-only discovery gate (no code).
   StageSwitcher (generalized via a `stages` prop; NO outcome node), place→runner/shoot[band·
   callout·precise]/bump, per-phase freehand (R3), persists via `updateLayoutTactic`. e2e:
   editor mount + per-phase annotation round-trip + legacy freehand→breakout.
-- ⏳ **Stage 2.3** — integration: wire the board edit-door → this editor, retire TacticPage +
-  the old present mode. · **Stage 2.4** — #1 layout (independent branch).
+- ✅ **Stage 2.3** — integration. Board Edit-door (Move icon) → `TacticEditorPage`; the old
+  full-bleed PRESENT/annotate mode RETIRED (edit + per-phase freehand live in the editor).
+  LayoutDetailPage edit entries (card/create/duplicate/edit-action/drawer) → the editor.
+  Board preview handles phased docs (`tacticPreviewProps`: shows breakout→preBreakout→first
+  populated phase). **Residual (flagged for Jacek):** `TacticPage` is KEPT for the `?print=1`
+  action + the `/tournament/.../tactic/...` route (tournament tactics + the `tactic-drawing`
+  spec) — its layout *edit* role is retired, but full deletion is deferred pending a decision
+  on tournament tactics + a print path in the new editor.
+- ⏳ **Stage 2.4** — #1 layout (independent branch): crop + inline rail minimize/expand.
 
 ---
 
