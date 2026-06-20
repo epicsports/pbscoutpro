@@ -26,29 +26,9 @@ import { useLanguage } from '../hooks/useLanguage';
 import DrawingOverlay from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import { STROKE_COLORS, STROKE_SIZES, strokesToFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
-
-// Normalize freehandStrokes from any stored shape to the canonical
-// { color, size, pts:[{x,y}] }. Handles the LEGACY points-only shape
-// (bare `[{x,y},...]` arrays, or `{"0":[...]}`) the bespoke tool wrote — wraps
-// them in amber/medium so existing tactic drawings survive the unify (the
-// discovery's "defaults amber/width when absent"). Drops <2-point strokes.
-function normalizeFreehandStrokes(raw) {
-  if (!raw) return [];
-  const values = Array.isArray(raw)
-    ? raw
-    : (typeof raw === 'object'
-        ? Object.keys(raw).sort((a, b) => Number(a) - Number(b)).map(k => raw[k])
-        : []);
-  return values
-    .map((v) => {
-      if (v && Array.isArray(v.pts)) return v; // already canonical
-      // legacy points-only → amber + THIN (3px) to match the old bespoke
-      // lineWidth=3, so existing drawings keep their weight under the new renderer.
-      if (Array.isArray(v)) return { color: STROKE_COLORS[0].value, size: STROKE_SIZES.thin, pts: v };
-      return null;
-    })
-    .filter(s => s && Array.isArray(s.pts) && s.pts.length >= 2);
-}
+// Canonical freehand normalizer (legacy points-only → { color, size, pts }) —
+// shared with the Coach Tactics board so saved drawings paint identically.
+import { normalizeFreehandStrokes } from '../utils/tacticState';
 
 export default function TacticPage() {
   const { t } = useLanguage();

@@ -61,6 +61,52 @@ export function installTestBridge() {
       const d = snap.exists() ? snap.data() : null;
       return { id: ref.id, hasFreehand: !!(d && d.freehandStrokes) };
     },
+    // Coach Tactics board data contract (rail-native): create on-board tactics
+    // (onBoard:true + order=max+1), seed a LEGACY doc (no onBoard/order) and prove
+    // the client-side read rules include it, reorder + persist, and remove =
+    // onBoard:false (stays in the library, NOT deleted). Exercises the REAL
+    // addLayoutTactic / reorderLayoutTactics / updateLayoutTactic paths.
+    tacticBoardRoundtrip: async (slug, layoutId) => {
+      const { onBoardTactics, offBoardTactics, sortBoardTactics } = await import('../utils/tacticState');
+      const tacCol = collection(db, 'workspaces', slug, 'layoutOverlays', layoutId, 'tactics');
+      const readAll = () => new Promise((res) => { const u = ds.subscribeLayoutTactics(layoutId, (d) => { u(); res(d); }); });
+
+      // A legacy doc as the old writer produced it — no onBoard, no order.
+      const legacyRef = doc(tacCol);
+      await setDoc(legacyRef, { name: 'Legacy board', players: [null, null, null, null, null], createdAt: serverTimestamp() });
+
+      const a = await ds.addLayoutTactic(layoutId, { name: 'Board A' });
+      const b = await ds.addLayoutTactic(layoutId, { name: 'Board B' });
+
+      let all = await readAll();
+      const aDoc = all.find(t => t.id === a.id);
+      const bDoc = all.find(t => t.id === b.id);
+      const onBoardOk = aDoc?.onBoard === true && bDoc?.onBoard === true;
+      const orderAscending = typeof aDoc?.order === 'number' && typeof bDoc?.order === 'number' && bDoc.order > aDoc.order;
+      // Legacy (no onBoard) must appear ON the board by default (onBoard !== false).
+      const legacyOnBoard = onBoardTactics(all).some(t => t.id === legacyRef.id);
+
+      // Reorder: move B to the front, persist, read back.
+      const ids = sortBoardTactics(onBoardTactics(all)).map(t => t.id);
+      const reordered = [b.id, ...ids.filter(id => id !== b.id)];
+      await ds.reorderLayoutTactics(layoutId, reordered);
+      all = await readAll();
+      const reorderPersisted = sortBoardTactics(onBoardTactics(all)).map(t => t.id)[0] === b.id;
+
+      // Remove A from the board (non-destructive) → library, not deleted.
+      await ds.updateLayoutTactic(layoutId, a.id, { onBoard: false });
+      all = await readAll();
+      const removedFromBoard = !onBoardTactics(all).some(t => t.id === a.id);
+      const stillInLibrary = offBoardTactics(all).some(t => t.id === a.id);
+      const notDeleted = all.some(t => t.id === a.id);
+
+      // Re-add from library.
+      await ds.updateLayoutTactic(layoutId, a.id, { onBoard: true });
+      all = await readAll();
+      const readded = onBoardTactics(all).some(t => t.id === a.id);
+
+      return { onBoardOk, orderAscending, legacyOnBoard, reorderPersisted, removedFromBoard, stillInLibrary, notDeleted, readded };
+    },
     // §85 player self-edit (ProfilePage "Dane gracza") — a linked player edits
     // their own roster identity via the REAL updatePlayer path (default bump=true,
     // so this exercises the catalog-bump best-effort fix: a non-super self-edit

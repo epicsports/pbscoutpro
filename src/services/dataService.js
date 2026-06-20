@@ -1673,17 +1673,36 @@ export function subscribeLayoutTactics(layoutId, cb) {
   );
 }
 export async function addLayoutTactic(layoutId, data) {
-  return addDoc(collection(db, bp(), 'layoutOverlays', layoutId, 'tactics'), {
+  const col = collection(db, bp(), 'layoutOverlays', layoutId, 'tactics');
+  // Coach Tactics board (§ rail-native): a new tactic lands ON the board at the
+  // END of the ordered list. `order = max(existing order)+1`; legacy docs lack
+  // `order` (treated as absent) so the first board-added tactic gets 1 and the
+  // client-side sort uses createdAt as the tiebreak. Caller may pass an explicit
+  // `order` to skip the read (e.g. reorder-aware create).
+  let nextOrder = 0;
+  if (typeof data.order === 'number') {
+    nextOrder = data.order;
+  } else {
+    try {
+      const snap = await getDocs(col);
+      snap.forEach(d => { const o = d.data()?.order; if (typeof o === 'number' && o + 1 > nextOrder) nextOrder = o + 1; });
+    } catch { nextOrder = 0; }
+  }
+  return addDoc(col, {
     name: data.name,
     squadCode: data.squadCode || null,
     players: data.players || [null, null, null, null, null],
-    shots: shotsToFirestore(data.shots),
+    shots: data.shots ? shotsToFirestore(data.shots) : null,
     bumps: data.bumps || [null, null, null, null, null],
     myTeamId: data.myTeamId || null,
     // Field-shape drift fix (2026-06-16): was MISSING here, so duplicating a layout
     // tactic via LayoutDetailPage.duplicateTactic silently dropped its freehand
     // drawing (addTactic already wrote it; only this layout-create path lost it).
     freehandStrokes: data.freehandStrokes || null,
+    // Coach Tactics board: onBoard = appears on the rail board (default true);
+    // order = board position (additive, legacy-safe — see subscribeLayoutTactics).
+    onBoard: data.onBoard !== false,
+    order: nextOrder,
     createdAt: serverTimestamp(),
   });
 }
@@ -1692,6 +1711,20 @@ export async function updateLayoutTactic(layoutId, tacId, data) {
 }
 export async function deleteLayoutTactic(layoutId, tacId) {
   return deleteDoc(doc(db, bp(), 'layoutOverlays', layoutId, 'tactics', tacId));
+}
+/**
+ * reorderLayoutTactics — persist the board order after a drag-to-reorder. One
+ * writeBatch sets `order = index` for each id in `orderedIds` (the on-board list
+ * top→bottom). Off-board tactics keep their stale order (harmless — the board
+ * read filters to onBoard and re-sorts). Coach-writable (catch-all rule).
+ */
+export async function reorderLayoutTactics(layoutId, orderedIds) {
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) return undefined;
+  const batch = writeBatch(db);
+  orderedIds.forEach((id, i) => {
+    batch.update(doc(db, bp(), 'layoutOverlays', layoutId, 'tactics', id), { order: i, updatedAt: serverTimestamp() });
+  });
+  return batch.commit();
 }
 
 // ─── TOURNAMENT-LEVEL TACTICS ───

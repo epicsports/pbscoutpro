@@ -5,6 +5,7 @@ import SearchField from '../SearchField';
 import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
 import TeamBadge from '../TeamBadge';
+import OpenTacticsAction from '../OpenTacticsAction';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
@@ -276,6 +277,15 @@ export default function CoachTabContent({ tournamentId }) {
           );
         })}
       </div>
+
+      {/* Coach Tactics board — contextual door (tournament's layout). Same
+          affordance used in Konfig / training / coach home. */}
+      {tournament?.layoutId && (
+        <div style={{ marginBottom: SPACE.lg }}>
+          <OpenTacticsAction layoutId={tournament.layoutId} variant="default" size="md"
+            style={{ width: '100%', justifyContent: 'center' }} />
+        </div>
+      )}
 
       {/* Split-tap match list — grouped Live / Scheduled / Completed with
           amber label on Live group, mirrors ScoutTabContent for consistency. */}

@@ -9931,3 +9931,37 @@ Shared fixes across all 5 games after the first prod smoke:
   was preserved (deleting it would either evict a real person or strand them role-less — the very
   state this § prevents going forward). Script: `scripts/migrate-prune-empty-roles.mjs` (orphan-only,
   dry-default). Gate: FULL emulator e2e 98/98 (incl. `role-source-of-truth`). § 27 PASS (no UI).
+
+## § 124 — Coach Tactics board (rail-native): layout-sourced, one contextual entry, full-bleed present (2026-06-20)
+
+**Decision.** The coach gets a rail-native **Tactics board** (`/layout/:layoutId/tactics`,
+`LayoutTacticsBoardPage`) — the rail-native member of the `tactic` archetype (the immersive
+`TacticPage` editor stays as-is per `FIELD_VIEW_ARCHETYPES.md`). Completes the `tactic`
+archetype shell migration (`fieldViewConfig` now carries a `tactic-board` descriptor).
+
+- **Two modes, one screen.** BROWSE = `CanvasRailLayout`: field HERO = a **read-only**
+  `InteractiveCanvas` preview of the ONE selected tactic (positions + saved strokes); rail =
+  the ordered on-board list (tap = select, drag-handle/▲▼ = reorder, ✕ = remove). PRESENT =
+  **full-bleed immersive** draw (chrome hidden, floating `DrawToolbar`) for "show to players +
+  annotate". Draw persists via the existing `updateLayoutTactic` path.
+- **"Full-bleed present" = §76 immersive, NOT the §116 manual rail-collapse strip.** Manual
+  collapse / "focus mode" (NEXT_TASKS **F2**) is unbuilt; §116 collapse is geometry-auto-only.
+  Immersive full-bleed gives the identical end-user result and reuses the proven TacticPage
+  branch. (When F2 lands, present-mode can adopt the strip — not re-decided here.)
+- **Data model (additive, legacy-safe).** Tactic docs gain `onBoard` (bool) + `order` (number);
+  `addLayoutTactic` defaults `onBoard:true`, `order = max+1`; `reorderLayoutTactics` writeBatches
+  `order = index`. The board read is **client-side** (`utils/tacticState`: `onBoardTactics` +
+  `sortBoardTactics`), NOT Firestore `orderBy` — legacy docs lack the fields, so missing `onBoard`
+  → treated TRUE, missing `order` → createdAt fallback. **Existing tactics appear by default; no
+  migration write.** Remove = `onBoard:false` (stays in the **library**, NOT deleted; re-add via
+  the library picker). Rules: the `/layoutOverlays/{lid}/tactics` catch-all is `isCoach`-write
+  with no field allow-list → new keys write with no rules change.
+- **One contextual entry, layout-sourced.** A reusable `<OpenTacticsAction>` (`✎ Tactics board`)
+  lives in **tournament view** (CoachTabContent), **layout/Konfig** (LayoutDetailPage), **training**
+  (TrainingCoachTab), and **coach home** (MoreTabContent → Playbooks). It resolves context→layout:
+  explicit `layoutId` → go; none → resolve from the workspace (1 → go, 0 → /layouts, N → picker).
+  Tactics stay **layout-sourced** — no per-tournament/-training duplication.
+- **Coexistence.** LayoutDetailPage's existing tactic list stays (the structured position-editing
+  door → `TacticPage`); the board is the present/curate/annotate surface. § 27 PASS (one amber CTA
+  = "+ New tactic"; calm default-variant board entries; rows = one tap target + selected-row
+  split affordances; all ≥44px). e2e `tactics-board.spec.js` (data-contract + UI mount).
