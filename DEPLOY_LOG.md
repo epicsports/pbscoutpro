@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-20 — [FEATURE/Tier-2] Premium "North Star" redesign — MENU screen (nav drawer) (Jacek design handoff, night session)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-redesign-menu`. First screen of the premium dark redesign + the shared foundation. Autonomous night session.
+- **Foundation (additive):** `theme.js` gains the **ELEV** elevation system (surface/raised/overlay/sunken + hairline/hairlineStrong + shadow1-3 + innerTop sheen + `ring()`), **TYPE** scale, **TRACKING**, **TNUM** — ported from the handoff theme; existing `COLORS` untouched. New **`RdIcon`** line-icon primitive (16vbox, currentColor 1.4 stroke, round caps) + extras (trash/shield/globe/palette). `global.css` premium keyframes (rdPulse/rdFade/rdSheetUp) + classes (rd-press/rd-zone/rd-scroll).
+- **Menu re-skin:** `NavDrawer` premium chrome (ELEV.bg panel + hairlineStrong + shadow3, identity header with workspace crest tile + name/roles + close, premium brand footer). `MoreShell`: `MoreSection` → eyebrow + ELEV Card (hairline + 16px + shadow1); `MoreItem` → premium row (34px sunken icon TILE + title/sub + RdIcon chevron + divider; new `iconName` prop). **Every menu emoji → RdIcon (NO emoji)** across MoreTabContent / TrainingMoreTab / ScoutingSection / LanguageSection.
+- **PROOF:** all drawer/menu testids preserved; **FULL e2e 113/113** (nav-drawer/take-a-break/view-as/b4-home unaffected); build + precommit green. §27 PASS (amber=interactive only, ELEV elevation, ≥44px hit areas).
+- **Next (autonomous):** remaining redesign screens per the handoff (match list, coach team list, opponent analysis, player stats, live scoring, + the gap list).
+
 ## 2026-06-20 — [FIX/Tier-1] TacticEditor field overflowed its slot in landscape (Jacek report, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/tactic-editor-field-fit`.
 - **Root cause:** `TacticEditorPage` sized the canvas via `canvasMaxHeight(0,200)` → in landscape (immersive offset 0) that's the FULL `window.innerHeight`. But the editor KEEPS its chrome (PageHeader + 5-phase spine + bottom bar) visible (unlike immersive MatchPage), so the viewport-tall canvas overflowed the `flex:1` field wrapper and slid down over the Save bar.
