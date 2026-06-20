@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-20 — [FEATURE/Tier-2] Tactic-as-Point Stage 2.4: #1 board layout (crop + inline two-state rail) — WORKSTREAM COMPLETE (Opus brief, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tactic-stage2-4-layout`. Final stage of the Tactic-as-Point arc. Scouting UNTOUCHED.
+- **The Coach Tactics board gets the #1 layout** (its OWN bespoke layout — no longer the shared `CanvasRailLayout`, so **zero blast radius** on ScoutedTeam/PlayerStats/MatchPage-review/Hitability). LANDSCAPE: field HERO fills 100% height (height-first + field-box `overflow:hidden` crops the horizontal excess — no letterbox/shrink); INLINE two-state rail (expanded 300px ↔ 56px strip, always visible & one-tap expandable, **NO overlay panel**); tap field → minimize, tap strip → expand. Branch on viewport GEOMETRY (innerWidth>innerHeight) → tablet AND desktop landscape; PORTRAIT = stacked. Redundant present/full-screen button gone (present retired 2.3).
+- **PROOF:** e2e field fills height (>700px landscape) + inline minimize/expand + no overlay; **FULL e2e 112/112** (other rail-native views unaffected); point golden **byte-identical**; §27 all ≥44px; build + precommit green.
+- **Residuals (Jacek's call, both optional):** `TacticPage` full deletion (print + tournament tactics); centered field-crop (height-first crop is left-aligned — needs a shared BaseCanvas crop-center).
+- **🎉 WORKSTREAM COMPLETE** — Stage 1 (capture-engine extraction) → 2.0 (tactic branches) → 2.1 (phased doc) → 2.2 (editor) → 2.3 (board wiring + present retirement) → 2.4 (#1 layout). Every stage held the NXL-proven scouting path byte-identical, gate-checked + live.
+
 ## 2026-06-20 — [FEATURE/Tier-2] Tactic-as-Point Stage 2.3: board edit-door → phased editor, retire present mode (Opus brief, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tactic-stage2-3-integration`. **First user-facing tactic-as-point change** — the board's edit door now opens the phased editor. Scouting UNTOUCHED.
 - **Board** (`LayoutTacticsBoardPage`): single Edit door (Move icon) → `TacticEditorPage`; the old full-bleed PRESENT/annotate mode RETIRED (draw state/handlers + pencil removed). "+ New tactic" → straight into the editor. Preview now reads PHASED docs via `tacticPreviewProps` (breakout→preBreakout→first populated phase + that phase's freehand); legacy unchanged.
