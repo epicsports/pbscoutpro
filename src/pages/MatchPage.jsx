@@ -39,7 +39,11 @@ import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { mirrorPointToLeft, mirrorShotsToRight, matchScore } from '../utils/helpers';
 import { useField } from '../hooks/useField';
-import { useUndo } from '../hooks/useUndo';
+// Shared capture brain (Stage 1 extraction) — owns the draft state, routing seam,
+// factories, capture handlers, annotation seam, undo. MatchPage destructures the
+// return into the SAME names so savePoint / SaveSheet / editPoint / render are
+// byte-identical. E5/E5A/E5B/emptyTeam re-exported for savePoint + reset use.
+import useCaptureDraft, { E5, E5A, E5B, emptyTeam } from '../hooks/useCaptureDraft';
 import { makeMeta } from '../utils/observationMeta';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
@@ -53,9 +57,7 @@ import ReasonRadial from '../components/match/ReasonRadial';
 import QuickLogView from '../components/QuickLogView';
 import PointSummary from '../components/PointSummary';
 
-const E5 = () => [null, null, null, null, null];
-const E5A = () => [[], [], [], [], []];
-const E5B = () => [false, false, false, false, false];
+// E5/E5A/E5B + emptyTeam now live in useCaptureDraft (imported above).
 const PENALTIES = ['', '141', '241', '341'];
 
 // §B B3 — per-phase layer DEFAULTS for the review heatmap (convention, not
@@ -77,13 +79,7 @@ const PHASE_LAYER_DEFAULTS = {
 const PHASE_SEGMENTS = capturePhases().map(p => toPersistedLiteral(p.key));
 const PHASE_ICON = { break: Zap, settle: Shield, mid: Timer, endgame: Flag };
 
-function emptyTeam() {
-  // § Stage 2b — elimReasons: per-slot elimination reason code, set only for
-  // Settle/Mid hits (Break = implicit, stays null). Additive to elim/elimPos.
-  return { players: E5(), shots: E5A(), quickShots: E5A(), obstacleShots: E5A(), zoneShots: E5A(), zoneObstacleShots: E5A(), assign: E5(), bumps: E5(), elim: E5B(), elimPos: E5(), elimReasons: E5(), runners: E5B(), penalty: '' };
-}
-
-function mirrorX(p) { return p ? { ...p, x: 1 - p.x } : null; }
+// emptyTeam + mirrorX now live in useCaptureDraft (imported above).
 
 export default function MatchPage() {
   const device = useDevice();
@@ -230,21 +226,9 @@ export default function MatchPage() {
   const deleteMatchConfirm = useConfirm();
   const relockMatchConfirm = useConfirm();
   const { t } = useLanguage();
-  const [draftA, setDraftA] = useState(emptyTeam());
-  const [draftB, setDraftB] = useState(emptyTeam());
-  const [activeTeam, setActiveTeam] = useState('A');
-  // § Point-as-Timeline Stage 2a — scout capture stages. Break = keyframe #0
-  // (draftA/draftB above → homeData/awayData, UNTOUCHED). Settle/Mid = optional
-  // stage keyframes captured into point.timeline[] (per-side drafts keyed by the
-  // same slotIds); drawings are per-stage (stageAnnotations). Break path stays
-  // byte-identical (captureStage==='break' ⇒ draft/setDraft/activeAnnotations
-  // resolve to the existing draftA/draftB + annotations).
-  const [captureStage, setCaptureStage] = useState('break'); // 'break'|'settle'|'mid'|'endgame'
-  const [stageDraftsA, setStageDraftsA] = useState({ settle: null, mid: null, endgame: null });
-  const [stageDraftsB, setStageDraftsB] = useState({ settle: null, mid: null, endgame: null });
-  const [stageAnnotations, setStageAnnotations] = useState({ settle: [], mid: [], endgame: [] });
-  // § Stage 2b — radial elimination-reason menu, Settle/Mid only. { slot, pos } = anchor.
-  const [reasonMenu, setReasonMenu] = useState(null);
+  // draftA/draftB, activeTeam, captureStage, stageDraftsA/B, stageAnnotations,
+  // reasonMenu now come from useCaptureDraft (destructured below, after the
+  // external deps it needs are declared).
   const [fieldSide, setFieldSide] = useState('left');
   const nextFieldSideRef = useRef('left'); // always holds the truth
   // BUG-1 fix: track the last currentHomeSide we applied so the sync effect
@@ -263,10 +247,8 @@ export default function MatchPage() {
   // read by the URL effect (L534). Refresh-resets to defaults — acceptable
   // since active-scouting refresh is rare and recovery = one manual flip.
   const teamSideMemoryRef = useRef({ home: 'left', away: 'right' });
-  const [selPlayer, setSelPlayer] = useState(null);
   const [assignTarget, setAssignTarget] = useState(null);
   const [pointMenu, setPointMenu] = useState(null); // { id, idx }
-  const [mode, setMode] = useState('place');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
   const tracked = useTrackedSave();
@@ -279,18 +261,9 @@ export default function MatchPage() {
   const [showZones, setShowZones] = useState(false);
   const [draftComment, setDraftComment] = useState('');
 
-  // § 77 Draw Stage 1 — per-point annotations state.
-  // `annotations` holds committed strokes (canonical shape: {color,size,pts}).
-  // `redoStack` holds undone strokes for redo; cleared on any new stroke.
-  // `currentStroke` is the in-progress stroke (re-rendered on every onDrawMove).
-  // Coords are NATIVE-orientation 0..1 field coords (no mirror at storage).
-  const [drawMode, setDrawMode] = useState(false);
-  const [annotations, setAnnotations] = useState([]);
-  const [redoStack, setRedoStack] = useState([]);
-  const [currentStroke, setCurrentStroke] = useState(null);
-  const [drawColor, setDrawColor] = useState(STROKE_COLORS[0].value);
-  const [drawSizeKey, setDrawSizeKey] = useState('medium');
-  const [eraserMode, setEraserMode] = useState(false);
+  // § 77 Draw Stage 1 — drawMode / annotations / redoStack / currentStroke /
+  // drawColor / drawSizeKey / eraserMode now come from useCaptureDraft (the
+  // annotation seam + draw handlers moved with the capture brain).
   const [isOT, setIsOT] = useState(false);
   // scoutingSide derived from URL: null until URL effect resolves (see below).
   // 'home'|'away' = scouting, 'observe' = review mode (no scout param).
@@ -337,10 +310,7 @@ export default function MatchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewPointId, points, phasePin]);
   const [saveSheetOpen, setSaveSheetOpen] = useState(false);
-  const undoStack = useUndo(10);
-  const [toolbarPlayer, setToolbarPlayer] = useState(null);
-  const [shotMode, setShotMode] = useState(null);
-  const [quickShotPlayer, setQuickShotPlayer] = useState(null); // idx of player in QuickShotPanel
+  // undoStack, toolbarPlayer, shotMode, quickShotPlayer now come from useCaptureDraft.
   const [onFieldRoster, setOnFieldRoster] = useState([]);
   const [rosterGridVisible, setRosterGridVisible] = useState(true);
   const [sideChange, setSideChange] = useState(false);
@@ -640,70 +610,33 @@ export default function MatchPage() {
     </>
   ) : null;
 
-  // Active draft/roster
-  // § Stage 2a — a fresh stage keyframe seeded from a base (carry positions +
-  // assignments + runners; new shots / zones / bumps start empty for the stage).
-  // § Stage 2b fix — elimination state PERSISTS across stages: an eliminated
-  // player stays out, so elim + position + reason CARRY forward (were reset → a
-  // Break hit wrongly came back alive in Settle/Mid).
-  const seedStageDraft = (base) => ({
-    players: (base.players || E5()).map(p => (p ? { ...p } : null)),
-    assign: [...(base.assign || E5())],
-    runners: [...(base.runners || E5B())],
-    elim: [...(base.elim || E5B())],
-    elimPos: [...(base.elimPos || E5())],
-    elimReasons: [...(base.elimReasons || E5())],
-    shots: E5A(), quickShots: E5A(), obstacleShots: E5A(),
-    zoneShots: E5A(), zoneObstacleShots: E5A(),
-    bumps: E5(), penalty: '',
+  // ── Shared capture brain (Stage 1 extraction) ──
+  // The draft state, routing seam, factories, capture handlers, annotation seam,
+  // and undo now live in useCaptureDraft. Point-preserving defaults
+  // (target='point', teams='AB', outcomeEnabled=true). Destructured into the SAME
+  // names the rest of MatchPage (savePoint / SaveSheet / editPoint / resetDraft /
+  // render / the emulator probe) already uses → byte-identical.
+  const eng = useCaptureDraft({
+    onFieldRoster, lastAssignA, lastAssignB,
+    setAssignTarget, playerDeleteConfirm,
+    outcome, setOutcome,
   });
-  // Stage-aware draft routing — break is byte-identical to the prior code;
-  // settle/mid route to the per-side stage keyframe so the canvas + all handlers
-  // (which go through draft/setDraft) operate on that stage with no per-handler change.
-  const breakSetDraft = activeTeam === 'A' ? setDraftA : setDraftB;
-  const stageDrafts = activeTeam === 'A' ? stageDraftsA : stageDraftsB;
-  const setStageDrafts = activeTeam === 'A' ? setStageDraftsA : setStageDraftsB;
-  const breakDraft = activeTeam === 'A' ? draftA : draftB;
-  const draft = captureStage === 'break' ? breakDraft : (stageDrafts[captureStage] || breakDraft);
-  const setDraft = captureStage === 'break'
-    ? breakSetDraft
-    : (updater) => setStageDrafts(prev => {
-        const cur = prev[captureStage] || seedStageDraft(breakDraft);
-        const next = typeof updater === 'function' ? updater(cur) : updater;
-        return { ...prev, [captureStage]: next };
-      });
-  // Per-stage drawings: break = top-level `annotations`; settle/mid = stageAnnotations[stage].
-  const activeAnnotations = captureStage === 'break' ? annotations : (stageAnnotations[captureStage] || []);
-  const setActiveAnnotations = captureStage === 'break'
-    ? setAnnotations
-    : (updater) => setStageAnnotations(prev => ({
-        ...prev,
-        [captureStage]: typeof updater === 'function' ? updater(prev[captureStage] || []) : updater,
-      }));
-  // Switch the active capture stage; seed an empty stage from the prior stage
-  // (settle ← break; mid ← settle||break; endgame ← mid||settle||break) so positions
-  // carry forward to move.
-  const switchStage = (next) => {
-    if (next !== 'break') {
-      const priorBase = (drafts, fallback) =>
-        next === 'endgame' ? (drafts.mid || drafts.settle || fallback)
-        : next === 'mid' ? (drafts.settle || fallback)
-        : fallback;
-      const baseA = priorBase(stageDraftsA, draftA);
-      const baseB = priorBase(stageDraftsB, draftB);
-      if (!stageDraftsA[next]) setStageDraftsA(prev => ({ ...prev, [next]: seedStageDraft(baseA) }));
-      if (!stageDraftsB[next]) setStageDraftsB(prev => ({ ...prev, [next]: seedStageDraft(baseB) }));
-    }
-    setCaptureStage(next);
-    setSelPlayer(null); setQuickShotPlayer(null); setToolbarPlayer(null); setRedoStack([]); setReasonMenu(null);
-  };
-  const stageHasData = (drafts, anns) => !!(drafts?.players?.some(Boolean) || anns?.length);
-  const stageDone = {
-    break: draftA.players.some(Boolean) || draftB.players.some(Boolean),
-    settle: stageHasData(stageDraftsA.settle, stageAnnotations.settle) || stageHasData(stageDraftsB.settle, stageAnnotations.settle),
-    mid: stageHasData(stageDraftsA.mid, stageAnnotations.mid) || stageHasData(stageDraftsB.mid, stageAnnotations.mid),
-    endgame: stageHasData(stageDraftsA.endgame, stageAnnotations.endgame) || stageHasData(stageDraftsB.endgame, stageAnnotations.endgame),
-  };
+  const {
+    draftA, setDraftA, draftB, setDraftB, activeTeam, setActiveTeam,
+    captureStage, setCaptureStage, stageDraftsA, setStageDraftsA, stageDraftsB, setStageDraftsB,
+    stageAnnotations, setStageAnnotations, reasonMenu, setReasonMenu,
+    selPlayer, setSelPlayer, mode, setMode,
+    drawMode, setDrawMode, annotations, setAnnotations, redoStack, setRedoStack,
+    currentStroke, setCurrentStroke, drawColor, setDrawColor, drawSizeKey, setDrawSizeKey,
+    eraserMode, setEraserMode, toolbarPlayer, setToolbarPlayer, shotMode, setShotMode,
+    quickShotPlayer, setQuickShotPlayer, undoStack,
+    draft, setDraft, activeAnnotations, setActiveAnnotations, breakDraft,
+    switchStage, stageDone, mirroredOpp, mirroredOppElim, toolbarItems, seedStageDraft,
+    pushUndo, handleUndo, handleToolbarAction, handleToggleQuickZone, handleQuickShotPrecise,
+    handleSelectPlayer, handlePlacePlayer, handleMovePlayer, removePlayer, handlePlaceShot,
+    handleDeleteShot, handleBumpStop, handleDrawStart, handleDrawMove, handleDrawEnd, handleDrawAbort,
+    handleDrawUndo, handleDrawRedo, handleDrawClear, enterDrawMode, exitDrawMode, toggleElim, setElimReason,
+  } = eng;
   const roster = activeTeam === 'A' ? rosterA : rosterB;
 
   // HERO ids for active scouted team — union of tournament + global heroes (§ 25)
@@ -715,37 +648,12 @@ export default function MatchPage() {
     return [...new Set([...tournamentHeroes, ...globalHeroes])];
   }, [activeTeam, scoutedA, scoutedB, rosterA, rosterB]);
 
-  // Mirrored opponent for canvas overlay
-  const mirroredOpp = useMemo(() => {
-    const src = activeTeam === 'A' ? draftB : draftA;
-    return src.players.map(p => p ? mirrorX(p) : null);
-  }, [activeTeam, draftA.players, draftB.players]);
-  const mirroredOppElim = useMemo(() => {
-    return (activeTeam === 'A' ? draftB : draftA).elim || E5B();
-  }, [activeTeam, draftA.elim, draftB.elim]);
+  // mirroredOpp / mirroredOppElim / toolbarItems now come from useCaptureDraft.
 
   // Hooks MUST be before any early return (React hooks ordering rule)
   useEffect(() => {
     if (draft.players.some(Boolean) && rosterGridVisible) setRosterGridVisible(false);
   }, [draft.players]);
-
-  const toolbarItems = useMemo(() => {
-    if (toolbarPlayer === null) return [];
-    const isElim = draft.elim[toolbarPlayer];
-    const isRunner = draft.runners?.[toolbarPlayer];
-    const isLate = !!draft.bumps?.[toolbarPlayer];
-    return [
-      { icon: '👤', label: 'Assign', color: COLORS.accent, action: 'assign' },
-      { icon: isElim ? '❤️' : '💀', label: isElim ? 'Alive' : 'Hit', color: COLORS.danger, action: 'hit' },
-      { icon: isRunner ? '🔫' : '🏃', label: isRunner ? 'Gun up' : 'Runner', color: isRunner ? COLORS.info : COLORS.textDim, action: 'runner' },
-      { icon: '⏱', label: isLate ? 'Bumped' : 'Bump', color: isLate ? COLORS.accent : COLORS.textDim, action: 'late' },
-      { icon: '🎯', label: 'Shot', color: COLORS.textDim, action: 'shoot' },
-      // § Stage 2b — re-open the radial reason menu for an already-eliminated
-      // player in Settle/Mid (Break has no reason).
-      ...(isElim && isReasonRadial(captureStage) ? [{ icon: '🏷️', label: 'Reason', color: COLORS.danger, action: 'reason' }] : []),
-      { icon: '✕', label: 'Del', color: COLORS.textMuted, action: 'remove' },
-    ];
-  }, [toolbarPlayer, draft.elim, draft.runners, draft.bumps, captureStage]);
 
   // Auto-observe for closed matches — skip scout mode
   useEffect(() => {
@@ -1588,22 +1496,7 @@ export default function MatchPage() {
     if (editingId === pid) resetDraft();
   };
 
-  // Undo: snapshot before each mutation
-  // § Stage 2a — undo snapshots the stage keyframes too, so undo works in any
-  // stage (deep-cloned to detach from live state).
-  const pushUndo = () => undoStack.push({
-    draftA: JSON.parse(JSON.stringify(draftA)), draftB: JSON.parse(JSON.stringify(draftB)),
-    stageDraftsA: JSON.parse(JSON.stringify(stageDraftsA)), stageDraftsB: JSON.parse(JSON.stringify(stageDraftsB)),
-    selPlayer, outcome,
-  });
-  const handleUndo = () => {
-    const prev = undoStack.undo();
-    if (!prev) return;
-    setDraftA(prev.draftA); setDraftB(prev.draftB);
-    if (prev.stageDraftsA) setStageDraftsA(prev.stageDraftsA);
-    if (prev.stageDraftsB) setStageDraftsB(prev.stageDraftsB);
-    setSelPlayer(prev.selPlayer); setOutcome(prev.outcome);
-  };
+  // pushUndo / handleUndo now come from useCaptureDraft.
 
   // Canvas handlers
   const toggleRosterPlayer = (playerId) => {
@@ -1614,219 +1507,6 @@ export default function MatchPage() {
     });
   };
 
-  const handleToolbarAction = (action, idx) => {
-    if (action === 'close') { setToolbarPlayer(null); return; }
-    if (action === 'hit') { toggleElim(idx); setToolbarPlayer(null); }
-    // § Stage 2b — re-open the radial reason menu for an eliminated player (Settle/Mid).
-    if (action === 'reason') {
-      const pos = draft.players[idx];
-      if (pos) setReasonMenu({ slot: idx, pos });
-      setToolbarPlayer(null);
-      return;
-    }
-    if (action === 'runner') {
-      pushUndo();
-      setDraft(prev => {
-        const runners = [...(prev.runners || E5B())];
-        runners[idx] = !runners[idx];
-        return { ...prev, runners };
-      });
-      setToolbarPlayer(null);
-    }
-    if (action === 'late') {
-      // Bump flow: save current position as bump stop, clear player, re-enter place mode
-      pushUndo();
-      const currentPos = draft.players[idx];
-      if (currentPos) {
-        setDraft(prev => {
-          const n = { ...prev, players: [...prev.players], bumps: [...prev.bumps] };
-          n.bumps[idx] = { x: currentPos.x, y: currentPos.y };
-          n.players[idx] = null; // clear so next tap re-places at new position
-          return n;
-        });
-        setMode('place');
-      }
-      setToolbarPlayer(null);
-      setQuickShotPlayer(null);
-    }
-    if (action === 'shoot') { setQuickShotPlayer(idx); setSelPlayer(idx); setToolbarPlayer(null); }
-    if (action === 'remove') {
-      setToolbarPlayer(null);
-      playerDeleteConfirm.ask(idx);
-    }
-    if (action === 'assign') { setAssignTarget(idx); setToolbarPlayer(null); }
-  };
-
-  // QuickShotPanel handlers — toggle a zone for the selected player, or drill
-  // down into the precise ShotDrawer. § 101 unification: no more break/obstacle
-  // phase — shots write to the ACTIVE STAGE's quick/zone fields. `setDraft`
-  // already routes to the active capture stage (Break → kf#0, Settle/Mid →
-  // timeline.*), so "post-break" shots are captured by advancing the stage.
-  // `obstacle*` fields are legacy-read-only (forward-compat) and never written.
-  const handleToggleQuickZone = (zone, kind = 'band') => {
-    if (quickShotPlayer == null) return;
-    const field = kind === 'callout' ? 'zoneShots' : 'quickShots';
-    pushUndo();
-    setDraft(prev => {
-      const base = (prev[field] || E5A()).map(a => [...(a || [])]);
-      const cur = base[quickShotPlayer] || [];
-      base[quickShotPlayer] = cur.includes(zone) ? cur.filter(z => z !== zone) : [...cur, zone];
-      return { ...prev, [field]: base };
-    });
-  };
-  const handleQuickShotPrecise = () => {
-    const idx = quickShotPlayer;
-    setQuickShotPlayer(null);
-    if (idx != null) setShotMode(idx);
-  };
-
-  const handleSelectPlayer = (idx) => {
-    // Tapping another player closes the QuickShotPanel
-    if (quickShotPlayer != null && idx !== quickShotPlayer) setQuickShotPlayer(null);
-    setToolbarPlayer(toolbarPlayer === idx ? null : idx);
-  };
-
-  const handlePlacePlayer = (pos) => {
-    pushUndo();
-    setDraft(prev => {
-      const n = { ...prev, players: [...prev.players], bumps: [...prev.bumps], assign: [...prev.assign] };
-      const idx = n.players.findIndex(p => p === null);
-      if (idx >= 0) {
-        n.players[idx] = pos;
-        // Priority 1: pre-picked roster from bottom grid (onFieldRoster)
-        // Priority 2: last point's assignment at same slot (lastAssignA/B)
-        if (!n.assign[idx]) {
-          const alreadyAssigned = new Set(n.assign.filter(Boolean));
-          const nextFromRoster = onFieldRoster.find(pid => !alreadyAssigned.has(pid));
-          const lastRef = activeTeam === 'A' ? lastAssignA : lastAssignB;
-          if (nextFromRoster) {
-            n.assign[idx] = nextFromRoster;
-          } else if (lastRef.current[idx]) {
-            n.assign[idx] = lastRef.current[idx];
-          }
-        }
-        setSelPlayer(idx);
-      }
-      return n;
-    });
-  };
-  // handleSelectPlayer defined above with toolbar integration
-  const handleMovePlayer = (idx, pos) => { pushUndo(); setDraft(prev => { const n = { ...prev, players: [...prev.players] }; n.players[idx] = pos; return n; }); };
-  const removePlayer = (idx) => { pushUndo();
-    setDraft(prev => ({ ...prev, players: prev.players.map((p,i)=>i===idx?null:p), shots: prev.shots.map((s,i)=>i===idx?[]:[...s]), bumps: prev.bumps.map((b,i)=>i===idx?null:b), elim: prev.elim.map((e,i)=>i===idx?false:e), elimPos: prev.elimPos.map((e,i)=>i===idx?null:e), assign: prev.assign.map((a,i)=>i===idx?null:a) }));
-    setSelPlayer(null);
-  };
-  const handlePlaceShot = (pi, pos) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].push(pos); return n; }); };
-  const handleDeleteShot = (pi, si) => { pushUndo(); setDraft(prev => { const n = { ...prev, shots: prev.shots.map(s=>[...s]) }; n.shots[pi].splice(si,1); return n; }); };
-  // Bump is now handled by drag on canvas (onBumpPlayer prop)
-  const handleBumpStop = () => {}; // no-op — kept for FieldCanvas prop compatibility
-
-  // § 77 Draw Stage 1 — onDraw* handlers. BaseCanvas's arbiter feeds normalized
-  // 0..1 field points; we dispatch to either stroke-build or eraser based on
-  // `eraserMode`. The in-progress stroke is React state for live render via
-  // <DrawingOverlay currentStroke={...}>; commit on onDrawEnd appends to
-  // `annotations` + clears redoStack. Abort = discard in-progress.
-  //
-  // Eraser radius is screen-px at the 1000×500 reference field; matches the
-  // "feels like stroke thickness" expectation (slightly more forgiving — 2× the
-  // stroke size). Reference dims keep the eraser feel constant regardless of
-  // actual rendered canvas size; § 27 anti-pattern check: no UI flicker, just
-  // a different dispatch on tap-and-drag with finger.
-  const ERASER_REF_W = 1000;
-  const ERASER_REF_H = 500;
-  // § Stage 2a — draw handlers write to the ACTIVE stage's layer
-  // (setActiveAnnotations/activeAnnotations); for break that IS setAnnotations/
-  // annotations, so the break draw path is unchanged.
-  const handleDrawStart = (pos) => {
-    if (eraserMode) {
-      // First erase hit on touchdown — handleDrawMove will keep firing on move.
-      const radiusPx = STROKE_SIZES[drawSizeKey] * 2;
-      setActiveAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
-      setRedoStack([]); // eraser is destructive — clearing redo matches "new edit"
-      return;
-    }
-    setCurrentStroke({ color: drawColor, size: STROKE_SIZES[drawSizeKey], pts: [pos] });
-  };
-  const handleDrawMove = (pos) => {
-    if (eraserMode) {
-      const radiusPx = STROKE_SIZES[drawSizeKey] * 2;
-      setActiveAnnotations(prev => eraseAcrossStrokes(prev, pos, radiusPx, ERASER_REF_W, ERASER_REF_H));
-      return;
-    }
-    setCurrentStroke(prev => (prev ? { ...prev, pts: [...prev.pts, pos] } : prev));
-  };
-  const handleDrawEnd = () => {
-    if (eraserMode) return; // nothing to commit
-    setCurrentStroke(prev => {
-      if (!prev || prev.pts.length < 2) return null;
-      setActiveAnnotations(p => [...p, prev]);
-      setRedoStack([]); // new stroke invalidates redo
-      return null;
-    });
-  };
-  const handleDrawAbort = () => {
-    // 2nd finger landed mid-stroke (per touchHandler pinch branch). Drop in-progress.
-    setCurrentStroke(null);
-  };
-  const handleDrawUndo = () => {
-    setActiveAnnotations(prev => {
-      if (prev.length === 0) return prev;
-      const last = prev[prev.length - 1];
-      setRedoStack(r => [...r, last]);
-      return prev.slice(0, -1);
-    });
-  };
-  const handleDrawRedo = () => {
-    setRedoStack(prev => {
-      if (prev.length === 0) return prev;
-      const last = prev[prev.length - 1];
-      setActiveAnnotations(a => [...a, last]);
-      return prev.slice(0, -1);
-    });
-  };
-  const handleDrawClear = () => {
-    setActiveAnnotations([]);
-    setRedoStack([]);
-  };
-  // Entering drawMode suspends every field-edit overlay (toolbar, quick-shot
-  // panel, shoot drawer) so the canvas surface is unambiguously the draw
-  // consumer. Exiting clears in-progress stroke + eraser flag.
-  const enterDrawMode = () => {
-    setToolbarPlayer(null);
-    setQuickShotPlayer(null);
-    setShotMode(null);
-    setSelPlayer(null);
-    setEraserMode(false);
-    setCurrentStroke(null);
-    setDrawMode(true);
-  };
-  const exitDrawMode = () => {
-    setCurrentStroke(null);
-    setEraserMode(false);
-    setDrawMode(false);
-  };
-  const toggleElim = (idx) => {
-    pushUndo();
-    const willBeElim = !draft.elim[idx];
-    setDraft(prev => {
-      const n = { ...prev, elim: [...prev.elim] };
-      n.elim[idx] = !n.elim[idx];
-      // § Stage 2b — un-marking a hit clears its reason.
-      if (!willBeElim) { n.elimReasons = [...(prev.elimReasons || E5())]; n.elimReasons[idx] = null; }
-      return n;
-    });
-    // § Stage 2b — tagging a hit in Settle/Mid blooms the radial reason menu on
-    // the player. Break = implicit, no prompt.
-    if (willBeElim && isReasonRadial(captureStage)) {
-      const pos = draft.players[idx];
-      if (pos) setReasonMenu({ slot: idx, pos });
-    }
-  };
-  // § Stage 2b — set/clear the reason for a slot (called from the radial).
-  const setElimReason = (idx, reason) => {
-    setDraft(prev => { const n = { ...prev, elimReasons: [...(prev.elimReasons || E5())] }; n.elimReasons[idx] = reason; return n; });
-    setReasonMenu(null);
-  };
 
   // ── Capture characterization probe (EMULATOR-ONLY) ──
   // Publishes the deterministic draft tree + the REAL capture handlers so the
