@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-20 — [FEATURE/Tier-2] Tactic-as-Point Stage 2.3: board edit-door → phased editor, retire present mode (Opus brief, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tactic-stage2-3-integration`. **First user-facing tactic-as-point change** — the board's edit door now opens the phased editor. Scouting UNTOUCHED.
+- **Board** (`LayoutTacticsBoardPage`): single Edit door (Move icon) → `TacticEditorPage`; the old full-bleed PRESENT/annotate mode RETIRED (draw state/handlers + pencil removed). "+ New tactic" → straight into the editor. Preview now reads PHASED docs via `tacticPreviewProps` (breakout→preBreakout→first populated phase + that phase's freehand); legacy unchanged.
+- **LayoutDetailPage:** tactic card/create/duplicate/edit-action/drawer → `/layout/:id/tactic-edit/:id`. The `?print=1` action keeps the old `TacticPage` route.
+- **`TacticPage` KEPT (residual, flagged):** the `?print=1` path + `/tournament/.../tactic/...` route (tournament tactics + `tactic-drawing` spec). Layout *edit* role retired; full deletion deferred pending Jacek's call on tournament tactics + a print path in the new editor.
+- **PROOF:** e2e board edit-door → phased editor (present-enter gone); legacy `TacticPage` still loads. POINT golden **byte-identical**; **FULL e2e 111/111**; build + precommit green.
+- **Next (gated):** Stage 2.4 — #1 layout (crop + inline rail minimize/expand). → Jacek GATE.
+
 ## 2026-06-20 — [FEATURE/Tier-2] Tactic-as-Point Stage 2.2: tactic editor screen on the shared engine (Opus brief, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tactic-stage2-2-editor`. Scouting UNTOUCHED. **Ships dark** — the editor route is live but NOT yet wired to the board (that's Stage 2.3), so nothing user-facing changed.
 - **`TacticEditorPage`** (`/layout/:layoutId/tactic-edit/:tacticId`) assembles the shared pieces on `useCaptureDraft({target:'tactic', teams:'single', outcomeEnabled:false, allowAssign:false, capturePhases:positional, initial, initialAnnotations})`: InteractiveCanvas (single-team) + 5-phase StageSwitcher (NO outcome node) + place→runner/shoot[band·callout·precise]/bump menu (no hit/elim/reason/assign) + QuickShotPanel + ShotDrawer + per-phase freehand (R3). Hydrates from the doc (legacy→breakout, Q1); persists phase-keyed via `updateLayoutTactic`.
