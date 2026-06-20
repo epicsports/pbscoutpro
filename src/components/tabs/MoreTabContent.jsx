@@ -62,15 +62,15 @@ export default function MoreTabContent({
       {hasTournament && !isPurePlayer && (
         <MoreSection title={t('session_section') || 'Sesja'}>
           <MoreItem
-            icon="✏️"
+            iconName="pencil"
             label={t('edit_tournament') || 'Edytuj turniej'}
             sub={tournamentSubtitle || (t('tap_to_edit') || 'Dotknij aby edytować')}
             onClick={onEditTournament}
           />
           {isClosed ? (
-            <MoreItem icon="🗑" label={t('delete_tournament') || 'Usuń turniej'} danger onClick={onDeleteTournament} isLast />
+            <MoreItem iconName="trash" label={t('delete_tournament') || 'Usuń turniej'} danger onClick={onDeleteTournament} isLast />
           ) : (
-            <MoreItem icon="🏁" label={t('close_tournament') || 'Zamknij turniej'} accent onClick={onCloseTournament} isLast />
+            <MoreItem iconName="flag" label={t('close_tournament') || 'Zamknij turniej'} accent onClick={onCloseTournament} isLast />
           )}
         </MoreSection>
       )}
@@ -78,9 +78,9 @@ export default function MoreTabContent({
       {/* 2. ZARZĄDZAJ — coach + admin only (pure-player + scout-only hidden) */}
       {!isPurePlayer && (
         <MoreSection title={t('manage_section') || 'Zarządzaj'}>
-          <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
-          <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
-          <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} isLast />
+          <MoreItem iconName="map" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
+          <MoreItem iconName="building" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
+          <MoreItem iconName="jersey" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} isLast />
         </MoreSection>
       )}
 
@@ -89,7 +89,7 @@ export default function MoreTabContent({
           brief). Gated canEditTactics(admin|coach) — hidden from scout. */}
       {canEditTactics(effectiveRoles) && (
         <MoreSection title={t('playbooks_label')}>
-          <MoreItem icon="📖" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} />
+          <MoreItem iconName="book" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} />
           {/* Coach Tactics board — same affordance as Konfig / tournament / training.
               No layoutId → resolves the field itself (1 → go, N → picker). */}
           <div style={{ padding: '8px 12px' }}>
@@ -120,25 +120,25 @@ export default function MoreTabContent({
 
       {/* 5. KONTO — profile + language + sign out (sign out ungated per § 50) */}
       <MoreSection title={t('account_section') || 'Konto'}>
-        <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
+        <MoreItem iconName="user" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
         {/* Brief E Gap 2 — "Moje statystyki" entry point. Conditional
             on linkedPlayer; unlinked users go via Mój profil → claim
             flow first (Brief E Gap 1 fallback CTA). */}
         {linkedPlayer && (
-          <MoreItem icon="📊"
+          <MoreItem iconName="trophy"
             label={t('my_stats') || 'Moje statystyki'}
             onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)}
           />
         )}
         {linkedPlayer && (
-          <MoreItem icon="🎒" testId="packing-menu-entry"
+          <MoreItem iconName="todo" testId="packing-menu-entry"
             label={t('packing_menu')}
             onClick={() => navigate('/player/checklist')}
           />
         )}
         <InlineLanguageRow t={t} />
         {onSignOut && (
-          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
+          <MoreItem iconName="door" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
 
@@ -150,7 +150,7 @@ export default function MoreTabContent({
         <MoreSection title={t('admin_section') || 'Admin'}>
           <ViewAsPill />
           <MoreItem
-            icon="🚩"
+            iconName="flag"
             label={t('feature_flags_label') || 'Feature flags'}
             sub={t('feature_flags_sub') || 'Audiencja + włączenie per flaga'}
             onClick={() => navigate('/debug/flags')}
@@ -164,31 +164,31 @@ export default function MoreTabContent({
       {isSuperAdmin && (
         <MoreSection title={t('super_admin_section') || 'Super Admin'}>
           <MoreItem
-            icon="🏢"
+            iconName="building"
             label={t('more_admin_workspaces_label')}
             sub={t('more_admin_workspaces_sub')}
             onClick={() => navigate('/admin/workspaces')}
           />
           <MoreItem
-            icon="🗺"
+            iconName="map"
             label={t('more_admin_layouts_label')}
             sub={t('more_admin_layouts_sub')}
             onClick={() => navigate('/admin/layouts')}
           />
           <MoreItem
-            icon="🏷"
+            iconName="note"
             label={t('more_admin_leagues_label')}
             sub={t('more_admin_leagues_sub')}
             onClick={() => navigate('/admin/leagues')}
           />
           <MoreItem
-            icon="👤"
+            iconName="user"
             label={t('more_admin_players_label')}
             sub={t('more_admin_players_sub')}
             onClick={() => navigate('/admin/players')}
           />
           <MoreItem
-            icon="🛡"
+            iconName="shield"
             label={t('more_admin_teams_label')}
             sub={t('more_admin_teams_sub')}
             onClick={() => navigate('/admin/teams')}
@@ -224,19 +224,19 @@ function ScoutingSection({ navigate, t }) {
   return (
     <MoreSection title={t('scouting_section') || 'Scouting'}>
       <MoreItem
-        icon="✋"
+        iconName="hand"
         label={t('handedness_label') || 'Ręka dominująca'}
         sub={t('handedness_sub') || 'Strona lupy podczas scoutingu'}
         onClick={toggleHandedness}
         rightSlot={<AccentPill text={handLabel} />}
       />
       <MoreItem
-        icon="📋"
+        iconName="todo"
         label={t('todo_label') || 'Moje TODO scoutingowe'}
         onClick={() => navigate('/my-issues')}
       />
       <MoreItem
-        icon="🏅"
+        iconName="trophy"
         label={t('scout_ranking') || 'Ranking scoutów'}
         onClick={() => navigate('/scouts')}
         isLast
@@ -285,7 +285,7 @@ function WorkspaceSection({ workspace, user, userProfile, workspaceName, effecti
           this legacy in-section copy showed it TWICE in the drawer for >1-ws
           accounts (Jacek 2026-06-19). */}
       <MoreItem
-        icon="🚪"
+        iconName="door"
         label={t('leave_workspace_row') || 'Wyjdź z workspace'}
         rightSlot={
           <LeaveBtn
@@ -307,7 +307,7 @@ function WorkspaceSection({ workspace, user, userProfile, workspaceName, effecti
       />
       {effectiveIsAdmin && (
         <MoreItem
-          icon="👥"
+          iconName="duo"
           label={t('members_label') || 'Członkowie'}
           onClick={() => navigate('/settings/members')}
           rightSlot={pendingCount > 0 ? <PendingBadge count={pendingCount} /> : null}
@@ -366,7 +366,7 @@ function LanguageRowBody() {
   const langName = lang === 'pl' ? 'Polski' : 'English';
   return (
     <MoreItem
-      icon="🌐"
+      iconName="globe"
       label={langName}
       onClick={() => setLang(next)}
       rightSlot={<AccentPill text={`${flag} ${lang.toUpperCase()}`} />}

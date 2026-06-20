@@ -94,21 +94,21 @@ export default function TrainingMoreTab({
       {!isPurePlayer && (
         <MoreSection title={t('session_section') || 'Sesja'} tone={isClosed ? 'danger' : 'default'}>
           <MoreItem
-            icon="✏️"
+            iconName="pencil"
             label={t('edit_training') || 'Edytuj trening'}
             sub={editSubtitle}
             onClick={() => setEditOpen(true)}
           />
           <MoreItem
-            icon="🎯"
+            iconName="target"
             label={t('layout_assigned_label') || 'Layout'}
             sub={assignedLayoutLabel}
             onClick={() => setLayoutPickerOpen(true)}
           />
           {isClosed ? (
-            <MoreItem icon="🗑" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
+            <MoreItem iconName="trash" label={t('delete_training') || 'Usuń trening'} danger onClick={onDeleteTraining} isLast />
           ) : (
-            <MoreItem icon="🏁" label={t('end_training') || 'Zakończ trening'} accent onClick={onEndTraining} isLast />
+            <MoreItem iconName="flag" label={t('end_training') || 'Zakończ trening'} accent onClick={onEndTraining} isLast />
           )}
         </MoreSection>
       )}
@@ -116,16 +116,16 @@ export default function TrainingMoreTab({
       {/* 2. ZARZĄDZAJ — coach + admin only. Layouts/Teams/Players. */}
       {!isPurePlayer && (
         <MoreSection title={t('manage_section') || 'Zarządzaj'}>
-          <MoreItem icon="🗺" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
-          <MoreItem icon="🏢" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
-          <MoreItem icon="🎽" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} isLast />
+          <MoreItem iconName="map" label={t('layouts_label') || 'Layouty'} onClick={() => navigate('/layouts')} />
+          <MoreItem iconName="building" label={t('teams_label') || 'Drużyny'} onClick={() => navigate('/teams')} />
+          <MoreItem iconName="jersey" label={t('players_label') || 'Zawodnicy'} onClick={() => navigate('/players')} isLast />
         </MoreSection>
       )}
 
       {/* PLAYBOOKS — coach-framed door to the layout library (canEditTactics; no scout). */}
       {canEditTactics(effectiveRoles) && (
         <MoreSection title={t('playbooks_label')}>
-          <MoreItem icon="📖" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} isLast />
+          <MoreItem iconName="book" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} isLast />
         </MoreSection>
       )}
 
@@ -149,18 +149,18 @@ export default function TrainingMoreTab({
 
       {/* 5. KONTO — profile + language + sign out (every role). */}
       <MoreSection title={t('account_section') || 'Konto'}>
-        <MoreItem icon="👤" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
+        <MoreItem iconName="user" label={t('my_profile') || 'Mój profil'} onClick={() => navigate('/profile')} />
         {/* Brief E Gap 2 — "Moje statystyki" entry point (training mode
             mirror of MoreTabContent). Same conditional + same target. */}
         {linkedPlayer && (
-          <MoreItem icon="📊"
+          <MoreItem iconName="trophy"
             label={t('my_stats') || 'Moje statystyki'}
             onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)}
           />
         )}
         <TrainingLanguageRow />
         {onSignOut && (
-          <MoreItem icon="🚪" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
+          <MoreItem iconName="door" label={t('sign_out') || 'Wyloguj się'} danger onClick={onSignOut} isLast />
         )}
       </MoreSection>
 
@@ -169,7 +169,7 @@ export default function TrainingMoreTab({
         <MoreSection title={t('admin_section') || 'Admin'}>
           <ViewAsPill />
           <MoreItem
-            icon="🚩"
+            iconName="flag"
             label={t('feature_flags_label') || 'Feature flags'}
             sub={t('feature_flags_sub') || 'Audiencja + włączenie per flaga'}
             onClick={() => navigate('/debug/flags')}
@@ -292,19 +292,19 @@ function TrainingScoutingSection({ navigate, t }) {
   return (
     <MoreSection title={t('scouting_section') || 'Scouting'}>
       <MoreItem
-        icon="✋"
+        iconName="hand"
         label={t('handedness_label') || 'Ręka dominująca'}
         sub={t('handedness_sub') || 'Strona lupy podczas scoutingu'}
         onClick={toggleHandedness}
         rightSlot={<TrainingAccentPill text={handLabel} />}
       />
       <MoreItem
-        icon="📋"
+        iconName="todo"
         label={t('todo_label') || 'Moje TODO scoutingowe'}
         onClick={() => navigate('/my-issues')}
       />
       <MoreItem
-        icon="🏅"
+        iconName="trophy"
         label={t('scout_ranking') || 'Ranking scoutów'}
         onClick={() => navigate('/scouts')}
         isLast
@@ -338,7 +338,7 @@ function TrainingWorkspaceSection({ workspace, user, userProfile, workspaceName,
           (§92 variant="drawer"). Legacy in-section copy caused the double-switcher
           in the drawer for >1-ws accounts (Jacek 2026-06-19). */}
       <MoreItem
-        icon="🚪"
+        iconName="door"
         label={t('leave_workspace_row') || 'Wyjdź z workspace'}
         rightSlot={
           <TrainingLeaveBtn
@@ -352,7 +352,7 @@ function TrainingWorkspaceSection({ workspace, user, userProfile, workspaceName,
       />
       {effectiveIsAdmin && (
         <MoreItem
-          icon="👥"
+          iconName="duo"
           label={t('members_label') || 'Członkowie'}
           onClick={() => navigate('/settings/members')}
           rightSlot={pendingCount > 0 ? <TrainingPendingBadge count={pendingCount} /> : null}
@@ -398,7 +398,7 @@ function TrainingLanguageRow() {
   const langName = lang === 'pl' ? 'Polski' : 'English';
   return (
     <MoreItem
-      icon="🌐"
+      iconName="globe"
       label={langName}
       onClick={() => setLang(next)}
       rightSlot={<TrainingAccentPill text={`${flag} ${lang.toUpperCase()}`} />}

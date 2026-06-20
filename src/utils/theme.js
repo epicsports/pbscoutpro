@@ -85,6 +85,36 @@ export const ZONE_COLORS = {
   snake:  '#22d3ee',   // cyan400 — bottom breakouts
 };
 
+// ── Layer 2b: Elevation system (premium "North Star" redesign) ──
+// Depth via layered surfaces + 1px hairlines + soft shadows + an inner top sheen,
+// NEVER heavy borders. ELEV.surface = resting card, ELEV.raised = hover/active/hero,
+// ELEV.overlay = sheets/menus, hairline = 1px border on a surface. The single most
+// important thing to port from the design handoff.
+export const ELEV = {
+  bg: '#0a0e17',             // app background (deepest layer)
+  sunken: '#080b12',         // wells, insets, track/progress + icon-tile backgrounds
+  surface: '#111827',        // resting card
+  raised: '#161f31',         // raised / hover / hero / active card
+  overlay: '#1c2740',        // sheets, popovers, menus
+  hairline: '#1e2636',       // 1px border on a surface
+  hairlineStrong: '#28324a', // 1px border on raised / dividers
+  shadow1: '0 1px 2px rgba(0,0,0,.45)',          // resting card
+  shadow2: '0 6px 20px rgba(0,0,0,.45)',         // raised
+  shadow3: '0 16px 48px rgba(0,0,0,.55)',        // sheets / drawer
+  innerTop: 'inset 0 1px 0 rgba(255,255,255,.04)', // subtle top sheen on tiles/crests
+  ring: (c) => `0 0 0 1px ${c}40, 0 6px 20px ${c}22`, // focus / live glow from a color
+};
+
+// ── Canonical type scale (semantic) — premium redesign. Prefer over ad-hoc px. ──
+// display 32 (wizard questions) · h1 24 (screen content title) · h2 20 (section) ·
+// bar 22 (top-bar title) · title 18 (card) · body 16 · meta 14 · label 12 (UPPERCASE
+// eyebrow + TRACKING.label). Weights: 800 headings · 700 subtitles/buttons · 600
+// labels · 400–500 body. Numbers: tabular (font-variant-numeric:tabular-nums).
+export const TYPE = { display: 32, h1: 24, h2: 20, bar: 22, title: 18, body: 16, meta: 14, label: 12 };
+export const TRACKING = { label: '1.5px', tight: '-.3px' };
+// Tabular-numeric style object for scores/stats.
+export const TNUM = { fontVariantNumeric: 'tabular-nums', fontFeatureSettings: '"tnum"' };
+
 // ── Arc B — <Screen> shell archetype tiers (model C, Jacek decision 2026-06-13) ──
 // DESKTOP-ONLY CAP: below the desktop breakpoint the column is full-width
 // (phone + tablet keep their natural width — tablet stays ~768, ZERO narrowing,

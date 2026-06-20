@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { COLORS, ELEV, FONT, SPACE, TRACKING } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import RdIcon from '../RdIcon';
 
 const HANDEDNESS_KEY = 'pbscoutpro-handedness';
 const COLORBLIND_KEY = 'pbscoutpro-colorblind';
@@ -37,24 +38,26 @@ export function MoreShell({ children }) {
   );
 }
 
+// Premium eyebrow + Card (ELEV). Eyebrow = uppercase label + hairline rule; the
+// card is a resting surface with a 1px hairline + soft shadow + 16px radius.
 export function MoreSection({ title, tone = 'default', children }) {
   const isDanger = tone === 'danger';
   return (
     <div style={{ marginTop: isDanger ? SPACE.md : 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 2px 9px', padding: '0 2px' }}>
+        <span style={{
+          fontFamily: FONT, fontSize: 11, fontWeight: 800,
+          color: isDanger ? `${COLORS.danger}cc` : COLORS.textMuted,
+          textTransform: 'uppercase', letterSpacing: TRACKING.label,
+        }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+      </div>
       <div style={{
-        fontFamily: FONT,
-        fontSize: 11,
-        fontWeight: 600,
-        color: isDanger ? `${COLORS.danger}99` : COLORS.textMuted,
-        textTransform: 'uppercase',
-        letterSpacing: '.5px',
-        padding: '0 4px 8px',
-      }}>{title}</div>
-      <div style={{
-        background: COLORS.surfaceDark,
-        border: `1px solid ${isDanger ? `${COLORS.danger}22` : COLORS.border}`,
-        borderRadius: RADIUS.lg,
+        background: ELEV.surface,
+        border: `1px solid ${isDanger ? `${COLORS.danger}33` : ELEV.hairline}`,
+        borderRadius: 16,
         overflow: 'hidden',
+        boxShadow: ELEV.shadow1,
       }}>
         {children}
       </div>
@@ -62,36 +65,42 @@ export function MoreSection({ title, tone = 'default', children }) {
   );
 }
 
-export function MoreItem({ icon, label, sub, onClick, danger, accent, isLast, rightSlot, testId }) {
+// Premium row — a sunken icon TILE (RdIcon line-icon via `iconName`; emoji `icon`
+// is a transitional fallback rendered inside the same tile) + title + sub + chevron
+// (or rightSlot). Hairline divider between rows.
+export function MoreItem({ icon, iconName, label, sub, onClick, danger, accent, isLast, rightSlot, testId }) {
   const labelColor = danger ? COLORS.danger : accent ? COLORS.accent : COLORS.text;
+  const iconTone = danger ? COLORS.danger : accent ? COLORS.accent : COLORS.textDim;
   return (
-    <div onClick={onClick} data-testid={testId} style={{
-      display: 'flex', alignItems: 'center', gap: 14,
-      padding: '14px 16px', minHeight: 52,
+    <div className="rd-zone" onClick={onClick} data-testid={testId} style={{
+      display: 'flex', alignItems: 'center', gap: 13,
+      padding: '12px 13px', minHeight: 52,
       cursor: onClick ? 'pointer' : 'default',
-      borderBottom: isLast ? 'none' : `1px solid ${COLORS.border}`,
+      borderBottom: isLast ? 'none' : `1px solid ${ELEV.hairline}`,
       WebkitTapHighlightColor: 'transparent',
     }}>
       <span style={{
-        fontSize: 17, width: 22, textAlign: 'center', opacity: 0.85,
-        flexShrink: 0, color: labelColor,
-      }}>{icon}</span>
+        width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+        color: iconTone, boxShadow: ELEV.innerTop, fontSize: 16,
+      }}>{iconName ? <RdIcon name={iconName} size={17} /> : icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 500,
+          fontFamily: FONT, fontSize: 15, fontWeight: 700,
           color: labelColor,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{label}</div>
         {sub && (
           <div style={{
-            fontFamily: FONT, fontSize: 11, color: COLORS.textMuted,
-            marginTop: 2,
+            fontFamily: FONT, fontSize: 12.5, color: COLORS.textDim,
+            marginTop: 1,
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
           }}>{sub}</div>
         )}
       </div>
       {rightSlot ? rightSlot : onClick && (
-        <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.borderLight, flexShrink: 0 }}>›</span>
+        <span style={{ color: COLORS.textMuted, display: 'flex', flexShrink: 0 }}><RdIcon name="chevron" size={15} /></span>
       )}
     </div>
   );
@@ -146,14 +155,14 @@ export function ScoutingSection() {
   return (
     <MoreSection title={t('scouting_section') || 'Scouting'}>
       <MoreItem
-        icon="✋"
+        iconName="hand"
         label={t('handedness_label') || 'Dominant hand'}
         sub={t('handedness_sub') || 'Loupe position while scouting'}
         onClick={toggleHandedness}
         rightSlot={pill(handLabel)}
       />
       <MoreItem
-        icon="🎨"
+        iconName="palette"
         label={t('colorblind_label') || 'Colour-blind mode'}
         sub={t('colorblind_sub') || 'Heatmaps + intensity ramp'}
         onClick={toggleColorblind}
@@ -177,7 +186,7 @@ export function LanguageSection() {
   return (
     <MoreSection title={t('language_section') || 'Język'}>
       <MoreItem
-        icon="🌐"
+        iconName="globe"
         label={langName}
         onClick={() => setLang(next)}
         rightSlot={
