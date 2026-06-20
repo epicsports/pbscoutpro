@@ -16,12 +16,10 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Move } from 'lucide-react';
 
-import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import PageHeader from '../components/PageHeader';
 import { Btn, Modal, EmptyState, SwipeDelete } from '../components/ui';
 import { useLayouts, useLayoutTactics } from '../hooks/useFirestore';
-import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import * as ds from '../services/dataService';
 import { onBoardTactics, offBoardTactics, sortBoardTactics } from '../utils/tacticState';
 import { tacticPreviewProps } from '../utils/tacticDoc';
@@ -33,7 +31,19 @@ export default function LayoutTacticsBoardPage() {
   const { layouts, loading: layoutsLoading } = useLayouts();
   const layout = layouts.find(l => l.id === layoutId);
   const { tactics, loading } = useLayoutTactics(layoutId);
-  const { immersive } = useLandscapeMode();
+  // #1 layout — branch on VIEWPORT GEOMETRY (innerWidth > innerHeight), like
+  // CanvasRailLayout, so the inline layout applies on tablet AND desktop landscape
+  // (useLandscapeMode.isLandscape excludes desktop-width screens).
+  const [vp, setVp] = useState(() => (typeof window !== 'undefined' ? { w: window.innerWidth, h: window.innerHeight } : { w: 0, h: 0 }));
+  useEffect(() => {
+    const on = () => setVp({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', on); window.addEventListener('orientationchange', on);
+    return () => { window.removeEventListener('resize', on); window.removeEventListener('orientationchange', on); };
+  }, []);
+  const landscape = vp.w > vp.h;
+  // INLINE two-state rail (expanded ↔ 56px strip), no overlay. Tap the field →
+  // minimize; tap the strip → expand. Switching tactics never costs open/close.
+  const [railOpen, setRailOpen] = useState(true);
 
   // ── Board list (client-side onBoard filter + order sort; legacy-safe) ──
   const boardTactics = useMemo(() => sortBoardTactics(onBoardTactics(tactics)), [tactics]);
@@ -155,7 +165,7 @@ export default function LayoutTacticsBoardPage() {
   // ═══════════════════════════════════════════════════════════════════════
   // BROWSE — CanvasRailLayout (field hero preview + tactic rail)
   // ═══════════════════════════════════════════════════════════════════════
-  const headerEl = !immersive ? (
+  const headerEl = !landscape ? (
     <PageHeader
       back={{ to: `/layout/${layoutId}` }}
       title="Tactics board"
@@ -168,6 +178,9 @@ export default function LayoutTacticsBoardPage() {
       {selectedTactic ? (
         <InteractiveCanvas
           fieldImage={field.fieldImage}
+          // Landscape: height-first so the field fills 100% height; the field box's
+          // overflow:hidden crops the horizontal excess (no letterbox). Portrait: cap.
+          maxCanvasHeight={landscape ? vp.h : null}
           players={preview.players}
           shots={preview.shots}
           bumpShots={preview.bumpShots}
@@ -276,19 +289,32 @@ export default function LayoutTacticsBoardPage() {
     </div>
   );
 
-  return (
-    <div style={{ position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
-      <CanvasRailLayout
-        aspect={16 / 10}
-        railMin={220}
-        header={headerEl}
-        artifact={artifactEl}
-        fieldTools={fieldToolsEl}
-        rail={railEl}
-        collapsed={{ tabs: [], pins: [], count: { value: boardTactics.length, label: 'plays' }, onBack: () => navigate(`/layout/${layoutId}`) }}
-      />
-      {/* Library picker — off-board tactics, tap to re-add */}
-      <Modal open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Add from library">
+  // Minimized rail = a 56px strip (always visible, one-tap expandable). No overlay.
+  const stripBtn = { minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: COLORS.textDim, fontSize: 18 };
+  const stripEl = (
+    <div data-testid="tactics-rail-strip" role="button" aria-label="Expand list" onClick={() => setRailOpen(true)}
+      style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 0', gap: 6, borderLeft: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer' }}>
+      <div role="button" aria-label="Back" onClick={(e) => { e.stopPropagation(); navigate(`/layout/${layoutId}`); }} style={{ ...stripBtn, color: COLORS.accent, fontSize: 22 }}>‹</div>
+      <div style={{ width: 24, borderTop: `1px solid ${COLORS.border}`, margin: '2px 0' }} />
+      <div data-testid="tactics-rail-expand" style={{ ...stripBtn, color: COLORS.accent }}>☰</div>
+      <div style={{ marginTop: 'auto', paddingBottom: 6, textAlign: 'center', lineHeight: 1.1, fontFamily: FONT, fontSize: TOUCH.fontXs - 2, fontWeight: 700, color: COLORS.textMuted }}>{boardTactics.length}<br />plays</div>
+    </div>
+  );
+  // Field box — fills residual width; overflow:hidden crops the height-first field
+  // (100% height, no letterbox). Tap empty field → minimize the rail (more field);
+  // the edit door (top-right) stops propagation so it never minimizes.
+  const fieldBox = (onTap) => (
+    <div data-testid="tactics-field" onClick={onTap}
+      style={{ flex: 1, minWidth: 0, height: '100%', position: 'relative', overflow: 'hidden', display: 'flex', background: COLORS.bg }}>
+      {artifactEl}
+      {fieldToolsEl && (
+        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 4 }} onClick={(e) => e.stopPropagation()}>{fieldToolsEl}</div>
+      )}
+    </div>
+  );
+
+  const libraryModal = (
+    <Modal open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Add from library">
         {libraryTactics.length === 0 ? (
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: 8 }}>
             Your library is empty — every tactic is already on the board.
@@ -306,7 +332,38 @@ export default function LayoutTacticsBoardPage() {
           </div>
         )}
       </Modal>
-    </div>
+  );
+
+  return (
+    <>
+      {landscape ? (
+        // LANDSCAPE — field HERO (height-first crop, fills 100% height) + INLINE
+        // two-state rail (expanded 300px ↔ 56px strip), NO overlay panel.
+        <div style={{ position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'row' }}>
+          {fieldBox(() => railOpen && setRailOpen(false))}
+          {railOpen ? (
+            <div data-testid="tactics-rail" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderLeft: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 10px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
+                <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layout?.name || 'Tactics'}</span>
+                <div role="button" aria-label="Minimize list" data-testid="tactics-rail-minimize" onClick={() => setRailOpen(false)} style={stripBtn}>›</div>
+              </div>
+              {railEl}
+            </div>
+          ) : stripEl}
+        </div>
+      ) : (
+        // PORTRAIT — stacked: header · field (capped) · rail list + footer.
+        <div style={{ position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
+          {headerEl}
+          <div style={{ flex: '0 0 46vh', minHeight: 0, display: 'flex', position: 'relative', overflow: 'hidden' }}>
+            {artifactEl}
+            {fieldToolsEl && <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 4 }}>{fieldToolsEl}</div>}
+          </div>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{railEl}</div>
+        </div>
+      )}
+      {libraryModal}
+    </>
   );
 }
 

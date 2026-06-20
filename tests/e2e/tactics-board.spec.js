@@ -46,6 +46,38 @@ test('tactics board UI mounts — rail list + “+ New tactic” footer', async 
   await expect(page.getByTestId('tactics-new')).toBeVisible();
 });
 
+// Stage 2.4 (#1 layout) — landscape: field fills 100% height (height-first crop)
+// + INLINE two-state rail (expanded ↔ 56px strip), NO overlay. Tap field → minimize;
+// tap strip → expand.
+test('board #1 layout — field fills height + inline two-state rail (no overlay)', async ({ page }) => {
+  await login(page, TEST_ACCOUNT);
+  await page.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
+  await page.evaluate(s => window.__pbtest.setWorkspace(s), WS);
+  await page.evaluate(id => window.__pbtest.seedLayoutTactic(id, 'Layout1 E2E'), BASE_LAYOUT);
+
+  await page.setViewportSize({ width: 1194, height: 834 });
+  await page.goto('/' + `#/layout/${BASE_LAYOUT}/tactics`);
+
+  // Field fills (near) full height — height-first crop, not a letterbox.
+  const canvas = page.locator('[data-testid="tactics-field"] canvas').first();
+  await expect(canvas).toBeVisible({ timeout: 20000 });
+  expect((await canvas.boundingBox()).height).toBeGreaterThan(700);
+
+  // Rail expanded by default; NO §116 overlay panel anywhere.
+  await expect(page.getByTestId('tactics-rail')).toBeVisible();
+  await expect(page.getByTestId('rail-overlay-panel')).toHaveCount(0);
+
+  // Tap the field → minimize to the strip (inline, not an overlay).
+  await page.getByTestId('tactics-field').click({ position: { x: 60, y: 420 } });
+  await expect(page.getByTestId('tactics-rail-strip')).toBeVisible();
+  await expect(page.getByTestId('tactics-rail')).toHaveCount(0);
+
+  // Tap the strip → expand back inline.
+  await page.getByTestId('tactics-rail-expand').click();
+  await expect(page.getByTestId('tactics-rail')).toBeVisible();
+  await expect(page.getByTestId('tactics-rail-strip')).toHaveCount(0);
+});
+
 // Stage 2.3 — the old full-bleed present mode is retired; the board's single Edit
 // door (Move icon) opens the phased TacticEditorPage.
 test('board edit door opens the phased editor (present mode retired)', async ({ page }) => {

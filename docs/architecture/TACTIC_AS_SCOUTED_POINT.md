@@ -26,7 +26,18 @@ GATE-d to Jacek. Stage 0 is a read-only discovery gate (no code).
   action + the `/tournament/.../tactic/...` route (tournament tactics + the `tactic-drawing`
   spec) — its layout *edit* role is retired, but full deletion is deferred pending a decision
   on tournament tactics + a print path in the new editor.
-- ⏳ **Stage 2.4** — #1 layout (independent branch): crop + inline rail minimize/expand.
+- ✅ **Stage 2.4** — #1 layout (board). Landscape: field HERO fills 100% height (height-first
+  + field-box `overflow:hidden` crops the horizontal excess — no letterbox); INLINE two-state
+  rail (expanded 300px ↔ 56px strip, always visible & one-tap expandable, NO overlay panel);
+  tap field → minimize, tap strip → expand. The board no longer uses the shared `CanvasRailLayout`
+  (bespoke layout → zero blast radius on the other rail-native views). Branch on viewport
+  GEOMETRY (innerWidth>innerHeight) so it applies on tablet AND desktop landscape. Portrait =
+  stacked. The redundant present/full-screen button is gone (present retired in 2.3).
+  **Note:** the height-first crop is LEFT-aligned (BaseCanvas frame) — acceptable for a read-only
+  preview; a centered crop would need a BaseCanvas crop-center capability (deferred, shared-canvas).
+
+**Workstream COMPLETE** (Stages 1 → 2.4). Residuals: (a) `TacticPage` full deletion (print path +
+tournament tactics) — Jacek's call; (b) centered field-crop refinement (optional).
 
 ---
 
