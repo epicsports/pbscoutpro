@@ -248,9 +248,11 @@ function ScopePill({ label, active, hasMenu, onClick }) {
 // SectionHeader: descriptive verb-phrase title + DataSourcePill on the
 // right. Replaces the old emoji-prefixed `GroupHeader` + small label
 // `SubSection` combo for clarity (per § 59.2).
-// Premium "North Star" eyebrow (handoff `Sec` header): optional accent-tinted
-// icon tile + UPPERCASE tracked label + a flex hairline rule + the source pill.
-// `icon` is an RdIcon name; omit it for an icon-less header.
+// Premium "North Star" eyebrow: NEUTRAL icon tile (sunken + hairline + textDim,
+// the shipped menu pattern) + UPPERCASE tracked label + a flex hairline rule +
+// the source pill. § 27 (design-review verdict 2026-06-21): amber is reserved for
+// interactive/active/live state — structural section headers stay neutral, never
+// amber-tinted. `icon` is an RdIcon name; omit it for an icon-less header.
 function SectionHeader({ title, source, icon, t }) {
   return (
     <div style={{
@@ -260,8 +262,8 @@ function SectionHeader({ title, source, icon, t }) {
         <span style={{
           width: 26, height: 26, borderRadius: 8, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}33`,
-          color: COLORS.accent,
+          background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+          color: COLORS.textDim,
         }}><RdIcon name={icon} /></span>
       )}
       <span style={{
