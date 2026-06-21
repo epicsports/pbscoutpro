@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-21 — [FIX/Tier-1] DPL tournament teams invisible in coach view (Jacek critical report)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/dpl-tournament-teams-hidden`.
+- **Bug:** teams added to a DPL (or any divisioned) tournament were invisible in the coach **Teams** list. `CoachTabContent.divisionScouted` filtered `st.division === resolvedDivision`, and `resolvedDivision` defaults to `tournament.divisions[0]` (NOT `'all'`). `addScoutedTeam` stores `division: data.division || null`, and the add flow only derives it from `team.divisions[league]` / the active tab — so a team without a matching DPL division landed with `division=null` (or a value not among the tournament's divisions) and was filtered out on **every** tab → empty list despite teams being added.
+- **Fix:** never HIDE a scouted team whose `division` is null OR isn't one of THIS tournament's divisions — it shows under every division tab instead of vanishing. Teams WITH a valid tournament division still group correctly under their own tab.
+- **PROOF:** roster-division + b4-home + coach-area e2e green; full suite green (the one quicklog failure was a local cold-start login flake — passes warm; the CI e2e gate is authoritative). build + precommit green.
+- **Smoke owed (Jacek):** open the DPL tournament coach view → the added teams are visible.
+
 ## 2026-06-20 — [FEATURE/Tier-2] Premium "North Star" redesign — MENU screen (nav drawer) (Jacek design handoff, night session)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-redesign-menu`. First screen of the premium dark redesign + the shared foundation. Autonomous night session.
 - **Foundation (additive):** `theme.js` gains the **ELEV** elevation system (surface/raised/overlay/sunken + hairline/hairlineStrong + shadow1-3 + innerTop sheen + `ring()`), **TYPE** scale, **TRACKING**, **TNUM** — ported from the handoff theme; existing `COLORS` untouched. New **`RdIcon`** line-icon primitive (16vbox, currentColor 1.4 stroke, round caps) + extras (trash/shield/globe/palette). `global.css` premium keyframes (rdPulse/rdFade/rdSheetUp) + classes (rd-press/rd-zone/rd-scroll).
