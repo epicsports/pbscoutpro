@@ -74,9 +74,17 @@ export default function CoachTabContent({ tournamentId }) {
   const records = useMemo(() => computeTeamRecords(matches, scouted), [matches, scouted]);
 
   const divisionScouted = useMemo(() => {
+    const tournDivs = tournament?.divisions || [];
     const filtered = resolvedDivision === 'all'
       ? scouted
-      : scouted.filter(st => st.division === resolvedDivision);
+      // CRITICAL-BUG fix (2026-06-21): never HIDE a scouted team whose division is
+      // null OR isn't one of THIS tournament's divisions. Teams added to a DPL (or
+      // any divisioned) tournament without a matching division — addScoutedTeam
+      // stores `division: data.division || null`, and the add flow only sets it from
+      // team.divisions[league] / the active tab — were vanishing entirely because
+      // resolvedDivision defaults to divisions[0], not 'all'. Such "unclassified-for-
+      // this-tournament" teams now show under every division tab instead of being lost.
+      : scouted.filter(st => st.division === resolvedDivision || !st.division || !tournDivs.includes(st.division));
     return [...filtered].sort((a, b) => {
       const rA = records[a.id] || { wins: 0, losses: 0, played: 0 };
       const rB = records[b.id] || { wins: 0, losses: 0, played: 0 };
@@ -84,7 +92,7 @@ export default function CoachTabContent({ tournamentId }) {
       if (rA.wins !== rB.wins) return rB.wins - rA.wins;
       return rA.losses - rB.losses;
     });
-  }, [scouted, resolvedDivision, records]);
+  }, [scouted, resolvedDivision, records, tournament?.divisions]);
 
   // § Stage D — search filters WITHIN the active-division team list (by team
   // name / extId, resolved via membership). Division grouping stays the view.
