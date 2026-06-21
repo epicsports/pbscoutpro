@@ -7,6 +7,19 @@
 
 ---
 
+## ✅ DONE 2026-06-21 — verified against main
+- **Premium "North Star" redesign — PLAYER STATS screen** (merge `feat/premium-redesign-player-stats`,
+  `6eea25c8`, Tier-2 chat GO) — shared data-viz primitives (`src/components/dataviz/RdDataViz.jsx`:
+  RdSplitBar/RdFieldLanes/RdStack/RdGaugeCards/RdDonut + rdPct) + `PlayerStatsPage` re-skin (5 sections
+  onto the primitives, premium icon-tile section eyebrows, premium hero player card, ELEV grid +
+  match-history). All data wiring/scopes/heatmap/lineup/samoocena/testids preserved. Resolved **Q1**
+  (Crest=fallback) + **Q2** (coach list → CoachTabContent scouted-teams). DEPLOY_LOG 2026-06-21.
+  **Smoke owed (Jacek, prod):** open a player → Player stats; confirm the amber eyebrow-tile motif.
+- **Premium redesign — remaining handoff screens (OPEN, sequenced):** opponent analysis
+  (`ScoutedTeamPage` — reuses the data-viz primitives + Crest) → match list (`MatchCard`) → coach team
+  list (CoachTabContent per Q2) → live scoring (`MatchPage`, LAST — NXL-proven capture, golden-master
+  parity). Foundation + menu + player-stats now live. Charter: `docs/architecture/PREMIUM_REDESIGN.md`.
+
 ## ✅ DONE 2026-06-19 (night) — verified against main
 - **G1 — role grant co-writes `members[]` + orphan-roles prune** (`072abe73`, Tier-1) — `approveUserRoles`/`updateUserRoles` now `arrayUnion(uid)` into `members[]` so a role grant always grants workspace access (Majma class fixed at the write path). Migration pruned 6 orphan empty-role `userRoles` keys in ranger1996; 1 role-less *member* preserved → **Jacek triage (open, below)**. FULL e2e 98/98. DESIGN_DECISIONS §123. Smoke owed: grant a role → user sees events.
 - **Arcade games fill the screen + Read Warrior cut-off fix** (`e46cefab`, Tier-1, night) — field wrapper `flex:1/minHeight:0/centered`; tall-aspect canvases grow to aspect-correct fit. Smoke owed (device).
