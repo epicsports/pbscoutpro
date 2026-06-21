@@ -29,7 +29,9 @@ import HeatmapCanvas from '../components/HeatmapCanvas';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import { usePlayers, useActiveTeams, useTournaments, useTrainings, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, ZONE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, ZONE_COLORS, ELEV, TRACKING, TNUM, responsive } from '../utils/theme';
+import RdIcon from '../components/RdIcon';
+import { RdSplitBar, RdStack, RdGaugeCards, RdDonut } from '../components/dataviz/RdDataViz';
 import { useDevice } from '../hooks/useDevice';
 import { resolveField } from '../utils/helpers';
 import {
@@ -246,17 +248,28 @@ function ScopePill({ label, active, hasMenu, onClick }) {
 // SectionHeader: descriptive verb-phrase title + DataSourcePill on the
 // right. Replaces the old emoji-prefixed `GroupHeader` + small label
 // `SubSection` combo for clarity (per § 59.2).
-function SectionHeader({ title, source, t }) {
+// Premium "North Star" eyebrow (handoff `Sec` header): optional accent-tinted
+// icon tile + UPPERCASE tracked label + a flex hairline rule + the source pill.
+// `icon` is an RdIcon name; omit it for an icon-less header.
+function SectionHeader({ title, source, icon, t }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: 8, padding: '0 2px 8px',
+      display: 'flex', alignItems: 'center', gap: 9, padding: '0 2px 12px',
     }}>
+      {icon && (
+        <span style={{
+          width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}33`,
+          color: COLORS.accent,
+        }}><RdIcon name={icon} /></span>
+      )}
       <span style={{
-        fontFamily: FONT, fontSize: 13, fontWeight: 700,
-        color: COLORS.text, letterSpacing: '-0.1px',
+        fontFamily: FONT, fontSize: 12, fontWeight: 800,
+        color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
       }}>{title}</span>
-      <DataSourcePill source={source} t={t} />
+      <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+      {source && <DataSourcePill source={source} t={t} />}
     </div>
   );
 }
@@ -308,50 +321,8 @@ function MetricGridCell({ label, value, suffix, color, isRate, barPct, source, t
   );
 }
 
-// § 59.4 — bunker card with played count + per-bunker survival rate.
-function BunkerCard({ name, played, survivalRate, pct }) {
-  const side = sideFromBunkerName(name);
-  const barColor = sideColor(side);
-  const survColor = winRateColor(survivalRate);
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 14px',
-      background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`,
-      borderRadius: 10, minHeight: 56,
-    }}>
-      <div style={{
-        fontFamily: FONT, fontSize: 15, fontWeight: 600,
-        color: barColor, minWidth: 88,
-        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-      }}>{name}</div>
-      <div style={{
-        flex: 1, height: 5, background: COLORS.surfaceLight,
-        borderRadius: 3, overflow: 'hidden',
-      }}>
-        <div style={{
-          height: '100%', width: `${Math.max(0, Math.min(100, pct || 0))}%`,
-          background: barColor,
-        }} />
-      </div>
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'flex-end',
-        gap: 1, minWidth: 96,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>{played}</span>
-          <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textDim, fontWeight: 600 }}>pkt</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: survColor }}>
-            {survivalRate != null ? `${survivalRate}%` : '—'}
-          </span>
-          <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 600, color: COLORS.textDim, letterSpacing: '0.4px' }}>SURV</span>
-        </div>
-      </div>
-    </div>
-  );
-}
+// § 59.4 bunker cards → replaced by the premium RdGaugeCards (survival rings)
+// in the redesign; the BunkerCard helper was retired with the BarRow swap.
 
 export default function PlayerStatsPage() {
   const { playerId } = useParams();
@@ -1196,101 +1167,70 @@ export default function PlayerStatsPage() {
             {/* ─── § 59.2 "Zazwyczaj gra po stronie:" ─────────────────────── */}
             {sides.total > 0 && (
               <div>
-                <SectionHeader t={t} source="scout+self" title={t('stats_zazwyczaj_gra_po_stronie')} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[
-                    { key: 'Snake',  label: 'Snake',   count: sides.Snake,  color: ZONE_COLORS.snake },
-                    { key: 'Center', label: 'Centrum', count: sides.Center, color: ZONE_COLORS.center },
-                    { key: 'Dorito', label: 'Dorito',  count: sides.Dorito, color: ZONE_COLORS.dorito },
-                  ].map(s => {
-                    const pct = sides.total > 0 ? Math.round((s.count / sides.total) * 100) : 0;
-                    return (
-                      <BarRow key={s.key}
-                        label={s.label} labelColor={s.color}
-                        pct={pct} barColor={s.color}
-                        right={`${pct}%`}
-                        rightSub={`(${s.count})`}
-                      />
-                    );
-                  })}
-                </div>
+                <SectionHeader t={t} source="scout+self" icon="compass" title={t('stats_zazwyczaj_gra_po_stronie')} />
+                <RdSplitBar
+                  names={{ snake: 'Snake', center: 'Centrum', dorito: 'Dorito' }}
+                  unit="pkt"
+                  items={[
+                    { side: 'snake',  pct: Math.round((sides.Snake  / sides.total) * 100), n: sides.Snake },
+                    { side: 'center', pct: Math.round((sides.Center / sides.total) * 100), n: sides.Center },
+                    { side: 'dorito', pct: Math.round((sides.Dorito / sides.total) * 100), n: sides.Dorito },
+                  ]}
+                />
               </div>
             )}
 
             {/* ─── § 59.4 "Najczęściej zaczyna grę na:" — top 3 bunker cards z survival ─── */}
             {stats.bunkers.length > 0 && (
               <div>
-                <SectionHeader t={t} source="scout+self" title={t('stats_najczesciej_zaczyna_gre_na')} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {stats.bunkers.slice(0, 3).map(b => (
-                    <BunkerCard key={b.name}
-                      name={b.name}
-                      played={b.played ?? b.count}
-                      survivalRate={b.survivalRate}
-                      pct={b.pct}
-                    />
-                  ))}
-                </div>
+                <SectionHeader t={t} source="scout+self" icon="flag" title={t('stats_najczesciej_zaczyna_gre_na')} />
+                <RdGaugeCards
+                  colorFn={winRateColor}
+                  unit="pkt"
+                  topLabel={null}
+                  items={stats.bunkers.slice(0, 3).map(b => ({
+                    k: b.name,
+                    surv: b.survivalRate ?? 0,
+                    pts: b.played ?? b.count,
+                  }))}
+                />
               </div>
             )}
 
             {/* ─── § 59.2 "Na breaku strzela:" ────────────────────────────── */}
             {stats.breakShots && (
               <div>
-                <SectionHeader t={t} source="scout+self" title={t('stats_na_breaku_strzela')} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[
-                    { key: 'snake',  label: 'Snake',   pct: stats.breakShots.snake,  color: ZONE_COLORS.snake },
-                    { key: 'center', label: 'Centrum', pct: stats.breakShots.center, color: ZONE_COLORS.center },
-                    { key: 'dorito', label: 'Dorito',  pct: stats.breakShots.dorito, color: ZONE_COLORS.dorito },
-                  ].map(s => (
-                    <BarRow key={s.key}
-                      label={s.label} labelColor={s.color}
-                      pct={s.pct} barColor={s.color}
-                      right={`${s.pct}%`}
-                    />
-                  ))}
-                </div>
+                <SectionHeader t={t} source="scout+self" icon="target" title={t('stats_na_breaku_strzela')} />
+                <RdStack items={[
+                  { side: 'snake',  k: 'Snake',   pct: stats.breakShots.snake },
+                  { side: 'center', k: 'Centrum', pct: stats.breakShots.center },
+                  { side: 'dorito', k: 'Dorito',  pct: stats.breakShots.dorito },
+                ]} />
               </div>
             )}
 
             {/* ─── § 59.3/59.6 "Na pierwszej przeszkodzie gra w stronę:" — scout-only ─── */}
             {stats.obstacleShots && (
               <div>
-                <SectionHeader t={t} source="scout-only" title={t('stats_na_pierwszej_przeszkodzie')} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {[
-                    { key: 'snake',  label: 'Snake',   pct: stats.obstacleShots.snake,  color: ZONE_COLORS.snake },
-                    { key: 'center', label: 'Centrum', pct: stats.obstacleShots.center, color: ZONE_COLORS.center },
-                    { key: 'dorito', label: 'Dorito',  pct: stats.obstacleShots.dorito, color: ZONE_COLORS.dorito },
-                  ].map(s => (
-                    <BarRow key={s.key}
-                      label={s.label} labelColor={s.color}
-                      pct={s.pct} barColor={s.color}
-                      right={`${s.pct}%`}
-                    />
-                  ))}
-                </div>
+                <SectionHeader t={t} source="scout-only" icon="footsteps" title={t('stats_na_pierwszej_przeszkodzie')} />
+                <RdStack items={[
+                  { side: 'snake',  k: 'Snake',   pct: stats.obstacleShots.snake },
+                  { side: 'center', k: 'Centrum', pct: stats.obstacleShots.center },
+                  { side: 'dorito', k: 'Dorito',  pct: stats.obstacleShots.dorito },
+                ]} />
               </div>
             )}
 
             {/* ─── § 59.2 "Powód spadania:" ───────────────────────────────── */}
             {stats.causes.length > 0 && (
               <div>
-                <SectionHeader t={t} source="scout+self" title={t('stats_powod_spadania')} />
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {stats.causes.map(({ id, count, pct }) => {
-                    const meta = CAUSE_META[id] || { label: id, color: COLORS.textDim };
-                    return (
-                      <BarRow key={id}
-                        label={meta.label} labelColor={COLORS.text}
-                        pct={pct} barColor={meta.color}
-                        right={`${pct}%`}
-                        rightSub={`(${count})`}
-                      />
-                    );
-                  })}
-                </div>
+                <SectionHeader t={t} source="scout+self" icon="impact" title={t('stats_powod_spadania')} />
+                <RdDonut
+                  palette={Object.fromEntries(stats.causes.map(({ id }) => [id, (CAUSE_META[id] || { color: COLORS.textDim }).color]))}
+                  items={stats.causes.map(({ id, count, pct }) => ({
+                    side: id, k: (CAUSE_META[id] || { label: id }).label, pct, n: count,
+                  }))}
+                />
               </div>
             )}
 
