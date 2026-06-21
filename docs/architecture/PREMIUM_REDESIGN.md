@@ -14,6 +14,24 @@ the **Crest** team-logo primitive, the **RdIcon** line-icon set, and a tighter t
   TrainingMoreTab. Full e2e 113/113.
 - **`Crest`** primitive (`src/components/Crest.jsx`) — the single team-logo tile (gradient + initials,
   size-derived radius). Available; wire into team-showing screens as they're re-skinned.
+- **Data-viz vocabulary** (`src/components/dataviz/RdDataViz.jsx`) — the 5 shared chart primitives
+  (`RdSplitBar` · `RdFieldLanes` · `RdStack` · `RdGaugeCards` · `RdDonut`) + the `rdPct` value-color
+  helper, ported from the handoff with token aliases swapped to `theme.js`. Purely presentational
+  (caller passes pre-computed `items` + `palette`/`colorFn`); side labels + points unit are props
+  (English defaults). § 27: value colors come from the caller (`winRateColor`/`ZONE_COLORS`), never
+  decorative amber; `RdGaugeCards`' top-card highlight is success-green, not amber.
+- **Player stats — data-viz pass** (`PlayerStatsPage`) — the five mid-page sections re-skinned onto the
+  primitives (sides→`RdSplitBar`, bunkers→`RdGaugeCards` survival rings, break/obstacle shots→`RdStack`,
+  fall reason→`RdDonut`); `SectionHeader` upgraded to the premium icon-tile eyebrow (RdIcon + uppercase
+  tracked label + hairline rule + source pill). All data wiring/scopes/heatmap/lineup/samoocena
+  preserved. **Still owed on this screen:** premium hero player card (replaces the plain profile header)
+  + ELEV restyle of the 6-metric grid and match-history rows. Build + precommit green.
+
+## Decisions (Jacek, 2026-06-21)
+- **Q1 — Crest policy = FALLBACK.** Keep real uploaded team logos (`TeamBadge`/`WorkspaceLogo`) where
+  they exist; use the initials `Crest` only when a team has no logo. (Not "Crest everywhere".)
+- **Q2 — "Coach team list" target = the scouted-teams list in `CoachTabContent`** (re-skin it to the
+  handoff layout; NOT a new screen, NOT the admin `TeamsPage`).
 
 ## 🗺 Screen → app mapping (for the remaining "Done" handoff screens)
 | Handoff screen | App screen | Mapping | Notes |
