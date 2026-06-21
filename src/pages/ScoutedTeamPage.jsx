@@ -15,7 +15,7 @@ import { computeCoachingStats } from '../utils/coachingStats';
 import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, computeEliminationReasons, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { coachReportPhases, label as phaseLabel, toPersistedLiteral } from '../utils/pointPhases';
 import { ELIM_REASONS } from '../components/match/ReasonRadial';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, responsive } from '../utils/theme';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
@@ -34,32 +34,29 @@ import { matchEntity, playerInDivision, playerDivisionSet } from '../utils/entit
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
-// SectionHeader: with `icon` prop renders prominent 15px/700 + Lucide icon
-// (used for above-fold priority sections). Without it falls back to the
-// original 11px uppercase muted label (secondary sections).
-const SectionHeader = ({ children, icon: Icon }) => {
-  if (Icon) {
-    return (
-      <div style={{
-        padding: '18px 16px 8px',
-        display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <Icon size={18} color={COLORS.text} strokeWidth={2} />
-        <div style={{
-          fontFamily: FONT, fontSize: 15, fontWeight: 700,
-          color: COLORS.text, letterSpacing: '-0.01em',
-        }}>{children}</div>
-      </div>
-    );
-  }
-  return (
-    <div style={{
-      fontFamily: FONT, fontSize: 11, fontWeight: 700,
-      letterSpacing: 0.6, textTransform: 'uppercase',
-      color: COLORS.textMuted, padding: '18px 16px 8px',
-    }}>{children}</div>
-  );
-};
+// SectionHeader (premium "North Star" eyebrow): UPPERCASE tracked label + a
+// flex hairline rule; with an `icon` it gets the accent-tinted icon tile (the
+// same eyebrow shipped on PlayerStatsPage). Consistent across all sections.
+const SectionHeader = ({ children, icon: Icon }) => (
+  <div style={{
+    padding: '18px 16px 10px',
+    display: 'flex', alignItems: 'center', gap: 9,
+  }}>
+    {Icon && (
+      <span style={{
+        width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}33`,
+        color: COLORS.accent,
+      }}><Icon size={15} strokeWidth={2} /></span>
+    )}
+    <span style={{
+      fontFamily: FONT, fontSize: 12, fontWeight: 800,
+      color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
+    }}>{children}</span>
+    <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+  </div>
+);
 
 // CollapsibleSection (§118.2): a report section that tucks away. Own useState
 // (NOT an accordion — consistent with the RailZone control zones). Header reuses
@@ -72,15 +69,22 @@ const CollapsibleSection = ({ title, icon: Icon, defaultOpen = false, testId, ch
       <div role="button" aria-expanded={open} data-testid={testId ? `${testId}-toggle` : undefined}
         onClick={() => setOpen((o) => !o)}
         style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', minHeight: 44,
+          display: 'flex', alignItems: 'center', gap: 9, padding: '12px 16px', minHeight: 44,
           cursor: 'pointer', WebkitTapHighlightColor: 'transparent', userSelect: 'none',
         }}>
-        {Icon && <Icon size={18} color={COLORS.text} strokeWidth={2} style={{ flexShrink: 0 }} />}
-        <div style={{
-          flex: 1, fontFamily: FONT, fontSize: Icon ? 15 : 11, fontWeight: 700,
-          color: Icon ? COLORS.text : COLORS.textMuted,
-          letterSpacing: Icon ? '-0.01em' : 0.6, textTransform: Icon ? 'none' : 'uppercase',
-        }}>{title}</div>
+        {Icon && (
+          <span style={{
+            width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}33`,
+            color: COLORS.accent,
+          }}><Icon size={15} strokeWidth={2} /></span>
+        )}
+        <span style={{
+          fontFamily: FONT, fontSize: 12, fontWeight: 800,
+          color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
+        }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
         <ChevronDown size={18} color={COLORS.textMuted}
           style={{ flexShrink: 0, transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .15s ease' }} />
       </div>
@@ -95,8 +99,8 @@ const InsightCard = ({ type, text, detail }) => {
   return (
     <div style={{
       margin: '0 16px 8px',
-      background: COLORS.surfaceDark,
-      border: `1px solid ${COLORS.surfaceLight}`,
+      background: ELEV.surface,
+      border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
       borderRadius: 12,
       padding: '12px 14px',
       display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -122,10 +126,10 @@ const CounterCard = ({ counter }) => {
   return (
     <div style={{
       margin: '0 16px 6px',
-      background: COLORS.surfaceDark,
+      background: ELEV.surface,
       border: `1px solid ${color}25`,
       borderLeft: `3px solid ${color}`,
-      borderRadius: 10,
+      borderRadius: 10, boxShadow: ELEV.shadow1,
       padding: '12px 14px',
       display: 'flex', alignItems: 'flex-start', gap: 10,
     }}>
