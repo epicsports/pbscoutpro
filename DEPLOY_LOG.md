@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-22 — [FEATURE/Tier-2] Premium scouted-teams list — CoachTabContent (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-coach-teams`. Closes the "wyscoutowane drużyny" phone gap (audit). Isolated to `CoachTabContent.jsx`.
+- **Re-skin:** team rows → option-E team-color LEFT-GRADIENT (no square logo, matches the wide CoachWide) + name/division + W-L pill (TNUM) on ELEV cards; premium division pills; repair box on ELEV. Per-team **hide** (eyeoff) → `localStorage['reads.coach.hiddenTeams']` — **same key as CoachWide → hide syncs phone↔tablet/desktop** — with a "Ukryte · N" collapsible "Przywróć" restore.
+- **Preserved:** division tabs/grouping, search, the 2026-06-21 `divisionScouted` division-filter fix, the self-gated repair flow, tap→`/tournament/:tid/team/:id`, and the whole split-tap match list (`MatchCard` groups + `useLiveMatchScores`, kept above the early return). No data-testids existed; the text/role/nav selectors the specs use are intact.
+- **PROOF:** build + precommit green; **verified the coach e2e LOCALLY pre-merge** — `b4-home` + `roster-division` + `scoutedteam-rail` 8/8 green (lesson from the preloader: verify before the gate, not after).
+- **Decision flagged (Jacek):** dropped the real team logo (`TeamBadge`) for the option-E gradient, consistent with CoachWide. Easy to re-add the logo alongside the gradient if wanted.
+- **Smoke owed (Jacek, prod):** coach tab → scouted-teams list (gradient rows + W-L); hide a team → "Ukryte · N" → Przywróć; tap a team → its analysis; hide on phone → also hidden in the wide shell.
+- **Next gap:** coach/tournament summary = `ScoutedTeamPage` body full opponent re-skin (OpponentAnalysisWide, the bigger one).
+
 ## 2026-06-22 — [FEATURE/Tier-2] Premium determinate Preloader → 3 heavy screens (chat brief)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-preloader`. One shared loader for heavy screens — replaces ad-hoc "Ładowanie/Obliczanie" centered text.
 - **`Preloader.jsx`** ported 1:1 from the handoff (`prototype/preloader.jsx` → `RDX_PRELOADER`): coach draws a tactical stroke across a mini field (reveals with progress) → arrowhead + shooting-target reticle at the end; determinate bar + tabular % + phase label. `window.PT` → `theme` tokens; no hexes/emoji. Real-`progress` mode + time fallback; `onDone` after ~820ms hold.
