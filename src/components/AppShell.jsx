@@ -74,7 +74,14 @@ export default function AppShell({
   // Reuses the same activeTab/onTabChange/visibleTabs + tournament context — one
   // nav, one data source. Mobile path below is unchanged. (All hooks above run
   // unconditionally so this branch is hook-safe across resize.)
-  if (device.width >= 720) {
+  //
+  // DEPLOY GATE: disabled under the e2e/emulator build (VITE_USE_EMULATOR) — the
+  // Playwright suite runs at Desktop-Chrome 1280px (≥720), so without this guard the
+  // wide shell would render in every spec and break the mobile-written suite → red
+  // e2e → no publish. The flag is set ONLY for the e2e webServer, never the prod
+  // build, so prod ≥720 still gets the wide shell. (Same VITE_USE_EMULATOR pattern as
+  // MatchPage/firebase.js.) Wide-shell e2e coverage is a separate follow-up.
+  if (device.width >= 720 && import.meta.env.VITE_USE_EMULATOR !== 'true') {
     return (
       <AppShellPremiumWide
         activeTab={activeTab}

@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-22 — [FIX/Tier-1] Wide shell blocked its own deploy (e2e gate red) — UNBLOCK
+**App (auto-deploy, e2e-gated).** Direct to main. **Root cause of "shell not on prod":** the emulator e2e (deploy gate, `playwright.emulator.config.js`) runs at **Desktop-Chrome 1280px** — ≥720, so the new wide shell rendered in EVERY spec and broke the mobile-written suite → red e2e → `build-and-deploy` skipped → nothing published since the first shell increment (prod served the last pre-shell artifact). `npm run deploy` (gh-pages branch) is NOT the live source (Pages serves the Actions artifact), so manual publish was a no-op.
+- **Fix:** gate the wide-shell dispatch off under the e2e/emulator build — `device.width >= 720 && import.meta.env.VITE_USE_EMULATOR !== 'true'`. The flag is set ONLY for the e2e webServer, never the prod build, so the suite renders the mobile shell it was written for (green again) while **prod ≥720 still gets the wide shell**. Same `VITE_USE_EMULATOR` pattern already used by MatchPage/firebase.js.
+- **Effect:** unblocks the publish of the whole backlog (player-stats redesign, design-review fixes, delete-player fix, wide shell increments 1-3) in one deploy.
+- **Owed follow-up:** wide-shell e2e coverage (a wide-viewport Playwright project + a few wide specs) — currently the wide shell ships verified by review + Jacek smoke only.
+
 ## 2026-06-22 — [FEATURE/Tier-2] Premium wide shell — increment 3: PlayerWide + CoachWide pane enrich → SHELL COMPLETE (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-shell-playerwide`. Last wide tab body; all three (Scout/Coach/Player) now done. Change isolated to `AppShellPremiumWide.jsx`; phone untouched.
 - **PlayerWide** (two-column dashboard): left = identity card (`linkedPlayer` name/nick/#number + role pill) + honest "today" empty-state CTA (no fetch); right = action cards → real routes (Loguj punkty → `/player/log`; Wybierz trening → `/player/log` (no separate route); Statystyki → `/player/:id/stats`; Mój profil → `/profile`). Wired to `useWorkspace().linkedPlayer`/`user` + `useViewAs().effectiveRoles`. **Degrades** when no linked player (user name/email, no fake #number, stats card disabled).
