@@ -7,6 +7,8 @@ import { leagueDisplayName } from '../hooks/useLeagues';
 import { useMatches, useActiveTeams, useScoutedTeams } from '../hooks/useFirestore';
 import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../utils/teamStats';
+import { winRateColor } from '../utils/colorScale';
+import { useViewAs } from '../hooks/useViewAs';
 import RdIcon from './RdIcon';
 import TeamBadge from './TeamBadge';
 
@@ -42,7 +44,7 @@ const NAV_META = {
   ppt: { icon: 'user', sub: 'Punkty · profil' },
 };
 
-function RdSideNav({ visibleTabs, activeTab, onTabChange, tournament, tournamentSubtitle, onChangeTournament, onOpenDrawer }) {
+function RdSideNav({ visibleTabs, activeKey, onSelectTab, tournament, tournamentSubtitle, onChangeTournament, onOpenDrawer }) {
   const { t } = useLanguage();
   const { workspace } = useWorkspace();
   const isEnded = tournament?.status === 'closed';
@@ -65,9 +67,9 @@ function RdSideNav({ visibleTabs, activeTab, onTabChange, tournament, tournament
       <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
         {visibleTabs.map(tab => {
           const meta = NAV_META[tab.key] || { icon: 'target', sub: '' };
-          const on = tab.key === activeTab;
+          const on = tab.key === activeKey;
           return (
-            <div key={tab.key} className="rd-press" data-testid={`wide-tab-${tab.key}`} onClick={() => onTabChange(tab.key)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', borderRadius: 12, cursor: 'pointer', background: on ? COLORS.accentA12 : 'transparent', border: `1px solid ${on ? COLORS.accentA40 : 'transparent'}` }}>
+            <div key={tab.key} className="rd-press" data-testid={`wide-tab-${tab.key}`} onClick={() => onSelectTab(tab.key)} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 12px', borderRadius: 12, cursor: 'pointer', background: on ? COLORS.accentA12 : 'transparent', border: `1px solid ${on ? COLORS.accentA40 : 'transparent'}` }}>
               {on && <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 20, borderRadius: 3, background: COLORS.accent }} />}
               <span style={{ display: 'flex', color: on ? COLORS.accent : COLORS.textMuted }}><RdIcon name={meta.icon} size={20} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -333,21 +335,44 @@ function CoachWide({ tournamentId }) {
         {/* detail pane */}
         {selSt ? (
           <div className="rd-scroll" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '24px 26px' }}>
-            <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 16, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1, padding: '22px', background: `linear-gradient(100deg, ${colorOf(selSt)}26, ${colorOf(selSt)}08 36%, transparent 60%), ${ELEV.surface}`, marginBottom: 18 }}>
-              <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{selSt.division || t('opponent_analysis') || 'Analiza przeciwnika'}</div>
-              <div style={{ fontFamily: FONT, fontSize: 26, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameOf(selSt)}</div>
-              {(() => { const rec = records[selSt.id] || { wins: 0, losses: 0, played: 0 }; return (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
-                  <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}W</span>
-                  <span style={{ color: COLORS.textMuted }}>·</span>
-                  <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}L</span>
-                  <span style={{ color: COLORS.textMuted }}>·</span>
-                  <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.textMuted, ...TNUM }}>{rec.played} {t('section_matches') || 'mecze'}</span>
+            {(() => {
+              // Right-pane summary — built ONLY from data already loaded (records +
+              // matches); no per-team query. Win% + last-match derived; runs/scout-
+              // completeness deliberately omitted (would need the team's points).
+              const rec = records[selSt.id] || { wins: 0, losses: 0, played: 0 };
+              const winPct = rec.played > 0 ? Math.round((rec.wins / rec.played) * 100) : null;
+              const played = matches.filter(mm => (mm.teamA === selSt.id || mm.teamB === selSt.id)
+                && ((mm.scoreA || 0) + (mm.scoreB || 0) > 0 || mm.status === 'closed'));
+              const lastM = played.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || null;
+              let last = null;
+              if (lastM) { const isA = lastM.teamA === selSt.id; const my = isA ? (lastM.scoreA || 0) : (lastM.scoreB || 0); const opp = isA ? (lastM.scoreB || 0) : (lastM.scoreA || 0); last = { win: my > opp, my, opp }; }
+              const Tile = ({ label, value, color }) => (
+                <div style={{ flex: 1, minWidth: 0, background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 13, boxShadow: ELEV.shadow1, padding: '14px 14px' }}>
+                  <div style={{ fontFamily: FONT, fontSize: 22, fontWeight: 800, color: color || COLORS.text, lineHeight: 1, ...TNUM }}>{value}</div>
+                  <div style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 800, color: COLORS.textMuted, letterSpacing: TRACKING.label, textTransform: 'uppercase', marginTop: 8 }}>{label}</div>
                 </div>
-              ); })()}
-            </div>
-            <div className="rd-press" onClick={() => navigate(`/tournament/${tournamentId}/team/${selSt.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px', borderRadius: 13, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40` }}>{t('full_analysis') || 'Pełna analiza'} →</div>
-            <div style={{ marginTop: 16, borderRadius: 14, border: `1px dashed ${ELEV.hairlineStrong}`, padding: '24px', textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted, lineHeight: 1.5 }}>{t('coach_wide_detail_hint') || 'Pełne dane scoutingowe, insighty i plan kontrowania otwierają się w analizie drużyny.'}</div>
+              );
+              return (<>
+                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 16, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1, padding: '20px 22px', background: `linear-gradient(100deg, ${colorOf(selSt)}26, ${colorOf(selSt)}08 36%, transparent 60%), ${ELEV.surface}`, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <TeamBadge team={teamOf(selSt)} size={56} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{selSt.division || t('opponent_analysis') || 'Analiza przeciwnika'}</div>
+                    <div style={{ fontFamily: FONT, fontSize: 26, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameOf(selSt)}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                      <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}W</span>
+                      <span style={{ color: COLORS.textMuted }}>·</span>
+                      <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}L</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+                  <Tile label={t('section_matches') || 'Mecze'} value={rec.played} />
+                  <Tile label="Win%" value={winPct != null ? `${winPct}%` : '—'} color={winPct != null ? winRateColor(winPct) : COLORS.textMuted} />
+                  <Tile label={t('coach_last_match') || 'Ostatni mecz'} value={last ? `${last.my}:${last.opp}` : '—'} color={last ? (last.win ? COLORS.success : COLORS.danger) : COLORS.textMuted} />
+                </div>
+                <div className="rd-press" onClick={() => navigate(`/tournament/${tournamentId}/team/${selSt.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px', borderRadius: 13, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40` }}>{t('full_analysis') || 'Pełna analiza'} →</div>
+              </>);
+            })()}
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 14, color: COLORS.textMuted }}>{t('coach_select_team') || 'Wybierz drużynę z listy'}</div>
@@ -357,25 +382,98 @@ function CoachWide({ tournamentId }) {
   );
 }
 
+// GRACZ — two-column player dashboard (prototype PlayerWide). Wired to the user's
+// linked player + profile; the action cards navigate to the REAL routes. Degrades
+// gracefully when no player is linked (no fake number; stats card disabled). The
+// "today" card is an honest empty-state CTA — no today's-points fetch.
+function PlayerWide() {
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+  const { linkedPlayer, user } = useWorkspace();
+  const { effectiveRoles } = useViewAs();
+  const name = linkedPlayer?.name || user?.displayName || user?.email || 'Gracz';
+  const nick = linkedPlayer?.nickname || null;
+  const number = (linkedPlayer?.number != null && linkedPlayer?.number !== '') ? linkedPlayer.number : null;
+  const role = (effectiveRoles && effectiveRoles[0]) || null;
+  const initial = (name || '?').charAt(0).toUpperCase();
+  const ActionCard = ({ icon, title, sub, onClick, primary, disabled }) => (
+    <div className={disabled ? undefined : 'rd-press'} onClick={disabled ? undefined : onClick} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 18px', borderRadius: 15, background: primary ? COLORS.accentA12 : ELEV.surface, border: `1px solid ${primary ? COLORS.accentA40 : ELEV.hairline}`, boxShadow: ELEV.shadow1, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1 }}>
+      <span style={{ width: 42, height: 42, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: primary ? COLORS.accent : COLORS.accentA12, border: `1px solid ${COLORS.accentA40}`, color: primary ? '#1a1206' : COLORS.accent }}><RdIcon name={icon} size={19} /></span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: COLORS.text }}>{title}</div>
+        <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textDim, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>
+      </div>
+      <span style={{ color: COLORS.textMuted, display: 'flex' }}><RdIcon name="chevron" size={15} /></span>
+    </div>
+  );
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <RdContentHead title={t('tab_player') || 'Gracz'} sub={[name, nick, number != null ? `#${number}` : null].filter(Boolean).join(' · ')} />
+      <div className="rd-scroll" style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        <div style={{ maxWidth: 1080, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: 18, alignItems: 'start' }}>
+          {/* left: identity + today */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '20px', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 18, boxShadow: ELEV.shadow1 }}>
+              <div style={{ width: 66, height: 66, borderRadius: 18, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.innerTop, fontFamily: FONT, fontWeight: 800, fontSize: 27, color: COLORS.textDim }}>{initial}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: FONT, fontSize: 22, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5, flexWrap: 'wrap' }}>
+                  {(nick || number != null) && <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.textDim }}>{[nick, number != null ? `#${number}` : null].filter(Boolean).join(' · ')}</span>}
+                  {role && <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.accent, background: COLORS.accentA12, border: `1px solid ${COLORS.accentA40}`, borderRadius: 999, padding: '2px 9px', textTransform: 'capitalize' }}>{role}</span>}
+                </div>
+                {!linkedPlayer && <div style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 600, color: COLORS.textMuted, marginTop: 6 }}>{t('player_not_linked_hint') || 'Połącz swój profil zawodnika w ustawieniach, aby zobaczyć statystyki.'}</div>}
+              </div>
+            </div>
+            {/* today card — honest empty-state CTA (no fetch) */}
+            <div style={{ padding: '20px', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 18, boxShadow: ELEV.shadow1 }}>
+              <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.accent, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{t('today_points_title') || 'Twoje dzisiejsze punkty'}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '22px 12px 14px', textAlign: 'center' }}>
+                <span style={{ width: 50, height: 50, borderRadius: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accentA12, border: `1px solid ${COLORS.accentA40}`, color: COLORS.accent }}><RdIcon name="target" size={24} /></span>
+                <div style={{ fontFamily: FONT, fontSize: 14.5, fontWeight: 700, color: COLORS.text }}>{t('today_points_empty') || 'Brak punktów zalogowanych dzisiaj'}</div>
+                <div style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textDim, maxWidth: 260 }}>{t('today_points_empty_sub') || 'Zaloguj pierwszy punkt — pojawi się tutaj.'}</div>
+                <div className="rd-press" onClick={() => navigate('/player/log')} style={{ marginTop: 4, padding: '11px 20px', borderRadius: 12, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 14.5, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40` }}>+ {t('log_point') || 'Zaloguj punkt'}</div>
+              </div>
+            </div>
+          </div>
+          {/* right: actions */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <ActionCard icon="target" title={t('log_points') || 'Loguj punkty'} sub={t('log_points_sub') || 'dzisiejsze punkty + nowy punkt'} onClick={() => navigate('/player/log')} primary />
+            <ActionCard icon="clock" title={t('select_training') || 'Wybierz trening'} sub={t('select_training_sub') || 'do którego logować punkty'} onClick={() => navigate('/player/log')} />
+            <ActionCard icon="impact" title={t('player_stats') || 'Statystyki zawodnika'} sub={t('player_stats_sub') || 'tendencje, rozbiegi, partnerzy'} onClick={() => linkedPlayer && navigate(`/player/${linkedPlayer.id}/stats`)} disabled={!linkedPlayer} />
+            <ActionCard icon="user" title={t('my_profile') || 'Mój profil'} sub={user?.email || ''} onClick={() => navigate('/profile')} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AppShellPremiumWide({ children, activeTab, onTabChange, visibleTabs = [], tournament, tournamentSubtitle, tournamentId, onChangeTournament, onOpenDrawer }) {
-  // Tab → wide master-detail when we have a real tournament (not training);
-  // every other tab falls back to the existing `children` content full-bleed.
+  // The player tab (key 'ppt') navigates AWAY to /player/log on PHONE (MainPage
+  // handleTabChange). In the wide shell it instead shows PlayerWide as a hub —
+  // handled by a CONTAINED local view-state here, NOT by calling onTabChange('ppt')
+  // (which would navigate). Scout/coach still drive the app's real tab state.
+  // Phone is untouched: this interception lives only in the wide shell.
+  const [playerView, setPlayerView] = useState(false);
+  const onSelectTab = (key) => { if (key === 'ppt') { setPlayerView(true); } else { setPlayerView(false); onTabChange(key); } };
+  const activeKey = playerView ? 'ppt' : activeTab;
   const realTournament = tournamentId && !tournament?._isTraining;
-  const scoutWide = activeTab === 'scout' && realTournament;
-  const coachWide = activeTab === 'coach' && realTournament;
+  const scoutWide = !playerView && activeTab === 'scout' && realTournament;
+  const coachWide = !playerView && activeTab === 'coach' && realTournament;
   return (
     <div style={{ height: '100dvh', display: 'flex', background: COLORS.bg, fontFamily: FONT }}>
       <RdSideNav
         visibleTabs={visibleTabs}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
+        activeKey={activeKey}
+        onSelectTab={onSelectTab}
         tournament={tournament}
         tournamentSubtitle={tournamentSubtitle}
         onChangeTournament={onChangeTournament}
         onOpenDrawer={onOpenDrawer}
       />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {scoutWide ? <ScoutWide tournamentId={tournamentId} />
+        {playerView ? <PlayerWide />
+          : scoutWide ? <ScoutWide tournamentId={tournamentId} />
           : coachWide ? <CoachWide tournamentId={tournamentId} />
           : (<div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>)}
       </div>
