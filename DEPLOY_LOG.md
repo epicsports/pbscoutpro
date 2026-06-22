@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-22 — [FEATURE/Tier-1] Team logo — on coach rows + settable on the team form (Jacek)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/team-logo`.
+- **Re-added the real team logo** (`TeamBadge`, falls back to the color crest) beside the option-E gradient in BOTH coach rows — `CoachTabContent` (phone) + `CoachWide` (wide). Reverses the earlier "no square logo" call per Jacek — now gradient + logo.
+- **`TeamFormModal`:** new **Logo** field (`wsadmin_logo_label`) — paste an external image URL with a live `TeamBadge` preview; persisted via `updateTeam`/`addTeam`'s existing `logoUrl` (external link, NOT Firebase Storage — §93 quota pattern). Closes the "no place to set a team logo" gap (the form previously had no logo OR color input at all).
+- **PROOF:** build + precommit green; coach e2e verified LOCALLY pre-merge — `b4-home`/`roster-division`/`scoutedteam-rail` 8/8.
+- **Smoke (Jacek, prod):** admin → team form → paste a logo URL → preview updates → save → logo shows on the scouted-teams rows (phone + wide) + everywhere TeamBadge renders.
+
 ## 2026-06-22 — [FEATURE/Tier-2] Premium scouted-teams list — CoachTabContent (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-coach-teams`. Closes the "wyscoutowane drużyny" phone gap (audit). Isolated to `CoachTabContent.jsx`.
 - **Re-skin:** team rows → option-E team-color LEFT-GRADIENT (no square logo, matches the wide CoachWide) + name/division + W-L pill (TNUM) on ELEV cards; premium division pills; repair box on ELEV. Per-team **hide** (eyeoff) → `localStorage['reads.coach.hiddenTeams']` — **same key as CoachWide → hide syncs phone↔tablet/desktop** — with a "Ukryte · N" collapsible "Przywróć" restore.
