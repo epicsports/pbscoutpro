@@ -9,7 +9,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Screen from '../components/Screen';
-import { Btn, Loading, EmptyState, Select } from '../components/ui';
+import { Btn, EmptyState, Select } from '../components/ui';
+import Preloader from '../components/Preloader';
+import { useScreenLoader } from '../hooks/useScreenLoader';
 import { useTournaments, useLayouts } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
@@ -78,6 +80,9 @@ export default function ScoutRankingPage() {
   const uids = useMemo(() => stats.map(s => s.uid), [stats]);
   const names = useUserNames(uids);
 
+  // Premium determinate loader (creep-and-snap on the single `loading` boolean).
+  const { shown: loaderShown, progress: loaderP, close: closeLoader } = useScreenLoader(loading);
+
   return (
     // §arc-B — kept at the DETAIL tier (640) to preserve the current hardcoded
     // width exactly (diff=0 at all widths). It is semantically a list; if the
@@ -118,8 +123,17 @@ export default function ScoutRankingPage() {
         )}
       </div>
 
-      {loading ? (
-        <Loading text={t('b13_loading_scouted_pts')} />
+      {loaderShown ? (
+        <div style={{ position: 'relative', minHeight: '60vh' }}>
+          <Preloader
+            progress={loaderP}
+            phases={[{ label: 'Pobieranie punktów', to: 60 }, { label: 'Liczenie rankingu', to: 100 }]}
+            caption="reads · ranking scoutów"
+            onDone={closeLoader}
+          />
+        </div>
+      ) : loading ? (
+        <div style={{ minHeight: '60vh' }} />
       ) : stats.length === 0 ? (
         <div style={{ padding: 40, textAlign: 'center' }}>
           <EmptyState icon="👤" text={t('scout_empty')} subtitle={t('scout_empty_sub')} />
