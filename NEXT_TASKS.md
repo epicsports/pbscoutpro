@@ -3,7 +3,25 @@
 > **Canonical-board rule.** If something is *actionable and open*, it lives **here**. `DEPLOY_LOG.md` is the ship ledger (newest-first, full detail); `HANDOVER.md` is narrative state. Zero actionable items living ONLY in DEPLOY_LOG/HANDOVER. Kept current on every doc-closeout.
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active brief. See `CLAUDE.md`.
 
-**Last synced:** 2026-06-19 · main HEAD `327fcd3b` · **reconciled via a full 6-agent backlog audit** (every historical candidate from DEPLOY_LOG / DESIGN_DECISIONS / HANDOVER / code TODOs re-checked against live code + git + prod; STALE/DONE entries pruned). This board now lists only **verified-open** work.
+**Last synced:** 2026-06-22 · main HEAD `b5159ae1`.
+
+---
+
+## ✅ DONE 2026-06-22 — verified against main + on prod (detail in DEPLOY_LOG)
+- **Wide shell** (`AppShellPremiumWide`, ≥720px) increments 1-3: ScoutWide · CoachWide · PlayerWide (master-detail on real hooks/routes; mobile byte-identical). + the **deploy-gate unblock** (`VITE_USE_EMULATOR` gate — the e2e runs at 1280px and was reding the suite → silently blocking ALL deploys).
+- **Premium determinate Preloader** (1:1 port) wired into opponent/player-stats/ranking; **scouted-teams list premium** (`CoachTabContent`); **team logo** on coach rows + a Logo URL field on `TeamFormModal`.
+- **Player-stats premium redesign** + data-viz primitives + the design-review fixes (§27 amber, hero/gauge); **delete-player** "confirm does nothing" fix.
+
+## 🔴 OPEN — Premium redesign, remaining gaps (verified audit 2026-06-22) — sequenced by visibility
+The back half of the redesign is NOT wired. CD built `*Wide` variants in `prototype/redesign6.jsx`; only the 3 shell tab bodies are live.
+- **Coach/tournament summary** — `ScoutedTeamPage` body full opponent re-skin (`OpponentAnalysisWide`). *Next to take.*
+- Scout ranking (`ScoutRankingWide`) · Today's points/PPT (`TodayPointsWide`) · My profile (`MyProfileWide`) · Team profile (`TeamProfileWide`) · Point-logging wizard (`PointWizardWide`) · Match cards · Players/Teams lists · Hitability (partial, no ELEV).
+- **BLOCKED — forms-wide** (`NewPlayerWide`/`NewTeamWide`): `redesign7.jsx` NOT on disk → CD must export it to `Desktop/dk/prototype/`.
+- **Wide-shell e2e coverage = ZERO** (gated off under VITE_USE_EMULATOR) — add a wide-viewport Playwright project + a few specs so the wide shell is gate-protected.
+- **Preloader true per-stage stepping** — promote `heatmapLoading` to a fetch-done→compute-done signal (currently creep-and-snap on a single boolean).
+
+## ⏳ SMOKES OWED (Jacek, prod)
+Wide shell (tablet/desktop ≥720) · scouted-teams list + team logo · preloader cold-load.
 
 ---
 
