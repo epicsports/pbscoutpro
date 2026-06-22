@@ -787,6 +787,11 @@ export default function PlayerStatsPage() {
     else navigate(`/team/${player?.teamId || ''}`);
   };
 
+  // Premium determinate loader for the stats compute (creep-and-snap on dataLoading).
+  // MUST sit above the `if (!player)` early return — hooks run unconditionally or
+  // React throws "rendered more hooks than during the previous render".
+  const { shown: loaderShown, progress: loaderP, close: closeLoader } = useScreenLoader(dataLoading);
+
   if (!player) {
     const stillLoading = playersLoading && !playerLoadTimedOut;
     return (
@@ -836,9 +841,6 @@ export default function PlayerStatsPage() {
       subtitle={t('player_stats').toUpperCase()}
     />
   );
-
-  // Premium determinate loader for the stats compute (creep-and-snap on dataLoading).
-  const { shown: loaderShown, progress: loaderP, close: closeLoader } = useScreenLoader(dataLoading);
 
   const columnEl = (
       <div data-testid="player-report-column" style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
