@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-22 — [FEATURE/Tier-2] Premium wide shell — increment 3: PlayerWide + CoachWide pane enrich → SHELL COMPLETE (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-shell-playerwide`. Last wide tab body; all three (Scout/Coach/Player) now done. Change isolated to `AppShellPremiumWide.jsx`; phone untouched.
+- **PlayerWide** (two-column dashboard): left = identity card (`linkedPlayer` name/nick/#number + role pill) + honest "today" empty-state CTA (no fetch); right = action cards → real routes (Loguj punkty → `/player/log`; Wybierz trening → `/player/log` (no separate route); Statystyki → `/player/:id/stats`; Mój profil → `/profile`). Wired to `useWorkspace().linkedPlayer`/`user` + `useViewAs().effectiveRoles`. **Degrades** when no linked player (user name/email, no fake #number, stats card disabled).
+- **Player-tab interception (phone-safe):** `ppt` navigates to `/player/log` on phone (MainPage UNTOUCHED). In the wide shell only, a contained local `playerView` state + `RdSideNav` `activeKey`/`onSelectTab` shows PlayerWide as a hub instead of navigating away; scout/coach still drive the real `onTabChange`.
+- **CoachWide right pane enriched** (Jacek's golden-mean call, existing data only — no new queries): crest + name + W-L header + tiles **Mecze** (played), **Win%** (winRateColor), **Ostatni mecz** (from `matches`) + the "Pełna analiza →" CTA. Skipped runs/completeness (need a per-team points query).
+- **PROOF:** build + precommit green (re-verified); blast radius = `AppShellPremiumWide.jsx` only; CI e2e gate authoritative.
+- **Smoke owed (Jacek, prod — TABLET/DESKTOP ≥720px):** Player tab → dashboard hub (identity + action cards route correctly; stats disabled if no linked player); Coach tab right pane → metric tiles + last match; phone (<720) all tabs unchanged (player tab still → /player/log).
+- **🎉 WIDE SHELL COMPLETE** (Scout master-detail · Coach master-detail + hide · Player dashboard, all on real data, mobile byte-identical). Remaining premium-redesign items: CD's prototype forms-wide; real field in the Scout/Coach detail panes (deferred); opponent-analysis full layout re-skin (separate, last in risk order).
+
 ## 2026-06-22 — [FEATURE/Tier-2] Premium wide shell — increment 2: CoachWide teams master-detail (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-shell-coachwide`. Coach tab in the wide shell (≥720px). Change isolated to `AppShellPremiumWide.jsx`; phone `CoachTabContent` untouched.
 - **Master-detail** (Jacek spec overrides the prototype's grid `CoachWide`): teams list (left 384px) ↔ analysis pane (right). Reuses the REAL coach data — `useScoutedTeams` + `computeTeamRecords(matches, scouted)` + `useActiveTeams` (same as `CoachTabContent`). One data source, one nav.
