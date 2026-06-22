@@ -1,30 +1,29 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
 import SearchField from '../SearchField';
 import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
-import TeamBadge from '../TeamBadge';
 import OpenTacticsAction from '../OpenTacticsAction';
+import RdIcon from '../RdIcon';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TRACKING, TNUM } from '../../utils/theme';
 import * as ds from '../../services/dataService';
 import { useLanguage } from '../../hooks/useLanguage';
 
+// Shared with CoachWide (the wide-shell coach tab) — hiding a team on the phone
+// reflects on tablet/desktop and vice-versa.
+const HIDDEN_KEY = 'reads.coach.hiddenTeams';
+
 /**
- * CoachTabContent — teams with W-L on top, grouped match list below.
- * Extracted from TournamentPage coach mode (DESIGN_DECISIONS § 26 § 31).
- *
- * Team card design (§ 26): ONE touch target → ScoutedTeamPage. Just name + W-L.
- * No chevrons, no logos, no point diff, no win%. All detail on drill-down.
- *
- * Match list: split-tap MatchCard (shared with ScoutTabContent) so coach can
- * jump into scouting a specific side directly from Coach tab without a detour
- * through Scout tab. Grouped into Live / Scheduled / Completed matching the
- * pre-§ 31 TournamentPage behavior. Claim state (concurrent-scouting awareness)
- * + per-side "tap to scout" lives inside MatchCard.
+ * CoachTabContent — premium scouted-teams list + grouped match list (DESIGN_DECISIONS
+ * § 26 § 31). North Star re-skin (2026-06-22): team rows carry the option-E team-color
+ * LEFT-GRADIENT identification + W-L pill + a per-team hide → `reads.coach.hiddenTeams`
+ * with an "Ukryte · N" restore, consistent with `CoachWide`. ONE touch target per row
+ * → ScoutedTeamPage. Division grouping/search/repair/nav + the split-tap match list are
+ * preserved verbatim.
  */
 export default function CoachTabContent({ tournamentId }) {
   const { t } = useLanguage();
@@ -36,8 +35,6 @@ export default function CoachTabContent({ tournamentId }) {
   const { players } = usePlayers();   // § fix — pass cached catalog into the B3 repair (avoid re-reading 3.2k global players)
 
   const tournament = tournaments.find(t => t.id === tournamentId);
-  // B17 cleanup (2026-05-27): `isPractice` removed — `type:'practice'` was
-  // a dead discriminator (0 prod docs per § 69 backfill).
   const isClosed = tournament?.status === 'closed';
 
   const [activeDivision, setActiveDivision] = useState(null);
@@ -45,12 +42,18 @@ export default function CoachTabContent({ tournamentId }) {
   // § Stage D — search WITHIN the division-grouped team list (grouping kept).
   const [teamSearch, setTeamSearch] = useState('');
 
-  // Self-gated repair affordance for the 2026-05-15 import-shape bug.
-  // ScheduleCSVImport (and OCR ScheduleImport before this fix) wrote scouted
-  // entries with division=null, so divisionScouted filters them out and the
-  // Teams list looks empty even though scouted docs exist. Visibility is
-  // gated on the exact symptom shape — scouted has rows but none survive
-  // the division filter — so the button vanishes the moment it succeeds.
+  // Per-team hide (shared key with CoachWide). Opt-in — empty by default, so the
+  // full list shows until a coach hides something.
+  const [hidden, setHidden] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'); } catch { return []; }
+  });
+  const [showHidden, setShowHidden] = useState(false);
+  const persistHidden = (arr) => { setHidden(arr); try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr)); } catch { /* ignore */ } };
+  const hideTeam = (id) => persistHidden(hidden.includes(id) ? hidden : [...hidden, id]);
+  const unhideTeam = (id) => persistHidden(hidden.filter(x => x !== id));
+
+  // Self-gated repair affordance for the 2026-05-15 import-shape bug (scouted
+  // entries written with division=null vanish under the division filter).
   const [repairing, setRepairing] = useState(false);
   const [repairResult, setRepairResult] = useState(null);
   const runRepair = async () => {
@@ -67,10 +70,6 @@ export default function CoachTabContent({ tournamentId }) {
     }
   };
 
-  // § 83 B3 roster-repair UI RETIRED (B26 close, 2026-06-16) — its state/handler/toast
-  // were removed with the render box (see the render-site note). The narrowing fn lives
-  // on in dataService; the real fix is docs/briefs/CC_BRIEF_PLAYER_DEDUP.md.
-
   const records = useMemo(() => computeTeamRecords(matches, scouted), [matches, scouted]);
 
   const divisionScouted = useMemo(() => {
@@ -78,12 +77,8 @@ export default function CoachTabContent({ tournamentId }) {
     const filtered = resolvedDivision === 'all'
       ? scouted
       // CRITICAL-BUG fix (2026-06-21): never HIDE a scouted team whose division is
-      // null OR isn't one of THIS tournament's divisions. Teams added to a DPL (or
-      // any divisioned) tournament without a matching division — addScoutedTeam
-      // stores `division: data.division || null`, and the add flow only sets it from
-      // team.divisions[league] / the active tab — were vanishing entirely because
-      // resolvedDivision defaults to divisions[0], not 'all'. Such "unclassified-for-
-      // this-tournament" teams now show under every division tab instead of being lost.
+      // null OR isn't one of THIS tournament's divisions. Such "unclassified-for-this-
+      // tournament" teams show under every division tab instead of being lost.
       : scouted.filter(st => st.division === resolvedDivision || !st.division || !tournDivs.includes(st.division));
     return [...filtered].sort((a, b) => {
       const rA = records[a.id] || { wins: 0, losses: 0, played: 0 };
@@ -94,26 +89,22 @@ export default function CoachTabContent({ tournamentId }) {
     });
   }, [scouted, resolvedDivision, records, tournament?.divisions]);
 
-  // § Stage D — search filters WITHIN the active-division team list (by team
-  // name / extId, resolved via membership). Division grouping stays the view.
-  const visibleScouted = useMemo(() => {
+  // Search filters WITHIN the active-division list (team name / extId). Hidden teams
+  // drop out of the visible list into the "Ukryte · N" section below.
+  const searchMatched = useMemo(() => {
     if (!teamSearch.trim()) return divisionScouted;
     return divisionScouted.filter(st => matchEntity(teamSearch, teams.find(t => t.id === st.teamId), ['name', 'externalId']));
   }, [divisionScouted, teamSearch, teams]);
+  const visibleScouted = useMemo(() => searchMatched.filter(st => !hidden.includes(st.id)), [searchMatched, hidden]);
+  const hiddenScouted = useMemo(() => searchMatched.filter(st => hidden.includes(st.id)), [searchMatched, hidden]);
 
-  // Filter by division, then classify into Live / Scheduled / Completed so
-  // MatchCard receives the right `status` and groups render under labels.
   const filteredMatches = useMemo(() => (
     resolvedDivision === 'all'
       ? matches
       : matches.filter(m => m.division === resolvedDivision)
   ), [matches, resolvedDivision]);
 
-  // Subscribe to points for non-closed matches so cards show live scores
-  // (parity with ScoutTabContent fix from 2026-04-24 P0 Fix 1; commit
-  // 629edc8 explicitly noted CoachTabContent as a symmetry follow-up).
-  // Hook call MUST stay above the `!tournament` early return (see the
-  // React #310 crash fix in ScoutTabContent at commit 950ab79).
+  // Hook call MUST stay above the `!tournament` early return (React #310 fix).
   const liveCandidateIds = useMemo(
     () => filteredMatches.filter(m => m.status !== 'closed').map(m => m.id),
     [filteredMatches],
@@ -124,14 +115,10 @@ export default function CoachTabContent({ tournamentId }) {
     if (m.status === 'closed') return 'completed';
     const live = liveScores[m.id];
     const liveCount = live?.count ?? 0;
-    const cachedA = m.scoreA || 0;
-    const cachedB = m.scoreB || 0;
-    if (liveCount > 0 || cachedA > 0 || cachedB > 0) return 'live';
+    if (liveCount > 0 || (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0) return 'live';
     return 'scheduled';
   };
 
-  // Sort within each group by createdAt descending (newest first) as a safe
-  // default — match docs carry createdAt timestamps from addMatch.
   const sortByNewest = (a, b) => {
     const ta = a.createdAt?.seconds ?? a.createdAt ?? 0;
     const tb = b.createdAt?.seconds ?? b.createdAt ?? 0;
@@ -142,17 +129,57 @@ export default function CoachTabContent({ tournamentId }) {
   const scheduled = filteredMatches.filter(m => classify(m) === 'scheduled').sort(sortByNewest);
   const completed = filteredMatches.filter(m => classify(m) === 'completed').sort(sortByNewest);
 
-  // Resolver closure passed into MatchCard — it avoids fetching teams/scouted
-  // again inside the card. Matches the pattern used by ScoutTabContent.
   const getTeamName = (scoutedId) => {
     const s = scouted.find(x => x.id === scoutedId);
-    const t = s ? teams.find(x => x.id === s.teamId) : null;
-    return t?.name || '?';
+    const tm = s ? teams.find(x => x.id === s.teamId) : null;
+    return tm?.name || '?';
   };
-  // § Team branding — resolve the global team object for a scouted-side crest.
   const getTeam = (scoutedId) => {
     const s = scouted.find(x => x.id === scoutedId);
     return s ? teams.find(x => x.id === s.teamId) || null : null;
+  };
+
+  // Premium team row — option-E team-color left-gradient identification (no square
+  // logo), name + division sub, W-L pill, hide eyeoff. ONE touch target → drill-down.
+  const TeamRow = ({ st, dim }) => {
+    const gt = teams.find(g => g.id === st.teamId) || (st.name ? { id: st.teamId, name: st.name } : null);
+    if (!gt) return null;
+    const color = gt.color || COLORS.borderLight;
+    const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
+    const g0 = dim ? '1c' : '26';
+    const g1 = dim ? '08' : '0a';
+    return (
+      <div
+        onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
+        style={{
+          position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 12,
+          padding: '14px 14px', marginBottom: 9, minHeight: 56,
+          background: `linear-gradient(90deg, ${color}${g0}, ${color}${g1} 30%, transparent 52%), ${ELEV.surface}`,
+          border: `1px solid ${ELEV.hairline}`, borderRadius: 13, boxShadow: ELEV.shadow1, cursor: 'pointer',
+        }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gt.name}</div>
+          {st.division && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 2 }}>{st.division}</div>}
+        </div>
+        {rec.played > 0
+          ? <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 9, padding: '5px 9px' }}>
+              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}</span>
+              <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted }}>–</span>
+              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}</span>
+            </div>
+          : <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 7, padding: '4px 8px', flexShrink: 0 }}>—</span>}
+        {dim ? (
+          <div className="rd-press" onClick={(e) => { e.stopPropagation(); unhideTeam(st.id); }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '6px 11px', borderRadius: 9, background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}40`, color: COLORS.accent, cursor: 'pointer' }}>
+            <RdIcon name="eye" size={14} />
+            <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800 }}>{t('restore') || 'Przywróć'}</span>
+          </div>
+        ) : (
+          <div className="rd-press" onClick={(e) => { e.stopPropagation(); hideTeam(st.id); }} title={t('hide_team') || 'Ukryj drużynę'} style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textMuted, cursor: 'pointer' }}>
+            <RdIcon name="eyeoff" size={15} />
+          </div>
+        )}
+      </div>
+    );
   };
 
   if (!tournament) return <EmptyState icon="⏳" text={t('loading_default')} />;
@@ -165,35 +192,39 @@ export default function CoachTabContent({ tournamentId }) {
       flexDirection: 'column',
       gap: SPACE.md,
     }}>
-      {/* Division pill filter */}
+      {/* Division pill filter — premium */}
       {(tournament.divisions?.length > 0) && (
         <div style={{
           display: 'flex',
-          background: COLORS.surface,
+          background: ELEV.sunken,
           borderRadius: RADIUS.lg,
-          border: `1px solid ${COLORS.border}`,
+          border: `1px solid ${ELEV.hairline}`,
           padding: 3,
           flexShrink: 0,
         }}>
-          {tournament.divisions.map(d => (
-            <div key={d} onClick={() => setActiveDivision(d)}
-              style={{
-                flex: 1, padding: `${SPACE.sm}px ${SPACE.xs}px`,
-                borderRadius: RADIUS.md,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                cursor: 'pointer', textAlign: 'center',
-                color: resolvedDivision === d ? COLORS.accent : COLORS.textMuted,
-                background: resolvedDivision === d ? COLORS.surfaceLight : 'transparent',
-                transition: 'all .12s',
-                minHeight: 44,
-              }}>
-              {d}
-            </div>
-          ))}
+          {tournament.divisions.map(d => {
+            const on = resolvedDivision === d;
+            return (
+              <div key={d} onClick={() => setActiveDivision(d)}
+                style={{
+                  flex: 1, padding: `${SPACE.sm}px ${SPACE.xs}px`,
+                  borderRadius: RADIUS.md,
+                  fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: on ? 800 : 600,
+                  cursor: 'pointer', textAlign: 'center',
+                  color: on ? COLORS.accent : COLORS.textMuted,
+                  background: on ? COLORS.accentA12 : 'transparent',
+                  border: `1px solid ${on ? COLORS.accentA40 : 'transparent'}`,
+                  transition: 'all .12s',
+                  minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                {d}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Teams (minimal W-L cards — § 26 keeps this deliberately sparse) */}
+      {/* Teams — premium W-L cards with team-color identification + hide/restore */}
       <div>
         <SectionTitle>Teams ({divisionScouted.length})</SectionTitle>
         {!loading && divisionScouted.length > 0 && (
@@ -208,7 +239,7 @@ export default function CoachTabContent({ tournamentId }) {
         {!loading && divisionScouted.length === 0 && scouted.length > 0 && (
           <div style={{
             marginTop: SPACE.sm, padding: SPACE.md,
-            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
             borderRadius: RADIUS.lg,
           }}>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginBottom: SPACE.sm }}>
@@ -232,62 +263,32 @@ export default function CoachTabContent({ tournamentId }) {
             )}
           </div>
         )}
-        {/* § 83 B3 roster-repair box RETIRED (B26 close, 2026-06-16). It permanently
-            occupied the super-admin coach screen, couldn't reliably self-collapse, and —
-            per the 2026-06-16 investigation — MISFRAMED the real problem: scouted-roster
-            "duplicates" are a player-IDENTITY issue (pbliId-as-primary-key dedup), not
-            roster narrowing. The narrowing fn (repairScoutedRostersForTournament) stays in
-            dataService (non-destructive, e2e-covered) for dev/admin use. Real work:
-            docs/briefs/CC_BRIEF_PLAYER_DEDUP.md. */}
-        {!loading && divisionScouted.length > 0 && visibleScouted.length === 0 && (
+        {!loading && divisionScouted.length > 0 && visibleScouted.length === 0 && hiddenScouted.length === 0 && teamSearch.trim() && (
           <div style={{ padding: SPACE.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>
             No teams match “{teamSearch}”.
           </div>
         )}
-        {visibleScouted.map(st => {
-          // Resolve via the global catalog; fall back to the name denormalized on
-          // the scouted doc so a transient catalog miss (cold load / IDB eviction)
-          // never makes the whole roster vanish. Only drop a row with no name at all.
-          const gt = teams.find(g => g.id === st.teamId) || (st.name ? { id: st.teamId, name: st.name } : null);
-          if (!gt) return null;
-          const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
-          return (
-            <div key={st.id}
-              onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
-              style={{
-                background: COLORS.surfaceDark,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: RADIUS.lg,
-                marginBottom: 4,
-                cursor: 'pointer',
-                transition: 'background .12s',
-                minHeight: 52,
-              }}>
-              <div style={{
-                display: 'flex', alignItems: 'center',
-                padding: '14px 16px', gap: 12,
-              }}>
-                <TeamBadge team={gt} size={32} />
-                <span style={{
-                  fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600,
-                  color: COLORS.text, flex: 1, letterSpacing: '-.1px',
-                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{gt.name}</span>
-                {rec.played > 0 && (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 3, fontFamily: FONT, fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
-                    <span style={{ color: COLORS.success }}>{rec.wins}W</span>
-                    <span style={{ color: COLORS.surfaceLight }}>·</span>
-                    <span style={{ color: COLORS.danger }}>{rec.losses}L</span>
-                  </span>
-                )}
-              </div>
+
+        {visibleScouted.map(st => <TeamRow key={st.id} st={st} />)}
+
+        {/* Hidden teams — collapsible restore (shared with CoachWide) */}
+        {hiddenScouted.length > 0 && (
+          <div style={{ marginTop: 6 }}>
+            <div className="rd-press" onClick={() => setShowHidden(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 14px', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 12, cursor: 'pointer' }}>
+              <span style={{ color: COLORS.textMuted, display: 'flex' }}><RdIcon name="eyeoff" size={15} /></span>
+              <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{t('hidden_label') || 'Ukryte'} · {hiddenScouted.length}</span>
+              <span style={{ fontFamily: FONT, fontSize: 16, color: COLORS.textMuted, transform: showHidden ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>▾</span>
             </div>
-          );
-        })}
+            {showHidden && (
+              <div style={{ marginTop: 8 }}>
+                {hiddenScouted.map(st => <TeamRow key={st.id} st={st} dim />)}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Coach Tactics board — contextual door (tournament's layout). Same
-          affordance used in Konfig / training / coach home. */}
+      {/* Coach Tactics board — contextual door (tournament's layout). */}
       {tournament?.layoutId && (
         <div style={{ marginBottom: SPACE.lg }}>
           <OpenTacticsAction layoutId={tournament.layoutId} variant="default" size="md"
@@ -295,8 +296,7 @@ export default function CoachTabContent({ tournamentId }) {
         </div>
       )}
 
-      {/* Split-tap match list — grouped Live / Scheduled / Completed with
-          amber label on Live group, mirrors ScoutTabContent for consistency. */}
+      {/* Split-tap match list — grouped Live / Scheduled / Completed. */}
       <div>
         <SectionTitle>Matches ({filteredMatches.length})</SectionTitle>
 
@@ -336,8 +336,6 @@ export default function CoachTabContent({ tournamentId }) {
           </div>
         )}
       </div>
-
-      {/* B3 roster-repair toast removed with the box (B26 close, 2026-06-16). */}
     </div>
   );
 }
