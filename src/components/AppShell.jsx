@@ -8,6 +8,8 @@ import TabBar, { computeVisibleTabs } from './TabBar';
 import { ReadsBallButton } from './NavDrawer';
 import { useQuickLogActive } from '../contexts/QuickLogContext';
 import { leagueDisplayName } from '../hooks/useLeagues';
+import { useDevice } from '../hooks/useDevice';
+import AppShellPremiumWide from './AppShellPremiumWide';
 
 /**
  * AppShell — top-bar + bottom-tab navigation wrapper (DESIGN_DECISIONS § 31,
@@ -40,10 +42,12 @@ export default function AppShell({
   tournamentSubtitle,
   onChangeTournament,
   onOpenDrawer,
+  tournamentId,
 }) {
   const { t } = useLanguage();
   const { workspace } = useWorkspace();
   const { effectiveRoles, effectiveIsAdmin } = useViewAs();
+  const device = useDevice();
   const visibleTabs = computeVisibleTabs(effectiveRoles, effectiveIsAdmin);
   const isEnded = tournament?.status === 'closed';
   // § 58.7 (hotfix v2): hide the tournament context bar during QuickLog
@@ -65,6 +69,28 @@ export default function AppShell({
       onTabChange(visibleTabs[0].key);
     }
   }, [activeTab, visibleTabs, onTabChange]);
+
+  // Tablet/desktop (≥720px) → premium wide shell (sidebar + master-detail).
+  // Reuses the same activeTab/onTabChange/visibleTabs + tournament context — one
+  // nav, one data source. Mobile path below is unchanged. (All hooks above run
+  // unconditionally so this branch is hook-safe across resize.)
+  if (device.width >= 720) {
+    return (
+      <AppShellPremiumWide
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        visibleTabs={visibleTabs}
+        tournament={tournament}
+        tournamentSubtitle={tournamentSubtitle}
+        tournamentId={tournamentId}
+        onChangeTournament={onChangeTournament}
+        onOpenDrawer={onOpenDrawer}
+      >
+        {children}
+      </AppShellPremiumWide>
+    );
+  }
+
   return (
     <div style={{
       height: '100dvh',

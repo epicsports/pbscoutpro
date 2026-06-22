@@ -311,6 +311,7 @@ export default function MainPage({ onSignOut, workspaceName }) {
       tournamentSubtitle={contextSubtitle}
       onChangeTournament={() => setPickerOpen(true)}
       onOpenDrawer={() => setDrawerOpen(true)}
+      tournamentId={isTrainingMode ? null : tournamentId}
     >
       {renderContent()}
 
