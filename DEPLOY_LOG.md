@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-22 — [FEATURE/Tier-2] Premium redesign — design-review fixes + opponent chrome (Claude Design verdict, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-design-revisions`. Folds the Claude Design 2026-06-22 verdict into one pass. Governing rule: match the language (tokens/primitives/elevation), adapt layout to real IA + density — not pixel-for-pixel.
+- **§27 amber resolved on BOTH screens:** structural section eyebrows → neutral (ELEV.sunken + hairline + textDim icon tile); amber reserved for interactive/active/live state.
+- **Hero card hardened (`PlayerHeroCard`, extracted to single source):** avatar ALWAYS falls back to initials — on missing **or failed** photo (`onError` → initials, no empty grey circle); number badge hidden entirely when no number (no `#?`); long surname **2-line wrap + ellipsis** (line-height 1.05, no font-shrink); no-nick → eyebrow gone.
+- **`RdGaugeCards` semantics split:** the "TOP" badge is a **volume** ranking (sort by pts); the ring color stays **survival-semantic** via colorFn (0%→red); badge suppressed when survival 0% or n=1 — a 0%-survival/single item never gets a green TOP badge.
+- **Opponent analysis (`ScoutedTeamPage`):** **opponent chrome already tokenized (eyebrows neutral + ELEV cards) — full layout re-skin still pending** (opponent layout/data-viz rebuild is last in risk order, not in this pass).
+- **PROOF:** build + precommit green; testids preserved (`player-stat-grid`, `player-report-column`, `sec-*`) → CI e2e gate authoritative on the auto-deploy.
+- **Smoke owed (Jacek, prod):** player stats — neutral eyebrows; hero card (no-number player → no `#?`; long surname wraps; broken photo → initials); gauge (0%-survival start → red ring, no green TOP badge). Opponent — section eyebrows neutral, insight/counter cards on ELEV.
+- **Next (risk order):** shell (TWO shells by breakpoint — phone re-skin existing bottom-tab + new `AppShellPremiumWide` for tablet/desktop; gated on CD closing the 5 responsive archetypes); then simple leaves; opponent layout/live scoring LAST.
+
 ## 2026-06-21 — [FEATURE/Tier-2] Premium "North Star" redesign — PLAYER STATS screen (Jacek design handoff, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-redesign-player-stats`. Second "Done" handoff screen after the menu; resumes the redesign after a battery-interrupted session. Q1 (Crest=fallback) + Q2 (coach list → CoachTabContent scouted-teams) resolved with Jacek this session.
 - **Shared data-viz vocabulary (NEW, reusable):** `src/components/dataviz/RdDataViz.jsx` — the 5 handoff chart primitives `RdSplitBar` · `RdFieldLanes` · `RdStack` · `RdGaugeCards` · `RdDonut` + the `rdPct` value-color helper, ported with token aliases → `theme.js`. Purely presentational (caller passes `items` + `palette`/`colorFn`); side labels + points unit are props. Prereq for the opponent + match-list screens next.
