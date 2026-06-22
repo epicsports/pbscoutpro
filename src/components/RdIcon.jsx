@@ -8,7 +8,7 @@ import React from 'react';
  *
  * Names: compass, flag, target, impact, duo, note, footsteps, pin, warn, pencil,
  * play, pause, check, clock, layers, eye, eyeoff, trophy, chevron, close, swap, map,
- * building, jersey, book, hand, todo, home, door, user, trash, shield, globe, palette.
+ * building, jersey, book, hand, todo, home, door, user, plus, dots, trash, shield, globe, palette.
  */
 export default function RdIcon({ name, size = 16, fill }) {
   const p = { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', style: { display: 'block' } };
@@ -44,6 +44,8 @@ export default function RdIcon({ name, size = 16, fill }) {
     case 'home': return <svg {...p}><path d="M2.6 7.4 8 2.8l5.4 4.6" {...s} /><path d="M4 6.4V13h8V6.4" {...s} /><path d="M6.6 13V9.4h2.8V13" {...s} /></svg>;
     case 'door': return <svg {...p}><path d="M9 2.6H4a.8.8 0 00-.8.8v9.2a.8.8 0 00.8.8h5" {...s} /><path d="M11.6 8H6.6M9.4 5.6 11.8 8 9.4 10.4" {...s} /></svg>;
     case 'user': return <svg {...p}><circle cx="8" cy="5.4" r="2.7" {...s} /><path d="M3.4 13.4c0-2.6 2-4.5 4.6-4.5s4.6 1.9 4.6 4.5" {...s} /></svg>;
+    case 'plus': return <svg {...p}><path d="M8 3.2v9.6M3.2 8h9.6" {...s} /></svg>;
+    case 'dots': return <svg {...p}><circle cx="8" cy="3.4" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="12.6" r="1.1" fill="currentColor" stroke="none" /></svg>;
     // ── app extras (same vocabulary; not in the handoff set) ──
     case 'trash': return <svg {...p}><path d="M3 4.2h10M6.4 4.2V2.9a.8.8 0 01.8-.8h1.6a.8.8 0 01.8.8v1.3M4.2 4.2l.7 8.4a.9.9 0 00.9.8h4.4a.9.9 0 00.9-.8l.7-8.4" {...s} /><path d="M6.6 6.6v4.2M9.4 6.6v4.2" {...s} /></svg>;
     case 'shield': return <svg {...p}><path d="M8 2.2l4.8 1.8v3.6c0 3-2 5.2-4.8 6.2-2.8-1-4.8-3.2-4.8-6.2V4z" {...s} /><path d="M5.9 8l1.5 1.5L10.3 6.6" {...s} /></svg>;
