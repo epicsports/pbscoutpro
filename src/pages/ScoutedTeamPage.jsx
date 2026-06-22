@@ -16,6 +16,8 @@ import { generateInsights, generateCounters, computeBreakSurvival, computeSideTe
 import { coachReportPhases, label as phaseLabel, toPersistedLiteral } from '../utils/pointPhases';
 import { ELIM_REASONS } from '../components/match/ReasonRadial';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, responsive } from '../utils/theme';
+import Preloader from '../components/Preloader';
+import { useScreenLoader } from '../hooks/useScreenLoader';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
@@ -721,6 +723,10 @@ export default function ScoutedTeamPage() {
     ? scoutUids.map(u => scoutNames[u] || fallbackScoutLabel(u)).join(', ')
     : null;
 
+  // Premium determinate loader for the heatmap stage (point-fetch + compute = one
+  // boolean → creep-and-snap; the 3 phase labels narrate fetch → compute → render).
+  const { shown: heatLoaderShown, progress: heatLoaderP, close: closeHeatLoader } = useScreenLoader(heatmapLoading);
+
   if (!tournament || !team) {
     // Still resolving (subscriptions in flight) AND within the 12s ceiling → spinner.
     const stillLoading = (tournamentsLoading || teamsLoading || scoutedLoading) && !loadTimedOut;
@@ -1214,10 +1220,15 @@ export default function ScoutedTeamPage() {
           </div>
         )}
 
-        {/* Loading state */}
-        {heatmapLoading && (
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textMuted, padding: 20, textAlign: 'center' }}>
-            {t('scouted_loading')}
+        {/* Loading state — premium determinate Preloader (point-fetch + heatmap compute) */}
+        {heatLoaderShown && (
+          <div style={{ position: 'relative', minHeight: 260 }}>
+            <Preloader
+              progress={heatLoaderP}
+              phases={[{ label: 'Pobieranie punktów', to: 38 }, { label: 'Liczenie heatmapy', to: 80 }, { label: 'Renderowanie', to: 100 }]}
+              caption="reads · analiza przeciwnika"
+              onDone={closeHeatLoader}
+            />
           </div>
         )}
 

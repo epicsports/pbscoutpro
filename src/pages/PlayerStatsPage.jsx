@@ -47,6 +47,8 @@ import { LogRow } from '../components/ppt/TodaysLogsList';
 import ColdReviewFlow from '../components/selflog/ColdReviewFlow';
 import { playerTeams } from '../utils/playerTeams';
 import PlayerHeroCard from '../components/player/PlayerHeroCard';
+import Preloader from '../components/Preloader';
+import { useScreenLoader } from '../hooks/useScreenLoader';
 
 // ─── Side detection helpers (§ 59.4) ───
 // classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
@@ -835,6 +837,9 @@ export default function PlayerStatsPage() {
     />
   );
 
+  // Premium determinate loader for the stats compute (creep-and-snap on dataLoading).
+  const { shown: loaderShown, progress: loaderP, close: closeLoader } = useScreenLoader(dataLoading);
+
   const columnEl = (
       <div data-testid="player-report-column" style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
@@ -971,8 +976,17 @@ export default function PlayerStatsPage() {
           );
         })()}
 
-        {/* ─── Loading state ─────────────────────────── */}
-        {dataLoading && <Loading text={t('player_stats_computing')} />}
+        {/* ─── Loading state — premium determinate Preloader ─────────────── */}
+        {loaderShown ? (
+          <div style={{ position: 'relative', minHeight: '46vh' }}>
+            <Preloader
+              progress={loaderP}
+              phases={[{ label: 'Pobieranie punktów', to: 38 }, { label: 'Liczenie statystyk', to: 80 }, { label: 'Renderowanie', to: 100 }]}
+              caption="reads · statystyki zawodnika"
+              onDone={closeLoader}
+            />
+          </div>
+        ) : (dataLoading && <div style={{ minHeight: '46vh' }} />)}
 
         {/* § read-volume — global all-time walk is deferred; tap to run it. */}
         {!dataLoading && scopeParam === 'global' && !runHeavy && (
