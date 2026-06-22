@@ -33,6 +33,22 @@ the **Crest** team-logo primitive, the **RdIcon** line-icon set, and a tighter t
 - **Q2 — "Coach team list" target = the scouted-teams list in `CoachTabContent`** (re-skin it to the
   handoff layout; NOT a new screen, NOT the admin `TeamsPage`).
 
+## Design-review verdicts (Claude Design, 2026-06-22)
+**Governing rule (overrides "pixel-for-pixel" in the handoff README):** match the LANGUAGE — tokens,
+primitives, spacing rhythm — and ADAPT the LAYOUT to the app's real IA + data density. The prototype is
+the design language, not a literal spec for dense real-data pages.
+
+- **§ 27 amber — RESOLVED:** structural section eyebrows are NEUTRAL (sunken + hairline + textDim).
+  Amber only for interactive/active/live state. Applied on player-stats (`2f881e38`); owed on opponent
+  (`ScoutedTeamPage` eyebrows) + anywhere else introduced.
+- **Breakouts / Runs table (opponent) — APPROVED.** One change: bump the contrast of the side-tags
+  (position badges C / MT / T …) — currently too dim.
+- **Teams list (`CoachTabContent` scouted-teams) — two fixes:** (1) remove the "Analiza dostępna" text
+  from the row (decided earlier); (2) raise contrast of dimmed / hidden teams — currently unreadable.
+- **Player hero card — 3 flags pending CD's close** (screenshots in `design-review/`): long surname +
+  no-nick truncates (`hero-1`); no-number shows a `#?` avatar badge (`hero-5`); 0%-survival single item
+  still gets the green "TOP START" badge (`gauge-single`). Fixes folded once CD rules.
+
 ## 🗺 Screen → app mapping (for the remaining "Done" handoff screens)
 | Handoff screen | App screen | Mapping | Notes |
 |---|---|---|---|

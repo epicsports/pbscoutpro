@@ -179,7 +179,13 @@ export function RdGaugeCards({ items, colorFn = rdPct, unit = 'pts', topColor = 
       </div>
     );
   };
-  const ranked = [...items].sort((a, b) => b.surv - a.surv);
+  // Design-review 2026-06-22: the "TOP" badge is a VOLUME ranking (most-played
+  // item), kept SEPARATE from the ring color (= survival, semantic via colorFn —
+  // 0% reads red). Rank by pts, not survival. Badge only when there's a real
+  // ranking (n > 1) AND the top item's survival is positive — so a 0%-survival or
+  // single item never gets a green "TOP" badge.
+  const ranked = [...items].sort((a, b) => (b.pts || 0) - (a.pts || 0));
+  const showBadge = !!topLabel && ranked.length > 1 && (ranked[0]?.surv || 0) > 0;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(3, items.length)}, 1fr)`, gap: 8 }}>
       {ranked.map((it, i) => (
@@ -189,7 +195,7 @@ export function RdGaugeCards({ items, colorFn = rdPct, unit = 'pts', topColor = 
             <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.text }}>{it.k}</div>
             <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, marginTop: 2, ...TNUM }}>{it.pts} {unit}</div>
           </div>
-          {i === 0 && topLabel && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 900, letterSpacing: '.5px', color: topColor, background: `${topColor}1a`, border: `1px solid ${topColor}40`, borderRadius: 5, padding: '2px 7px' }}>{topLabel}</span>}
+          {i === 0 && showBadge && <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 900, letterSpacing: '.5px', color: topColor, background: `${topColor}1a`, border: `1px solid ${topColor}40`, borderRadius: 5, padding: '2px 7px' }}>{topLabel}</span>}
         </div>
       ))}
     </div>
