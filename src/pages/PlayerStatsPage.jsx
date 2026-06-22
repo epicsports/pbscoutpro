@@ -46,6 +46,7 @@ import { getSelfReportsForPlayer } from '../services/playerPerformanceTrackerSer
 import { LogRow } from '../components/ppt/TodaysLogsList';
 import ColdReviewFlow from '../components/selflog/ColdReviewFlow';
 import { playerTeams } from '../utils/playerTeams';
+import PlayerHeroCard from '../components/player/PlayerHeroCard';
 
 // ─── Side detection helpers (§ 59.4) ───
 // classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
@@ -93,68 +94,8 @@ function getPlayerColor(p, idx = 0) {
     || COLORS.surfaceLight;
 }
 
-// ─── Avatar — 64px circle with number in accent color ───
-function Avatar({ player, isHero, onPhotoClick }) {
-  const color = player?.color || COLORS.accent;
-  const photoURL = player?.photoURL;
-  const initial = (player?.nickname || player?.name || '?').charAt(0).toUpperCase();
-  // Stable color for fallback by id hash
-  const hashColor = (() => {
-    const s = player?.id || initial;
-    let h = 0;
-    for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
-    const palette = ['#1e40af', '#7c3aed', '#be185d', '#b45309', '#15803d', '#0f766e', '#9f1239', '#5b21b6'];
-    return palette[Math.abs(h) % palette.length];
-  })();
-
-  // Photo opens a full-image lightbox when present — PBLeagues photos are
-  // usually head-to-toe shots tightly cropped by the 64px circle, so the
-  // tap-to-enlarge restores the original framing.
-  const clickableProps = photoURL && onPhotoClick ? {
-    role: 'button',
-    onClick: (e) => { e.stopPropagation(); onPhotoClick(photoURL); },
-    style: { cursor: 'pointer', WebkitTapHighlightColor: 'transparent' },
-  } : {};
-
-  return (
-    <div {...clickableProps} style={{ position: 'relative', flexShrink: 0, ...(clickableProps.style || {}) }}>
-      <div style={{
-        width: 64, height: 64, borderRadius: '50%',
-        background: photoURL ? COLORS.surfaceLight : hashColor,
-        border: `2px solid ${color}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        overflow: 'hidden',
-        fontFamily: FONT, fontWeight: 800, fontSize: 28, color: COLORS.white,
-      }}>
-        {photoURL ? (
-          <img src={photoURL} alt=""
-            onError={(e) => { e.target.style.display = 'none'; }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          initial
-        )}
-      </div>
-      {/* Number badge — bottom-right, on top of photo */}
-      <div style={{
-        position: 'absolute', bottom: -4, right: -4,
-        minWidth: 26, height: 22, borderRadius: 11, padding: '0 6px',
-        background: COLORS.accent, border: `2px solid ${COLORS.bg}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.black,
-        letterSpacing: '-.02em',
-      }}>#{player?.number || '?'}</div>
-      {isHero && (
-        <div style={{
-          position: 'absolute', top: -2, right: -2,
-          width: 20, height: 20, borderRadius: '50%',
-          background: COLORS.accent, border: `2px solid ${COLORS.bg}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, color: COLORS.black, fontWeight: 800,
-        }}>★</div>
-      )}
-    </div>
-  );
-}
+// Avatar (64px circle, number badge, HERO star) moved into PlayerHeroCard —
+// it was only used by the hero card after the § 59 redesign.
 
 // § 59 redesign: legacy MetricCard / HeroMetric / MetricChip / GroupHeader
 // / SubSection helpers removed — replaced by uniform `MetricGridCell` for
@@ -248,9 +189,11 @@ function ScopePill({ label, active, hasMenu, onClick }) {
 // SectionHeader: descriptive verb-phrase title + DataSourcePill on the
 // right. Replaces the old emoji-prefixed `GroupHeader` + small label
 // `SubSection` combo for clarity (per § 59.2).
-// Premium "North Star" eyebrow (handoff `Sec` header): optional accent-tinted
-// icon tile + UPPERCASE tracked label + a flex hairline rule + the source pill.
-// `icon` is an RdIcon name; omit it for an icon-less header.
+// Premium "North Star" eyebrow: NEUTRAL icon tile (sunken + hairline + textDim,
+// the shipped menu pattern) + UPPERCASE tracked label + a flex hairline rule +
+// the source pill. § 27 (design-review verdict 2026-06-21): amber is reserved for
+// interactive/active/live state — structural section headers stay neutral, never
+// amber-tinted. `icon` is an RdIcon name; omit it for an icon-less header.
 function SectionHeader({ title, source, icon, t }) {
   return (
     <div style={{
@@ -260,8 +203,8 @@ function SectionHeader({ title, source, icon, t }) {
         <span style={{
           width: 26, height: 26, borderRadius: 8, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}33`,
-          color: COLORS.accent,
+          background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+          color: COLORS.textDim,
         }}><RdIcon name={icon} /></span>
       )}
       <span style={{
@@ -911,96 +854,14 @@ export default function PlayerStatsPage() {
               plain profile header; keeps the existing Avatar (photo lightbox) and
               all identity info (team via real-logo TeamBadge [Q1 fallback],
               multi-team +N, HERO). ───────────────────────────────────────────── */}
-        {(() => {
-          const tc = playerTeam?.color || COLORS.accent;
-          const hs = aggregateBySide(stats.positions);
-          const sideMeta = [
-            { k: 'Snake',  label: 'Snake',   n: hs.Snake,  color: ZONE_COLORS.snake },
-            { k: 'Center', label: 'Centrum', n: hs.Center, color: ZONE_COLORS.center },
-            { k: 'Dorito', label: 'Dorito',  n: hs.Dorito, color: ZONE_COLORS.dorito },
-          ].sort((a, b) => b.n - a.n);
-          const topSide = sideMeta[0];
-          const topSidePct = hs.total > 0 && topSide.n > 0 ? Math.round((topSide.n / hs.total) * 100) : null;
-          const topStart = (stats.bunkers || []).slice().sort((a, b) => (b.survivalRate ?? -1) - (a.survivalRate ?? -1))[0] || null;
-          const lastMatch = raw.matches[0] || null;
-          const hasNumber = player.number != null && player.number !== '';
-          const nameParts = (player.name || '').trim().split(/\s+/);
-          const first = nameParts[0] || player.name || '';
-          const last = nameParts.slice(1).join(' ');
-          const hasStatLine = topSidePct != null || (topStart && topStart.survivalRate != null) || lastMatch;
-          const Dot = () => <span style={{ width: 3, height: 3, borderRadius: '50%', background: COLORS.textMuted, flexShrink: 0 }} />;
-          const StatCell = ({ value, unit, label, sub, color }) => (
-            <div style={{ flex: 1, minWidth: 0, padding: '12px 6px', textAlign: 'center' }}>
-              <div style={{ fontFamily: FONT, fontWeight: 800, color: color || COLORS.text, lineHeight: 1, letterSpacing: '-.5px' }}>
-                <span style={{ fontSize: 25, ...TNUM }}>{value ?? '—'}</span>
-                {value != null && unit && <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.textMuted, marginLeft: 1 }}>{unit}</span>}
-              </div>
-              <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '.6px', textTransform: 'uppercase', marginTop: 7 }}>{label}</div>
-              {sub && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textDim, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</div>}
-            </div>
-          );
-          return (
-            <div style={{ borderRadius: 18, overflow: 'hidden', border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1, background: ELEV.surface }}>
-              {/* hero band */}
-              <div style={{ position: 'relative', overflow: 'hidden', padding: '18px 16px', background: `radial-gradient(120% 130% at 82% 8%, ${tc}59, ${tc}10 46%, transparent 70%), linear-gradient(165deg, ${ELEV.raised}, ${ELEV.surface})` }}>
-                {hasNumber && (
-                  <div style={{ position: 'absolute', top: -34, right: -8, fontFamily: FONT, fontSize: 168, fontWeight: 900, lineHeight: 1, color: '#ffffff', opacity: 0.06, letterSpacing: '-6px', pointerEvents: 'none', ...TNUM }}>{player.number}</div>
-                )}
-                <div style={{ position: 'absolute', top: 0, bottom: 0, right: '22%', width: 5, transform: 'skewX(-16deg)', background: tc, opacity: 0.5, pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', top: 0, bottom: 0, right: '19%', width: 2, transform: 'skewX(-16deg)', background: tc, opacity: 0.85, pointerEvents: 'none' }} />
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 15 }}>
-                  <Avatar player={player} isHero={isHero} onPhotoClick={setPhotoLightbox} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    {player.nickname && (
-                      <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 900, color: tc, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>„{player.nickname}”</div>
-                    )}
-                    {last && (
-                      <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 500, color: COLORS.text, lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{first}</div>
-                    )}
-                    <div style={{ fontFamily: FONT, fontSize: 25, fontWeight: 900, color: COLORS.text, lineHeight: 1, letterSpacing: '-.5px', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{last || first}</div>
-                  </div>
-                </div>
-                {/* meta strip */}
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                  {topSidePct != null && (
-                    <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: topSide.color, letterSpacing: '.1px', whiteSpace: 'nowrap' }}>{topSide.label}</span>
-                  )}
-                  {playerTeam && (
-                    <>
-                      {topSidePct != null && <Dot />}
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
-                        <TeamBadge team={playerTeam} size={16} />
-                        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{playerTeam.name}</span>
-                      </span>
-                      {playerTeams(player).length > 1 && (
-                        <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 4, padding: '1px 5px' }}>+{playerTeams(player).length - 1}</span>
-                      )}
-                    </>
-                  )}
-                  {hasNumber && (
-                    <>
-                      <Dot />
-                      <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.text, ...TNUM }}>#{player.number}</span>
-                    </>
-                  )}
-                  {isHero && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 2, padding: '2px 7px', borderRadius: 6, background: COLORS.accentA12, border: `1px solid ${COLORS.accentA20}`, fontFamily: FONT, fontSize: 10, fontWeight: 800, color: COLORS.accent, letterSpacing: '.3px' }}>★ HERO</span>
-                  )}
-                </div>
-              </div>
-              {/* stat line */}
-              {hasStatLine && (
-                <div style={{ display: 'flex', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.surface }}>
-                  <StatCell value={topSidePct} unit="%" label="Strona" sub={topSidePct != null ? topSide.label : null} color={topSidePct != null ? topSide.color : null} />
-                  <div style={{ width: 1, background: ELEV.hairline, margin: '12px 0' }} />
-                  <StatCell value={topStart?.survivalRate} unit="%" label="Start" sub={topStart?.name} color={topStart ? winRateColor(topStart.survivalRate) : null} />
-                  <div style={{ width: 1, background: ELEV.hairline, margin: '12px 0' }} />
-                  <StatCell value={lastMatch ? `${lastMatch.scoreA}–${lastMatch.scoreB}` : null} label="Ostatni" sub={lastMatch ? (lastMatch.isWin ? 'Wygrana' : 'Przegrana') : null} color={lastMatch ? (lastMatch.isWin ? COLORS.success : COLORS.danger) : null} />
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        <PlayerHeroCard
+          player={player}
+          playerTeam={playerTeam}
+          isHero={isHero}
+          stats={stats}
+          matches={raw.matches}
+          onPhotoClick={setPhotoLightbox}
+        />
 
         {/* ─── Scope pills (also serve as picker triggers) ─────────────────────────────── */}
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1239,7 +1100,6 @@ export default function PlayerStatsPage() {
                 <RdGaugeCards
                   colorFn={winRateColor}
                   unit="pkt"
-                  topLabel={null}
                   items={stats.bunkers.slice(0, 3).map(b => ({
                     k: b.name,
                     surv: b.survivalRate ?? 0,
