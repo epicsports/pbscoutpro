@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Btn, Input, Modal, Select } from '../../components/ui';
+import TeamBadge from '../../components/TeamBadge';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { addTeam, updateTeam, setParentTeam } from '../../services/dataService';
 import { useLeagues } from '../../hooks/useLeagues';
@@ -33,6 +34,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
   const [fExternalId, setFExternalId] = useState('');
   const [fLeagues, setFLeagues] = useState([]);    // array of shortName strings
   const [fDivisions, setFDivisions] = useState({}); // { [shortName]: divName }
+  const [fLogoUrl, setFLogoUrl] = useState('');     // team logo — external image URL (§93 pattern), never base64
 
   const [showAudit, setShowAudit] = useState(false);
   const [pickerMode, setPickerMode] = useState(null); // null | 'parent' | 'child'
@@ -46,6 +48,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
     setFExternalId(team?.externalId || '');
     setFLeagues(Array.isArray(team?.leagues) ? team.leagues : ['NXL']);
     setFDivisions(team?.divisions && typeof team.divisions === 'object' ? { ...team.divisions } : {});
+    setFLogoUrl(team?.logoUrl || '');
     setShowAudit(false);
     setPickerMode(null);
     setErrors({});
@@ -79,6 +82,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
         externalId: fExternalId.trim() || null,
         leagues: fLeagues,
         divisions: fDivisions,
+        logoUrl: fLogoUrl.trim() || null,
       };
       if (isEdit) {
         await updateTeam(team.id, payload);
@@ -178,6 +182,16 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
           </FieldRow>
           <FieldRow label={t('team_form_ext_id_label')} hint={t('team_form_ext_id_hint')}>
             <Input value={fExternalId} onChange={setFExternalId} placeholder={t('team_form_ext_id_ph')} />
+          </FieldRow>
+          {/* Team logo — external image URL (kept as a link, never uploaded — § 93 quota
+              pattern). Live preview via TeamBadge (falls back to the color crest). */}
+          <FieldRow label={t('wsadmin_logo_label')}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <TeamBadge team={{ name: fName, color: team?.color, logoUrl: fLogoUrl.trim() || null }} size={40} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Input value={fLogoUrl} onChange={setFLogoUrl} placeholder="https://…/logo.png" />
+              </div>
+            </div>
           </FieldRow>
 
           <FieldRow label={t('team_form_leagues_label')} error={errors.leagues} hint={t('team_form_leagues_hint')}>

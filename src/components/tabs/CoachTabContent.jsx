@@ -6,6 +6,7 @@ import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
 import OpenTacticsAction from '../OpenTacticsAction';
 import RdIcon from '../RdIcon';
+import TeamBadge from '../TeamBadge';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
@@ -157,6 +158,7 @@ export default function CoachTabContent({ tournamentId }) {
           background: `linear-gradient(90deg, ${color}${g0}, ${color}${g1} 30%, transparent 52%), ${ELEV.surface}`,
           border: `1px solid ${ELEV.hairline}`, borderRadius: 13, boxShadow: ELEV.shadow1, cursor: 'pointer',
         }}>
+        <TeamBadge team={gt} size={34} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gt.name}</div>
           {st.division && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 2 }}>{st.division}</div>}

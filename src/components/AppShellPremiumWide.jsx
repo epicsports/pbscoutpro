@@ -279,6 +279,7 @@ function CoachWide({ tournamentId }) {
     const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
     return (
       <div className="rd-press" onClick={() => setSel(st.id)} style={{ position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 12px', background: on ? COLORS.accentA12 : `linear-gradient(90deg, ${color}26, ${color}0a 30%, transparent 52%), ${ELEV.surface}`, border: `1px solid ${on ? COLORS.accentA40 : ELEV.hairline}`, borderRadius: 13, boxShadow: on ? 'none' : ELEV.shadow1, cursor: 'pointer', marginBottom: 9 }}>
+        <TeamBadge team={teamOf(st)} size={34} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameOf(st)}</div>
           {st.division && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 2 }}>{st.division}</div>}
