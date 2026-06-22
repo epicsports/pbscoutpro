@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-22 — [FIX/Tier-1] Delete player "confirm does nothing" (Jacek report)
+**App (auto-deploy, e2e-gated). No rules/data.** Direct to main.
+- **Bug:** in the players list, confirming a player delete appeared to do nothing — the row stayed.
+- **Root cause:** `usePlayers()` reads via `useGatedCatalog` — a **one-shot version-gated cache load (deps `[kind, fetchDocs]`, runs once per mount), NOT a live `onSnapshot`**. `deletePlayerGlobal` removes the `/players/{id}` doc + bumps `/meta/catalogVersion`, but the in-session `docs` array never refetches → the deleted row stays visible until a reload. (The hook's "onSnapshot propagates live" comment is stale — the impl is getDocs-gated.) Broken-feedback, not broken-logic.
+- **Fix:** optimistic removal in BOTH players lists (`PlayersPage` + `admin/AdminPlayersPage`) — a local `removedIds` set filters out successfully-deleted ids immediately (single + bulk delete); the catalog refetches fresh on next load (the delete already bumped the version). Delete only removes on a resolved promise (a rejected delete leaves the row visible — honest). `PlayersPage.handleDelete` also gained try/catch (was un-guarded).
+- **PROOF:** build + precommit green; testids/behaviour otherwise unchanged → CI e2e gate authoritative.
+- **Smoke (Jacek, prod):** players list → delete a player → confirm → row disappears immediately; bulk-select → delete → rows disappear. (Underlying catalog still one-shot; add/edit visibility in-session is a separate latent item — flag if hit.)
+
 ## 2026-06-22 — [FEATURE/Tier-2] Premium redesign — design-review fixes + opponent chrome (Claude Design verdict, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-design-revisions`. Folds the Claude Design 2026-06-22 verdict into one pass. Governing rule: match the language (tokens/primitives/elevation), adapt layout to real IA + density — not pixel-for-pixel.
 - **§27 amber resolved on BOTH screens:** structural section eyebrows → neutral (ELEV.sunken + hairline + textDim icon tile); amber reserved for interactive/active/live state.

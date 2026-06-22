@@ -56,6 +56,11 @@ export default function AdminPlayersPage() {
   const [bulkPending, setBulkPending] = useState(false);
   const [bulkError, setBulkError] = useState(null);
   const [mergeOpen, setMergeOpen] = useState(false);
+  // Optimistic removal — usePlayers reads the ONE-SHOT version-gated catalog cache
+  // (not a live listener), so a successful deletePlayerGlobal doesn't drop the row
+  // in-session (delete looks like a no-op). Hide deleted ids; the catalog refetches
+  // fresh on next load (the delete already bumped /meta/catalogVersion).
+  const [removedIds, setRemovedIds] = useState(() => new Set());
 
   // Layer 2 admin gate — AdminGuard should have caught non-admins, but
   // render-time check guards against future routing regressions.
@@ -88,13 +93,14 @@ export default function AdminPlayersPage() {
   // (linked/unlinked/hero) keep their bespoke UX; Liga/Dywizja are NEW (DERIVED
   // via team membership through entityFilters). 934 docs handled in-memory.
   const predicate = useCallback((p) => {
+    if (removedIds.has(p.id)) return false;
     if (filter === 'linked' && !p.pbliId) return false;
     else if (filter === 'unlinked' && p.pbliId) return false;
     else if (filter === 'hero' && !p.hero) return false;
     if (!playerInLeague(p, liga, teamsById)) return false;
     if (!playerInDivision(p, dyw, teamsById, liga)) return false;
     return true;
-  }, [filter, liga, dyw, teamsById]);
+  }, [filter, liga, dyw, teamsById, removedIds]);
 
   const sortFn = useCallback((a, b) => {
     if (sort === 'updatedAt') return tsMs(b.updatedAt) - tsMs(a.updatedAt);
@@ -118,6 +124,7 @@ export default function AdminPlayersPage() {
     setDeleteError(null);
     try {
       await deletePlayerGlobal(deleteFor.id);
+      setRemovedIds(prev => { const n = new Set(prev); n.add(deleteFor.id); return n; });
       setDeleteFor(null);
       // If the just-deleted player was being edited, close that modal too.
       if (editing && editing !== 'new' && editing.id === deleteFor.id) setEditing(null);
@@ -158,6 +165,8 @@ export default function AdminPlayersPage() {
     const ids = Array.from(selectedIds);
     const results = await Promise.allSettled(ids.map(id => deletePlayerGlobal(id)));
     const failed = ids.filter((_, i) => results[i].status === 'rejected');
+    const succeeded = ids.filter((_, i) => results[i].status === 'fulfilled');
+    if (succeeded.length) setRemovedIds(prev => { const n = new Set(prev); succeeded.forEach(x => n.add(x)); return n; });
     setBulkPending(false);
     if (failed.length === 0) {
       setBulkDeleteOpen(false);

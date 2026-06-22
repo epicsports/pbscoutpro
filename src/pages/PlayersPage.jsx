@@ -54,6 +54,12 @@ export default function PlayersPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
   const [bulkError, setBulkError] = useState(null);
+  // Optimistic removal. usePlayers reads the version-gated catalog cache, which is
+  // a ONE-SHOT load per mount (not a live listener) — so a successful
+  // deletePlayerGlobal does NOT drop the row in-session, making the delete-confirm
+  // look like a no-op. Hide deleted ids immediately; the catalog refetches fresh on
+  // the next load (the delete already bumped /meta/catalogVersion).
+  const [removedIds, setRemovedIds] = useState(() => new Set());
 
   const teamsById = useMemo(() => Object.fromEntries(teams.map(t => [t.id, t])), [teams]);
   const divisionsByLeague = useMemo(
@@ -62,6 +68,7 @@ export default function PlayersPage() {
   );
 
   const filtered = useMemo(() => players.filter(p => {
+    if (removedIds.has(p.id)) return false;
     if (!matchEntity(search, p, ['name', 'nickname', 'number'])) return false;
     if (filterLeague && !playerInLeague(p, filterLeague, teamsById)) return false;
     if (filterLeague && filterDiv && !playerInDivision(p, filterDiv, teamsById, filterLeague)) return false;
@@ -69,7 +76,7 @@ export default function PlayersPage() {
     if (filterClass && (p.playerClass || '') !== filterClass) return false;
     if (filterRole && (p.role || 'player') !== filterRole) return false;
     return true;
-  }), [players, search, filterLeague, filterDiv, filterTeam, filterClass, filterRole, teamsById]);
+  }), [players, search, filterLeague, filterDiv, filterTeam, filterClass, filterRole, teamsById, removedIds]);
 
   const anyActive = !!(filterLeague || filterDiv || filterTeam || filterClass || filterRole);
   const filters = [
@@ -96,7 +103,17 @@ export default function PlayersPage() {
     modal.close();
   };
 
-  const handleDelete = async (id) => { await ds.deletePlayerGlobal(id); modal.close(); };
+  const handleDelete = async (id) => {
+    try {
+      await ds.deletePlayerGlobal(id);
+      setRemovedIds(prev => { const n = new Set(prev); n.add(id); return n; });
+    } catch (e) {
+      // Delete failed (e.g. rules) — leave the row visible (honest), surface in console.
+      console.warn('[PlayersPage] delete failed:', e);
+    } finally {
+      modal.close();
+    }
+  };
 
   const toggleSelected = (id) => {
     setSelectedIds(prev => {
@@ -116,6 +133,8 @@ export default function PlayersPage() {
     const ids = Array.from(selectedIds);
     const results = await Promise.allSettled(ids.map(id => ds.deletePlayerGlobal(id)));
     const failed = ids.filter((_, i) => results[i].status === 'rejected');
+    const succeeded = ids.filter((_, i) => results[i].status === 'fulfilled');
+    if (succeeded.length) setRemovedIds(prev => { const n = new Set(prev); succeeded.forEach(x => n.add(x)); return n; });
     setBulkPending(false);
     if (failed.length === 0) {
       setBulkDeleteOpen(false);
