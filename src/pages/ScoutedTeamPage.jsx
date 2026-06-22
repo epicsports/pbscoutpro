@@ -35,8 +35,9 @@ import { matchEntity, playerInDivision, playerDivisionSet } from '../utils/entit
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
 // SectionHeader (premium "North Star" eyebrow): UPPERCASE tracked label + a
-// flex hairline rule; with an `icon` it gets the accent-tinted icon tile (the
-// same eyebrow shipped on PlayerStatsPage). Consistent across all sections.
+// flex hairline rule; with an `icon` it gets a NEUTRAL icon tile (sunken +
+// hairline + textDim — § 27 design-review 2026-06-22: amber is reserved for
+// interactive/active state, never structural headers). Same eyebrow as PlayerStats.
 const SectionHeader = ({ children, icon: Icon }) => (
   <div style={{
     padding: '18px 16px 10px',
@@ -46,8 +47,8 @@ const SectionHeader = ({ children, icon: Icon }) => (
       <span style={{
         width: 26, height: 26, borderRadius: 8, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}33`,
-        color: COLORS.accent,
+        background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+        color: COLORS.textDim,
       }}><Icon size={15} strokeWidth={2} /></span>
     )}
     <span style={{
@@ -76,8 +77,8 @@ const CollapsibleSection = ({ title, icon: Icon, defaultOpen = false, testId, ch
           <span style={{
             width: 26, height: 26, borderRadius: 8, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}33`,
-            color: COLORS.accent,
+            background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+            color: COLORS.textDim,
           }}><Icon size={15} strokeWidth={2} /></span>
         )}
         <span style={{
