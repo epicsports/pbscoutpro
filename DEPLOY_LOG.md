@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-22 — [FEATURE/Tier-2] Premium wide shell — increment 2: CoachWide teams master-detail (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-shell-coachwide`. Coach tab in the wide shell (≥720px). Change isolated to `AppShellPremiumWide.jsx`; phone `CoachTabContent` untouched.
+- **Master-detail** (Jacek spec overrides the prototype's grid `CoachWide`): teams list (left 384px) ↔ analysis pane (right). Reuses the REAL coach data — `useScoutedTeams` + `computeTeamRecords(matches, scouted)` + `useActiveTeams` (same as `CoachTabContent`). One data source, one nav.
+- **Fidelity:** rows carry the **option-E team-color LEFT-GRADIENT** identification (`90deg, color26→color0a 30%→transparent 52%` over ELEV.surface — **no square logo**) + W-L pill. Per-team **hide** → `localStorage['reads.coach.hiddenTeams']`; **"Ukryte · N"** collapsible with **"Przywróć"** restore; hidden rows render **full-color** (CD contrast fix, no opacity:0.7).
+- **Right pane (flagged interpretation — prototype has no coach analysis panel):** selected-team header (division eyebrow + name + W-L + played, on a team-gradient card) + **"Pełna analiza →"** CTA → `/tournament/:tid/team/:id` (the SAME route the phone uses) + a hint panel. Did NOT embed the 2360-line ScoutedTeamPage inline (too heavy). Inline insights = possible follow-up if wanted.
+- **Dispatch:** coach tab → CoachWide (real tournament, not training); scout → ScoutWide; everything else → `children` fallback. Hooks unconditional.
+- **PROOF:** build + precommit green (independently re-verified); phone path untouched; CI e2e gate authoritative.
+- **Smoke owed (Jacek, prod — TABLET/DESKTOP ≥720px):** Coach tab → teams list (left-gradient rows, W-L); click a team → right pane updates; "Pełna analiza" → ScoutedTeamPage; hide a team → drops to "Ukryte · N" → Przywróć restores it (persists across reload). PHONE unchanged.
+- **Next:** increment 3 = `PlayerWide` dashboard (last tab body).
+
 ## 2026-06-22 — [FEATURE/Tier-2] Premium wide shell — increment 1: Scout master-detail (prototype build, chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-shell-wide`. First production slice of the responsive shell (prototype = source of truth). Tab-by-tab, commit+smoke each.
 - **Foundation:** `RdIcon` glyphs `plus`+`dots` (verbatim); `useWide(threshold)` hook (`src/hooks/useWide.js`) — container-query (ResizeObserver, `[ref, wide]`) for screens' internal layouts.
