@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-22 — [FEATURE/Tier-2] Premium wide shell — increment 1: Scout master-detail (prototype build, chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-shell-wide`. First production slice of the responsive shell (prototype = source of truth). Tab-by-tab, commit+smoke each.
+- **Foundation:** `RdIcon` glyphs `plus`+`dots` (verbatim); `useWide(threshold)` hook (`src/hooks/useWide.js`) — container-query (ResizeObserver, `[ref, wide]`) for screens' internal layouts.
+- **Dispatcher:** `AppShell` branches on `useDevice().width >= 720` → `AppShellPremiumWide`, else the existing bottom-tab shell. **Mobile path byte-identical** (additive early-return after all hooks; 0 deletions). Reuses the same `activeTab`/`onTabChange`/`visibleTabs` + tournament context — one nav, one data source, no parallel detector. AppShell is imported ONLY by MainPage → blast radius = the main tabbed home.
+- **`AppShellPremiumWide`** = `RdSideNav` (256px sidebar: brand→drawer, role-gated nav from `visibleTabs`, tournament-context→picker, settings chip→drawer) + content area. **Scout tab → `ScoutWide`**; every other tab → `children` (existing content) full-bleed fallback (CoachWide/PlayerWide = increments 2-3) → zero regression.
+- **`ScoutWide`** master-detail wired to the REAL data layer (`useMatches`/`useActiveTeams`/`useScoutedTeams`/`useLiveMatchScores` — same as `ScoutTabContent`): live/scheduled split, click a match → detail pane; scout CTA + team-side taps → `/tournament/:tid/match/:mid?scout=:scoutedId&mode=new` (= `MatchCard.handleScout` — **tournament scouting, not self-log**). `TeamBadge` crests (real logos, Q1). Detail-pane field = lightweight ELEV panel for now (real field a later pass).
+- **PROOF:** build + precommit green (independently re-verified); mobile `AppShell` diff = additive only; CI e2e gate authoritative.
+- **Smoke owed (Jacek, prod — TABLET/DESKTOP ≥720px):** open the app on tablet/desktop → left sidebar appears; Scout tab → matches master-detail; click a match → detail updates; "Scoutuj"/team tap → opens tournament scouting (not self-log); Coach/Player tabs → today's content inside the sidebar shell; tournament/drawer chips work. **PHONE (<720) must be unchanged.**
+- **Next:** increment 2 = `CoachWide` (teams master-detail; preserve `reads.coach.hiddenTeams` hide/restore + crest left-gradient), then increment 3 = `PlayerWide` dashboard.
+
 ## 2026-06-22 — [FIX/Tier-1] Delete player "confirm does nothing" (Jacek report)
 **App (auto-deploy, e2e-gated). No rules/data.** Direct to main.
 - **Bug:** in the players list, confirming a player delete appeared to do nothing — the row stayed.
