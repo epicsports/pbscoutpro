@@ -6,6 +6,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
 import { useMatches, useActiveTeams, useScoutedTeams } from '../hooks/useFirestore';
 import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
+import { computeTeamRecords } from '../utils/teamStats';
 import RdIcon from './RdIcon';
 import TeamBadge from './TeamBadge';
 
@@ -238,9 +239,130 @@ function ScoutWide({ tournamentId }) {
   );
 }
 
+// COACH — teams master-detail. List (left) reuses the real scouted-teams data
+// (useScoutedTeams + computeTeamRecords, same as CoachTabContent); rows carry a
+// team-color LEFT-GRADIENT identification (fidelity option E — no square logo) +
+// W-L + a per-team hide (persisted to localStorage 'reads.coach.hiddenTeams') with
+// an "Ukryte · N" restore section. Detail (right) = selected team header + the same
+// /tournament/:tid/team/:id route the phone uses for the full analysis.
+const COACH_HIDDEN_KEY = 'reads.coach.hiddenTeams';
+function CoachWide({ tournamentId }) {
+  const navigate = useNavigate();
+  const { t } = useLanguage();
+  const { scouted } = useScoutedTeams(tournamentId);
+  const { matches } = useMatches(tournamentId);
+  const { teams } = useActiveTeams();
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState(null);
+  const [showHidden, setShowHidden] = useState(false);
+  const [hidden, setHidden] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(COACH_HIDDEN_KEY) || '[]'); } catch { return []; }
+  });
+  const persist = (arr) => { setHidden(arr); try { localStorage.setItem(COACH_HIDDEN_KEY, JSON.stringify(arr)); } catch { /* ignore */ } };
+  const hide = (id) => persist(hidden.includes(id) ? hidden : [...hidden, id]);
+  const unhide = (id) => persist(hidden.filter(x => x !== id));
+
+  const records = computeTeamRecords(matches, scouted);
+  const teamOf = (st) => teams.find(x => x.id === st.teamId) || null;
+  const nameOf = (st) => teamOf(st)?.name || '?';
+  const colorOf = (st) => teamOf(st)?.color || COLORS.borderLight;
+  const qMatch = (st) => nameOf(st).toLowerCase().includes(q.toLowerCase());
+  const visible = scouted.filter(st => qMatch(st) && !hidden.includes(st.id));
+  const hiddenList = scouted.filter(st => hidden.includes(st.id) && qMatch(st));
+  const selSt = visible.find(st => st.id === sel) || visible[0] || null;
+
+  const TeamRow = ({ st }) => {
+    const on = st.id === selSt?.id;
+    const color = colorOf(st);
+    const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
+    return (
+      <div className="rd-press" onClick={() => setSel(st.id)} style={{ position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 12px', background: on ? COLORS.accentA12 : `linear-gradient(90deg, ${color}26, ${color}0a 30%, transparent 52%), ${ELEV.surface}`, border: `1px solid ${on ? COLORS.accentA40 : ELEV.hairline}`, borderRadius: 13, boxShadow: on ? 'none' : ELEV.shadow1, cursor: 'pointer', marginBottom: 9 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameOf(st)}</div>
+          {st.division && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 2 }}>{st.division}</div>}
+        </div>
+        {rec.played > 0
+          ? <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 9, padding: '5px 9px' }}>
+              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}</span>
+              <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted }}>–</span>
+              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}</span>
+            </div>
+          : <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 7, padding: '4px 8px', flexShrink: 0 }}>—</span>}
+        <div className="rd-press" onClick={(e) => { e.stopPropagation(); hide(st.id); }} title="Ukryj drużynę" style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textMuted, cursor: 'pointer' }}><RdIcon name="eyeoff" size={15} /></div>
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <RdContentHead title={t('tab_coach') || 'Drużyny'} count={scouted.length} sub={t('coach_wide_sub') || 'Wybierz drużynę, aby analizować przeciwnika'} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        {/* master list */}
+        <div className="rd-scroll" style={{ width: 384, flexShrink: 0, borderRight: `1px solid ${ELEV.hairline}`, overflowY: 'auto', padding: '14px 16px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 11, marginBottom: 14 }}>
+            <span style={{ color: COLORS.textMuted, display: 'flex' }}><RdIcon name="eye" size={15} /></span>
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('search_team') || 'Szukaj drużyny…'} style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: COLORS.text, fontFamily: FONT, fontSize: 14, fontWeight: 500 }} />
+          </div>
+          {visible.map(st => <TeamRow key={st.id} st={st} />)}
+          {visible.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '32px 16px', fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>{q ? (t('scout_tab_no_eligible') || 'Brak drużyn') : (t('coach_all_hidden') || 'Wszystkie drużyny ukryte')}</div>
+          )}
+          {hiddenList.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              <div className="rd-press" onClick={() => setShowHidden(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 14px', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 12, cursor: 'pointer' }}>
+                <span style={{ color: COLORS.textMuted, display: 'flex' }}><RdIcon name="eyeoff" size={15} /></span>
+                <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{t('hidden_label') || 'Ukryte'} · {hiddenList.length}</span>
+                <span style={{ fontFamily: FONT, fontSize: 16, color: COLORS.textMuted, transform: showHidden ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>▾</span>
+              </div>
+              {showHidden && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+                  {hiddenList.map(st => (
+                    <div key={st.id} style={{ position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 13px', background: `linear-gradient(90deg, ${colorOf(st)}1c, ${colorOf(st)}08 30%, transparent 52%), ${ELEV.surface}`, border: `1px solid ${ELEV.hairline}`, borderRadius: 13 }}>
+                      <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameOf(st)}</div>
+                      <div className="rd-press" onClick={() => unhide(st.id)} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '6px 11px', borderRadius: 9, background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}40`, color: COLORS.accent, cursor: 'pointer' }}>
+                        <RdIcon name="eye" size={14} />
+                        <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800 }}>{t('restore') || 'Przywróć'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        {/* detail pane */}
+        {selSt ? (
+          <div className="rd-scroll" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '24px 26px' }}>
+            <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 16, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1, padding: '22px', background: `linear-gradient(100deg, ${colorOf(selSt)}26, ${colorOf(selSt)}08 36%, transparent 60%), ${ELEV.surface}`, marginBottom: 18 }}>
+              <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{selSt.division || t('opponent_analysis') || 'Analiza przeciwnika'}</div>
+              <div style={{ fontFamily: FONT, fontSize: 26, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{nameOf(selSt)}</div>
+              {(() => { const rec = records[selSt.id] || { wins: 0, losses: 0, played: 0 }; return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                  <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}W</span>
+                  <span style={{ color: COLORS.textMuted }}>·</span>
+                  <span style={{ fontFamily: FONT, fontSize: 15, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}L</span>
+                  <span style={{ color: COLORS.textMuted }}>·</span>
+                  <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.textMuted, ...TNUM }}>{rec.played} {t('section_matches') || 'mecze'}</span>
+                </div>
+              ); })()}
+            </div>
+            <div className="rd-press" onClick={() => navigate(`/tournament/${tournamentId}/team/${selSt.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px', borderRadius: 13, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40` }}>{t('full_analysis') || 'Pełna analiza'} →</div>
+            <div style={{ marginTop: 16, borderRadius: 14, border: `1px dashed ${ELEV.hairlineStrong}`, padding: '24px', textAlign: 'center', fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted, lineHeight: 1.5 }}>{t('coach_wide_detail_hint') || 'Pełne dane scoutingowe, insighty i plan kontrowania otwierają się w analizie drużyny.'}</div>
+          </div>
+        ) : (
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 14, color: COLORS.textMuted }}>{t('coach_select_team') || 'Wybierz drużynę z listy'}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AppShellPremiumWide({ children, activeTab, onTabChange, visibleTabs = [], tournament, tournamentSubtitle, tournamentId, onChangeTournament, onOpenDrawer }) {
-  // Scout tab → wide master-detail when we have a real tournament (not training).
-  const scoutWide = activeTab === 'scout' && tournamentId && !tournament?._isTraining;
+  // Tab → wide master-detail when we have a real tournament (not training);
+  // every other tab falls back to the existing `children` content full-bleed.
+  const realTournament = tournamentId && !tournament?._isTraining;
+  const scoutWide = activeTab === 'scout' && realTournament;
+  const coachWide = activeTab === 'coach' && realTournament;
   return (
     <div style={{ height: '100dvh', display: 'flex', background: COLORS.bg, fontFamily: FONT }}>
       <RdSideNav
@@ -253,9 +375,9 @@ export default function AppShellPremiumWide({ children, activeTab, onTabChange, 
         onOpenDrawer={onOpenDrawer}
       />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {scoutWide ? <ScoutWide tournamentId={tournamentId} /> : (
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>
-        )}
+        {scoutWide ? <ScoutWide tournamentId={tournamentId} />
+          : coachWide ? <CoachWide tournamentId={tournamentId} />
+          : (<div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>)}
       </div>
     </div>
   );
