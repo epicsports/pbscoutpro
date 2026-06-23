@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { RefreshCw, Cloud, Plus, Calendar } from 'lucide-react';
 import PageHeader from '../PageHeader';
+import RdIcon from '../RdIcon';
 import { Btn, SideTag, MoreBtn, ActionSheet, ConfirmModal } from '../ui';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -388,7 +389,7 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <span aria-hidden style={{ fontSize: 14, flexShrink: 0 }}>🧩</span>
+            <span aria-hidden style={{ flexShrink: 0, display: 'inline-flex' }}><RdIcon name="user" size={14} /></span>
             <span style={{
               flex: 1,
               fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,

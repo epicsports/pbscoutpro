@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
+import RdIcon from '../components/RdIcon';
 import TeamBadge from '../components/TeamBadge';
 import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag, SegmentedControl } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
@@ -2086,7 +2087,7 @@ export default function ScoutedTeamPage() {
                         background: isTHero ? COLORS.accentA12 : 'transparent',
                         border: `1px solid ${isTHero ? COLORS.accentA25 : COLORS.surfaceLight}`,
                       }}>
-                      <span style={{ fontSize: 11, color: isTHero ? COLORS.accent : COLORS.textMuted }}>★</span>
+                      <span style={{ display: 'inline-flex', color: isTHero ? COLORS.accent : COLORS.textMuted }}><RdIcon name="star" size={11} /></span>
                       <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.3px', color: isTHero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
                     </div>
                     <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromRoster(p.id)}><Icons.Trash /></Btn>

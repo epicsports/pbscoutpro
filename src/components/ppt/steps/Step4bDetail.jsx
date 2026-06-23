@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Target, ArrowRight, Flag, Square, HelpCircle, X as XIcon, Check } from 'lucide-react';
+import RdIcon from '../../RdIcon';
 import { Btn } from '../../ui';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../../../utils/theme';
@@ -23,12 +23,12 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../../../utils/the
  */
 
 const DETAIL_OPTIONS = [
-  { slug: 'gunfight',        Icon: Target,     labelKey: 'ppt_detail_gunfight',        sublabelKey: 'ppt_detail_gunfight_sub',        neutral: false },
-  { slug: 'przejscie',       Icon: ArrowRight, labelKey: 'ppt_detail_przejscie',       sublabelKey: 'ppt_detail_przejscie_sub',       neutral: false },
-  { slug: 'faja',            Icon: Flag,       labelKey: 'ppt_detail_faja',            sublabelKey: 'ppt_detail_faja_sub',            neutral: false },
-  { slug: 'na-przeszkodzie', Icon: Square,     labelKey: 'ppt_detail_na_przeszkodzie', sublabelKey: 'ppt_detail_na_przeszkodzie_sub', neutral: false },
-  { slug: 'inne',            Icon: HelpCircle, labelKey: 'ppt_detail_inne',            sublabelKey: 'ppt_detail_inne_sub',            neutral: true },
-  { slug: 'nie-wiem',        Icon: XIcon,      labelKey: 'ppt_detail_nie_wiem',        sublabelKey: 'ppt_detail_nie_wiem_sub',        neutral: true },
+  { slug: 'gunfight',        icon: 'target',  labelKey: 'ppt_detail_gunfight',        sublabelKey: 'ppt_detail_gunfight_sub',        neutral: false },
+  { slug: 'przejscie',       icon: 'chevron', labelKey: 'ppt_detail_przejscie',       sublabelKey: 'ppt_detail_przejscie_sub',       neutral: false },
+  { slug: 'faja',            icon: 'flag',    labelKey: 'ppt_detail_faja',            sublabelKey: 'ppt_detail_faja_sub',            neutral: false },
+  { slug: 'na-przeszkodzie', icon: 'pin',     labelKey: 'ppt_detail_na_przeszkodzie', sublabelKey: 'ppt_detail_na_przeszkodzie_sub', neutral: false },
+  { slug: 'inne',            icon: 'note',    labelKey: 'ppt_detail_inne',            sublabelKey: 'ppt_detail_inne_sub',            neutral: true },
+  { slug: 'nie-wiem',        icon: 'close',   labelKey: 'ppt_detail_nie_wiem',        sublabelKey: 'ppt_detail_nie_wiem_sub',        neutral: true },
 ];
 
 export default function Step4bDetail({ state, advance, patch }) {
@@ -111,7 +111,7 @@ export default function Step4bDetail({ state, advance, patch }) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     flexShrink: 0,
                   }}>
-                    <o.Icon size={22} strokeWidth={2} />
+                    <RdIcon name={o.icon} size={22} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
@@ -148,7 +148,7 @@ export default function Step4bDetail({ state, advance, patch }) {
                     minHeight: 50, width: '100%',
                     fontSize: FONT_SIZE.sm, fontWeight: 800, gap: 8,
                   }}>
-                  <Check size={16} strokeWidth={2.8} /> {t('ppt_detail_inne_save')}
+                  <RdIcon name="check" size={16} /> {t('ppt_detail_inne_save')}
                 </Btn>
               </div>
             );
@@ -180,7 +180,7 @@ export default function Step4bDetail({ state, advance, patch }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <o.Icon size={22} strokeWidth={2} />
+                <RdIcon name={o.icon} size={22} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{

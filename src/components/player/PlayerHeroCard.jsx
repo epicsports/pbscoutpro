@@ -25,6 +25,7 @@
 import React from 'react';
 import { COLORS, FONT, ZONE_COLORS, ELEV, TNUM } from '../../utils/theme';
 import TeamBadge from '../TeamBadge';
+import RdIcon from '../RdIcon';
 import { playerTeams } from '../../utils/playerTeams';
 import { winRateColor } from '../../utils/colorScale';
 
@@ -116,7 +117,7 @@ function Avatar({ player, isHero, onPhotoClick }) {
           background: COLORS.accent, border: `2px solid ${COLORS.bg}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 11, color: COLORS.black, fontWeight: 800,
-        }}>★</div>
+        }}><RdIcon name="star" size={11} /></div>
       )}
     </div>
   );
@@ -197,7 +198,7 @@ export default function PlayerHeroCard({ player, playerTeam, isHero, stats, matc
             </>
           )}
           {isHero && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 2, padding: '2px 7px', borderRadius: 6, background: COLORS.accentA12, border: `1px solid ${COLORS.accentA20}`, fontFamily: FONT, fontSize: 10, fontWeight: 800, color: COLORS.accent, letterSpacing: '.3px' }}>★ HERO</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, marginLeft: 2, padding: '2px 7px', borderRadius: 6, background: COLORS.accentA12, border: `1px solid ${COLORS.accentA20}`, fontFamily: FONT, fontSize: 10, fontWeight: 800, color: COLORS.accent, letterSpacing: '.3px' }}><RdIcon name="star" size={10} />HERO</span>
           )}
         </div>
       </div>

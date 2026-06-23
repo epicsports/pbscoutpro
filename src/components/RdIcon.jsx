@@ -7,7 +7,7 @@ import React from 'react';
  * (trash, shield, globe, palette) the menu/settings need.
  *
  * Names: compass, flag, target, impact, duo, note, footsteps, pin, warn, pencil,
- * play, pause, check, clock, layers, eye, eyeoff, trophy, chevron, close, swap, map,
+ * play, pause, check, clock, layers, eye, eyeoff, trophy, star, chevron, close, swap, map,
  * building, jersey, book, hand, todo, home, door, user, plus, dots, trash, shield, globe, palette.
  */
 export default function RdIcon({ name, size = 16, fill }) {
@@ -32,6 +32,7 @@ export default function RdIcon({ name, size = 16, fill }) {
     case 'eye': return <svg {...p}><path d="M1.4 8S3.8 3.6 8 3.6 14.6 8 14.6 8 12.2 12.4 8 12.4 1.4 8 1.4 8z" {...s} /><circle cx="8" cy="8" r="2" {...s} /></svg>;
     case 'eyeoff': return <svg {...p}><path d="M6.3 3.9A6 6 0 018 3.6c4.2 0 6.6 4.4 6.6 4.4a11 11 0 01-1.8 2.3M9.6 9.7A2 2 0 016.3 6.5M1.4 8s1.2-2.2 3.3-3.4M2.4 2.4l11.2 11.2" {...s} /></svg>;
     case 'trophy': return <svg {...p}><path d="M4.5 2.6h7v2.2a3.5 3.5 0 01-7 0z" {...s} /><path d="M4.5 3.4H2.8v1c0 1 .8 1.8 1.8 1.8M11.5 3.4h1.7v1c0 1-.8 1.8-1.8 1.8M8 8.3v2.4M5.8 13.4h4.4M6.4 10.7h3.2l.3 2.7H6.1z" {...s} /></svg>;
+    case 'star': return <svg {...p}><path d="M8 1.7l1.9 3.95 4.35.62-3.15 3.02.74 4.31L8 11.55 4.31 13.6l.74-4.31L1.9 6.27l4.35-.62z" {...s} fill={fill || 'currentColor'} /></svg>;
     case 'chevron': return <svg {...p}><path d="M6 3.8l4.2 4.2L6 12.2" {...s} /></svg>;
     case 'close': return <svg {...p}><path d="M3.8 3.8l8.4 8.4M12.2 3.8l-8.4 8.4" {...s} /></svg>;
     case 'swap': return <svg {...p}><path d="M3.4 5.4h8.2M9.2 3l2.6 2.4L9.2 7.8" {...s} /><path d="M12.6 10.6H4.4M6.8 8.2 4.2 10.6 6.8 13" {...s} /></svg>;

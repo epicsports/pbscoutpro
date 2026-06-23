@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, Zap, Swords, Flag } from 'lucide-react';
+import RdIcon from '../../RdIcon';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { COLORS, FONT, FONT_SIZE, RADIUS } from '../../../utils/theme';
 
@@ -26,7 +26,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS } from '../../../utils/theme';
 const OUTCOMES = [
   {
     slug: 'alive',
-    Icon: Shield,
+    icon: 'shield',
     labelKey: 'ppt_outcome_alive',
     sublabelKey: 'ppt_outcome_alive_sub',
     // Green semantic (§ 35.5)
@@ -39,7 +39,7 @@ const OUTCOMES = [
   },
   {
     slug: 'elim_break',
-    Icon: Zap,
+    icon: 'impact',
     labelKey: 'ppt_outcome_elim_break',
     sublabelKey: 'ppt_outcome_elim_break_sub',
     // Red semantic (§ 35.5 — all elim states use danger)
@@ -52,7 +52,7 @@ const OUTCOMES = [
   },
   {
     slug: 'elim_midgame',
-    Icon: Swords,
+    icon: 'target',
     labelKey: 'ppt_outcome_elim_midgame',
     sublabelKey: 'ppt_outcome_elim_midgame_sub',
     border: 'rgba(239,68,68,0.35)',
@@ -64,7 +64,7 @@ const OUTCOMES = [
   },
   {
     slug: 'elim_endgame',
-    Icon: Flag,
+    icon: 'flag',
     labelKey: 'ppt_outcome_elim_endgame',
     sublabelKey: 'ppt_outcome_elim_endgame_sub',
     border: 'rgba(239,68,68,0.35)',
@@ -142,7 +142,7 @@ export default function Step4Outcome({ state, advance }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,
               }}>
-                <o.Icon size={24} strokeWidth={2} />
+                <RdIcon name={o.icon} size={24} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{

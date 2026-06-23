@@ -11,6 +11,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Screen from '../components/Screen';
+import RdIcon from '../components/RdIcon';
 import { Loading } from '../components/ui';
 import { useTournaments } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
@@ -194,7 +195,9 @@ function SummaryCard({ row, stars, t }) {
           {row.composite}<span style={{ fontSize: 13, fontWeight: 600 }}>%</span>
         </div>
         <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color, marginTop: 2 }}>
-          {'★'.repeat(stars)}<span style={{ color: COLORS.borderLight }}>{'★'.repeat(5 - stars)}</span>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <span key={i} style={{ display: 'inline-flex', color: i < stars ? color : COLORS.borderLight }}><RdIcon name="star" size={12} /></span>
+          ))}
         </div>
       </div>
     </div>

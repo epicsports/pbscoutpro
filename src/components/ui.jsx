@@ -448,7 +448,7 @@ export function EmptyState({ icon, text, subtitle }) {
       textAlign: 'center', padding: '32px 20px', color: COLORS.textDim,
       fontFamily: FONT,
     }}>
-      <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.7 }}>{icon}</div>
+      <div style={{ fontSize: 36, marginBottom: 10, opacity: 0.7, display: 'flex', justifyContent: 'center' }}>{icon === '⚠️' ? <RdIcon name="warn" size={38} /> : icon}</div>
       <div style={{ fontSize: TOUCH.fontSm, fontWeight: 600, color: COLORS.textDim }}>{text}</div>
       {subtitle && <div style={{ fontSize: TOUCH.fontXs, color: COLORS.textMuted, marginTop: 4 }}>{subtitle}</div>}
     </div>

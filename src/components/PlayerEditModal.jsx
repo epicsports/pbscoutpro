@@ -207,7 +207,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
                 boxShadow: ELEV.shadow1,
               }}>
                 <span role="button" title={t('b13_set_primary')} onClick={() => setFTeamId(tid)}
-                  style={{ width: 44, height: 44, flexShrink: 0, fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: isPrimary ? COLORS.accent : COLORS.textMuted }}>★</span>
+                  style={{ width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: isPrimary ? COLORS.accent : COLORS.textMuted }}><RdIcon name="star" size={16} /></span>
                 <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>{getTeamName(tid)}</span>
                 <span role="button" title="Remove" onClick={() => removeTeam(tid)}
                   style={{ width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: COLORS.textMuted }}>
