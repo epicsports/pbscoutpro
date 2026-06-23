@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium MatchCard re-skin — core-screens #1 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-matchcard`. `MatchCard.jsx` only (`+11/−10`, token/visual). First of the core-screens workstream (audit-scoped: MatchCard → ScoutTabContent → overview+standings → MatchPage GATED).
+- **Re-skin:** card → `ELEV.surface` + `shadow1` + radius 14 (live = `accent40` border); dividers → `ELEV.hairline`; score zone → `ELEV.sunken` (recessed); scores → `TNUM`. Matches the Coach-tab `TeamRow` premium pattern.
+- **Nav contract byte-identical (CRITICAL — verified 0 deletions):** left/right `TeamZone`→`handleScout` (tournament point scouting, `?scout=&mode=new`), center score→`handleReview` (match detail). Non-overlapping zones (`flex:1`/`flex:0 0 auto`/`flex:1`), each ≥62px. W/L semantic (success/danger, not amber); LIVE pill accent (live=allowed); `TeamBadge` crest/initials fallback; `liveScore`/`hasScore`/schedule/status logic untouched.
+- **Highest leverage:** one shared component → lands in Coach tab + Scout tab + overview schedule at once.
+- **PROOF:** build + precommit green; nav handlers verified intact in diff. e2e skipped locally (port 5173 squatter) → CI gate verifies on push.
+- **Smoke (Jacek, prod):** match list → score-click opens detail, side-click opens scouting; premium ELEV rows.
+- **Next:** #2 ScoutTabContent (mirror CoachTabContent + shared `DivisionTabs`: strict + lenient-as-empty-state) → #3 overview consolidation + standings table → #4 MatchPage (GATED: safety net + design proposal first).
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium CSV import — unsequenced #2 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-csv-import`. `CSVImport.jsx` only (`+25/−22`, restyle-only — imports + JSX block).
 - **Re-skin (premium, ZERO logic change — data-critical import):** column-mapping rows → premium `<Select>` (amber focus-ring + RdIcon chevron) + eyebrow labels + RdIcon-check for mapped columns; normalization/merge/preview/log boxes → ELEV cards; render emoji → RdIcon (`📂`→todo, `🔍`→eye, `⏳`→clock). Inside the shared `<Modal>` (centered ≥720). 
