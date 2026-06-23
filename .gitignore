@@ -41,3 +41,8 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 .design-sync/node_modules
+
+# Local export/diagnostic artifacts (generated locally; never part of a feature commit)
+data-export/
+design-review/
+scripts/diag/catalog-csv-export.cjs

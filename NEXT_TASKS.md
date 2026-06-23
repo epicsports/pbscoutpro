@@ -3,7 +3,7 @@
 > **Canonical-board rule.** If something is *actionable and open*, it lives **here**. `DEPLOY_LOG.md` is the ship ledger (newest-first, full detail); `HANDOVER.md` is narrative state. Zero actionable items living ONLY in DEPLOY_LOG/HANDOVER. Kept current on every doc-closeout.
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active brief. See `CLAUDE.md`.
 
-**Last synced:** 2026-06-22 · main HEAD `b5159ae1`.
+**Last synced:** 2026-06-23 · main HEAD `7b154b9c` — premium redesign Groups A + B shipped; Group C (training) in progress.
 
 ---
 
@@ -12,16 +12,24 @@
 - **Premium determinate Preloader** (1:1 port) wired into opponent/player-stats/ranking; **scouted-teams list premium** (`CoachTabContent`); **team logo** on coach rows + a Logo URL field on `TeamFormModal`.
 - **Player-stats premium redesign** + data-viz primitives + the design-review fixes (§27 amber, hero/gauge); **delete-player** "confirm does nothing" fix.
 
-## 🔴 OPEN — Premium redesign, remaining gaps (verified audit 2026-06-22) — sequenced by visibility
-The back half of the redesign is NOT wired. CD built `*Wide` variants in `prototype/redesign6.jsx`; only the 3 shell tab bodies are live.
-- **Coach/tournament summary** — `ScoutedTeamPage` body full opponent re-skin (`OpponentAnalysisWide`). *Next to take.*
-- Scout ranking (`ScoutRankingWide`) · Today's points/PPT (`TodayPointsWide`) · My profile (`MyProfileWide`) · Team profile (`TeamProfileWide`) · Point-logging wizard (`PointWizardWide`) · Match cards · Players/Teams lists · Hitability (partial, no ELEV).
-- **BLOCKED — forms-wide** (`NewPlayerWide`/`NewTeamWide`): `redesign7.jsx` NOT on disk → CD must export it to `Desktop/dk/prototype/`.
-- **Wide-shell e2e coverage = ZERO** (gated off under VITE_USE_EMULATOR) — add a wide-viewport Playwright project + a few specs so the wide shell is gate-protected.
-- **Preloader true per-stage stepping** — promote `heatmapLoading` to a fetch-done→compute-done signal (currently creep-and-snap on a single boolean).
+## 🟢 Premium redesign — Groups A + B SHIPPED (2026-06-23, detail in DEPLOY_LOG)
+- **Group A** ✅ — Today's points · My profile v1 · Team profile v1 · Scout ranking (full master-detail). public-profile = skipped (covered by PlayerStatsPage hero).
+- **Group B** ✅ — field primitives (`ui.jsx` Input/Select states + Field) · new-player form · new-team form + league-chip a11y · role-grouped roster + avatar ring · point-logging wizard (+ `self-log-wizard.spec.js` net).
+
+## 🔴 OPEN — Premium redesign Group C + remaining
+- **Group C — training (IN PROGRESS):** re-skin existing pages premium-language, NO IA change (Jacek opt-1) — Setup (`AttendeesEditor`) *building* → Squads (`SquadEditor`) → Results (`TrainingResultsPage`). Reuse Group B primitives.
+- **Unsequenced (⚪️, not yet GO'd):** CSV import · layout editor · workspace switcher.
+
+## 🟡 DEFERRED — features/follow-ups (tracked, NOT blocking; revisit on product mandate)
+- **Trafialność (accuracy) — NEW FEATURE** (`TrafialnoscPremium` in prototype): position→target pairs + hits-per-break. Needs a data model + product scoping. Deferred out of the Group C re-skin (Jacek).
+- **Player `position` field** — model has none → roster/training cards show real meta (age/bunker/PBLI) instead. Adding it = model + PlayerEditModal/TeamFormModal change. LOW.
+- **My-profile + Team-profile full 2-col Wide** — v1 shipped (tokenize + centered/widen); full sticky 2-col is an additive, claim/loader-isolated follow-up.
+- **Tidy-later icon sweep (ONE small increment):** add RdIcon `star` (→ `★` in forms/roster/wizard) + swap lucide line-icons → RdIcon in wizard Step2/4/4b. Cosmetic, batch once.
+- **Wide-shell e2e coverage = ZERO** (gated off under VITE_USE_EMULATOR) — add a wide-viewport Playwright project + specs so the wide shell is gate-protected.
+- **Preloader true per-stage stepping** — promote `heatmapLoading` to fetch-done→compute-done (currently creep-and-snap on one boolean).
 
 ## ⏳ SMOKES OWED (Jacek, prod)
-Wide shell (tablet/desktop ≥720) · scouted-teams list + team logo · preloader cold-load.
+Group A (Today's points · profiles · scout ranking) · Group B (forms + primitives · roster · **wizard — HARD: log a point → persist+read-back**) · earlier: wide shell · scouted-teams + team logo · preloader cold-load.
 
 ---
 

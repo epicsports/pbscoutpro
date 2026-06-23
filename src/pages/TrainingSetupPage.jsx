@@ -6,7 +6,8 @@ import { Btn, EmptyState, SkeletonList } from '../components/ui';
 import { useTrainings, useActiveTeams } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { useLanguage } from '../hooks/useLanguage';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
+import { COLORS, FONT, FONT_SIZE, SPACE, ELEV } from '../utils/theme';
 
 /**
  * TrainingSetupPage — thin wrapper around AttendeesEditor with wizard CTA.
@@ -20,6 +21,8 @@ export default function TrainingSetupPage() {
   const { t } = useLanguage();
   const { trainings, loading: tLoading } = useTrainings();
   const { teams } = useActiveTeams();
+  const device = useDevice();
+  const wide = device.width >= 720;
 
   const training = trainings.find(t => t.id === trainingId);
   const team = training ? teams.find(t => t.id === training.teamId) : null;
@@ -74,25 +77,29 @@ export default function TrainingSetupPage() {
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 96 }}>
-        <AttendeesEditor trainingId={trainingId} training={training} />
+        <div style={{ width: '100%', maxWidth: wide ? 760 : undefined, margin: '0 auto', boxSizing: 'border-box' }}>
+          <AttendeesEditor trainingId={trainingId} training={training} />
+        </div>
       </div>
 
       {/* Sticky footer CTA */}
       <div style={{
         position: 'sticky', bottom: 0, zIndex: 20,
         padding: `${SPACE.md}px ${SPACE.lg}px calc(${SPACE.md}px + env(safe-area-inset-bottom, 0px))`,
-        background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+        background: ELEV.surface, borderTop: `1px solid ${ELEV.hairline}`,
       }}>
-        <Btn
-          variant="accent"
-          disabled={attendees.length === 0}
-          onClick={handleContinue}
-          style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
-        >
-          {attendees.length === 0
-            ? t('no_attendees')
-            : `${attendees.length} here — ${t('form_squads')}`}
-        </Btn>
+        <div style={{ width: '100%', maxWidth: wide ? 760 : undefined, margin: '0 auto' }}>
+          <Btn
+            variant="accent"
+            disabled={attendees.length === 0}
+            onClick={handleContinue}
+            style={{ width: '100%', minHeight: 52, fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700 }}
+          >
+            {attendees.length === 0
+              ? t('no_attendees')
+              : `${attendees.length} here — ${t('form_squads')}`}
+          </Btn>
+        </div>
       </div>
     </div>
   );
