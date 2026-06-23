@@ -1029,6 +1029,7 @@ const T = {
 
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Składy:',
+    squads_drop_hint:   'Przeciągnij tutaj zawodników',
     drop_here:          'Przeciągnij graczy tutaj',
     rename_squad_title:            'Zmień nazwę składu',
     rename_squad_placeholder:      'Wpisz nazwę…',
@@ -3038,6 +3039,7 @@ const T = {
 
     /* ─── Squad editor ─────────────────────────────────── */
     squads_count:       'Squads:',
+    squads_drop_hint:   'Drop players here',
     drop_here:          'Drop players here',
     rename_squad_title:            'Rename squad',
     rename_squad_placeholder:      'Enter name…',

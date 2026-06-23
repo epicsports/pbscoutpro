@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Pencil } from 'lucide-react';
 import { usePlayers } from '../../hooks/useFirestore';
 import PlayerAvatar from '../PlayerAvatar';
 import { Modal, Input, Btn } from '../ui';
+import RdIcon from '../RdIcon';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDevice } from '../../hooks/useDevice';
 import * as ds from '../../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../../utils/theme';
 import { SQUADS as SQUAD_META, getSquadName } from '../../utils/squads';
 
 // § 53: max 5 squads (was 4 per § 32). Anchored as a constant so other call
@@ -37,6 +38,8 @@ const squadsDiffer = (a, b) => {
 export default function SquadEditor({ trainingId, training }) {
   const { players } = usePlayers();
   const { t } = useLanguage();
+  const device = useDevice();
+  const wide = device.width >= 720;
 
   const [squads, setSquads] = useState(null);
   const [squadCount, setSquadCount] = useState(2);
@@ -216,53 +219,59 @@ export default function SquadEditor({ trainingId, training }) {
       {/* Squad count control */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 8,
-        marginBottom: SPACE.sm,
+        marginBottom: SPACE.md,
       }}>
-        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted }}>{t('squads_count')}</span>
+        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim, marginRight: 2 }}>{t('squads_count')}</span>
         <CountBtn label="−" onClick={() => changeSquadCount(-1)} disabled={squadCount <= MIN_SQUADS} />
-        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text, minWidth: 14, textAlign: 'center' }}>{squadCount}</span>
+        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800, color: COLORS.text, minWidth: 16, textAlign: 'center' }}>{squadCount}</span>
         <CountBtn label="+" onClick={() => changeSquadCount(+1)} disabled={squadCount >= MAX_SQUADS} />
       </div>
 
-      {/* Squad zones */}
+      {/* Squad zones — ELEV cards; stacked on phone, grid on wide (≥720) */}
       <div style={{
-        display: 'flex', flexDirection: 'column', gap: 1,
-        background: COLORS.surfaceLight, borderRadius: RADIUS.lg, overflow: 'hidden',
+        display: 'grid',
+        gridTemplateColumns: wide ? 'repeat(auto-fit, minmax(240px, 1fr))' : '1fr',
+        gap: SPACE.sm, alignItems: 'start',
       }}>
         {activeSquads.map(meta => {
           const squadPlayers = (squads[meta.key] || []).map(pid => playerById[pid]).filter(Boolean);
           const isHover = hoverSquad === meta.key && drag && drag.fromSquad !== meta.key;
           return (
             <div key={meta.key} ref={el => { zoneRefs.current[meta.key] = el; }} style={{
-              background: isHover ? COLORS.surfaceDark : COLORS.bg, transition: 'background .12s',
+              background: ELEV.surface, border: `1px solid ${isHover ? meta.color : ELEV.hairline}`,
+              borderRadius: RADIUS.lg, boxShadow: ELEV.shadow1, overflow: 'hidden', transition: 'border-color .12s',
             }}>
               {/* § 53.4 — whole header is the tap target for rename. Pencil
-                  icon is decorative affordance only (textMuted, not amber)
-                  to avoid a competing CTA per § 27 anti-patterns. minHeight
-                  44px satisfies § 27 touch target. */}
+                  icon is decorative affordance only (textDim, not amber) to
+                  avoid a competing CTA per § 27. Keyboard-accessible (tabIndex
+                  + Enter/Space → global :focus-visible ring). minHeight 44. */}
               <div
+                role="button" tabIndex={0}
                 onClick={() => openRenameModal(meta.key)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openRenameModal(meta.key); } }}
+                className="rd-press"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
                   padding: '12px 14px', minHeight: TOUCH.min,
-                  borderBottom: `2.5px solid ${meta.color}`,
+                  background: ELEV.sunken, borderBottom: `2.5px solid ${meta.color}`,
                   cursor: 'pointer', userSelect: 'none',
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <span style={{ width: 10, height: 10, borderRadius: '50%', background: meta.color, flexShrink: 0 }} />
-                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: meta.color, letterSpacing: '.3px', textTransform: 'uppercase' }}>{getSquadName(training, meta.key)}</span>
-                <Pencil size={11} color={COLORS.textMuted} style={{ opacity: 0.5, flexShrink: 0 }} />
-                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: meta.color, opacity: 0.5, marginLeft: 'auto' }}>{squadPlayers.length}</span>
+                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: meta.color, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{getSquadName(training, meta.key)}</span>
+                <span style={{ color: COLORS.textDim, opacity: 0.6, display: 'flex', flexShrink: 0 }}><RdIcon name="pencil" size={12} /></span>
+                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: meta.color, background: `${meta.color}1c`, border: `1px solid ${meta.color}40`, borderRadius: 999, padding: '1px 8px', marginLeft: 'auto' }}>{squadPlayers.length}</span>
               </div>
               <div style={{
                 padding: `${SPACE.sm}px ${SPACE.md}px ${SPACE.md}px`,
                 display: 'flex', flexWrap: 'wrap', gap: SPACE.sm,
-                alignContent: 'flex-start', minHeight: 52,
+                alignContent: 'flex-start', minHeight: 56,
+                background: isHover ? ELEV.sunken : 'transparent', transition: 'background .12s',
               }}>
                 {squadPlayers.length === 0 && (
                   <div style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, padding: SPACE.sm, width: '100%', textAlign: 'center' }}>
-                    Drop players here
+                    {t('squads_drop_hint')}
                   </div>
                 )}
                 {squadPlayers.map(p => {
@@ -275,7 +284,7 @@ export default function SquadEditor({ trainingId, training }) {
                         display: 'inline-flex', alignItems: 'center', gap: 8,
                         padding: '3px 12px 3px 3px', height: 40, borderRadius: 20,
                         border: `1px solid ${meta.color}80`, background: `${meta.color}18`,
-                        color: meta.color, fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                        color: meta.color, fontFamily: FONT, fontSize: 13, fontWeight: 700,
                         cursor: 'grab', userSelect: 'none', opacity: isDragging ? 0.35 : 1,
                         touchAction: 'none', WebkitTapHighlightColor: 'transparent',
                       }}>
@@ -299,8 +308,8 @@ export default function SquadEditor({ trainingId, training }) {
             position: 'fixed', left: drag.x, top: drag.y, transform: 'translate(-50%, -50%)',
             padding: '4px 14px 4px 4px', borderRadius: 22,
             border: `1.5px solid ${COLORS.accent}`,
-            background: COLORS.surface, color: COLORS.text, fontFamily: FONT, fontSize: 13, fontWeight: 600,
-            boxShadow: '0 8px 24px rgba(0,0,0,0.6)', pointerEvents: 'none', zIndex: 1000,
+            background: ELEV.surface, color: COLORS.text, fontFamily: FONT, fontSize: 13, fontWeight: 700,
+            boxShadow: ELEV.shadow2 || '0 8px 24px rgba(0,0,0,0.6)', pointerEvents: 'none', zIndex: 1000,
             display: 'inline-flex', alignItems: 'center', gap: 8,
           }}>
             <PlayerAvatar player={p} size={32} />
@@ -346,15 +355,20 @@ export default function SquadEditor({ trainingId, training }) {
 
 function CountBtn({ label, onClick, disabled }) {
   return (
-    <div onClick={disabled ? undefined : onClick} style={{
-      width: 32, height: 32, borderRadius: RADIUS.sm,
-      border: `1px solid ${COLORS.border}`,
-      background: disabled ? 'transparent' : COLORS.surfaceDark,
-      color: disabled ? COLORS.textMuted : COLORS.text,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontFamily: FONT, fontSize: 14, fontWeight: 700,
-      cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1,
-      WebkitTapHighlightColor: 'transparent',
-    }}>{label}</div>
+    <div
+      role="button" tabIndex={disabled ? -1 : 0} aria-disabled={disabled || undefined}
+      onClick={disabled ? undefined : onClick}
+      onKeyDown={disabled ? undefined : (e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } })}
+      className={disabled ? undefined : 'rd-press'}
+      style={{
+        width: 36, height: 36, borderRadius: RADIUS.sm,
+        border: `1px solid ${disabled ? ELEV.hairline : ELEV.hairlineStrong}`,
+        background: disabled ? 'transparent' : ELEV.surface,
+        color: disabled ? COLORS.textMuted : COLORS.text,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: FONT, fontSize: 16, fontWeight: 800,
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.4 : 1,
+        WebkitTapHighlightColor: 'transparent',
+      }}>{label}</div>
   );
 }
