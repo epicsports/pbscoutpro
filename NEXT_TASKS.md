@@ -3,7 +3,15 @@
 > **Canonical-board rule.** If something is *actionable and open*, it lives **here**. `DEPLOY_LOG.md` is the ship ledger (newest-first, full detail); `HANDOVER.md` is narrative state. Zero actionable items living ONLY in DEPLOY_LOG/HANDOVER. Kept current on every doc-closeout.
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active brief. See `CLAUDE.md`.
 
-**Last synced:** 2026-06-23 · main HEAD `9837e410` — premium redesign Groups A + B + C + icon sweep + workspace switcher + CSV import ALL shipped. Only the layout editor remains (parked for IA discussion).
+**Last synced:** 2026-06-24 · main HEAD `6b2cc7f1` — core-screens workstream (#1-#3) + tablet wide-shell rescue + e2e-port fix + i18n fix/guard + matchClassify dedup shipped. MatchPage #4 CD-gated; layout editor parked.
+
+---
+
+## ✅ DONE 2026-06-23/24 — core screens + tablet rescue + infra (detail in DEPLOY_LOG)
+- **Core-screens redesign** (audit-scoped: MatchCard→ScoutTab→overview→MatchPage): **#1 MatchCard** premium (nav contract preserved) · **#2 ScoutTabContent + shared `DivisionTabs`** (lenient filter, c10a282e preserved) · **#3a StandingsTable** (phone + CoachWide) · **matchClassify util** dedup (3 copies→1).
+- **🚨 Tablet wide-shell RESCUE** (user-reported, bug-mode): overlays (`NavDrawer`/`TournamentPicker`/modals) were `<AppShell>` children → the wide shell renders its own bodies INSTEAD of `{children}` → **on tablet they never mounted** (menu/event dead). **Fixed:** overlays moved to top-level in MainPage. + sidebar de-dupe (removed the 2nd drawer-opener) + **ScoutWide detail pane → real layout field image** (was placeholder).
+- **🚨 i18n raw-keys bug** (38 keys referenced via `t()` but undefined → rendered as key-names, worst on wide shell): registered all 38 pl+en + **new `lint-i18n-missing.js` precommit guard** (blocks recurrence).
+- **🚨 e2e PORT FIX** (`chore/e2e-port-5199`): emulator e2e silently reused a stray dev server on :5173 (another project) via `reuseExistingServer:!CI` → loaded the WRONG app → spurious failures masked signal for the whole training+core-screens workstream. **Fixed:** port→5199 + `reuseExistingServer:false`. **Local e2e is unblocked again.** [[project_deploy_dual_path]]
 
 ---
 
@@ -19,19 +27,25 @@
 - **Icon sweep** ✅ — RdIcon `star` + lucide/emoji → RdIcon (12 files, restyle-only).
 - **Unsequenced** ✅ workspace switcher · ✅ CSV import (logic-preserved).
 
-## 🔴 OPEN — Premium redesign, sole remaining item
-- **Layout editor (`LayoutDetailPage`) — PARKED, needs Jacek IA discussion** before any redesign (prior UX-review flag 2026-05-27 §88, see memory `project_layout_config_ux_review`). Do NOT re-skin until the nav/IA is discussed. This is the ONLY redesign screen left.
+## 🔴 OPEN — gated / parked
+- **MatchPage #4 (match-detail review + `?scout=` point-scouting editor) — CD-GATED.** The heaviest, data-critical (live-scoring write path) in a 2894-line dual-mode component. **Readiness signal DONE:** net banked green (`log-point`/`capture-parity` golden/`matchreview-rail`/`concurrent-merge`/`phase-view`/`hitability`/`h3-loader` 21/21). Target design proposed: visual-only, behaviour-frozen, **Pass 1** review block (ELEV/RdIcon/emoji→RdIcon/eyebrow/Btn) → **Pass 2** editor + ≥720 wide layout. **Waits for: CD's wide-layout sign-off + Jacek's separate green-light.** Do NOT skin until then.
+- **Layout editor (`LayoutDetailPage`) — PARKED, needs Jacek IA discussion** before any redesign (UX-review flag 2026-05-27 §88, memory `project_layout_config_ux_review`).
 
 ## 🟡 DEFERRED — features/follow-ups (tracked, NOT blocking; revisit on product mandate)
 - **Trafialność (accuracy) — NEW FEATURE** (`TrafialnoscPremium` in prototype): position→target pairs + hits-per-break. Needs a data model + product scoping. Deferred out of the Group C re-skin (Jacek).
 - **Player `position` field** — model has none → roster/training cards show real meta (age/bunker/PBLI) instead. Adding it = model + PlayerEditModal/TeamFormModal change. LOW.
 - **My-profile + Team-profile full 2-col Wide** — v1 shipped (tokenize + centered/widen); full sticky 2-col is an additive, claim/loader-isolated follow-up.
 - ~~Tidy-later icon sweep~~ ✅ DONE 2026-06-23 (RdIcon star + lucide/emoji→RdIcon). Residual pre-existing emoji left by design: nationality 🏴 (data), App.jsx error-boundary ⚠️, CSV import-LOG emoji, `Square→pin` weak glyph (a future `bunker/diamond` RdIcon is maybe-later).
-- **Wide-shell e2e coverage = ZERO** (gated off under VITE_USE_EMULATOR) — add a wide-viewport Playwright project + specs so the wide shell is gate-protected.
+- **Wide-shell e2e coverage = ZERO** (gated off under VITE_USE_EMULATOR) — add a wide-viewport Playwright project + specs so the wide shell is gate-protected. **⭐ Flagged highest-value next safe item** — the tablet bugs (overlays/menu/event) reached the user *because* the wide shell has no e2e. Infra task (new project + un-gate + specs); needs Jacek go.
+- **ScoutWide detail heatmap overlay** — field image ships; the points-heatmap overlay was deferred (the per-match mirror/`homeData`/`fieldSide` mapping is fragile + the surface has zero e2e). Pairs with the wide-shell-e2e item.
+- **`ScheduleList` grouping component** — the matchClassify util shipped; the larger shared Live/Scheduled/Completed + MatchCard grouping (ScoutTab/CoachTab, + premium MatchCard into ScoutWide's master-detail) is a separate pass.
+- ~~i18n-precommit guard~~ ✅ DONE 2026-06-24 (`lint-i18n-missing.js` blocks referenced-but-undefined `t()` keys).
 - **Preloader true per-stage stepping** — promote `heatmapLoading` to fetch-done→compute-done (currently creep-and-snap on one boolean).
 
 ## ⏳ SMOKES OWED (Jacek, prod)
-Group A (Today's points · profiles · scout ranking) · Group B (forms + primitives · roster · **wizard — HARD: log a point → persist+read-back**) · earlier: wide shell · scouted-teams + team logo · preloader cold-load.
+- **TABLET (≥720, hard-refresh first for i18n cache):** sidebar menu opens · DPL event chip switches event · single menu entry (no dupe) · ScoutWide select-a-match shows the field image · CoachWide standings · labels render (not `log_points` etc.).
+- **Core screens:** match list (MatchCard) score-click→detail, side-click→scouting · Scout tab premium + division pills (lenient).
+- Group A (Today's points · profiles · scout ranking) · Group B (forms · roster · **wizard — HARD: log a point → persist+read-back**) · Group C (training Setup/Squads/Results) · workspace switcher · CSV import · earlier: scouted-teams + team logo · preloader cold-load.
 
 ---
 
