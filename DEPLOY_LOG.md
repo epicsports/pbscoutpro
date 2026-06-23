@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium ScoutTabContent + shared DivisionTabs — core-screens #2 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-scouttab`. `DivisionTabs.jsx` (NEW) + `ScoutTabContent.jsx` + `CoachTabContent.jsx` (`+88/−102` — net simpler).
+- **`DivisionTabs` extracted:** one premium ELEV/accent-tint pill row (Coach's look), used by BOTH Scout + Coach — replaces the two divergent inline rows. Presentation only; filter semantics stay in each tab's data layer.
+- **Filter UNIFIED to lenient (Jacek decision):** Scout strict→lenient (`st.division === d || !st.division || !tournDivs.includes(st.division)`); Coach unchanged. **`c10a282e` preserved** — unclassified/foreign teams never vanish. No strict/empty-state-fallback (deferred — would risk re-introducing the DPL vanishing bug).
+- **ScoutTab premium migration:** closed banner → ELEV.sunken + RdIcon shield (was 🔒); add-CTAs → accentA12/A40 + RdIcon plus + rd-press; add-team modal rows → ELEV + RdIcon check; stage eyebrow → TRACKING.label; dropped 🔍/⚔️ where appropriate.
+- **Behaviour preserved (0 logic deletions):** handleAddMatch, batch add-teams + buildScoutedPayload, ScheduleCSVImport, stage grouping (groupMatchesByStage), search, nav (MatchCard handlers untouched), data hooks, testids. Tap-targets ≥44px (pills 44 / CTAs 52 / rows 52).
+- **PROOF:** build + precommit green. e2e skipped locally (port 5173 squatter) → CI verifies on push.
+- **Fidelity:** kept ⚔️/🏴 EmptyState icons (parity w/ CoachTab template); ScoutWide (≥720) untouched (phone body only, per directive).
+- **Smoke (Jacek, prod):** scout tab → premium look, division pills switch (lenient — unclassified teams visible), add match/teams, stage grouping intact.
+- **Next:** #3 overview consolidation (shared schedule module) + standings table → then #4 MatchPage readiness signal (GATED).
+
 ## 2026-06-23 — [BUGFIX/Tier-1] 38 missing i18n keys → raw key-names in UI (chat GO, bug-mode)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/i18n-missing-keys`. `i18n.js` only (+80). User-reported: "CTA labels showing label names on many screens" — worst on tablet/desktop.
 - **Root cause:** 38 keys referenced via `t('key')` but never registered → `t()` returns the key string. The call sites were `t('key') || 'PL fallback'`, but `t()` returns a truthy key so the fallback never fired → raw key shown. **~22 of the 38 were in `AppShellPremiumWide.jsx`** (the wide shell — `log_points`/`scout`/`match_details`/`settings_title`/`full_analysis`/`today_points_title`…), the rest scattered (handedness/on-off, hide-team/restore, training labels, members_linked, point, tab_training, onboarding_link_watchdog).
