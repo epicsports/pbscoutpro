@@ -30,7 +30,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'http://localhost:5173/',
+    baseURL: 'http://localhost:5199/',
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },
@@ -43,10 +43,14 @@ export default defineConfig({
     // when Playwright tears it down, emulators:exec shuts the emulators.
     command:
       'npx firebase-tools emulators:exec --project demo-pbscoutpro --only auth,firestore ' +
-      '"node scripts/test/seed-emulator.cjs && npx vite --port 5173 --strictPort"',
-    url: 'http://localhost:5173/',
+      '"node scripts/test/seed-emulator.cjs && npx vite --port 5199 --strictPort"',
+    url: 'http://localhost:5199/',
     timeout: 180000, // first CI run downloads the emulator jars
-    reuseExistingServer: !process.env.CI,
+    // Always boot our OWN seeded server. Never reuse a stray server on the port:
+    // a non-emulator dev server (or another project's app — e.g. a different repo on
+    // the old 5173) = wrong app + no emulator seed → silent spurious failures. Port
+    // 5199 (uncommon) further avoids dev-port collisions.
+    reuseExistingServer: false,
     env: EMULATOR_ENV,
   },
 });
