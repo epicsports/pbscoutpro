@@ -5,6 +5,7 @@ import SearchField from '../SearchField';
 import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
 import DivisionTabs from './DivisionTabs';
+import StandingsTable from './StandingsTable';
 import OpenTacticsAction from '../OpenTacticsAction';
 import RdIcon from '../RdIcon';
 import TeamBadge from '../TeamBadge';
@@ -197,6 +198,25 @@ export default function CoachTabContent({ tournamentId }) {
     }}>
       {/* Division pill filter — shared premium DivisionTabs */}
       <DivisionTabs divisions={tournament.divisions} active={resolvedDivision} onChange={setActiveDivision} />
+
+      {/* Premium standings table — net-new render on the ready computeTeamRecords
+          data (W-L/diff/win%). Shows teams that have played; respects the active
+          (lenient) division filter via divisionScouted. */}
+      {(() => {
+        const ranked = divisionScouted.filter(st => (records[st.id]?.played || 0) > 0);
+        if (!ranked.length) return null;
+        return (
+          <div>
+            <SectionTitle>Standings ({ranked.length})</SectionTitle>
+            <StandingsTable
+              entries={ranked}
+              records={records}
+              resolveTeam={(st) => teams.find(g => g.id === st.teamId) || (st.name ? { id: st.teamId, name: st.name } : null)}
+              onRow={(st) => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
+            />
+          </div>
+        );
+      })()}
 
       {/* Teams — premium W-L cards with team-color identification + hide/restore */}
       <div>
