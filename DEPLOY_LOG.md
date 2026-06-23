@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium training Results (leaderboard) — Group C #3 → GROUP C COMPLETE (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-training-results`. `TrainingResultsPage.jsx` only (`+61/−34`).
+- **Re-skin (premium language, NO IA change):** ELEV cards on PlayerRow/BunkerRow/matchup/ReviewItem; eyebrow `SecHead` headers (TRACKING.label + count badge); `PlayerAvatar` + accent `#num` + **semantic W (success) / L (danger)** in meta; lucide Check/X → RdIcon check/close; filter pills + rows keyboard-accessible. Wide (≥720) = centered 860 leaderboard; phone unchanged.
+- **Behaviour byte-identical (0 deletions):** `leaderboard` useMemo, `sourceFilter`, `reviewVersion` refetch, `runOverride`/`handleDismiss`, `bunkerStats`, heatmap points/filters, `reviewQueue`, the no-eternal-loading/`loadTimedOut`/Retry + `training-load-error` testid.
+- **Color discipline (Jacek-confirmed):** binary W/L = success/danger only (never amber). Win-rate% / bunker-hit-rate **gauges** keep the 3-tier high=success / **mid=accent** / low=danger — a continuous metric, same language as the Scout-ranking conic ring + PlayerStats gauges. Gauge ≠ outcome. Correct as-is.
+- **PROOF:** build + precommit green; clean diff. e2e skipped locally (port 5173 squatter) → **CI gate verifies clean on push.**
+- **Smoke (Jacek, prod):** training → Results — leaderboard W/L, source filter, override/review, invalid id → error+Retry; ≥720 centered.
+- **✅ GROUP C COMPLETE:** Setup · Squads · Results. **Premium redesign Groups A + B + C all shipped.** Remaining: tidy-later icon sweep (in progress) + unsequenced (CSV/layout/workspace — need scope).
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium training Squads (SquadEditor) — Group C #2 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-training-squads`. `SquadEditor.jsx` + `TrainingSquadsPage.jsx` + `i18n.js` (1 key, `squads_drop_hint`).
 - **Re-skin (premium language, NO IA change):** ELEV squad cards/count stepper/drag-ghost (uses `ELEV.shadow2`); squad headers → eyebrow (TRACKING.label) + color dot + RdIcon `pencil` (dropped lucide) + tinted count badge; headers + `CountBtn` keyboard-accessible (`role=button` + `tabIndex` + global `:focus-visible` ring). Wide (≥720) = `auto-fit minmax(240px,1fr)` squad-column grid (centered 1040); phone = stacked column (640).
