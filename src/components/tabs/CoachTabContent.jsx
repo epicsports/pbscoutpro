@@ -4,6 +4,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui
 import SearchField from '../SearchField';
 import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
+import { classifyMatch } from '../../utils/matchClassify';
 import DivisionTabs from './DivisionTabs';
 import StandingsTable from './StandingsTable';
 import OpenTacticsAction from '../OpenTacticsAction';
@@ -114,13 +115,7 @@ export default function CoachTabContent({ tournamentId }) {
   );
   const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
 
-  const classify = (m) => {
-    if (m.status === 'closed') return 'completed';
-    const live = liveScores[m.id];
-    const liveCount = live?.count ?? 0;
-    if (liveCount > 0 || (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0) return 'live';
-    return 'scheduled';
-  };
+  const classify = (m) => classifyMatch(m, liveScores);
 
   const sortByNewest = (a, b) => {
     const ta = a.createdAt?.seconds ?? a.createdAt ?? 0;
