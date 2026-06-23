@@ -14,7 +14,8 @@ import {
 } from '../../services/playerPerformanceTrackerService';
 import { getPending } from '../../services/pptPendingQueue';
 import { useTabBarVisible } from '../TabBar';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TNUM } from '../../utils/theme';
+import { useDevice } from '../../hooks/useDevice';
 
 /**
  * TodaysLogsList — post-save today's-logs view at `/player/log`.
@@ -221,8 +222,56 @@ function Toast({ message, onDismiss }) {
   );
 }
 
+// Premium today's-points card (prototype TodayPointsPremium / TodayPointsWide).
+// Single-sourced HERE for this view; the exported LogRow stays intact for the
+// PlayerStatsPage "Samoocena" section (different context). Same row data
+// (breakout / shots / outcome / delete-⋮ / pending), premium ELEV chrome.
+const PLLABEL = { fontFamily: FONT, fontSize: 10.5, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '1px', textTransform: 'uppercase', flexShrink: 0 };
+function PremiumLogCard({ row, ordinal, isPending, onMenu, t, wide }) {
+  const breakout = row.breakout || {};
+  const outcome = row.outcome;
+  const oc = outcome === 'alive' ? COLORS.success : COLORS.danger;
+  const shotsText = row.shots === null
+    ? t('ppt_shots_skipped', variantLabel(breakout.variant, t))
+    : (row.shots || []).length === 0
+      ? t('ppt_shots_none')
+      : row.shots.map(s => s.bunker).join(' → ');
+  return (
+    <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 15, boxShadow: ELEV.shadow1, padding: wide ? '17px 18px' : '15px 14px', display: 'flex', alignItems: 'center', gap: wide ? 16 : 12, opacity: isPending ? 0.85 : 1, marginBottom: 11 }}>
+      <span style={{ fontFamily: FONT, fontSize: wide ? 17 : 15, fontWeight: 800, color: COLORS.textMuted, minWidth: wide ? 30 : 26, flexShrink: 0, textAlign: 'right', ...TNUM }}>#{ordinal}</span>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: wide ? 9 : 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: wide ? 10 : 8, minWidth: 0 }}>
+          <span style={{ ...PLLABEL, minWidth: wide ? 58 : 54 }}>{t('logrow_breakout')}</span>
+          {breakout.side && <SideTag side={breakout.side} />}
+          <b style={{ fontFamily: FONT, fontSize: wide ? 17 : 16, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{breakout.bunker || '—'}</b>
+          {breakout.variant && <span style={{ fontFamily: FONT, fontSize: wide ? 14 : 13.5, color: COLORS.textMuted, whiteSpace: 'nowrap' }}>· {variantLabel(breakout.variant, t)}</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: wide ? 10 : 8, minWidth: 0 }}>
+          <span style={{ ...PLLABEL, minWidth: wide ? 58 : 54 }}>{t('logrow_shots')}</span>
+          <span style={{ fontFamily: FONT, fontSize: wide ? 15 : 14, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{shotsText}{row.outcomeDetail && ` · ${detailShort(row.outcomeDetail, t)}`}</span>
+        </div>
+      </div>
+      {isPending && <Cloud size={14} strokeWidth={2} color={COLORS.accent} style={{ flexShrink: 0 }} />}
+      {outcome && <span style={{ fontFamily: FONT, fontSize: wide ? 12.5 : 12, fontWeight: 800, color: oc, border: `1px solid ${oc}66`, background: `${oc}16`, borderRadius: wide ? 9 : 8, padding: wide ? '7px 13px' : '6px 11px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.4 }}>{outcomeChipLabel(outcome, t)}</span>}
+      {onMenu && <MoreBtn onClick={(e) => { e.stopPropagation(); onMenu(); }} />}
+    </div>
+  );
+}
+
+// Wide (≥720) day-summary stat cell (prototype TodayPointsWide) — derived, never invented.
+function DayStat({ label, value, color }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px' }}>
+      <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: color || COLORS.text, ...TNUM }}>{value}</div>
+      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '.6px', marginTop: 4 }}>{label}</div>
+    </div>
+  );
+}
+
 export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
   const { t } = useLanguage();
+  const device = useDevice();
+  const wide = device.width >= 720;
   const navigate = useNavigate();
   const location = useLocation();
   // §C3 — the shared TabBar only renders at ≥2 content tabs; pure players get
@@ -322,7 +371,7 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
         }
       />
 
-      <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, paddingBottom: 'calc(176px + env(safe-area-inset-bottom, 0px))' }}>
+      <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, paddingBottom: 'calc(176px + env(safe-area-inset-bottom, 0px))', width: '100%', boxSizing: 'border-box', maxWidth: wide ? 760 : undefined, margin: wide ? '0 auto' : undefined }}>
         {/* Unlinked banner — same affordance as the wizard's. Lets the
             user link from the list view too without going via wizard. */}
         {!isLinked && (
@@ -371,6 +420,20 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
           </div>
         )}
 
+        {wide && combined.length > 0 && (() => {
+          const aliveN = combined.filter(r => r.outcome === 'alive').length;
+          const lostN = combined.length - aliveN;
+          return (
+            <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 14, boxShadow: ELEV.shadow1, padding: 6, display: 'flex', alignItems: 'stretch', marginBottom: 18 }}>
+              <DayStat label="PUNKTY" value={combined.length} />
+              <div style={{ width: 1, background: ELEV.hairline, margin: '10px 0' }} />
+              <DayStat label="PRZEŻYTE" value={aliveN} color={COLORS.success} />
+              <div style={{ width: 1, background: ELEV.hairline, margin: '10px 0' }} />
+              <DayStat label="STRACONE" value={lostN} color={lostN > 0 ? COLORS.danger : COLORS.textMuted} />
+            </div>
+          );
+        })()}
+
         {loading && combined.length === 0 && (
           <div style={{
             padding: SPACE.xl, textAlign: 'center',
@@ -406,12 +469,14 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
           // reassign territory (queued).
           const isPropagatedRow = isLinked && !row._isPending && !!row.id && !!row.propagatedAt;
           return (
-            <LogRow
+            <PremiumLogCard
               key={row.id || `row_${idx}`}
               row={row}
               ordinal={combined.length - idx}
               isPending={row._isPending}
               onMenu={(canDelete || isPropagatedRow) ? () => setMenuRow(row) : undefined}
+              t={t}
+              wide={wide}
             />
           );
         })}
