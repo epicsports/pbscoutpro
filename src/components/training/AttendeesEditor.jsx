@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Input, Modal, Btn } from '../ui';
 import PlayerAvatar from '../PlayerAvatar';
+import RdIcon from '../RdIcon';
 import { usePlayers, useActiveTeams, useTrainings } from '../../hooks/useFirestore';
 import { useLanguage } from '../../hooks/useLanguage';
 import * as ds from '../../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../../utils/theme';
 import { playerOnTeam } from '../../utils/playerTeams';
 import { matchEntity } from '../../utils/entityFilters';
 import { SQUADS as SQUAD_META } from '../../utils/squads';
@@ -187,16 +188,18 @@ export default function AttendeesEditor({ trainingId, training }) {
             padding: `${SPACE.xs}px 2px`,
           }}>
             <SubHeader label={t('guests_section') || 'Goście'} count={guestAttendees.length} color={COLORS.accent} inline />
-            <div onClick={() => setInviteOpen(true)} style={{
-              fontFamily: FONT, fontSize: 12, fontWeight: 700,
+            <div onClick={() => setInviteOpen(true)} className="rd-press" role="button" tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setInviteOpen(true); } }}
+              style={{
+              fontFamily: FONT, fontSize: 12, fontWeight: 800,
               color: COLORS.accent,
-              padding: '6px 10px', borderRadius: 8,
-              background: `${COLORS.accent}10`,
-              border: `1px solid ${COLORS.accent}30`,
+              padding: '7px 12px', borderRadius: RADIUS.sm,
+              background: COLORS.accentA12,
+              border: `1px solid ${COLORS.accentA25}`,
               cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-              minHeight: 32, display: 'inline-flex', alignItems: 'center', gap: 4,
+              minHeight: 36, display: 'inline-flex', alignItems: 'center', gap: 5,
             }}>
-              + {t('invite_guest') || 'Zaproś gościa'}
+              <RdIcon name="plus" size={13} /> {t('invite_guest') || 'Zaproś gościa'}
             </div>
           </div>
           {guestAttendees.length > 0 ? (
@@ -249,25 +252,31 @@ export default function AttendeesEditor({ trainingId, training }) {
 
 function PresetPill({ label, onClick }) {
   return (
-    <div onClick={onClick} style={{
-      flexShrink: 0, padding: '6px 12px', borderRadius: RADIUS.full,
-      background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-      fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textDim,
-      cursor: 'pointer', minHeight: 44, display: 'inline-flex', alignItems: 'center',
-      WebkitTapHighlightColor: 'transparent',
-    }}>{label}</div>
+    <div onClick={onClick} className="rd-press" role="button" tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      style={{
+        flexShrink: 0, padding: '6px 14px', borderRadius: RADIUS.full,
+        background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
+        fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.textDim,
+        cursor: 'pointer', minHeight: 44, display: 'inline-flex', alignItems: 'center',
+        WebkitTapHighlightColor: 'transparent',
+      }}>{label}</div>
   );
 }
 
 function SubHeader({ label, count, color, inline }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 6,
+      display: 'flex', alignItems: 'center', gap: 8,
       padding: inline ? 0 : `${SPACE.xs}px 2px`,
-      fontFamily: FONT, fontSize: 11, fontWeight: 600, color, textTransform: 'uppercase', letterSpacing: '.4px',
+      fontFamily: FONT, fontSize: 11, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: TRACKING.label,
     }}>
+      <span style={{ display: 'inline-flex', width: 7, height: 7, borderRadius: '50%', background: color }} />
       <span>{label}</span>
-      <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>{count}</span>
+      <span style={{
+        fontWeight: 800, color: COLORS.textMuted, background: ELEV.sunken,
+        border: `1px solid ${ELEV.hairline}`, borderRadius: 999, padding: '1px 8px', fontSize: 10.5,
+      }}>{count}</span>
     </div>
   );
 }
@@ -283,18 +292,20 @@ function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
         const isDanger = v === 'danger';
         const isActive = v === 'active';
         const accent = isGuest ? COLORS.accent : isDanger ? COLORS.danger : isActive ? COLORS.success : null;
-        const bg = accent ? `${accent}10` : COLORS.surfaceDark;
-        const bd = accent ? `${accent}60` : COLORS.surfaceLight;
+        const bg = accent ? `${accent}14` : ELEV.surface;
+        const bd = accent ? `${accent}55` : ELEV.hairline;
         const numCol = accent || COLORS.textDim;
         const txCol = isGuest ? COLORS.text : isDanger ? COLORS.danger : isActive ? COLORS.success : COLORS.text;
         const showSub = isGuest && (p._homeTeamName || p._missing);
         return (
-          <div key={p.id} onClick={() => onToggle(p.id)} style={{
+          <div key={p.id} onClick={() => onToggle(p.id)} className="rd-press" role="button" tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(p.id); } }}
+            style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             padding: '4px 12px 4px 4px',
             minHeight: showSub ? 52 : 44,
             borderRadius: 22,
-            background: bg, border: `1px solid ${bd}`,
+            background: bg, border: `1px solid ${bd}`, boxShadow: ELEV.shadow1,
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
             opacity: p._missing ? 0.7 : 1,
           }}>
@@ -313,7 +324,7 @@ function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
               )}
             </div>
             {(isDanger || isGuest) && (
-              <span style={{ fontSize: 14, color: accent, marginLeft: 2, opacity: 0.7 }}>×</span>
+              <span style={{ display: 'inline-flex', color: accent, marginLeft: 2, opacity: 0.8 }}><RdIcon name="close" size={13} /></span>
             )}
           </div>
         );
@@ -377,12 +388,14 @@ function InviteGuestModal({ open, onClose, allPlayers, teams, excludeIds, onInvi
                 }}>{teamName} <span style={{ fontWeight: 500, color: COLORS.textDim }}>· {list.length}</span></div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.sm }}>
                   {list.map(p => (
-                    <div key={p.id} onClick={() => onInvite(p.id)} style={{
+                    <div key={p.id} onClick={() => onInvite(p.id)} className="rd-press" role="button" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onInvite(p.id); } }}
+                      style={{
                       display: 'inline-flex', alignItems: 'center', gap: 8,
                       padding: '4px 12px 4px 4px', minHeight: TOUCH.minTarget,
                       borderRadius: 22,
-                      background: COLORS.surfaceDark,
-                      border: `1px solid ${COLORS.surfaceLight}`,
+                      background: ELEV.surface,
+                      border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
                       cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
                     }}>
                       <PlayerAvatar player={p} size={32} />
@@ -392,7 +405,7 @@ function InviteGuestModal({ open, onClose, allPlayers, teams, excludeIds, onInvi
                       <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
                         {p.nickname || p.name || '?'}
                       </span>
-                      <span style={{ fontSize: 14, color: COLORS.accent, marginLeft: 2 }}>+</span>
+                      <span style={{ display: 'inline-flex', color: COLORS.accent, marginLeft: 2 }}><RdIcon name="plus" size={13} /></span>
                     </div>
                   ))}
                 </div>
