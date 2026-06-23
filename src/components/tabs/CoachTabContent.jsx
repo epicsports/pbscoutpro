@@ -4,6 +4,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui
 import SearchField from '../SearchField';
 import { matchEntity } from '../../utils/entityFilters';
 import MatchCard from '../MatchCard';
+import DivisionTabs from './DivisionTabs';
 import OpenTacticsAction from '../OpenTacticsAction';
 import RdIcon from '../RdIcon';
 import TeamBadge from '../TeamBadge';
@@ -194,37 +195,8 @@ export default function CoachTabContent({ tournamentId }) {
       flexDirection: 'column',
       gap: SPACE.md,
     }}>
-      {/* Division pill filter — premium */}
-      {(tournament.divisions?.length > 0) && (
-        <div style={{
-          display: 'flex',
-          background: ELEV.sunken,
-          borderRadius: RADIUS.lg,
-          border: `1px solid ${ELEV.hairline}`,
-          padding: 3,
-          flexShrink: 0,
-        }}>
-          {tournament.divisions.map(d => {
-            const on = resolvedDivision === d;
-            return (
-              <div key={d} onClick={() => setActiveDivision(d)}
-                style={{
-                  flex: 1, padding: `${SPACE.sm}px ${SPACE.xs}px`,
-                  borderRadius: RADIUS.md,
-                  fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: on ? 800 : 600,
-                  cursor: 'pointer', textAlign: 'center',
-                  color: on ? COLORS.accent : COLORS.textMuted,
-                  background: on ? COLORS.accentA12 : 'transparent',
-                  border: `1px solid ${on ? COLORS.accentA40 : 'transparent'}`,
-                  transition: 'all .12s',
-                  minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                {d}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Division pill filter — shared premium DivisionTabs */}
+      <DivisionTabs divisions={tournament.divisions} active={resolvedDivision} onChange={setActiveDivision} />
 
       {/* Teams — premium W-L cards with team-color identification + hide/restore */}
       <div>
