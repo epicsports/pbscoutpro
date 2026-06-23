@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, LEAGUE_COLORS, responsive } from '../utils/theme';
+import RdIcon from './RdIcon';
 import { useDevice } from '../hooks/useDevice';
 import { useLeagueName } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
@@ -45,34 +46,94 @@ export function Btn({
   );
 }
 
-// ─── Input ───
-export function Input({ value, onChange, placeholder, onKeyDown, onBlur, autoFocus, style, type = 'text' }) {
+// ─── Input — premium field (North Star). Full state set: focus=amber ring,
+// hover=subtle border lift, disabled=dimmed/no-ring, error=red border+ring (NOT
+// amber — amber is reserved for focus/interaction). Tokenized to the elevation
+// language so fields sit with the cards. Backward-compatible (extra props optional).
+export function Input({ value, onChange, placeholder, onKeyDown, onBlur, onFocus, autoFocus, style, type = 'text', error, disabled, name, id, inputMode, maxLength }) {
   const device = useDevice();
   const R = responsive(device.type);
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const borderColor = error ? COLORS.danger
+    : focused ? COLORS.accent
+    : (hovered && !disabled) ? COLORS.borderLight
+    : ELEV.hairlineStrong;
+  const ring = disabled ? 'none'
+    : error ? `0 0 0 3px ${COLORS.danger}22`
+    : focused ? `0 0 0 3px ${COLORS.accent}33`
+    : 'none';
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)}
-      placeholder={placeholder} onKeyDown={onKeyDown} onBlur={onBlur} autoFocus={autoFocus}
+      placeholder={placeholder} onKeyDown={onKeyDown} autoFocus={autoFocus}
+      name={name} id={id} inputMode={inputMode} maxLength={maxLength} disabled={disabled}
+      onFocus={e => { setFocused(true); onFocus && onFocus(e); }}
+      onBlur={e => { setFocused(false); onBlur && onBlur(e); }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{
-        width: '100%', padding: device.isDesktop ? '7px 12px' : '10px 14px', borderRadius: 8,
-        border: `1px solid ${COLORS.border}`, background: COLORS.bg,
-        color: COLORS.text, fontFamily: FONT, fontSize: device.isTouch ? 16 : R.font.base,
-        outline: 'none', boxSizing: 'border-box', minHeight: R.touch.minTarget, ...style,
+        width: '100%', padding: device.isDesktop ? '8px 12px' : '10px 14px', borderRadius: RADIUS.md,
+        border: `1px solid ${borderColor}`, background: disabled ? ELEV.sunken : COLORS.bg,
+        color: disabled ? COLORS.textMuted : COLORS.text, fontFamily: FONT, fontSize: device.isTouch ? 16 : R.font.base,
+        outline: 'none', boxShadow: ring, boxSizing: 'border-box', minHeight: R.touch.minTarget,
+        opacity: disabled ? 0.6 : 1, transition: 'border-color .12s, box-shadow .12s', ...style,
       }} />
   );
 }
 
-// ─── Select ───
-export function Select({ value, onChange, children, style }) {
+// ─── Select — same premium chrome as Input + an RdIcon chevron (native arrow
+// suppressed via appearance:none). Same state set (focus ring / hover lift /
+// disabled / error). Wrapper owns the width; the <select> fills it.
+export function Select({ value, onChange, children, style, error, disabled }) {
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const borderColor = error ? COLORS.danger
+    : focused ? COLORS.accent
+    : (hovered && !disabled) ? COLORS.borderLight
+    : ELEV.hairlineStrong;
+  const ring = disabled ? 'none'
+    : error ? `0 0 0 3px ${COLORS.danger}22`
+    : focused ? `0 0 0 3px ${COLORS.accent}33`
+    : 'none';
+  const { width, ...restStyle } = style || {};
   return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      style={{
-        padding: '6px 10px', borderRadius: 6,
-        border: `1px solid ${COLORS.border}`, background: COLORS.bg,
-        color: COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontSm,
-        outline: 'none', minHeight: 44, ...style,
-      }}>
+    <div style={{ position: 'relative', width: width || '100%' }}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
+      <select value={value} onChange={e => onChange(e.target.value)} disabled={disabled}
+        onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+        style={{
+          width: '100%', padding: '9px 34px 9px 12px', borderRadius: RADIUS.md,
+          border: `1px solid ${borderColor}`, background: disabled ? ELEV.sunken : COLORS.bg,
+          color: disabled ? COLORS.textMuted : COLORS.text, fontFamily: FONT, fontSize: TOUCH.fontSm,
+          outline: 'none', boxShadow: ring, minHeight: 44, boxSizing: 'border-box',
+          appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
+          opacity: disabled ? 0.6 : 1, cursor: disabled ? 'not-allowed' : 'pointer',
+          transition: 'border-color .12s, box-shadow .12s', ...restStyle,
+        }}>
+        {children}
+      </select>
+      <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%) rotate(90deg)', pointerEvents: 'none', color: COLORS.textMuted, display: 'flex' }}>
+        <RdIcon name="chevron" size={13} />
+      </span>
+    </div>
+  );
+}
+
+// ─── Field — premium form-field wrapper: eyebrow label (TRACKING.label/textDim)
+// + discreet required-mark + the control + an error message (red, never amber).
+export function Field({ label, required, optional, hint, error, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {label && (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: error ? COLORS.danger : COLORS.textDim }}>{label}</span>
+          {required && <span style={{ color: COLORS.accent, fontSize: 11, fontWeight: 800 }} title="required">•</span>}
+        </div>
+      )}
       {children}
-    </select>
+      {error && typeof error === 'string'
+        ? <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.danger }}>{error}</div>
+        : hint ? <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted }}>{hint}</div> : null}
+    </div>
   );
 }
 
