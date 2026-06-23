@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [POLISH/Tier-1] Icon consistency sweep — RdIcon star + lucide/emoji → RdIcon (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tidy-icon-sweep`. 12 files, restyle-only (`+39/−32`), zero logic change. The redesign's accumulated tidy-later items, batched into one sweep.
+- **RdIcon `star` added** (filled, line-icon convention) → `★` swapped in PlayerHeroCard (HERO badge + chip), PlayerEditModal (primary-team), TeamDetailPage (roster HERO), ScoutedTeamPage (HERO), ScoutDetailPage (5-star rating). Color preserved via `currentColor` (HERO amber when active).
+- **lucide → RdIcon** in wizard Step2/4/4b (intent-mapped to existing glyphs: clock/footsteps/target/swap/shield/impact/flag/chevron/pin/note/close/check).
+- **`⚠️` → RdIcon `warn` centrally** (`EmptyState` in `ui.jsx`: `icon === '⚠️' ? <RdIcon warn> : icon`) — covers all ~6 callers without per-file edits. **`🧩` → RdIcon `user`** (unlinked banner). **🏴 nationality flags untouched** (data, Jacek's call).
+- **Judgment calls (Jacek-accepted):** `Square→pin` for obstacle play (closest existing glyph; no force-invent — a future `bunker/diamond` glyph is a maybe-later); App.jsx error-boundary `⚠️` left (crash-fallback context, not EmptyState); `icon="⚠️"` caller props kept as the central-intercept trigger.
+- **PROOF:** build + precommit green (no-emoji check passes); clean diff. e2e skipped locally (port 5173 squatter) → CI gate verifies on push.
+- **✅ Premium redesign Groups A + B + C + icon sweep ALL SHIPPED.** Remaining: unsequenced trio (CSV import · layout editor · workspace switcher) — needs Jacek priority/scope.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium training Results (leaderboard) — Group C #3 → GROUP C COMPLETE (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-training-results`. `TrainingResultsPage.jsx` only (`+61/−34`).
 - **Re-skin (premium language, NO IA change):** ELEV cards on PlayerRow/BunkerRow/matchup/ReviewItem; eyebrow `SecHead` headers (TRACKING.label + count badge); `PlayerAvatar` + accent `#num` + **semantic W (success) / L (danger)** in meta; lucide Check/X → RdIcon check/close; filter pills + rows keyboard-accessible. Wide (≥720) = centered 860 leaderboard; phone unchanged.
