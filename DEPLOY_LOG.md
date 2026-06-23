@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium CSV import — unsequenced #2 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-csv-import`. `CSVImport.jsx` only (`+25/−22`, restyle-only — imports + JSX block).
+- **Re-skin (premium, ZERO logic change — data-critical import):** column-mapping rows → premium `<Select>` (amber focus-ring + RdIcon chevron) + eyebrow labels + RdIcon-check for mapped columns; normalization/merge/preview/log boxes → ELEV cards; render emoji → RdIcon (`📂`→todo, `🔍`→eye, `⏳`→clock). Inside the shared `<Modal>` (centered ≥720). 
+- **Logic byte-identical (verified):** BOM/separator parse (`handleFile`/`parseRow`), `MAPPABLE` header auto-detect, `normalizeClass/Nationality/Division`, `repairMojibake`, PBLI dedup (`resolvePbliImport`), `normalizePbliInput`, `playerTeams`, `matchTeam/matchPlayer`, `handlePreview` stats, `handleImport` upload→preview→import, every `ds.*` write — untouched. (The 1 logic-pattern diff line = the Preview button's icon swap; `onClick={handlePreview}` identical both sides.) Props/API/state/testids preserved.
+- **PROOF:** build + precommit green; clean diff. e2e skipped locally (port 5173 squatter) → CI gate verifies on push.
+- **Tidy-flags (Jacek-accepted, pre-existing/logic-layer — left):** import-LOG emoji (`🔄➕🔗📝✅❌⚠` in `handleImport` strings); merge toggle raw `<input checkbox>` (lint warning-level); `📷`→`eye` approximate (no camera glyph).
+- **Smoke (Jacek, prod):** import a PBLeagues CSV → map columns → preview → import; confirm players/teams land + dedup correct.
+- **Next:** layout editor is the ONLY remaining redesign item — PARKED for Jacek IA discussion (prior UX-review flag).
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium workspace switcher — unsequenced #1 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-workspace-switcher`. `WorkspaceSwitcher.jsx` only (`+12/−11`).
 - **Re-skin (premium language, NO behaviour change):** drawer trigger → ELEV hairline + eyebrow (TRACKING.label); modal rows → ELEV cards (surface/hairline/shadow1), active row keeps §27 accent-tint + accent border; `⇄`→RdIcon `swap`, `🏠`→`home`, `✓`→`check`. Kept the app's shared `<Modal>` (centered ≥720) over the prototype's bespoke grab-handle sheet (consistency).
