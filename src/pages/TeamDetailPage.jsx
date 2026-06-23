@@ -400,7 +400,7 @@ export default function TeamDetailPage() {
                       border: `1px solid ${p.hero ? COLORS.accentA25 : COLORS.surfaceLight}`,
                       minHeight: 44,
                     }}>
-                    <span style={{ fontSize: 12, color: p.hero ? COLORS.accent : COLORS.textMuted }}>★</span>
+                    <span style={{ display: 'inline-flex', color: p.hero ? COLORS.accent : COLORS.textMuted }}><RdIcon name="star" size={12} /></span>
                     <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
                   </div>
                 ) : (

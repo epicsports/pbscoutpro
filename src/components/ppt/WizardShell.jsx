@@ -478,7 +478,7 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          <span aria-hidden style={{ fontSize: 14, flexShrink: 0 }}>🧩</span>
+          <span aria-hidden style={{ flexShrink: 0, display: 'inline-flex' }}><RdIcon name="user" size={14} /></span>
           <span style={{
             flex: 1,
             fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,

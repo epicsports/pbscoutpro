@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, TrendingDown, Crosshair, Loader } from 'lucide-react';
+import RdIcon from '../../RdIcon';
 import { useLanguage } from '../../../hooks/useLanguage';
 import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../../../utils/theme';
 
@@ -10,10 +10,10 @@ import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../..
  * directly to Step 4 (WizardShell.advance handles the jump).
  */
 const VARIANTS = [
-  { slug: 'late-break',     labelKey: 'ppt_variant_late_break',     hintKey: 'ppt_variant_late_break_hint',     Icon: Clock,         skipShots: false },
-  { slug: 'na-wslizgu',     labelKey: 'ppt_variant_na_wslizgu',     hintKey: 'ppt_variant_na_wslizgu_hint',     Icon: TrendingDown,  skipShots: true  },
-  { slug: 'ze-strzelaniem', labelKey: 'ppt_variant_ze_strzelaniem', hintKey: null,                              Icon: Crosshair,     skipShots: false },
-  { slug: 'na-okretke',     labelKey: 'ppt_variant_na_okretke',     hintKey: 'ppt_variant_na_okretke_hint',     Icon: Loader,        skipShots: true  },
+  { slug: 'late-break',     labelKey: 'ppt_variant_late_break',     hintKey: 'ppt_variant_late_break_hint',     icon: 'clock',     skipShots: false },
+  { slug: 'na-wslizgu',     labelKey: 'ppt_variant_na_wslizgu',     hintKey: 'ppt_variant_na_wslizgu_hint',     icon: 'footsteps', skipShots: true  },
+  { slug: 'ze-strzelaniem', labelKey: 'ppt_variant_ze_strzelaniem', hintKey: null,                              icon: 'target',    skipShots: false },
+  { slug: 'na-okretke',     labelKey: 'ppt_variant_na_okretke',     hintKey: 'ppt_variant_na_okretke_hint',     icon: 'swap',      skipShots: true  },
 ];
 
 export default function Step2Variant({ state, advance }) {
@@ -61,7 +61,7 @@ export default function Step2Variant({ state, advance }) {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, transition: 'color .12s',
               }}>
-                <v.Icon size={22} strokeWidth={2} />
+                <RdIcon name={v.icon} size={22} />
               </div>
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
