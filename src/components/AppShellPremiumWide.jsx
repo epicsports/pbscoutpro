@@ -102,14 +102,11 @@ function RdSideNav({ visibleTabs, activeKey, onSelectTab, tournament, tournament
           <span style={{ color: COLORS.textMuted, display: 'flex', flexShrink: 0 }}><RdIcon name="chevron" size={14} /></span>
         </div>
       )}
-      {/* settings / profile chip → drawer (settings surface, same as mobile) */}
-      <div className="rd-zone" onClick={onOpenDrawer} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 12px', margin: '0 8px 10px', borderTop: `1px solid ${ELEV.hairline}`, cursor: 'pointer' }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.surface, border: `1px solid ${ELEV.hairlineStrong}`, color: COLORS.textDim }}><RdIcon name="dots" size={16} /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{t('tab_more') || 'Menu'}</div>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>{t('settings_title') || 'Ustawienia'}</div>
-        </div>
-      </div>
+      {/* De-duped (was a 2nd drawer-opener under the event → looked like a
+          duplicate menu/settings). The brand chip at top is the single menu entry
+          (→ drawer, which holds workspace-switch + settings), matching the phone
+          reads-ball pattern. A bottom margin keeps the event chip off the edge. */}
+      <div style={{ height: 4 }} />
     </div>
   );
 }
