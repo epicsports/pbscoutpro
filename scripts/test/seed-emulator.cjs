@@ -159,6 +159,15 @@ const EMAIL_PCLAIM = 'pclaim@test.local';
 const SELFEDIT_WS = 'selfedit-ws';
 const UID_SELFEDIT = 'test-selfedit';
 const EMAIL_SELFEDIT = 'selfedit@test.local';
+// PPT self-log wizard smoke — isolated ws: an account linked to a player on a
+// team with a LIVE training on the base layout (bunkers), so the wizard renders
+// + a point logs end-to-end without contaminating shared fixtures.
+const SELFLOG_WS = 'selflog-ws';
+const UID_SELFLOG = 'test-selflog';
+const EMAIL_SELFLOG = 'selflog@test.local';
+const PLAYER_SELFLOG = 'p-selflog';
+const TEAM_SELFLOG = 'team-selflog';
+const TRN_SELFLOG = 'trn-selflog';
 const PLAYER_SELFEDIT = 'p-selfedit';
 // A3 regression — a plain coach member (not adminUid, not super) used ONLY by the
 // self-leave spec (so removing them never affects other specs).
@@ -258,6 +267,7 @@ async function main() {
   await auth.createUser({ uid: UID_PCLAIM, email: EMAIL_PCLAIM, password: PASSWORD, displayName: 'Pending Claim', emailVerified: true });
   // §85 player self-edit — non-super player linked to their own roster player.
   await auth.createUser({ uid: UID_SELFEDIT, email: EMAIL_SELFEDIT, password: PASSWORD, displayName: 'Self Edit', emailVerified: true });
+  await auth.createUser({ uid: UID_SELFLOG, email: EMAIL_SELFLOG, password: PASSWORD, displayName: 'Self Log', emailVerified: true });
   // A3 self-leave regression — a plain coach member.
   await auth.createUser({ uid: UID_LEAVER, email: EMAIL_LEAVER, password: PASSWORD, displayName: 'Leaver', emailVerified: true });
   // § read-volume C 2 — second-tenant member (other-ws only).
@@ -522,6 +532,34 @@ async function main() {
   batch.set(db.doc(`players/${PLAYER_SELFEDIT}`), {
     name: 'Self Edit', number: '199', teamId: null,
     ownerWorkspaceId: SELFEDIT_WS, linkedUid: UID_SELFEDIT,
+  });
+  // PPT self-log wizard smoke — player-role ws + a linked player on a team + a
+  // LIVE training on the base layout (BASE_LAYOUT carries bunkers). The wizard
+  // spec drives Step1→Save here and asserts the selfReport persists. Isolated.
+  batch.set(db.doc(`workspaces/${SELFLOG_WS}`), {
+    name: 'Self Log WS', members: [UID_SELFLOG], userRoles: { [UID_SELFLOG]: ['player'] },
+    adminUid: UID_SUPER, rolesVersion: 2, migrationReviewedAt: admin.firestore.Timestamp.now(), createdAt: now,
+  });
+  batch.set(db.doc(`teams/${TEAM_SELFLOG}`), {
+    name: 'Self Log Team', ownerWorkspaceId: SELFLOG_WS, leagues: ['NXL'], divisions: { NXL: 'PRO' },
+  });
+  batch.set(db.doc(`players/${PLAYER_SELFLOG}`), {
+    name: 'Self Log Player', number: '7', teamId: TEAM_SELFLOG,
+    ownerWorkspaceId: SELFLOG_WS, linkedUid: UID_SELFLOG,
+  });
+  // status 'active' (NOT 'live') so login does not single-live-auto-redirect
+  // into the wizard (which hides the nav-ball login() waits on). The spec
+  // navigates to the wizard explicitly — WizardHost resolves by trainingId
+  // regardless of status, and teamTrainings includes all statuses.
+  batch.set(db.doc(`workspaces/${SELFLOG_WS}/trainings/${TRN_SELFLOG}`), {
+    name: 'Self-Log Smoke', eventType: 'training', layoutId: BASE_LAYOUT,
+    teamId: TEAM_SELFLOG, status: 'active', createdAt: now,
+  });
+  // Overlay so useLayouts resolves BASE_LAYOUT (with its bunkers) in this ws.
+  batch.set(db.doc(`workspaces/${SELFLOG_WS}/layoutOverlays/${BASE_LAYOUT}`), {
+    baseLayoutId: BASE_LAYOUT, nameOverride: null,
+    zones: [{ id: 'z1', name: 'Snake', type: 'snake', polygon: [{ x: 0.1, y: 0.1 }, { x: 0.2, y: 0.1 }, { x: 0.2, y: 0.2 }] }],
+    dangerZone: null, sajgonZone: null, bigMoveZone: null, createdAt: now,
   });
   // Bulk email-invite proof — shared target ws + two PENDING email-invites.
   batch.set(db.doc(`workspaces/${BULK_WS}`), {

@@ -197,6 +197,17 @@ export function installTestBridge() {
     endMatchAndMerge: (tid, mid) => ds.endMatchAndMerge(tid, mid),
     getPoints: (tid, mid) => ds.getMatchPointsOnce(tid, mid),
 
+    // PPT self-log wizard smoke — count today's persisted selfReports for a
+    // player via the app's OWN read path (getTodaysSelfReports → flat
+    // /workspaces/{slug}/selfReports filtered by playerId). Proves the wizard's
+    // createSelfReport write actually landed in Firestore (not just the local
+    // offline queue). setWorkspace() must pin the bridge base path first.
+    todaysSelfReports: async (playerId) => {
+      const { getTodaysSelfReports } = await import('./playerPerformanceTrackerService');
+      const rows = await getTodaysSelfReports(playerId);
+      return rows.length;
+    },
+
     // B4 — checklist-progression probe: create a minimal tournament in the
     // CURRENT workspace (setWorkspace first) so the hasEvent signal flips.
     addTournament: (data) => ds.addTournament(data),

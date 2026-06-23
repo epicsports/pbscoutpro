@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Btn } from '../../ui';
 import { useLanguage } from '../../../hooks/useLanguage';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../../../utils/theme';
 import { getBunkerSide } from '../../../utils/helpers';
 import { getLayoutShotFrequencies } from '../../../services/playerPerformanceTrackerService';
 import { resolveZones } from '../../../utils/layoutZones';
@@ -214,8 +214,8 @@ export default function Step3Shots({ state, advance, patch, layout }) {
           style={{
             minHeight: 72, display: 'flex', alignItems: 'center',
             justifyContent: 'space-between', padding: '0 18px', marginBottom: SPACE.md,
-            background: COLORS.surfaceDark,
-            border: `2px solid ${zoneSelectedShots.length > 0 ? COLORS.accent : COLORS.border}`,
+            background: ELEV.surface, boxShadow: ELEV.shadow1,
+            border: `2px solid ${zoneSelectedShots.length > 0 ? COLORS.accent : ELEV.hairline}`,
             borderRadius: RADIUS.xl, cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}
@@ -245,8 +245,8 @@ export default function Step3Shots({ state, advance, patch, layout }) {
           style={{
             minHeight: 64, display: 'flex', alignItems: 'center',
             justifyContent: 'space-between', padding: '0 18px', marginBottom: SPACE.md,
-            background: COLORS.surfaceDark,
-            border: `2px solid ${precisionSelectedShots.length > 0 ? COLORS.accent : COLORS.border}`,
+            background: ELEV.surface, boxShadow: ELEV.shadow1,
+            border: `2px solid ${precisionSelectedShots.length > 0 ? COLORS.accent : ELEV.hairline}`,
             borderRadius: RADIUS.xl, cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent',
           }}
@@ -327,6 +327,7 @@ export default function Step3Shots({ state, advance, patch, layout }) {
       <div
         onClick={handleSkip}
         role="button"
+        data-testid="ppt-shots-skip"
         style={{
           marginTop: SPACE.sm, padding: 14,
           textAlign: 'center',
@@ -357,7 +358,7 @@ export default function Step3Shots({ state, advance, patch, layout }) {
         background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
         zIndex: 20,
       }}>
-        <Btn variant="accent" onClick={handleNext} disabled={!canAdvance}
+        <Btn variant="accent" onClick={handleNext} disabled={!canAdvance} testId="ppt-shots-next"
           style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800 }}>
           {t('ppt_step3_next')}
         </Btn>

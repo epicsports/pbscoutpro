@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { useLanguage } from '../../hooks/useLanguage';
-import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS } from '../../utils/theme';
+import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, ELEV } from '../../utils/theme';
 
 /**
  * BunkerPickerGrid — shared 2-column grid for Steps 1 (breakout, single)
@@ -29,12 +29,13 @@ export function BunkerCell({ bunker, selected, freqPct, orderBadge, onTap }) {
     <div
       onClick={onTap}
       role="button"
+      data-testid={`ppt-breakout-${bunker.positionName}`}
       style={{
         minHeight: 88,
         borderRadius: RADIUS.lg,
-        border: `2px solid ${selected ? COLORS.accent : COLORS.border}`,
-        background: selected ? `${COLORS.accent}10` : COLORS.surfaceDark,
-        boxShadow: selected ? `0 0 0 4px ${COLORS.accent}1f` : 'none',
+        border: `2px solid ${selected ? COLORS.accent : ELEV.hairline}`,
+        background: selected ? `${COLORS.accent}10` : ELEV.surface,
+        boxShadow: selected ? `0 0 0 4px ${COLORS.accent}1f` : ELEV.shadow1,
         padding: 12,
         position: 'relative',
         display: 'flex', flexDirection: 'column',

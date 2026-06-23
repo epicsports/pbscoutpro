@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock, TrendingDown, Crosshair, Loader } from 'lucide-react';
 import { useLanguage } from '../../../hooks/useLanguage';
-import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../../utils/theme';
+import { COLORS, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../../../utils/theme';
 
 /**
  * Step 2 — variant picker. See DESIGN_DECISIONS § 48.3 Step 2.
@@ -41,11 +41,13 @@ export default function Step2Variant({ state, advance }) {
               key={v.slug}
               onClick={() => advance({ variant: v.slug })}
               role="button"
+              data-testid={`ppt-variant-${v.slug}`}
               style={{
                 minHeight: 76,
                 borderRadius: RADIUS.lg,
-                border: `2px solid ${selected ? COLORS.accent : COLORS.border}`,
-                background: selected ? `${COLORS.accent}10` : COLORS.surfaceDark,
+                border: `2px solid ${selected ? COLORS.accent : ELEV.hairline}`,
+                background: selected ? `${COLORS.accent}10` : ELEV.surface,
+                boxShadow: selected ? 'none' : ELEV.shadow1,
                 padding: '14px 18px',
                 display: 'flex', alignItems: 'center', gap: 14,
                 cursor: 'pointer',
@@ -55,7 +57,7 @@ export default function Step2Variant({ state, advance }) {
             >
               <div style={{
                 width: 44, height: 44, borderRadius: RADIUS.md,
-                background: COLORS.surface, color: selected ? COLORS.accent : COLORS.textDim,
+                background: ELEV.sunken, color: selected ? COLORS.accent : COLORS.textDim,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, transition: 'color .12s',
               }}>
