@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium new-team form + league-chip a11y — Group B forms #2 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-form-team`. Isolated to `TeamFormModal.jsx`. Reuses the field primitives from forms #1.
+- **Re-skin:** crest/logo preview header (`TeamBadge` from `{name,color,logoUrl}` → color crest → initials, never `#?`); every field on `<Field>`+`<Input>`/`<Select>`; league toggles → premium chips tinted by `LEAGUE_COLORS`; centered `<Modal maxWidth={680}>` on wide (`useDevice().width`), stacked on phone.
+- **Behaviour byte-identical:** props/`onClose`, `handleSave` payload (`name/externalId/leagues/divisions/logoUrl`), validation (`name` + ≥1 league), `toggleLeague`, divisions (per-league rows kept — mapping logic untouched), parent/children relations, audit panel.
+- **League-chip a11y (Jacek note):** chips gained `tabIndex` + Enter/Space activation + `aria-pressed` → the global `:focus-visible` amber ring applies; focus/active state consistent, no longer dead-looking.
+- **PROOF:** build + precommit green; regression e2e `b4-home` + `roster-division` 4/4.
+- **Smoke (Jacek, prod):** admin → team form → crest preview updates with name/logo; league chips toggle (mouse + keyboard, focus ring); save works; ≥720 → centered panel.
+- **Next:** roster (`RosterManagePremium`/`Wide` — Sztab trenerski/Zawodnicy/Sztab grouping) → wizard closes Group B.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium field primitives + full new-player form — Group B forms #1 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-form-player`. Two files: `ui.jsx` (+97) + `PlayerEditModal.jsx` (full re-skin).
 - **Shared field primitives (`ui.jsx`) — the form-heavy foundation:** `Input` + `Select` gain the full state set — focus=amber ring · hover=subtle border lift · disabled=dimmed/no-ring · **error=red border+ring (NOT amber)**. `Select` = same chrome + an RdIcon chevron (`appearance:none`). New **`Field`** wrapper (eyebrow label TRACKING.label/textDim + discreet required-mark + error message). Tokenized to ELEV/RADIUS. Backward-compatible → lifts fields app-wide. (lint-ui skips ui.jsx so styled raw controls are allowed there.)
