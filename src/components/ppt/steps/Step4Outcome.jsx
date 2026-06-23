@@ -100,6 +100,7 @@ export default function Step4Outcome({ state, advance }) {
           return (
             <div
               key={o.slug}
+              data-testid={`ppt-outcome-${o.slug}`}
               onClick={() => {
                 // Routing per § 54.3.1 (2026-04-29): reason cascade fires
                 // for {elim_midgame, elim_endgame} ONLY. Stage `elim_break`

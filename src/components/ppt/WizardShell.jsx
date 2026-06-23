@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, X } from 'lucide-react';
 import { Btn, ConfirmModal } from '../ui';
+import RdIcon from '../RdIcon';
 import { useLanguage } from '../../hooks/useLanguage';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { useDevice } from '../../hooks/useDevice';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TRACKING } from '../../utils/theme';
 import Step1Breakout from './steps/Step1Breakout';
 import Step2Variant from './steps/Step2Variant';
 import Step3Shots from './steps/Step3Shots';
@@ -132,6 +133,8 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
   const isLinked = !!playerId;
   const pendingMode = isLinked ? 'player' : 'uid';
   const { t } = useLanguage();
+  const device = useDevice();
+  const wide = device.width >= 720; // ≥720 → centered column (owns its width, not a sheet)
   const navigate = useNavigate();
   const [state, setState] = useState(() =>
     loadPersisted(playerId, training?.id) || initialState(training?.id)
@@ -339,61 +342,60 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
 
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
-      {/* Header — sticky, shared across steps. */}
+      {/* Header — sticky, shared across steps. Premium WizHead: rounded ELEV
+          tiles + accent step number + glowing progress bar. */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
-        background: COLORS.bg,
-        padding: '8px 16px 12px',
+        background: ELEV.sunken,
+        borderBottom: `1px solid ${ELEV.hairline}`,
+        padding: '10px 16px 0',
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          gap: 12, marginBottom: 12,
+          gap: 12, marginBottom: 11,
         }}>
           <div
             onClick={handleBackChevron}
             role="button"
             style={{
-              width: 44, height: 44,
+              width: 40, height: 40, borderRadius: 12,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: COLORS.accent,
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+              cursor: 'pointer', color: COLORS.text,
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <ChevronLeft size={20} strokeWidth={2.5} />
+            <span style={{ display: 'flex', transform: 'rotate(180deg)' }}><RdIcon name="chevron" size={16} /></span>
           </div>
           <div style={{
             flex: 1, textAlign: 'center',
-            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-            color: COLORS.text,
+            fontFamily: FONT, fontSize: 13, fontWeight: 800,
+            color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
           }}>
-            <span style={{
-              color: COLORS.textMuted, fontSize: 11, fontWeight: 600,
-              letterSpacing: 0.4, textTransform: 'uppercase', marginRight: 4,
-            }}>{t('ppt_step_label')}</span>
-            {display}
-            <span style={{ color: COLORS.textMuted }}> {t('ppt_step_of')} {total}</span>
+            {t('ppt_step_label')} <span style={{ color: COLORS.accent }}>{display}</span> {t('ppt_step_of')} {total}
           </div>
           <div
             onClick={handleExitButton}
             role="button"
             style={{
-              width: 44, height: 44,
+              width: 40, height: 40, borderRadius: 12,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
               cursor: 'pointer', color: COLORS.textDim,
               WebkitTapHighlightColor: 'transparent',
             }}
           >
-            <X size={20} strokeWidth={2.5} />
+            <RdIcon name="close" size={15} />
           </div>
         </div>
         <div style={{
-          height: 6, borderRadius: RADIUS.full,
-          background: COLORS.surfaceDark, overflow: 'hidden',
+          height: 4, borderRadius: RADIUS.full,
+          background: ELEV.hairline, overflow: 'hidden',
         }}>
           <div style={{
             width: `${progressPct}%`, height: '100%',
             background: COLORS.accentGradient,
-            boxShadow: '0 0 8px rgba(245,158,11,0.4)',
+            boxShadow: `0 0 8px ${COLORS.accent}66`,
             transition: 'width 0.3s ease',
           }} />
         </div>
@@ -410,16 +412,20 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
         role="button"
         aria-label={t('ppt_pill_change_aria') || 'Zmień trening'}
         style={{
-          margin: `${SPACE.sm}px ${SPACE.lg}px 0`,
-          padding: '10px 14px',
+          margin: wide ? '14px auto 2px' : `14px ${SPACE.lg}px 2px`,
+          maxWidth: wide ? 700 : undefined,
+          width: wide ? '100%' : undefined,
+          boxSizing: 'border-box',
+          padding: '11px 14px',
           minHeight: 44,
-          background: COLORS.surfaceDark,
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: RADIUS.md,
-          display: 'flex', alignItems: 'center', gap: 8,
+          background: ELEV.surface,
+          border: `1px solid ${ELEV.hairline}`,
+          borderRadius: 13,
+          boxShadow: ELEV.shadow1,
+          display: 'flex', alignItems: 'center', gap: 10,
           cursor: 'pointer',
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
-          color: COLORS.textMuted,
+          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
+          color: COLORS.text,
           WebkitTapHighlightColor: 'transparent',
         }}
       >
@@ -429,7 +435,7 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
           boxShadow: training?.status === 'live' ? '0 0 4px rgba(34,197,94,0.6)' : 'none',
           flexShrink: 0,
         }} />
-        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: COLORS.text }}>
           {t('ppt_pill_prefix')} {trainingName}
         </span>
         <span style={{ color: COLORS.accent, fontWeight: 800 }}>
@@ -441,9 +447,9 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
         <span style={{
           marginLeft: 6,
           paddingLeft: 8,
-          borderLeft: `1px solid ${COLORS.border}`,
+          borderLeft: `1px solid ${ELEV.hairline}`,
           color: COLORS.textDim,
-          fontSize: 11, fontWeight: 700,
+          fontSize: 11, fontWeight: 800,
           letterSpacing: 0.3, textTransform: 'uppercase',
           flexShrink: 0,
         }}>
@@ -494,7 +500,8 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
       <div
         key={stepEnterKey.current}
         style={{
-          flex: 1,
+          flex: 1, width: '100%', boxSizing: 'border-box',
+          maxWidth: wide ? 700 : undefined, margin: wide ? '0 auto' : undefined,
           padding: `${SPACE.lg}px ${SPACE.lg}px 80px`,
           animation: `ppt-slide-${slideDir} 100ms ease-out`,
         }}

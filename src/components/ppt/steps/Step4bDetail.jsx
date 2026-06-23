@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Target, ArrowRight, Flag, Square, HelpCircle, X as XIcon, Check } from 'lucide-react';
 import { Btn } from '../../ui';
 import { useLanguage } from '../../../hooks/useLanguage';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../../../utils/theme';
 
 /**
  * Step 4b — elimination detail. See DESIGN_DECISIONS § 48.3 Step 4b.
@@ -162,8 +162,9 @@ export default function Step4bDetail({ state, advance, patch }) {
               style={{
                 minHeight: 72,
                 borderRadius: RADIUS.lg,
-                border: `2px solid ${isSelected ? COLORS.accent : (o.neutral ? COLORS.border : redBorder)}`,
-                background: COLORS.surfaceDark,
+                border: `2px solid ${isSelected ? COLORS.accent : (o.neutral ? ELEV.hairline : redBorder)}`,
+                background: ELEV.surface,
+                boxShadow: ELEV.shadow1,
                 padding: '14px 18px',
                 display: 'flex', alignItems: 'center', gap: 16,
                 cursor: 'pointer',
@@ -173,8 +174,8 @@ export default function Step4bDetail({ state, advance, patch }) {
             >
               <div style={{
                 width: 44, height: 44, borderRadius: '50%',
-                border: `2px solid ${o.neutral ? COLORS.border : redIconBorder}`,
-                background: o.neutral ? COLORS.surface : redIconBg,
+                border: `2px solid ${o.neutral ? ELEV.hairline : redIconBorder}`,
+                background: o.neutral ? ELEV.sunken : redIconBg,
                 color: o.neutral ? COLORS.textDim : COLORS.danger,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0,

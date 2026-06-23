@@ -92,6 +92,16 @@ export const UID_OTHER = 'test-other';
 export const OTHER_WS = 'other-ws';
 export const TRN_OTHER = 'trn-other';
 
+// PPT self-log wizard smoke — an account linked to a player on a team with a
+// LIVE training on the base layout (has bunkers), so /player/log/wizard renders
+// + a point logs end-to-end. Isolated workspace (no shared-fixture contamination).
+export const SELFLOG_ACCOUNT = { email: 'selflog@test.local', password: 'test1234' };
+export const UID_SELFLOG = 'test-selflog';
+export const SELFLOG_WS = 'selflog-ws';
+export const PLAYER_SELFLOG = 'p-selflog';
+export const TEAM_SELFLOG = 'team-selflog';
+export const TRN_SELFLOG = 'trn-selflog';
+
 export const WS = 'demo-ws';
 export const TRN = 'trn-demo';
 export const LAYOUT = 'lay-demo';

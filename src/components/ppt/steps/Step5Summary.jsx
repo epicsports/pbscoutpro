@@ -2,7 +2,7 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import { Btn, SideTag } from '../../ui';
 import { useLanguage } from '../../../hooks/useLanguage';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV } from '../../../utils/theme';
 
 /**
  * Step 5 — summary. See DESIGN_DECISIONS § 48.3 Step 5.
@@ -110,8 +110,9 @@ export default function Step5Summary({ state, jumpTo, onSave }) {
 
       <div style={{
         borderRadius: RADIUS.lg,
-        background: COLORS.surfaceDark,
-        border: `1px solid ${COLORS.border}`,
+        background: ELEV.surface,
+        border: `1px solid ${ELEV.hairline}`,
+        boxShadow: ELEV.shadow1,
         padding: SPACE.lg,
         display: 'flex', flexDirection: 'column', gap: 14,
         marginBottom: SPACE.lg,
@@ -125,7 +126,7 @@ export default function Step5Summary({ state, jumpTo, onSave }) {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               gap: 12, minHeight: 44,
               paddingBottom: i < rows.length - 1 ? 12 : 0,
-              borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.border}` : 'none',
+              borderBottom: i < rows.length - 1 ? `1px solid ${ELEV.hairline}` : 'none',
               cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
             }}
@@ -165,7 +166,7 @@ export default function Step5Summary({ state, jumpTo, onSave }) {
         background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
         zIndex: 20,
       }}>
-        <Btn variant="accent" onClick={onSave}
+        <Btn variant="accent" onClick={onSave} testId="ppt-save"
           style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800, gap: 10 }}>
           <Check size={20} strokeWidth={2.8} /> {t('ppt_step5_save')}
         </Btn>
