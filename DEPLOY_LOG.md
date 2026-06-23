@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] ScoutWide detail pane → real layout/field image (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/scoutwide-field-preview`. `AppShellPremiumWide.jsx` (`+18/−6`). Closes the tablet "no layout" gap.
+- **Placeholder → field:** the ScoutWide detail-pane placeholder box (was just "{teamA} vs {teamB}" on a gradient) now renders the match's **layout field image** — threaded the `tournament` object into `ScoutWide`, added `useLayouts()` + `useField(tournament, layouts)` → `field.fieldImage` in an ELEV-framed box. Detail-pane team header / score / `scout→` / `match_details` CTAs + nav byte-identical.
+- **Conservative (sound):** heatmap overlay **deferred** — the per-match mirror/`homeData`/`fieldSide` mapping (`getHeatmapPoints`) is fragile + local to MatchPage/ScoutedTeamPage; replicating it on a zero-e2e surface was too risky. Field image now; heatmap = tracked follow-up.
+- **Empty state:** no layout / no `field.fieldImage` → keeps the existing TeamA-vs-TeamB placeholder (avoided a new i18n key → no raw-key/Polish-lint risk). No fake heatmap.
+- **PROOF:** build + precommit green. Wide shell e2e-gated-off → rests on the proven `useField` reuse + Jacek tablet smoke.
+- **Smoke (Jacek, prod, tablet):** Scout tab → select a match → the field/layout image shows in the detail pane.
+- **Follow-ups:** heatmap overlay on the field; ScheduleList dedup (Part A1); MatchPage #4 (gated).
+
 ## 2026-06-23 — [BUGFIX/Tier-1] Tablet wide-shell — overlays didn't render + sidebar de-dupe + CoachWide standings (chat GO, bug-mode)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-schedule-dedup`. `MainPage.jsx` + `AppShellPremiumWide.jsx`. User-reported (tablet): no menu, can't switch event, duplicate menu/settings, no layout.
 - **ROOT-CAUSE FIX (critical):** `AppShellPremiumWide` renders its OWN bodies (ScoutWide/CoachWide/PlayerWide) **INSTEAD of `{children}`** (`:498-502`). The `NavDrawer` + `TournamentPicker` + all modals were nested as `<AppShell>` children → on tablet/desktop they **never mounted** (sidebar menu opened nothing, event un-switchable). **Moved the overlays to top-level in MainPage** (siblings of AppShell, wrapped in a fragment); `renderContent()` stays AppShell's child (wide swaps it). Now overlays render under both shells.
