@@ -4,8 +4,9 @@ import { COLORS, ELEV, FONT, TRACKING, TNUM } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
-import { useMatches, useActiveTeams, useScoutedTeams } from '../hooks/useFirestore';
+import { useMatches, useActiveTeams, useScoutedTeams, useLayouts } from '../hooks/useFirestore';
 import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
+import { useField } from '../hooks/useField';
 import { computeTeamRecords } from '../utils/teamStats';
 import StandingsTable from './tabs/StandingsTable';
 import { winRateColor } from '../utils/colorScale';
@@ -129,12 +130,14 @@ function RdContentHead({ title, count, sub, right }) {
 
 // SCOUT — master list + scouting detail pane, wired to the tournament's REAL
 // matches + the same scout route MatchCard uses (tournament scouting, not self-log).
-function ScoutWide({ tournamentId }) {
+function ScoutWide({ tournamentId, tournament }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { matches } = useMatches(tournamentId);
   const { teams } = useActiveTeams();
   const { scouted } = useScoutedTeams(tournamentId);
+  const { layouts } = useLayouts();
+  const field = useField(tournament, layouts); // tournament's layout → field.fieldImage
   const liveCandidateIds = matches.filter(m => m.status !== 'closed').map(m => m.id);
   const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
 
@@ -223,9 +226,18 @@ function ScoutWide({ tournamentId }) {
                 <TeamBadge team={getTeam(m.teamB)} size={54} />
               </div>
             </div>
-            <div style={{ flex: 1, minHeight: 220, borderRadius: 14, border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow1, background: `radial-gradient(120% 120% at 50% 0%, ${ELEV.raised}, ${ELEV.surface})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.textMuted, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{getName(m.teamA)} vs {getName(m.teamB)}</span>
-            </div>
+            {field?.fieldImage ? (
+              /* Real layout/field preview (the tournament's resolved field image). A
+                 points-heatmap overlay is a follow-up — the per-match mapping is the
+                 fragile mirror logic local to MatchPage/ScoutedTeamPage. */
+              <div style={{ flex: 1, minHeight: 220, borderRadius: 14, overflow: 'hidden', border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow1, background: ELEV.sunken, display: 'flex' }}>
+                <img src={field.fieldImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+              </div>
+            ) : (
+              <div style={{ flex: 1, minHeight: 220, borderRadius: 14, border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow1, background: `radial-gradient(120% 120% at 50% 0%, ${ELEV.raised}, ${ELEV.surface})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.textMuted, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{getName(m.teamA)} vs {getName(m.teamB)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
               <div className="rd-press" onClick={() => scoutSide(m.teamA)} style={{ flex: 1, textAlign: 'center', padding: '15px', borderRadius: 13, fontFamily: FONT, fontSize: 16, fontWeight: 800, cursor: 'pointer', background: COLORS.accent, color: '#1a1206', border: `1px solid ${COLORS.accent}`, boxShadow: `0 4px 14px ${COLORS.accent}40` }}>{(t('scout') || 'Scoutuj')} →</div>
               <div className="rd-press" onClick={review} style={{ padding: '15px 22px', borderRadius: 13, fontFamily: FONT, fontSize: 16, fontWeight: 700, cursor: 'pointer', background: ELEV.surface, color: COLORS.text, border: `1px solid ${ELEV.hairline}` }}>{t('match_details') || 'Szczegóły'}</div>
@@ -494,7 +506,7 @@ export default function AppShellPremiumWide({ children, activeTab, onTabChange, 
       />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {playerView ? <PlayerWide />
-          : scoutWide ? <ScoutWide tournamentId={tournamentId} />
+          : scoutWide ? <ScoutWide tournamentId={tournamentId} tournament={tournament} />
           : coachWide ? <CoachWide tournamentId={tournamentId} />
           : (<div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>)}
       </div>
