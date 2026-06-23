@@ -304,6 +304,7 @@ export default function MainPage({ onSignOut, workspaceName }) {
   };
 
   return (
+    <>
     <AppShell
       activeTab={activeTab}
       onTabChange={handleTabChange}
@@ -314,7 +315,12 @@ export default function MainPage({ onSignOut, workspaceName }) {
       tournamentId={isTrainingMode ? null : tournamentId}
     >
       {renderContent()}
+    </AppShell>
 
+      {/* Overlays/modals live ABOVE the shell, NOT inside it — the wide shell
+          (AppShellPremiumWide) renders its OWN bodies INSTEAD of {children}, so an
+          overlay nested as an AppShell child never mounts on tablet/desktop (the
+          drawer + tournament picker silently did nothing). Top-level → both shells. */}
       {/* §C2 nav drawer — settings surface by reference (mockup-7). */}
       <NavDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
         {drawerContent}
@@ -392,7 +398,7 @@ export default function MainPage({ onSignOut, workspaceName }) {
           setDeleteTournamentConfirm(false);
         }}
       />
-    </AppShell>
+    </>
   );
 }
 
