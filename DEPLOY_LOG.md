@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium point-logging wizard + self-log smoke net — Group B wizard → GROUP B COMPLETE (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-wizard`. 11 files (`WizardShell` + `BunkerPickerGrid` + Step2/3/4/4b/5 + net: `self-log-wizard.spec.js`, `testBridge`, `fixtures`, `seed-emulator`).
+- **SAFETY-FIRST (Jacek opt-1):** the wizard had ZERO e2e coverage + writes real point data. Built `tests/e2e/self-log-wizard.spec.js` FIRST (drives Step1→Summary→save, asserts the selfReport persists via a real `getTodaysSelfReports` read-back, baseline `before===0`) and got it GREEN on the unmodified UI BEFORE any re-skin. Step test-ids (`ppt-breakout/variant/shots-skip/shots-next/outcome/save`) = the re-skin contract.
+- **Re-skin (visual only):** chrome → ELEV tile back/close + RdIcon, "KROK N Z M" accent number, premium progress bar, training pill as ELEV card; step cards tokenized to ELEV; Step4 keeps semantic outcome colors; amber only on selected/progress; wide (≥720) = centered 700px column.
+- **Behaviour byte-identical:** state machine, routing (1→2→3→4→[4b]→5), persistence (`ppt_wizard_state_*`), `handleSave` payload, exit confirm — all untouched (the net proves the write path).
+- **PROOF:** build + precommit green; **`self-log-wizard` (net) + `log-point` 3/3** at the clean HEAD. Branch collapsed to one clean commit; stray local artifacts (`data-export/`, `design-review/`, `scripts/diag/`) kept OUT of the merge.
+- **Smoke (Jacek, prod, HARD):** drive the wizard → log a point → confirm persist + read-back; ≥720 → centered 700px column; phone unchanged.
+- **Tidy-later (tracked, non-blocking):** lucide icons in Step2/4/4b → RdIcon swap; `★` glyphs → RdIcon `star` (forms/roster/wizard); 🧩 in unlinked banner pre-existing.
+- **✅ GROUP B COMPLETE:** forms + field primitives · roster · wizard. **Next: Group C** — training screens (`REDESIGN3.*`).
+
 ## 2026-06-23 — [FEATURE/Tier-2] Role-grouped team roster + semantic avatar ring — Group B roster (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-roster`. `TeamDetailPage.jsx` + `i18n.js` (group labels). Enhances the Team-profile roster (no separate roster screen exists in the app).
 - **Role-grouping:** `teamPlayers` split by `player.role` → **Sztab trenerski (coach) / Zawodnicy (player) / Sztab (staff)**, each a premium section header (RdIcon + uppercase title + **count badge**); empty groups hidden. Phone = stacked grouped sections; wide (≥720) = card-grid auto-fill per group.
