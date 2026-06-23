@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium field primitives + full new-player form — Group B forms #1 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-form-player`. Two files: `ui.jsx` (+97) + `PlayerEditModal.jsx` (full re-skin).
+- **Shared field primitives (`ui.jsx`) — the form-heavy foundation:** `Input` + `Select` gain the full state set — focus=amber ring · hover=subtle border lift · disabled=dimmed/no-ring · **error=red border+ring (NOT amber)**. `Select` = same chrome + an RdIcon chevron (`appearance:none`). New **`Field`** wrapper (eyebrow label TRACKING.label/textDim + discreet required-mark + error message). Tokenized to ELEV/RADIUS. Backward-compatible → lifts fields app-wide. (lint-ui skips ui.jsx so styled raw controls are allowed there.)
+- **New-player form (`PlayerEditModal`) — FULL fidelity (no v1 caveat):** 2-col centered panel (`<Modal maxWidth={720}>`) on wide / stacked on phone (`useDevice().width`, hook at top); every field on `<Field>`+`<Input>`/`<Select>`/`<TextArea>`; avatar→initials (no `#?`). **Props / `onSave` payload (all 13 fields) / validation (`name && number`) / multi-team + history byte-identical** → all call sites (PlayersPage/ProfilePage/TeamDetailPage/admin) + `player-dedup` unaffected.
+- **PROOF:** build + precommit green; e2e verified LOCALLY pre-merge — primitives broad pass (b4-home/roster-division/player-dedup/team-detail-loader 8/8) + combined call-site pass (player-dedup/roster-division/b4-home 5/5).
+- **Smoke (Jacek, prod):** add/edit a player → fields have amber focus-ring, Select has the chevron, validation/save work; ≥720 → 2-col panel; phone stacked.
+- **Tidy-later (NOT separate increments — fold into next touch):** add a `star` glyph to RdIcon (the primary-team `★` is a temp unicode glyph); nationality flag emojis = pre-existing data (separate topic).
+- **Next:** new-team form (`TeamFormModal`, reuses these primitives — fast) → roster → wizard.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium Scout ranking (phone + wide master-detail) — Group A #5 → GROUP A COMPLETE (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-scout-ranking`. Isolated to `ScoutRankingPage.jsx` (`+120/−56`).
 - **Re-skin:** premium leaderboard rows (rank + initials avatar + name + points + composite % + 5-star SVG) on ELEV. **Wide (≥720)** via `useDevice().width` (hooks at top, no early return): **master-detail** — leaderboard list + sticky selected-scout pane with a **conic quality ring** (`conic-gradient` colored by `compositeColor` → 0%→red, NEVER green). `<Screen>` cap→960, owns its width. The FULLEST wide port of Group A (no simplification). Phone <720 = stacked premium rows.
