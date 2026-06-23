@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium Scout ranking (phone + wide master-detail) — Group A #5 → GROUP A COMPLETE (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-scout-ranking`. Isolated to `ScoutRankingPage.jsx` (`+120/−56`).
+- **Re-skin:** premium leaderboard rows (rank + initials avatar + name + points + composite % + 5-star SVG) on ELEV. **Wide (≥720)** via `useDevice().width` (hooks at top, no early return): **master-detail** — leaderboard list + sticky selected-scout pane with a **conic quality ring** (`conic-gradient` colored by `compositeColor` → 0%→red, NEVER green). `<Screen>` cap→960, owns its width. The FULLEST wide port of Group A (no simplification). Phone <720 = stacked premium rows.
+- **Preserved:** the `useScreenLoader`/Preloader wiring + phases, scope segmented + tournament/layout pickers, row nav (phone tap → `/scouts/:uid`; wide tap → select → pane "Otwórz profil →" navigates), empty state.
+- **PROOF:** build + precommit green; regression e2e `b4-home` + `nav-drawer` 9/9.
+- **Smoke (Jacek, prod):** scout ranking → premium rows; ≥720 → master-detail + conic ring (red at low composite); tap a scout; phone unchanged.
+- **✅ GROUP A COMPLETE:** Today's points · My profile v1 · Team profile v1 · Scout ranking · (public-profile skipped — covered by the PlayerStatsPage hero). **Next: Group B** — forms (`redesign7.jsx`) → roster → wizard. Follow-ups tracked: My-profile + Team-profile full 2-col wide.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium Team profile v1 (phone + responsive widen) — redesign Group A #3 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-team-profile`. Isolated to `TeamDetailPage.jsx` (`+20/−12`).
 - **Re-skin (visual only):** hero card → brand-tint gradient over ELEV + shadow1; roster rows → ELEV cards (surface+hairline+shadow1). Wide (≥720) via `useDevice().width` (hook above the `if (!team)` early return): `<Screen archetype="list">` (desktop cap 640→960) + roster reflows to a width-filling grid (`auto-fill minmax(340px,1fr)`) — owns its width, no sheet. Phone <720 = stacked single column.
