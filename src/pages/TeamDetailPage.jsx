@@ -358,13 +358,21 @@ export default function TeamDetailPage() {
               { key: 'player', icon: 'jersey',   title: t('roster_group_players'),  accent: COLORS.accent,  label: null,                        list: teamPlayers.filter(isPlayer) },
               { key: 'staff',  icon: 'building', title: t('roster_group_staff'),    accent: COLORS.textDim, label: t('player_form_staff_role'), list: teamPlayers.filter(isStaff) },
             ];
-            const rosterCard = (p, g) => (
+            const rosterCard = (p, g) => {
+              // Avatar ring — semantic, keeps amber = HERO only (edge-case law):
+              // HERO player → amber, coach → info, staff → neutral, plain player → hairline.
+              const ringColor = g.key === 'player'
+                ? (p.hero ? COLORS.accent : ELEV.hairlineStrong)
+                : g.accent;
+              return (
               <div key={p.id} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
                 borderRadius: 12, background: ELEV.surface, border: `1px solid ${p.hero && g.key === 'player' ? COLORS.accentA25 : ELEV.hairline}`, boxShadow: ELEV.shadow1,
                 minHeight: TOUCH.minTarget,
               }}>
-                <PlayerAvatar player={p} size={40} />
+                <span style={{ display: 'inline-flex', borderRadius: '50%', padding: 2, border: `2px solid ${ringColor}`, flexShrink: 0 }}>
+                  <PlayerAvatar player={p} size={40} />
+                </span>
                 {g.key === 'player' && p.number != null && p.number !== '' && (
                   <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 30, ...TNUM }}>
                     #{p.number}
@@ -406,7 +414,8 @@ export default function TeamDetailPage() {
                 <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
                 <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
               </div>
-            );
+              );
+            };
             return groups.filter(g => g.list.length > 0).map(g => (
               <div key={g.key} style={{ marginBottom: 18 }}>
                 {/* section header — icon + title + count badge */}
