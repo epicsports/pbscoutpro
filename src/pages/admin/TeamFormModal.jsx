@@ -209,7 +209,9 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
                 const active = fLeagues.includes(L.shortName);
                 const lc = LEAGUE_COLORS[L.shortName] || COLORS.accent;
                 return (
-                  <div key={L.id || L.shortName} className="rd-press" role="button" onClick={() => toggleLeague(L.shortName)}
+                  <div key={L.id || L.shortName} className="rd-press" role="button" tabIndex={0} aria-pressed={active}
+                    onClick={() => toggleLeague(L.shortName)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLeague(L.shortName); } }}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', minHeight: 40, borderRadius: 999, cursor: 'pointer', fontFamily: FONT, fontSize: 13, fontWeight: 800, letterSpacing: '.3px', background: active ? `${lc}26` : ELEV.sunken, color: active ? lc : COLORS.textDim, border: `1px solid ${active ? lc + '80' : ELEV.hairline}`, transition: 'all .12s' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: lc, opacity: active ? 1 : 0.5 }} />
                     {L.shortName}
