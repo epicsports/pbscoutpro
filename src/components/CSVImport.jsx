@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
-import { COLORS, FONT, FONT_SIZE } from '../utils/theme';
+import RdIcon from './RdIcon';
+import { COLORS, FONT, FONT_SIZE, ELEV, TRACKING, RADIUS } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
 import { repairMojibake } from '../utils/mojibake';
 import { playerTeams } from '../utils/playerTeams';
@@ -464,19 +465,19 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={() => { onClose(); reset(); }} title="📋 Import CSV — teams & players">
+    <Modal open={open} onClose={() => { onClose(); reset(); }} title="Import CSV — teams & players">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {step === 'upload' && (
           <>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, lineHeight: 1.5 }}>
               CSV z drużynami i graczami (format PBLeagues lub własny). Istniejące rekordy zostaną zaktualizowane — puste pola nie nadpiszą istniejących danych.
             </div>
-            <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, background: COLORS.surfaceDark, borderRadius: 8, padding: '8px 10px', lineHeight: 1.5 }}>
+            <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '8px 10px', lineHeight: 1.5 }}>
               Auto-normalizacja: <strong style={{ color: COLORS.text }}>Division 4→D4</strong>, <strong style={{ color: COLORS.text }}>Poland→PL</strong>, Brak→null, nophoto→null, BOM→strip
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>{t('b13_csv_default_league_label')}</span>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim }}>{t('b13_csv_default_league_label')}</span>
               <Select value={league} onChange={setLeague} style={{ minWidth: 140 }}>
                 {leagues.map(L => (
                   <option key={L.shortName} value={L.shortName}>{L.name}</option>
@@ -485,38 +486,40 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             </div>
             <label style={{
               display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 12px', borderRadius: 8,
-              background: mergeByName ? `${COLORS.accent}10` : COLORS.surfaceDark,
-              border: `1px solid ${mergeByName ? `${COLORS.accent}40` : COLORS.border}`,
+              padding: '12px', borderRadius: RADIUS.md,
+              background: mergeByName ? `${COLORS.accent}12` : ELEV.sunken,
+              border: `1px solid ${mergeByName ? `${COLORS.accent}40` : ELEV.hairline}`,
+              boxShadow: ELEV.shadow1,
               cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
             }}>
               <input type="checkbox" checked={mergeByName}
                 onChange={e => setMergeByName(e.target.checked)}
                 style={{ accentColor: COLORS.accent, width: 18, height: 18 }} />
               <div>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text }}>
                   Dopasuj po nazwie (merge)
                 </div>
-                <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>
+                <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 1, lineHeight: 1.4 }}>
                   Istniejący gracz o tej samej nazwie zostanie zaktualizowany zamiast tworzenia duplikatu. Numery, statystyki i historia zachowane.
                 </div>
               </div>
             </label>
             <input ref={fileRef} type="file" accept=".csv,.txt,.tsv" onChange={handleFile} style={{ display: 'none' }} />
-            <Btn variant="accent" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}>📂 Wybierz plik CSV</Btn>
+            <Btn variant="accent" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}><RdIcon name="todo" size={16} /> Wybierz plik CSV</Btn>
           </>
         )}
 
         {step === 'preview' && csvData && (
           <>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.accent, fontWeight: 700 }}>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.accent, fontWeight: 800 }}>
               {csvData.rows.length} wierszy · {csvData.headers.length} kolumn · sep: {csvData.sep === ';' ? 'średnik' : 'przecinek'}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
               {MAPPABLE.map(m => (
                 <div key={m.key}>
-                  <div style={{ fontFamily: FONT, fontSize: 10, color: m.required ? COLORS.text : COLORS.textDim, marginBottom: 2, fontWeight: m.required ? 700 : 500 }}>
-                    {m.label} {colMap[m.key] != null && colMap[m.key] !== '' && <span style={{ color: COLORS.success }}>✓</span>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: m.required ? COLORS.text : COLORS.textDim }}>{m.label}</span>
+                    {colMap[m.key] != null && colMap[m.key] !== '' && <span style={{ color: COLORS.success, display: 'flex' }}><RdIcon name="check" size={12} /></span>}
                   </div>
                   <Select value={colMap[m.key] || ''} onChange={v => setColMap(p => ({ ...p, [m.key]: v }))} style={{ width: '100%', fontSize: 12 }}>
                     <option value="">{m.required ? '— wymagane —' : '— pomiń —'}</option>
@@ -525,10 +528,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                 </div>
               ))}
             </div>
-            <Btn variant="default" onClick={handlePreview} disabled={!colMap.team || !colMap.player}>🔍 Podgląd</Btn>
+            <Btn variant="default" onClick={handlePreview} disabled={!colMap.team || !colMap.player}><RdIcon name="eye" size={15} /> Podgląd</Btn>
             {preview && (
               <>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, background: COLORS.surfaceDark, borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <StatRow label={t('csv_import_stat_teams')} create={preview.newTeams} update={preview.updTeams} noChange={t('csv_import_no_change')} />
                   <StatRow label={t('csv_import_stat_players')} create={preview.newPlayers} update={preview.updPlayers} noChange={t('csv_import_no_change')} />
                   {(preview.teamsWithDivision > 0 || preview.collisions > 0) && (
@@ -548,7 +551,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                     </div>
                   )}
                 </div>
-                <div style={{ maxHeight: 180, overflowY: 'auto', fontSize: FONT_SIZE.xs, fontFamily: FONT }}>
+                <div style={{ maxHeight: 180, overflowY: 'auto', fontSize: FONT_SIZE.xs, fontFamily: FONT, background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '8px 10px' }}>
                   {parsed.slice(0, 15).map((r, i) => {
                     const tM = matchTeam(r.team, r.teamExtId, teams);
                     const pM = tM ? matchPlayer(r.player, r.pbliId, tM?.id, players, mergeByName) : null;
@@ -561,7 +564,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                         {r.playerClass && <span style={{ color: COLORS.textMuted, fontSize: 9, background: COLORS.surfaceLight, borderRadius: 3, padding: '0 3px' }}>{r.playerClass}</span>}
                         {r.nationality && <span style={{ fontSize: 9 }}>{r.nationality}</span>}
                         {r.role && r.role !== 'player' && <span style={{ color: COLORS.textMuted, fontSize: 9 }}>({r.role})</span>}
-                        {r.photoURL && <span style={{ color: COLORS.success, fontSize: 9 }}>📷</span>}
+                        {r.photoURL && <span style={{ color: COLORS.success, display: 'flex' }}><RdIcon name="eye" size={10} /></span>}
                       </div>
                     );
                   })}
@@ -577,15 +580,15 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
 
         {step === 'importing' && (
           <div style={{ textAlign: 'center', padding: 30 }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>⏳</div>
+            <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center', color: COLORS.accent }}><RdIcon name="clock" size={36} /></div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, color: COLORS.text }}>{t('csv_import_importing', parsed.length)}</div>
           </div>
         )}
 
         {step === 'done' && (
           <>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.success }}>{t('csv_import_done')}</div>
-            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim }}>{log.map((l, i) => <div key={i}>{l}</div>)}</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.success }}>{t('csv_import_done')}</div>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '10px 12px', lineHeight: 1.6 }}>{log.map((l, i) => <div key={i}>{l}</div>)}</div>
             <Btn variant="accent" onClick={() => { onClose(); reset(); }}>{t('close')}</Btn>
           </>
         )}
