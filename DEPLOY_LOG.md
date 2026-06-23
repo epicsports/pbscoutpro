@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium Today's points (phone + wide) — redesign Group A #1 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-today-points`. Isolated to `TodaysLogsList.jsx` (`+68/−3`).
+- **Re-skin:** the `/player/log` today's-logs view → premium `TodayPoints` — `PremiumLogCard` per point (#n + ROZBIEG/PosBadge + run/how + STRZAŁY + outcome chip) on ELEV cards. **Wide (≥720)** via `useDevice().width` (hook at top, no early-return): centered 760px column + a **derived** day-summary bar (PUNKTY / alive / lost from `combined` — not invented). Phone <720 = stacked cards.
+- **Real data unchanged:** same `combined` rows (server `getTodaysSelfReports` + pending queue, deduped/ordinal); pending state, ⋮ delete, Toast, `onNewPoint` all preserved.
+- **Shared `LogRow` kept intact** → PlayerStatsPage "Samoocena" unaffected.
+- **Header decision (Jacek-confirmed):** kept the app's `PageHeader` (back + real refresh) over the prototype's bespoke "swap-training" header (a prototype relic, not a pattern) — no swap-training added.
+- **PROOF:** build + precommit green; e2e verified LOCALLY pre-merge — `log-point` (log a point → persist → read-back) + `b4-home` 5/5.
+- **Smoke (Jacek, prod):** `/player/log` after logging a point (persist + read-back); widen ≥720 → centered column + day-summary; phone unchanged.
+- **Next:** Group A #2 = My profile (`MyProfilePremium`/`MyProfileWide`).
+
 ## 2026-06-22 — [FEATURE/Tier-1] Team logo — on coach rows + settable on the team form (Jacek)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/team-logo`.
 - **Re-added the real team logo** (`TeamBadge`, falls back to the color crest) beside the option-E gradient in BOTH coach rows — `CoachTabContent` (phone) + `CoachWide` (wide). Reverses the earlier "no square logo" call per Jacek — now gradient + logo.
