@@ -14,7 +14,9 @@ import TeamBadge from '../TeamBadge';
 import { matchEntity, teamInDivision } from '../../utils/entityFilters';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import * as ds from '../../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../../utils/theme';
+import RdIcon from '../RdIcon';
+import DivisionTabs from './DivisionTabs';
 import { playerOnTeam } from '../../utils/playerTeams';
 import { STATIC_FLAGS } from '../../utils/featureFlags';
 import { groupMatchesByStage } from '../../utils/divisionAliases';
@@ -82,10 +84,13 @@ export default function ScoutTabContent({ tournamentId }) {
   }, [addTeamModal]);
 
   const divisionScouted = useMemo(() => {
+    const tournDivs = tournament?.divisions || [];
     return resolvedDivision === 'all'
       ? scouted
-      : scouted.filter(st => st.division === resolvedDivision);
-  }, [scouted, resolvedDivision]);
+      // Lenient (unified with CoachTabContent, c10a282e): never hide a scouted
+      // team whose division is null OR isn't one of THIS tournament's divisions.
+      : scouted.filter(st => st.division === resolvedDivision || !st.division || !tournDivs.includes(st.division));
+  }, [scouted, resolvedDivision, tournament?.divisions]);
 
   // Eligible teams = workspace teams matching tournament league (or any team
   // when tournament has no league — e.g. practice) AND not already scouted.
@@ -277,48 +282,24 @@ export default function ScoutTabContent({ tournamentId }) {
       flexDirection: 'column',
       gap: SPACE.md,
     }}>
-      {/* Closed banner */}
+      {/* Closed banner — premium */}
       {isClosed && (
         <div style={{
           padding: SPACE.lg, borderRadius: RADIUS.lg,
-          background: `${COLORS.textMuted}10`,
-          border: `1px solid ${COLORS.textMuted}30`,
+          background: ELEV.sunken,
+          border: `1px solid ${ELEV.hairline}`,
+          boxShadow: ELEV.shadow1,
           textAlign: 'center',
         }}>
-          <div style={{ fontSize: 28, marginBottom: 4 }}>🔒</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: COLORS.textMuted }}><RdIcon name="shield" size={26} /></div>
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.textMuted }}>
             Tournament closed
           </div>
         </div>
       )}
 
-      {/* Division pill filter */}
-      {(tournament.divisions?.length > 0) && (
-        <div style={{
-          display: 'flex',
-          background: COLORS.surface,
-          borderRadius: RADIUS.lg,
-          border: `1px solid ${COLORS.border}`,
-          padding: 3,
-          flexShrink: 0,
-        }}>
-          {tournament.divisions.map(d => (
-            <div key={d} onClick={() => setActiveDivision(d)}
-              style={{
-                flex: 1, padding: `${SPACE.sm}px ${SPACE.xs}px`,
-                borderRadius: RADIUS.md,
-                fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-                cursor: 'pointer', textAlign: 'center',
-                color: resolvedDivision === d ? COLORS.accent : COLORS.textMuted,
-                background: resolvedDivision === d ? COLORS.surfaceLight : 'transparent',
-                transition: 'all .12s',
-                minHeight: 44,
-              }}>
-              {d}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Division pill filter — shared premium DivisionTabs */}
+      <DivisionTabs divisions={tournament.divisions} active={resolvedDivision} onChange={setActiveDivision} />
 
       {/* Matches */}
       <div>
@@ -393,7 +374,7 @@ export default function ScoutTabContent({ tournamentId }) {
                 <div key={stage.rank} style={{ marginTop: SPACE.sm }}>
                   <div style={{
                     fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                    color: COLORS.textDim, letterSpacing: '.5px', textTransform: 'uppercase',
+                    color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
                     margin: `${SPACE.sm}px 0 ${SPACE.xs}px`,
                   }}>
                     {stage.label} <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>· {stage.totalCount}</span>
@@ -435,41 +416,31 @@ export default function ScoutTabContent({ tournamentId }) {
           this row takes over. Avoids duplicate "Add team" CTAs (bug I1). */}
       {!isClosed && !isViewer && scouted.length >= 1 && (
         <div style={{ display: 'flex', gap: SPACE.sm }}>
-          <div
-            onClick={() => setAddMatchModal(true)}
+          <div onClick={() => setAddMatchModal(true)} className="rd-press"
             style={{
-              flex: 1,
-              padding: '16px',
-              borderRadius: 12,
-              border: `1px dashed ${COLORS.accent}50`,
-              background: `${COLORS.accent}08`,
+              flex: 1, padding: '16px', borderRadius: 12,
+              border: `1px dashed ${COLORS.accentA40}`,
+              background: COLORS.accentA12,
               color: COLORS.accent,
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-              textAlign: 'center',
-              cursor: 'pointer',
-              minHeight: 52,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800,
+              cursor: 'pointer', minHeight: 52,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
               WebkitTapHighlightColor: 'transparent',
             }}>
-            {t('scout_tab_add_match')}
+            <RdIcon name="plus" size={15} />{t('scout_tab_add_match')}
           </div>
-          <div
-            onClick={() => setAddTeamModal(true)}
+          <div onClick={() => setAddTeamModal(true)} className="rd-press"
             style={{
-              flex: 1,
-              padding: '16px',
-              borderRadius: 12,
-              border: `1px dashed ${COLORS.accent}50`,
-              background: `${COLORS.accent}08`,
+              flex: 1, padding: '16px', borderRadius: 12,
+              border: `1px dashed ${COLORS.accentA40}`,
+              background: COLORS.accentA12,
               color: COLORS.accent,
-              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-              textAlign: 'center',
-              cursor: 'pointer',
-              minHeight: 52,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800,
+              cursor: 'pointer', minHeight: 52,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
               WebkitTapHighlightColor: 'transparent',
             }}>
-            {t('scout_tab_add_team')}
+            <RdIcon name="plus" size={15} />{t('scout_tab_add_team')}
           </div>
         </div>
       )}
@@ -574,7 +545,7 @@ export default function ScoutTabContent({ tournamentId }) {
             <SearchFilterPanel
               search={addSearch}
               onSearchChange={setAddSearch}
-              searchPlaceholder="🔍 Search teams by name, ID..."
+              searchPlaceholder="Search teams by name, ID..."
               filters={addDivOptions.length ? [{ key: 'dyw', label: 'Dywizja', value: addDiv, onChange: setAddDiv, allLabel: 'wszystkie', options: addDivOptions }] : []}
               style={{ marginBottom: SPACE.sm }}
             />
@@ -598,8 +569,8 @@ export default function ScoutTabContent({ tournamentId }) {
                       padding: '12px 14px',
                       marginLeft: tm._isChild ? 24 : 0,
                       minHeight: 52,
-                      background: checked ? `${COLORS.accent}12` : COLORS.surfaceDark,
-                      border: `1px ${tm._isChild ? 'dashed' : 'solid'} ${checked ? `${COLORS.accent}60` : COLORS.border}`,
+                      background: checked ? COLORS.accentA12 : ELEV.surface,
+                      border: `1px ${tm._isChild ? 'dashed' : 'solid'} ${checked ? COLORS.accentA40 : ELEV.hairline}`,
                       borderRadius: RADIUS.md,
                       cursor: addingBatch ? 'default' : 'pointer',
                       opacity: addingBatch && !checked ? 0.5 : 1,
@@ -613,12 +584,7 @@ export default function ScoutTabContent({ tournamentId }) {
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0, transition: 'all .12s',
                     }}>
-                      {checked && (
-                        <span style={{
-                          color: COLORS.bg, fontSize: 14, fontWeight: 900,
-                          lineHeight: 1,
-                        }}>✓</span>
-                      )}
+                      {checked && <span style={{ color: COLORS.bg, display: 'flex' }}><RdIcon name="check" size={14} /></span>}
                     </div>
                     <TeamBadge team={tm} size={28} />
                     <span style={{
@@ -636,7 +602,7 @@ export default function ScoutTabContent({ tournamentId }) {
                         fontFamily: FONT, fontSize: 10, fontWeight: 700,
                         color: COLORS.textMuted, letterSpacing: '.3px',
                         padding: '2px 7px', borderRadius: 4,
-                        background: COLORS.surface, border: `1px solid ${COLORS.border}`,
+                        background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
                       }}>{teamDiv}</span>
                     )}
                   </div>
