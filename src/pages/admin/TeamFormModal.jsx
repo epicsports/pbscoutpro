@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Btn, Input, Modal, Select } from '../../components/ui';
+import { Btn, Input, Modal, Select, Field } from '../../components/ui';
+import RdIcon from '../../components/RdIcon';
 import TeamBadge from '../../components/TeamBadge';
-import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, ELEV, TRACKING, LEAGUE_COLORS } from '../../utils/theme';
+import { useDevice } from '../../hooks/useDevice';
 import { addTeam, updateTeam, setParentTeam } from '../../services/dataService';
 import { useLeagues } from '../../hooks/useLeagues';
 import TeamPickerModal from './TeamPickerModal';
@@ -149,11 +151,14 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
     } catch { return String(ts); }
   };
 
+  const wide = useDevice().width >= 720;
+
   return (
     <>
       <Modal
         open={open && !pickerMode}
         onClose={onClose}
+        maxWidth={wide ? 680 : undefined}
         title={isEdit ? t('team_form_title_edit', team?.name || 'team') : t('team_form_title_new')}
         footer={<>
           {isEdit && !isRetired && onRequestRetire && (
@@ -175,37 +180,42 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.md }}>
 
+          {/* Premium crest preview — live from name + logo (color crest / initials fallback). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 14, background: `linear-gradient(120deg, ${(team?.color || COLORS.accent)}1f, ${(team?.color || COLORS.accent)}08 46%, transparent 72%), ${ELEV.surface}`, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1 }}>
+            <TeamBadge team={{ name: fName, color: team?.color, logoUrl: fLogoUrl.trim() || null }} size={56} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: fName ? COLORS.text : COLORS.textMuted, letterSpacing: TRACKING.tight, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fName || t('team_form_name_ph')}</div>
+              {fLeagues.length > 0 && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', marginTop: 3 }}>{fLeagues.join(' · ')}</div>}
+            </div>
+          </div>
+
           {/* Identity */}
           <SectionHeader>{t('team_form_section_identity')}</SectionHeader>
-          <FieldRow label={t('team_form_team_name_label')} error={errors.name}>
-            <Input value={fName} onChange={setFName} placeholder={t('team_form_name_ph')} autoFocus />
+          <FieldRow label={t('team_form_team_name_label')} error={errors.name} required>
+            <Input value={fName} onChange={setFName} placeholder={t('team_form_name_ph')} error={!!errors.name} autoFocus />
           </FieldRow>
           <FieldRow label={t('team_form_ext_id_label')} hint={t('team_form_ext_id_hint')}>
             <Input value={fExternalId} onChange={setFExternalId} placeholder={t('team_form_ext_id_ph')} />
           </FieldRow>
           {/* Team logo — external image URL (kept as a link, never uploaded — § 93 quota
-              pattern). Live preview via TeamBadge (falls back to the color crest). */}
+              pattern). Live preview is the crest header above (color crest / initials fallback). */}
           <FieldRow label={t('wsadmin_logo_label')}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <TeamBadge team={{ name: fName, color: team?.color, logoUrl: fLogoUrl.trim() || null }} size={40} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <Input value={fLogoUrl} onChange={setFLogoUrl} placeholder="https://…/logo.png" />
-              </div>
-            </div>
+            <Input value={fLogoUrl} onChange={setFLogoUrl} placeholder="https://…/logo.png" />
           </FieldRow>
 
-          <FieldRow label={t('team_form_leagues_label')} error={errors.leagues} hint={t('team_form_leagues_hint')}>
+          <FieldRow label={t('team_form_leagues_label')} error={errors.leagues} hint={t('team_form_leagues_hint')} required>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs }}>
               {leagues.map(L => {
                 const active = fLeagues.includes(L.shortName);
+                const lc = LEAGUE_COLORS[L.shortName] || COLORS.accent;
                 return (
-                  <Btn key={L.id || L.shortName}
-                    variant={active ? 'accent' : 'default'}
-                    size="sm"
+                  <div key={L.id || L.shortName} className="rd-press" role="button" tabIndex={0} aria-pressed={active}
                     onClick={() => toggleLeague(L.shortName)}
-                  >
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLeague(L.shortName); } }}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 13px', minHeight: 40, borderRadius: 999, cursor: 'pointer', fontFamily: FONT, fontSize: 13, fontWeight: 800, letterSpacing: '.3px', background: active ? `${lc}26` : ELEV.sunken, color: active ? lc : COLORS.textDim, border: `1px solid ${active ? lc + '80' : ELEV.hairline}`, transition: 'all .12s' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: lc, opacity: active ? 1 : 0.5 }} />
                     {L.shortName}
-                  </Btn>
+                  </div>
                 );
               })}
             </div>
@@ -288,7 +298,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
                 <Btn variant="default" onClick={() => setPickerMode('child')}>{t('team_form_add_another_child')}</Btn>
               )}
               <div style={{
-                padding: SPACE.xs, borderRadius: RADIUS.sm, backgroundColor: COLORS.surfaceDark,
+                padding: SPACE.xs, borderRadius: RADIUS.sm, backgroundColor: ELEV.sunken,
                 fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, lineHeight: 1.5,
               }}>
                 {t('team_form_sister_note')}
@@ -305,10 +315,10 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
                 fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textDim,
                 minHeight: 32,
               }}>
-                {showAudit ? '▾' : '▸'} {t('team_form_audit_toggle')}
+                <span style={{ display: 'inline-flex', transform: showAudit ? 'rotate(90deg)' : 'none', transition: 'transform .15s', color: COLORS.textMuted }}><RdIcon name="chevron" size={12} /></span> {t('team_form_audit_toggle')}
               </button>
               {showAudit && (
-                <div style={{ padding: SPACE.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ padding: SPACE.sm, borderRadius: RADIUS.md, backgroundColor: ELEV.sunken, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <AuditRow label="ID" value={<code style={{ color: COLORS.text }}>{liveTeam?.id}</code>} />
                   <AuditRow label={t('team_form_audit_origin')} value={liveTeam?.originWorkspace || '—'} />
                   <AuditRow label={t('team_form_audit_created')} value={formatTs(liveTeam?.createdAt)} />
@@ -396,18 +406,13 @@ function SectionHeader({ children }) {
   );
 }
 
-function FieldRow({ label, error, hint, children }) {
+// Routes the form's rows through the premium <Field> primitive (eyebrow label +
+// discreet required-mark + error/hint). One swap upgrades every field label.
+function FieldRow({ label, error, hint, children, required }) {
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textDim }}>{label}</div>
-        {error && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.danger }}>{error}</div>}
-      </div>
+    <Field label={label} error={error} hint={hint} required={required}>
       {children}
-      {hint && !error && (
-        <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2 }}>{hint}</div>
-      )}
-    </div>
+    </Field>
   );
 }
 
