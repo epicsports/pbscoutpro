@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium workspace switcher — unsequenced #1 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-workspace-switcher`. `WorkspaceSwitcher.jsx` only (`+12/−11`).
+- **Re-skin (premium language, NO behaviour change):** drawer trigger → ELEV hairline + eyebrow (TRACKING.label); modal rows → ELEV cards (surface/hairline/shadow1), active row keeps §27 accent-tint + accent border; `⇄`→RdIcon `swap`, `🏠`→`home`, `✓`→`check`. Kept the app's shared `<Modal>` (centered ≥720) over the prototype's bespoke grab-handle sheet (consistency).
+- **Behaviour byte-identical (0 deletions):** `variant` (item/drawer), `useWorkspace`/`useUserWorkspaces`, `handlePick`→`setActiveWorkspace` (switch+reload), the `slug===activeSlug` no-op, **single-workspace static-row** case, the `multi` modal gate, loading/switching states, `ws-switcher-row` testid. Callers (NavDrawer/MoreTabContent/TrainingMoreTab) unaffected.
+- **PROOF:** build + precommit green; clean diff. e2e skipped locally (port 5173 squatter) → CI gate verifies on push.
+- **Smoke (Jacek, prod):** multi-workspace user → switcher → switch context (reloads); single-workspace → static row; active row highlighted.
+- **Next:** CSV import (last unblocked unsequenced). Layout editor parked (IA discussion).
+
 ## 2026-06-23 — [POLISH/Tier-1] Icon consistency sweep — RdIcon star + lucide/emoji → RdIcon (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/tidy-icon-sweep`. 12 files, restyle-only (`+39/−32`), zero logic change. The redesign's accumulated tidy-later items, batched into one sweep.
 - **RdIcon `star` added** (filled, line-icon convention) → `★` swapped in PlayerHeroCard (HERO badge + chip), PlayerEditModal (primary-team), TeamDetailPage (roster HERO), ScoutedTeamPage (HERO), ScoutDetailPage (5-star rating). Color preserved via `currentColor` (HERO amber when active).
