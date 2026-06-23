@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Role-grouped team roster + semantic avatar ring — Group B roster (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-roster`. `TeamDetailPage.jsx` + `i18n.js` (group labels). Enhances the Team-profile roster (no separate roster screen exists in the app).
+- **Role-grouping:** `teamPlayers` split by `player.role` → **Sztab trenerski (coach) / Zawodnicy (player) / Sztab (staff)**, each a premium section header (RdIcon + uppercase title + **count badge**); empty groups hidden. Phone = stacked grouped sections; wide (≥720) = card-grid auto-fill per group.
+- **HERO vs role:** HERO toggle ONLY on players; coaches/staff → a **role chip** in HERO's place (never empty HERO, no toggle).
+- **Semantic avatar ring (Jacek spec):** HERO player→amber · coach→info · staff→neutral · plain player→hairline — keeps amber = HERO-only (edge-case law).
+- **"Pozycja" omitted honestly (Jacek-confirmed):** the player model has NO position field → cards show real meta (age/bunker/PBLI), not a faked position. **Follow-up (LOW, non-blocking):** add `position` to the player model + PlayerEditModal/TeamFormModal → then position on cards. Revisit only if product needs it.
+- **Preserved:** add/edit/remove player, HERO toggle, the no-eternal-loading/Retry + `team-load-error` testid. Edge-case law (avatar→initials; missing number/role → element drops).
+- **PROOF:** build + precommit green; e2e `roster-division` + `team-detail-loader` 4/4.
+- **Smoke (Jacek, prod):** team with coach/staff members → 3 grouped sections + counts; coaches show role chip not HERO; avatar rings by role; ≥720 → card-grid.
+- **Tidy-later:** `★` HERO glyph → RdIcon star (same note as the forms).
+- **Next:** wizard (point-logging) closes Group B.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium new-team form + league-chip a11y — Group B forms #2 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-form-team`. Isolated to `TeamFormModal.jsx`. Reuses the field primitives from forms #1.
 - **Re-skin:** crest/logo preview header (`TeamBadge` from `{name,color,logoUrl}` → color crest → initials, never `#?`); every field on `<Field>`+`<Input>`/`<Select>`; league toggles → premium chips tinted by `LEAGUE_COLORS`; centered `<Modal maxWidth={680}>` on wide (`useDevice().width`), stacked on phone.
