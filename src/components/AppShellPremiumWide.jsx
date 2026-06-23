@@ -8,6 +8,7 @@ import { useMatches, useActiveTeams, useScoutedTeams, useLayouts } from '../hook
 import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
 import { useField } from '../hooks/useField';
 import { computeTeamRecords } from '../utils/teamStats';
+import { classifyMatch } from '../utils/matchClassify';
 import StandingsTable from './tabs/StandingsTable';
 import { winRateColor } from '../utils/colorScale';
 import { useViewAs } from '../hooks/useViewAs';
@@ -146,12 +147,7 @@ function ScoutWide({ tournamentId, tournament }) {
     return s ? teams.find(x => x.id === s.teamId) || null : null;
   };
   const getName = (scoutedId) => getTeam(scoutedId)?.name || '?';
-  const classify = (m) => {
-    if (m.status === 'closed') return 'completed';
-    const liveCount = liveScores[m.id]?.count ?? 0;
-    if (liveCount > 0 || (m.scoreA || 0) > 0 || (m.scoreB || 0) > 0) return 'live';
-    return 'scheduled';
-  };
+  const classify = (m) => classifyMatch(m, liveScores);
   const live = matches.filter(m => classify(m) === 'live');
   const scheduled = matches.filter(m => classify(m) === 'scheduled');
   const ordered = [...live, ...scheduled];

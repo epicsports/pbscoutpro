@@ -20,6 +20,7 @@ import DivisionTabs from './DivisionTabs';
 import { playerOnTeam } from '../../utils/playerTeams';
 import { STATIC_FLAGS } from '../../utils/featureFlags';
 import { groupMatchesByStage } from '../../utils/divisionAliases';
+import { classifyMatch } from '../../utils/matchClassify';
 import { useLanguage } from '../../hooks/useLanguage';
 
 /**
@@ -253,18 +254,7 @@ export default function ScoutTabContent({ tournamentId }) {
   // Match classification + render — `filtered` / `liveCandidateIds` /
   // `liveScores` were computed above the early return for hook-safety; here
   // we just use them. See the comment near line 141.
-  const classify = (m) => {
-    if (m.status === 'closed') return 'completed';
-    // Prefer live computed count (mirrors detail page); fall back to cached
-    // m.scoreA/B for matches whose listener hasn't fired yet (first paint
-    // before subscribePoints resolves).
-    const live = liveScores[m.id];
-    const liveCount = live?.count ?? 0;
-    const cachedA = m.scoreA || 0;
-    const cachedB = m.scoreB || 0;
-    if (liveCount > 0 || cachedA > 0 || cachedB > 0) return 'live';
-    return 'scheduled';
-  };
+  const classify = (m) => classifyMatch(m, liveScores);
   // § Stage D — search filters WITHIN the division view by either side's team
   // name; division pills + stage grouping below are preserved.
   const searched = matchSearch.trim()
