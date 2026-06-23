@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium Team profile v1 (phone + responsive widen) — redesign Group A #3 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-team-profile`. Isolated to `TeamDetailPage.jsx` (`+20/−12`).
+- **Re-skin (visual only):** hero card → brand-tint gradient over ELEV + shadow1; roster rows → ELEV cards (surface+hairline+shadow1). Wide (≥720) via `useDevice().width` (hook above the `if (!team)` early return): `<Screen archetype="list">` (desktop cap 640→960) + roster reflows to a width-filling grid (`auto-fill minmax(340px,1fr)`) — owns its width, no sheet. Phone <720 = stacked single column.
+- **Preserved verbatim:** branding config (ext-id, color, logo URL, leagues/divisions + optimistic drafts), add-new-player, add-existing (`EntityPickerModal`), edit (`PlayerEditModal`), remove-from-team, HERO toggle, retire-team, and the **no-eternal-loading error/Retry + `team-load-error` testid**.
+- **PROOF:** build + precommit green; loader e2e verified LOCALLY pre-merge — `team-detail-loader` + `h3-loader-rollout` 13/13.
+- **Follow-up (tracked, separate increment):** full `TeamProfileWide` 2-col (config-left-sticky / roster-right) — additive, isolated.
+- **Smoke (Jacek, prod):** `/team/:id` — branding/add/edit/delete still work; ≥720 → roster grid fills width; invalid id → error+Retry; phone unchanged.
+- **Next:** Group A #4 = Public player profile (`PlayerProfilePremium`/`PlayerProfileWide`).
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium My profile v1 (phone + centered wide) — redesign Group A #2 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-my-profile`. Isolated to `ProfilePage.jsx` (`+24/−17`).
 - **Re-skin (visual only, conservative — claim-critical page):** all section cards → ELEV (surface+hairline+shadow1); premium avatar tile (initials fallback); password row 🔒/› → `RdIcon` shield/chevron; emoji removed. Wide (≥720) = centered self-sizing column (`maxWidth: wide?760:640`, owns its width, no sheet) via `useDevice().width` (hook above the `if (!user)` early return).
