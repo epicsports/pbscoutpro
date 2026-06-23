@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium StandingsTable (Part B) — core-screens #3a (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-overview-standings`. New `StandingsTable.jsx` + `CoachTabContent.jsx` wiring (`+111`, additive).
+- **Net-new render on READY data:** premium league table on `computeTeamRecords` (`wins/losses/ptsFor/ptsAgainst/played/winRate/diff` — `diff`/`winRate` were computed but never rendered). Columns: rank (TNUM) · TeamBadge+name · P · W–L · ± diff · Win%. ELEV surface + eyebrow header + TNUM + hairline rows. **W=success/L=danger (never amber); Win% gauge ≥60 success / mid accent / <40 danger → 0% never green.** Crest/initials fallback. Responsive (phone compact / ≥720 table layout ready).
+- **Wired into the phone Coach tab** — respects the lenient `divisionScouted` filter, teams with `played>0`, row→ScoutedTeamPage. Nothing existing changed.
+- **PART A DEFERRED (scope call, Jacek-agreed):** the shared `ScheduleList` dedup (Live/Scheduled/Completed + stage grouping across ScoutTab/CoachTab/ScoutWide/CoachWide) + wiring StandingsTable into `CoachWide` — a 4-surface refactor of the most important screen — deferred to a dedicated **e2e-verified** pass. **Consequence:** standings shows on phone Coach tab only for now (wide rides with Part A). Unblocked by the e2e-port fix (next entry).
+- **PROOF:** build + precommit green. e2e skipped locally (port 5173 squatter) → CI verifies on push.
+- **Smoke (Jacek, prod):** Coach tab → Standings section (rank/W-L/diff/Win%); 0% not green; phone.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium ScoutTabContent + shared DivisionTabs — core-screens #2 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-scouttab`. `DivisionTabs.jsx` (NEW) + `ScoutTabContent.jsx` + `CoachTabContent.jsx` (`+88/−102` — net simpler).
 - **`DivisionTabs` extracted:** one premium ELEV/accent-tint pill row (Coach's look), used by BOTH Scout + Coach — replaces the two divergent inline rows. Presentation only; filter semantics stay in each tab's data layer.
