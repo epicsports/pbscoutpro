@@ -8,6 +8,7 @@ import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Input, Icons, Confi
 import PlayerEditModal from '../components/PlayerEditModal';
 import EntityPickerModal from '../components/EntityPickerModal';
 import PlayerAvatar from '../components/PlayerAvatar';
+import RdIcon from '../components/RdIcon';
 import TeamBadge, { isHex } from '../components/TeamBadge';
 import ColorPicker from '../components/ColorPicker';
 import { useActiveTeams, usePlayers } from '../hooks/useFirestore';
@@ -345,48 +346,93 @@ export default function TeamDetailPage() {
 
           {!teamPlayers.length && <EmptyState icon="?" text={t('team_detail_empty_roster')} />}
 
-          {/* Roster — premium ELEV cards; ≥720 reflows to a width-filling grid. */}
-          <div style={{ display: 'grid', gridTemplateColumns: wide ? 'repeat(auto-fill, minmax(340px, 1fr))' : '1fr', gap: 8 }}>
-          {teamPlayers.map(p => (
-            <div key={p.id} style={{
-              display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
-              borderRadius: 12, background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
-              minHeight: TOUCH.minTarget,
-            }}>
-              <PlayerAvatar player={p} size={40} />
-              {p.number != null && p.number !== '' && (
-                <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 30, ...TNUM }}>
-                  #{p.number}
+          {/* Roster — grouped by role (coaching / players / staff). Premium ELEV
+              cards; ≥720 reflows each group to a width-filling grid. HERO is a
+              players-only concept; coaches/staff show their role in its place. */}
+          {(() => {
+            const isCoach = p => p.role === 'coach';
+            const isStaff = p => p.role === 'staff';
+            const isPlayer = p => !p.role || p.role === 'player';
+            const groups = [
+              { key: 'coach',  icon: 'book',     title: t('roster_group_coaching'), accent: COLORS.info,    label: t('role_coach'),             list: teamPlayers.filter(isCoach) },
+              { key: 'player', icon: 'jersey',   title: t('roster_group_players'),  accent: COLORS.accent,  label: null,                        list: teamPlayers.filter(isPlayer) },
+              { key: 'staff',  icon: 'building', title: t('roster_group_staff'),    accent: COLORS.textDim, label: t('player_form_staff_role'), list: teamPlayers.filter(isStaff) },
+            ];
+            const rosterCard = (p, g) => {
+              // Avatar ring — semantic, keeps amber = HERO only (edge-case law):
+              // HERO player → amber, coach → info, staff → neutral, plain player → hairline.
+              const ringColor = g.key === 'player'
+                ? (p.hero ? COLORS.accent : ELEV.hairlineStrong)
+                : g.accent;
+              return (
+              <div key={p.id} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
+                borderRadius: 12, background: ELEV.surface, border: `1px solid ${p.hero && g.key === 'player' ? COLORS.accentA25 : ELEV.hairline}`, boxShadow: ELEV.shadow1,
+                minHeight: TOUCH.minTarget,
+              }}>
+                <span style={{ display: 'inline-flex', borderRadius: '50%', padding: 2, border: `2px solid ${ringColor}`, flexShrink: 0 }}>
+                  <PlayerAvatar player={p} size={40} />
                 </span>
-              )}
-              <div
-                onClick={() => navigate(`/player/${p.id}/stats?scope=global`)}
-                style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{p.name}</div>
-                {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>{p.nickname}</div>}
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>
-                  {[p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' - ') || ''}
+                {g.key === 'player' && p.number != null && p.number !== '' && (
+                  <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 30, ...TNUM }}>
+                    #{p.number}
+                  </span>
+                )}
+                <div
+                  onClick={g.key === 'player' ? () => navigate(`/player/${p.id}/stats?scope=global`) : undefined}
+                  style={{ flex: 1, cursor: g.key === 'player' ? 'pointer' : 'default', minWidth: 0 }}>
+                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{p.name}</div>
+                  {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>{p.nickname}</div>}
+                  {g.key === 'player' && (() => {
+                    const meta = [p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' - ');
+                    return meta ? <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{meta}</div> : null;
+                  })()}
+                </div>
+                {g.key === 'player' ? (
+                  /* HERO toggle — global (§ 25), players only */
+                  <div
+                    onClick={() => ds.setPlayerHero(p.id, !p.hero)}
+                    title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer',
+                      background: p.hero ? COLORS.accentA12 : 'transparent',
+                      border: `1px solid ${p.hero ? COLORS.accentA25 : COLORS.surfaceLight}`,
+                      minHeight: 44,
+                    }}>
+                    <span style={{ fontSize: 12, color: p.hero ? COLORS.accent : COLORS.textMuted }}>★</span>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
+                  </div>
+                ) : (
+                  /* Role chip — coaches/staff in place of HERO */
+                  <span style={{
+                    fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: '.4px', textTransform: 'uppercase',
+                    color: g.accent, background: `${g.accent}14`, border: `1px solid ${g.accent}40`,
+                    borderRadius: RADIUS.sm, padding: '5px 9px',
+                  }}>{g.label}</span>
+                )}
+                <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
+                <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
+              </div>
+              );
+            };
+            return groups.filter(g => g.list.length > 0).map(g => (
+              <div key={g.key} style={{ marginBottom: 18 }}>
+                {/* section header — icon + title + count badge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '14px 2px 10px' }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: g.accent, flexShrink: 0 }}>
+                    <RdIcon name={g.icon} size={15} />
+                  </span>
+                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, letterSpacing: '.6px', color: COLORS.textDim, textTransform: 'uppercase' }}>{g.title}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 999, padding: '2px 9px', ...TNUM }}>{g.list.length}</span>
+                  <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: wide ? 'repeat(auto-fill, minmax(340px, 1fr))' : '1fr', gap: 8 }}>
+                  {g.list.map(p => rosterCard(p, g))}
                 </div>
               </div>
-              {/* HERO toggle — global (§ 25) */}
-              <div
-                onClick={() => ds.setPlayerHero(p.id, !p.hero)}
-                title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer',
-                  background: p.hero ? COLORS.accentA12 : 'transparent',
-                  border: `1px solid ${p.hero ? COLORS.accentA25 : COLORS.surfaceLight}`,
-                  minHeight: 44,
-                }}>
-                <span style={{ fontSize: 12, color: p.hero ? COLORS.accent : COLORS.textMuted }}>★</span>
-                <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
-              </div>
-              <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
-              <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
-            </div>
-          ))}
-          </div>
+            ));
+          })()}
         </div>
 
         {/* Delete team */}
