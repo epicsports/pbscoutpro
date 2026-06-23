@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium My profile v1 (phone + centered wide) — redesign Group A #2 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-my-profile`. Isolated to `ProfilePage.jsx` (`+24/−17`).
+- **Re-skin (visual only, conservative — claim-critical page):** all section cards → ELEV (surface+hairline+shadow1); premium avatar tile (initials fallback); password row 🔒/› → `RdIcon` shield/chevron; emoji removed. Wide (≥720) = centered self-sizing column (`maxWidth: wide?760:640`, owns its width, no sheet) via `useDevice().width` (hook above the `if (!user)` early return).
+- **Preserved verbatim (0 handler/CTA/testid deletions):** display-name save, password modal, full player-data editor, **claim CTA + `LinkProfileModal`**, unlink, role chips, "Moje statystyki" deep-link.
+- **PROOF:** build + precommit green; claim/invite e2e verified LOCALLY pre-merge — `already-member-claim` + `email-invite-claim` + `b4-home` (claim-card deep-link) 5/5.
+- **Follow-up (Jacek, separate increment — do NOT block Group A):** full `MyProfileWide` 2-col (identity-left-sticky / settings-right) + richer identity card — additive, isolated from the claim path, with its own hard claim e2e before the diff.
+- **Smoke (Jacek, prod):** `/profile` — name/password/player edit + claim still work; ≥720 → centered premium column; phone unchanged.
+- **Next:** Group A #3 = Team profile (`TeamProfilePremium`/`TeamProfileWide`).
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium Today's points (phone + wide) — redesign Group A #1 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-today-points`. Isolated to `TodaysLogsList.jsx` (`+68/−3`).
 - **Re-skin:** the `/player/log` today's-logs view → premium `TodayPoints` — `PremiumLogCard` per point (#n + ROZBIEG/PosBadge + run/how + STRZAŁY + outcome chip) on ELEV cards. **Wide (≥720)** via `useDevice().width` (hook at top, no early-return): centered 760px column + a **derived** day-summary bar (PUNKTY / alive / lost from `combined` — not invented). Phone <720 = stacked cards.
