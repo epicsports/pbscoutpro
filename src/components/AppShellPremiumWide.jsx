@@ -7,6 +7,7 @@ import { leagueDisplayName } from '../hooks/useLeagues';
 import { useMatches, useActiveTeams, useScoutedTeams } from '../hooks/useFirestore';
 import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../utils/teamStats';
+import StandingsTable from './tabs/StandingsTable';
 import { winRateColor } from '../utils/colorScale';
 import { useViewAs } from '../hooks/useViewAs';
 import RdIcon from './RdIcon';
@@ -101,14 +102,11 @@ function RdSideNav({ visibleTabs, activeKey, onSelectTab, tournament, tournament
           <span style={{ color: COLORS.textMuted, display: 'flex', flexShrink: 0 }}><RdIcon name="chevron" size={14} /></span>
         </div>
       )}
-      {/* settings / profile chip → drawer (settings surface, same as mobile) */}
-      <div className="rd-zone" onClick={onOpenDrawer} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 12px', margin: '0 8px 10px', borderTop: `1px solid ${ELEV.hairline}`, cursor: 'pointer' }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.surface, border: `1px solid ${ELEV.hairlineStrong}`, color: COLORS.textDim }}><RdIcon name="dots" size={16} /></div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{t('tab_more') || 'Menu'}</div>
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>{t('settings_title') || 'Ustawienia'}</div>
-        </div>
-      </div>
+      {/* De-duped (was a 2nd drawer-opener under the event → looked like a
+          duplicate menu/settings). The brand chip at top is the single menu entry
+          (→ drawer, which holds workspace-switch + settings), matching the phone
+          reads-ball pattern. A bottom margin keeps the event chip off the edge. */}
+      <div style={{ height: 4 }} />
     </div>
   );
 }
@@ -265,6 +263,17 @@ function CoachWide({ tournamentId }) {
   const unhide = (id) => persist(hidden.filter(x => x !== id));
 
   const records = computeTeamRecords(matches, scouted);
+  // Standings (played>0), pre-sorted (played desc, wins desc, losses asc) — same
+  // order StandingsTable + CoachTabContent use. Tournament-level, not per-selection.
+  const standingsRanked = scouted
+    .filter(st => (records[st.id]?.played || 0) > 0)
+    .sort((a, b) => {
+      const rA = records[a.id] || { wins: 0, losses: 0, played: 0 };
+      const rB = records[b.id] || { wins: 0, losses: 0, played: 0 };
+      if (rA.played !== rB.played) return rB.played - rA.played;
+      if (rA.wins !== rB.wins) return rB.wins - rA.wins;
+      return rA.losses - rB.losses;
+    });
   const teamOf = (st) => teams.find(x => x.id === st.teamId) || null;
   const nameOf = (st) => teamOf(st)?.name || '?';
   const colorOf = (st) => teamOf(st)?.color || COLORS.borderLight;
@@ -372,6 +381,17 @@ function CoachWide({ tournamentId }) {
                   <Tile label={t('coach_last_match') || 'Ostatni mecz'} value={last ? `${last.my}:${last.opp}` : '—'} color={last ? (last.win ? COLORS.success : COLORS.danger) : COLORS.textMuted} />
                 </div>
                 <div className="rd-press" onClick={() => navigate(`/tournament/${tournamentId}/team/${selSt.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px', borderRadius: 13, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40` }}>{t('full_analysis') || 'Pełna analiza'} →</div>
+                {standingsRanked.length > 0 && (
+                  <div style={{ marginTop: 24 }}>
+                    <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', marginBottom: 12 }}>Standings · {standingsRanked.length}</div>
+                    <StandingsTable
+                      entries={standingsRanked}
+                      records={records}
+                      resolveTeam={teamOf}
+                      onRow={(st) => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
+                    />
+                  </div>
+                )}
               </>);
             })()}
           </div>
