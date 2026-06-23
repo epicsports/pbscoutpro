@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium training Squads (SquadEditor) — Group C #2 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-training-squads`. `SquadEditor.jsx` + `TrainingSquadsPage.jsx` + `i18n.js` (1 key, `squads_drop_hint`).
+- **Re-skin (premium language, NO IA change):** ELEV squad cards/count stepper/drag-ghost (uses `ELEV.shadow2`); squad headers → eyebrow (TRACKING.label) + color dot + RdIcon `pencil` (dropped lucide) + tinted count badge; headers + `CountBtn` keyboard-accessible (`role=button` + `tabIndex` + global `:focus-visible` ring). Wide (≥720) = `auto-fit minmax(240px,1fr)` squad-column grid (centered 1040); phone = stacked column (640).
+- **Behaviour byte-identical (restyle only — 0 deletions):** `handleDragStart/Move/End`, `findSquadAt`, `zoneRefs`, window mouse/touch listeners, `touchAction:'none'` chips, `changeSquadCount` (MIN 2/MAX 5), `scheduleSave`/`updateTraining` debounced save, `squadsDiffer` gate, attendee-filter mount effect, rename modal — all preserved (DnD is fragile; restyled elements only).
+- **PROOF:** build + precommit green; `ELEV.shadow2` confirmed defined; clean diff (no stray files — `.gitignore` preventive held). **e2e:** skipped locally (port 5173 held by another project's dev server → loads wrong app); **CI gate verifies clean on push.**
+- **Edge-case law:** avatar→initials; `#num` only when present; squad colors per-meta (not amber); amber only focus/accent. `EmptyState ⚠️` pre-existing shared emoji untouched (tidy-later).
+- **Smoke (Jacek, prod):** training → Squads — drag a player between squads, change squad count, rename; ≥720 column grid; phone stacked.
+- **Next:** Group C #3 = Results (`TrainingResultsPage`) → closes Group C.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium training Setup (AttendeesEditor) — Group C #1 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-training-setup`. `TrainingSetupPage.jsx` + `AttendeesEditor.jsx` (`+60/−40`) + `.gitignore` (ignore local export/diag artifacts) + `NEXT_TASKS.md` (board sync).
 - **Re-skin (premium language, Jacek opt-1 — NO IA change):** search on premium `<Input>` (amber focus-ring); ELEV tokens on preset pills/chips/invite; RdIcon for chip-remove ×/invite +; SubHeaders → eyebrow (TRACKING.label) + color dot + count badge; interactive chips/pills gained `rd-press` + `tabIndex` + Enter/Space → global `:focus-visible` ring. Centered `maxWidth 760` on ≥720; phone unchanged. Kept the chip-grid IA (no conversion to the prototype's card list).
