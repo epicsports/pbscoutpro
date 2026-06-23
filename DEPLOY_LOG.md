@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [BUGFIX/Tier-1] Tablet wide-shell — overlays didn't render + sidebar de-dupe + CoachWide standings (chat GO, bug-mode)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-schedule-dedup`. `MainPage.jsx` + `AppShellPremiumWide.jsx`. User-reported (tablet): no menu, can't switch event, duplicate menu/settings, no layout.
+- **ROOT-CAUSE FIX (critical):** `AppShellPremiumWide` renders its OWN bodies (ScoutWide/CoachWide/PlayerWide) **INSTEAD of `{children}`** (`:498-502`). The `NavDrawer` + `TournamentPicker` + all modals were nested as `<AppShell>` children → on tablet/desktop they **never mounted** (sidebar menu opened nothing, event un-switchable). **Moved the overlays to top-level in MainPage** (siblings of AppShell, wrapped in a fragment); `renderContent()` stays AppShell's child (wide swaps it). Now overlays render under both shells.
+- **Sidebar de-dupe:** `RdSideNav` had TWO `onOpenDrawer` chips (brand top + a 'Menu/Settings' chip bottom) → looked like a duplicate menu/settings (worsened by the raw i18n keys, fixed in `e60216f9`). Removed the bottom chip; the brand chip is the single menu entry (→ drawer w/ workspace-switch + settings), matching the phone reads-ball.
+- **+ CoachWide standings (Part A2):** `StandingsTable` now in the wide Coach detail pane (the stalled-fork's clean partial).
+- **PROOF:** build + precommit green; **phone regression `nav-drawer` + `b4-home` 9/9** (overlay move didn't break phone). Wide shell is e2e-gated-off → tablet behavior rests on the structural correctness + Jacek smoke.
+- **Smoke (Jacek, prod, tablet ≥720):** sidebar menu opens the drawer; DPL event chip → tournament picker switches event; single menu entry (no duplicate); hard-refresh to clear the i18n-key cache.
+- **Follow-ups (tracked):** #4 real field/heatmap in the ScoutWide detail pane (today a placeholder); ScheduleList dedup (Part A1) still pending; optional brand→dedicated-workspace-switcher.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium StandingsTable (Part B) — core-screens #3a (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-overview-standings`. New `StandingsTable.jsx` + `CoachTabContent.jsx` wiring (`+111`, additive).
 - **Net-new render on READY data:** premium league table on `computeTeamRecords` (`wins/losses/ptsFor/ptsAgainst/played/winRate/diff` — `diff`/`winRate` were computed but never rendered). Columns: rank (TNUM) · TeamBadge+name · P · W–L · ± diff · Win%. ELEV surface + eyebrow header + TNUM + hairline rows. **W=success/L=danger (never amber); Win% gauge ≥60 success / mid accent / <40 danger → 0% never green.** Crest/initials fallback. Responsive (phone compact / ≥720 table layout ready).
