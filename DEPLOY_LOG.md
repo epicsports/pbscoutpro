@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [BUGFIX/Tier-1] 38 missing i18n keys → raw key-names in UI (chat GO, bug-mode)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/i18n-missing-keys`. `i18n.js` only (+80). User-reported: "CTA labels showing label names on many screens" — worst on tablet/desktop.
+- **Root cause:** 38 keys referenced via `t('key')` but never registered → `t()` returns the key string. The call sites were `t('key') || 'PL fallback'`, but `t()` returns a truthy key so the fallback never fired → raw key shown. **~22 of the 38 were in `AppShellPremiumWide.jsx`** (the wide shell — `log_points`/`scout`/`match_details`/`settings_title`/`full_analysis`/`today_points_title`…), the rest scattered (handedness/on-off, hide-team/restore, training labels, members_linked, point, tab_training, onboarding_link_watchdog).
+- **Fix:** registered all 38 in BOTH pl + en. PL values = the intended inline fallbacks; EN translated. **Verified `node scripts/diag/find-missing-i18n.cjs` → MISSING: 0** (referenced 1412 / defined 1740). No function-valued keys.
+- **Jacek sanity-check (one-line reverts if wanted):** `handedness_left/right` localized to PL `LEWA/PRAWA` (was `LEFT/RIGHT`); `on/off` → PL `WŁ./WYŁ.` (was `ON/OFF`).
+- **Why precommit missed it:** no i18n-completeness check. **Follow-up candidate:** wire `find-missing-i18n.cjs` into precommit so this can't recur.
+- **PROOF:** build + precommit green; missing-key scan 0. e2e skipped locally (port 5173 squatter) → CI verifies on push.
+- **Smoke (Jacek, prod):** wide shell (≥720) nav/CTAs show real labels (not `log_points` etc.); hide-team/restore; handedness toggle.
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium MatchCard re-skin — core-screens #1 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-matchcard`. `MatchCard.jsx` only (`+11/−10`, token/visual). First of the core-screens workstream (audit-scoped: MatchCard → ScoutTabContent → overview+standings → MatchPage GATED).
 - **Re-skin:** card → `ELEV.surface` + `shadow1` + radius 14 (live = `accent40` border); dividers → `ELEV.hairline`; score zone → `ELEV.sunken` (recessed); scores → `TNUM`. Matches the Coach-tab `TeamRow` premium pattern.
