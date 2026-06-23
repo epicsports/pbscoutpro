@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-23 — [FEATURE/Tier-2] Premium training Setup (AttendeesEditor) — Group C #1 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-training-setup`. `TrainingSetupPage.jsx` + `AttendeesEditor.jsx` (`+60/−40`) + `.gitignore` (ignore local export/diag artifacts) + `NEXT_TASKS.md` (board sync).
+- **Re-skin (premium language, Jacek opt-1 — NO IA change):** search on premium `<Input>` (amber focus-ring); ELEV tokens on preset pills/chips/invite; RdIcon for chip-remove ×/invite +; SubHeaders → eyebrow (TRACKING.label) + color dot + count badge; interactive chips/pills gained `rd-press` + `tabIndex` + Enter/Space → global `:focus-visible` ring. Centered `maxWidth 760` on ≥720; phone unchanged. Kept the chip-grid IA (no conversion to the prototype's card list).
+- **Behaviour byte-identical:** attendees toggle, search filter, preset pills (`applyPreset`), invite-guest modal, the squad-cleanup side-effect (`syncSquads`/`placeIntoExistingSquads`); `AttendeesEditor` props/API unchanged → **Scout-tab reuse unaffected**.
+- **PROOF:** build + precommit green; clean diff (0 handler deletions). **Local e2e note:** `b4-home` failed LOCALLY only because port 5173 was hijacked by another project's dev server ("Parczewscy HQ") via Playwright `reuseExistingServer` — a spurious wrong-app load, NOT our code (Jacek confirmed; merge on build/precommit+diff). The **CI gate runs clean** (isolated env) on push.
+- **Edge-case law:** avatar→initials; no number→no badge; missing guest-meta drops; amber only focus/accent. Fidelity gap: `EmptyState` `⚠️` is a pre-existing shared-component emoji (out of scope).
+- **Smoke (Jacek, prod):** training → Setup (attendance) — toggle/search/presets/invite work; ≥720 centered; phone unchanged.
+- **Next:** Group C #2 = Squads (`SquadEditor`) → #3 Results (`TrainingResultsPage`).
+
 ## 2026-06-23 — [FEATURE/Tier-2] Premium point-logging wizard + self-log smoke net — Group B wizard → GROUP B COMPLETE (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/premium-wizard`. 11 files (`WizardShell` + `BunkerPickerGrid` + Step2/3/4/4b/5 + net: `self-log-wizard.spec.js`, `testBridge`, `fixtures`, `seed-emulator`).
 - **SAFETY-FIRST (Jacek opt-1):** the wizard had ZERO e2e coverage + writes real point data. Built `tests/e2e/self-log-wizard.spec.js` FIRST (drives Step1→Summary→save, asserts the selfReport persists via a real `getTodaysSelfReports` read-back, baseline `before===0`) and got it GREEN on the unmodified UI BEFORE any re-skin. Step test-ids (`ppt-breakout/variant/shots-skip/shots-next/outcome/save`) = the re-skin contract.
