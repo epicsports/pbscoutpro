@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-23 — [REFACTOR/Tier-1] Extract shared matchClassify util (3 copies → 1) (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/schedule-list-dedup`. New `utils/matchClassify.js` + ScoutTab/CoachTab/AppShellPremiumWide (`+20/−25`).
+- **Dedup:** the live/scheduled/completed classify (closed→completed; `liveCount>0 || m.scoreA>0 || m.scoreB>0`→live; else scheduled) was hand-rolled byte-identical in 3 surfaces (ScoutTab `cachedA/cachedB` = `m.scoreA/B`). Extracted to `classifyMatch(m, liveScores)`; all 3 call it → stay in lockstep.
+- **Behavior-preserving (verified):** all 3 copies identical; pure extraction, zero logic change.
+- **Scope note:** the larger `ScheduleList` grouping component (+ premium MatchCard into ScoutWide's master-detail rows) deferred to a separate pass — not bundled with the clean util extraction.
+- **PROOF:** build + precommit green; e2e `b4-home`/`scoutedteam-rail`/`nav-drawer` 13/13.
+- **Next (non-gated):** i18n-precommit guard (wire `find-missing-i18n.cjs` → precommit, prevents the raw-key bug recurring). MatchPage #4 stays CD-gated (net banked green).
+
 ## 2026-06-23 — [FEATURE/Tier-2] ScoutWide detail pane → real layout/field image (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/scoutwide-field-preview`. `AppShellPremiumWide.jsx` (`+18/−6`). Closes the tablet "no layout" gap.
 - **Placeholder → field:** the ScoutWide detail-pane placeholder box (was just "{teamA} vs {teamB}" on a gradient) now renders the match's **layout field image** — threaded the `tournament` object into `ScoutWide`, added `useLayouts()` + `useField(tournament, layouts)` → `field.fieldImage` in an ELEV-framed box. Detail-pane team header / score / `scout→` / `match_details` CTAs + nav byte-identical.
