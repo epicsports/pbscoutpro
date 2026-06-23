@@ -13,7 +13,7 @@ import ColorPicker from '../components/ColorPicker';
 import { useActiveTeams, usePlayers } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUE_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH, LEAGUE_COLORS, ELEV, TNUM, responsive } from '../utils/theme';
 import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 import { playerOnTeam, withTeamAdded, withTeamRemoved } from '../utils/playerTeams';
@@ -23,6 +23,7 @@ export default function TeamDetailPage() {
   const { t } = useLanguage();
   const device = useDevice();
   const R = responsive(device.type);
+  const wide = device.width >= 720;
   const { teamId } = useParams();
   const navigate = useNavigate();
   const [sp] = useSearchParams();
@@ -233,18 +234,20 @@ export default function TeamDetailPage() {
   };
 
   return (
-    <Screen archetype="detail" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
+    <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
       header={<PageHeader back={{ to: backTo }} title={team.name} subtitle={t('team_detail_subtitle')} />}>
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* § Team branding — hero mark + subtle brand tint */}
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 12,
-          padding: '12px 14px', borderRadius: RADIUS.lg,
-          background: isHex(effColor) ? `${effColor}1a` : COLORS.surfaceDark,
-          border: `1px solid ${isHex(effColor) ? `${effColor}40` : COLORS.border}`,
+          display: 'flex', alignItems: 'center', gap: 14,
+          padding: '16px 16px', borderRadius: 16, boxShadow: ELEV.shadow1,
+          background: isHex(effColor)
+            ? `linear-gradient(120deg, ${effColor}26, ${effColor}08 46%, transparent 72%), ${ELEV.surface}`
+            : ELEV.surface,
+          border: `1px solid ${isHex(effColor) ? `${effColor}40` : ELEV.hairline}`,
         }}>
-          <TeamBadge team={{ ...team, color: effColor }} size={52} />
+          <TeamBadge team={{ ...team, color: effColor }} size={56} />
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontLg, fontWeight: 800, color: COLORS.text, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{team.name}</div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{(team.leagues || []).join(' · ') || t('team_detail_no_league')}</div>
@@ -342,16 +345,20 @@ export default function TeamDetailPage() {
 
           {!teamPlayers.length && <EmptyState icon="?" text={t('team_detail_empty_roster')} />}
 
+          {/* Roster — premium ELEV cards; ≥720 reflows to a width-filling grid. */}
+          <div style={{ display: 'grid', gridTemplateColumns: wide ? 'repeat(auto-fill, minmax(340px, 1fr))' : '1fr', gap: 8 }}>
           {teamPlayers.map(p => (
             <div key={p.id} style={{
               display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px',
-              borderRadius: RADIUS.lg, background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-              marginBottom: 6, minHeight: TOUCH.minTarget,
+              borderRadius: 12, background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
+              minHeight: TOUCH.minTarget,
             }}>
               <PlayerAvatar player={p} size={40} />
-              <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 36 }}>
-                #{p.number}
-              </span>
+              {p.number != null && p.number !== '' && (
+                <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 30, ...TNUM }}>
+                  #{p.number}
+                </span>
+              )}
               <div
                 onClick={() => navigate(`/player/${p.id}/stats?scope=global`)}
                 style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}>
@@ -379,6 +386,7 @@ export default function TeamDetailPage() {
               <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
             </div>
           ))}
+          </div>
         </div>
 
         {/* Delete team */}
