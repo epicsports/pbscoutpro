@@ -18,7 +18,9 @@ import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
+import RdIcon from '../components/RdIcon';
 
 /**
  * ProfilePage — account settings for the logged-in Firebase user.
@@ -103,6 +105,11 @@ export default function ProfilePage() {
       nationality: linkedPlayer.nationality || '',
     });
   }, [linkedPlayer]);
+
+  // Premium redesign — responsive: wide (≥720) centers the column (owns its width,
+  // not a 460 sheet). Hook above the early return so it runs unconditionally.
+  const device = useDevice();
+  const wide = device.width >= 720;
 
   if (!user) {
     return (
@@ -257,7 +264,7 @@ export default function ProfilePage() {
   return (
     <Screen archetype="detail" padBottom={false} style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}
       header={<PageHeader back={{ to: '/' }} title={t('my_profile') || 'Mój profil'} />}>
-      <div style={{ flex: 1, padding: SPACE.lg, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: SPACE.lg }}>
+      <div style={{ flex: 1, padding: wide ? '26px 24px 80px' : SPACE.lg, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: SPACE.lg, width: '100%', maxWidth: wide ? 760 : 640, margin: '0 auto', boxSizing: 'border-box' }}>
 
         {/* Identity block — avatar + email. Avatar URL editor removed per
             2026-04-23 decision (users have multiple player profiles with
@@ -265,15 +272,15 @@ export default function ProfilePage() {
         <div style={{
           display: 'flex', alignItems: 'center', gap: SPACE.md,
           padding: SPACE.md, borderRadius: RADIUS.lg,
-          background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+          background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
         }}>
           <div style={{
-            width: 72, height: 72, borderRadius: '50%',
-            background: COLORS.surfaceLight,
+            width: 72, height: 72, borderRadius: 20,
+            background: ELEV.sunken, boxShadow: ELEV.innerTop,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28, fontFamily: FONT, fontWeight: 800, color: COLORS.textMuted,
+            fontSize: 28, fontFamily: FONT, fontWeight: 800, color: COLORS.textDim,
             overflow: 'hidden', flexShrink: 0,
-            border: `2px solid ${COLORS.border}`,
+            border: `1px solid ${ELEV.hairlineStrong}`,
           }}>
             {user.photoURL ? (
               <img src={user.photoURL} alt="avatar"
@@ -303,7 +310,7 @@ export default function ProfilePage() {
             letterSpacing: '.5px', padding: '0 4px 8px',
           }}>{t('display_name') || 'Nazwa użytkownika'}</div>
           <div style={{
-            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
             borderRadius: RADIUS.lg, padding: SPACE.md,
             display: 'flex', flexDirection: 'column', gap: SPACE.sm,
           }}>
@@ -337,19 +344,19 @@ export default function ProfilePage() {
             letterSpacing: '.5px', padding: '0 4px 8px',
           }}>{t('security') || 'Bezpieczeństwo'}</div>
           <div onClick={openPwModal} style={{
-            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
             borderRadius: RADIUS.lg, padding: '14px 16px',
             display: 'flex', alignItems: 'center', gap: 12,
             cursor: 'pointer', minHeight: 52,
             WebkitTapHighlightColor: 'transparent',
           }}>
-            <span style={{ fontSize: 18, width: 22, textAlign: 'center', opacity: 0.8 }}>🔒</span>
+            <span style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textDim }}><RdIcon name="shield" size={17} /></span>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 500, color: COLORS.text }}>
                 {t('change_password') || 'Zmień hasło'}
               </div>
             </div>
-            <span style={{ fontFamily: FONT, fontSize: 14, color: COLORS.borderLight }}>›</span>
+            <span style={{ color: COLORS.textMuted, display: 'flex' }}><RdIcon name="chevron" size={16} /></span>
           </div>
         </div>
 
@@ -363,7 +370,7 @@ export default function ProfilePage() {
             letterSpacing: '.5px', padding: '0 4px 8px',
           }}>{t('profile_roles_label') || 'Twoje role'}</div>
           <div style={{
-            background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+            background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
             borderRadius: RADIUS.lg, padding: SPACE.md,
           }}>
             {!workspace ? (
@@ -401,7 +408,7 @@ export default function ProfilePage() {
               letterSpacing: '.5px', padding: '0 4px 8px',
             }}>{t('profile_claim_section') || 'Profil gracza'}</div>
             <div style={{
-              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
               borderRadius: RADIUS.lg, padding: SPACE.md,
               display: 'flex', flexDirection: 'column', gap: SPACE.md,
             }}>
@@ -437,7 +444,7 @@ export default function ProfilePage() {
               {t('profile_player_sub') || 'Zmiany widoczne w profilu gracza dla wszystkich członków workspace.'}
             </div>
             <div style={{
-              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
               borderRadius: RADIUS.lg, padding: SPACE.md,
               display: 'flex', flexDirection: 'column', gap: SPACE.md,
             }}>
@@ -572,13 +579,13 @@ export default function ProfilePage() {
                 + latest tid kicks in there per Brief E Gap 5. */}
             <div style={{
               marginTop: SPACE.sm,
-              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
               borderRadius: RADIUS.lg, padding: SPACE.md,
             }}>
               <Btn variant="accent" size="lg"
                 onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)}
                 style={{ width: '100%', minHeight: 48 }}>
-                {t('profile_my_stats_btn') || '📊 Moje statystyki'}
+                {t('profile_my_stats_btn') || 'Moje statystyki'}
               </Btn>
             </div>
 
@@ -588,7 +595,7 @@ export default function ProfilePage() {
                 Wyjdź workspace pattern (label + danger button in rightSlot). */}
             <div style={{
               marginTop: SPACE.sm,
-              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
               borderRadius: RADIUS.lg, padding: '10px 14px',
               display: 'flex', alignItems: 'center', gap: SPACE.sm,
               minHeight: 52,
