@@ -2,11 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Screen from '../components/Screen';
-import { SectionTitle, SectionLabel, EmptyState, SkeletonList, SideTag, Btn } from '../components/ui';
+import PlayerAvatar from '../components/PlayerAvatar';
+import RdIcon from '../components/RdIcon';
+import { useDevice } from '../hooks/useDevice';
+import { EmptyState, SkeletonList, SideTag, Btn } from '../components/ui';
 import { useTrainings, useMatchups, usePlayers, useLayouts } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
 import { getEventShotFrequencies, getTrainingSelfReports } from '../services/playerPerformanceTrackerService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TRACKING } from '../utils/theme';
 import { SQUAD_MAP as SQUAD_META, getSquadName } from '../utils/squads';
 import { useField } from '../hooks/useField';
 import { mirrorPointToLeft } from '../utils/helpers';
@@ -16,8 +19,20 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { getRolesForUser, hasAnyRole } from '../utils/roleUtils';
 import { locatePlayerInPoint, alignSequence } from '../utils/selfReportMatcher';
 import { LogRow } from '../components/ppt/TodaysLogsList';
-import { Check, X } from 'lucide-react';
 import { useLanguage } from '../hooks/useLanguage';
+
+// Premium eyebrow section header (matches the Setup/Squads training re-skins).
+function SecHead({ children, count, color }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '0 2px 11px' }}>
+      {color && <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />}
+      <span style={{ fontFamily: FONT, fontSize: 11.5, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim }}>{children}</span>
+      {count != null && (
+        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 999, padding: '1px 8px' }}>{count}</span>
+      )}
+    </div>
+  );
+}
 
 /**
  * TrainingResultsPage — player leaderboard for a training session (§ 32 step 4).
@@ -73,6 +88,7 @@ export default function TrainingResultsPage() {
   const [reviewVersion, setReviewVersion] = useState(0);   // § 70.11 — bump to refetch after an override
   const { workspace, user, isAdmin } = useWorkspace();
   const canReview = isAdmin || hasAnyRole(getRolesForUser(workspace, user?.uid), 'coach');
+  const wide = useDevice().width >= 720; // ≥720: center the leaderboard column
 
   const training = trainings.find(t => t.id === trainingId);
   const field = useField(training, layouts, true);
@@ -323,7 +339,7 @@ export default function TrainingResultsPage() {
         subtitle={training.date || t('training_practice_fallback')}
       />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 80 }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: SPACE.lg, paddingBottom: 80, width: '100%', maxWidth: wide ? 860 : '100%', margin: '0 auto', boxSizing: 'border-box' }}>
         {/* Info line */}
         <div style={{
           fontFamily: FONT,
@@ -331,8 +347,8 @@ export default function TrainingResultsPage() {
           color: COLORS.textMuted,
           padding: `${SPACE.xs}px ${SPACE.sm}px`,
           marginBottom: SPACE.md,
-          background: COLORS.surfaceDark,
-          border: `1px solid ${COLORS.border}`,
+          background: ELEV.sunken,
+          border: `1px solid ${ELEV.hairline}`,
           borderRadius: RADIUS.md,
           display: 'inline-block',
         }}>
@@ -340,12 +356,12 @@ export default function TrainingResultsPage() {
         </div>
 
         {/* Player leaderboard */}
-        <SectionTitle>{t('players_title')}</SectionTitle>
+        <SecHead count={leaderboard.length}>{t('players_title')}</SecHead>
         {leaderboard.length === 0 ? (
           <EmptyState icon="🏴" text={t('results_no_scouted_data')} />
         ) : (
           leaderboard.map((row, i) => (
-            <PlayerRow key={row.playerId} row={row} rank={i + 1}
+            <PlayerRow key={row.playerId} row={row} rank={i + 1} player={playersById[row.playerId]}
               onClick={() => navigate(`/player/${row.playerId}/stats?scope=training&tid=${trainingId}`)}
             />
           ))
@@ -354,7 +370,7 @@ export default function TrainingResultsPage() {
         {/* § 70.11 Stage 4 — manual-override review queue (coach / admin only) */}
         {canReview && reviewQueue.length > 0 && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>{t('results_needs_review', reviewQueue.length)}</SectionLabel>
+            <SecHead>{t('results_needs_review', reviewQueue.length)}</SecHead>
             {reviewQueue.map((item, i) => (
               <ReviewItem key={item.selfReport.id} item={item} ordinal={i + 1}
                 playersById={playersById}
@@ -369,7 +385,7 @@ export default function TrainingResultsPage() {
         {/* Break-bunker breakdown — § 70.8 D2 (event-scoped self-log aggregation) */}
         {bunkerStats && bunkerStats.length > 0 && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>{t('results_break_bunkers')}</SectionLabel>
+            <SecHead>{t('results_break_bunkers')}</SecHead>
             {bunkerStats.map(b => <BunkerRow key={b.bunker} b={b} />)}
           </div>
         )}
@@ -377,19 +393,21 @@ export default function TrainingResultsPage() {
         {/* Source-filtered training heatmap — § 70.8 D1 */}
         {heatmapPoints.length > 0 && field?.fieldImage && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>{t('section_heatmap')}</SectionLabel>
+            <SecHead>{t('section_heatmap')}</SecHead>
             <div style={{ display: 'flex', gap: SPACE.xs, marginBottom: SPACE.sm, flexWrap: 'wrap' }}>
               {SOURCE_PILL_KEYS.map(p => {
                 const active = sourceFilter === p.key;
                 return (
-                  <div key={p.key} role="button" onClick={() => setSourceFilter(p.key)}
+                  <div key={p.key} className="rd-press" role="button" tabIndex={0} aria-pressed={active}
+                    onClick={() => setSourceFilter(p.key)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSourceFilter(p.key); } }}
                     style={{
                       minHeight: 44, padding: '0 14px', borderRadius: 10,
                       display: 'flex', alignItems: 'center',
                       fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
                       cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-                      border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-                      background: active ? `${COLORS.accent}1f` : COLORS.surfaceDark,
+                      border: `1px solid ${active ? COLORS.accent : ELEV.hairline}`,
+                      background: active ? `${COLORS.accent}1f` : ELEV.sunken,
                       color: active ? COLORS.accent : COLORS.textDim,
                     }}>
                     {t(p.i18nKey)}
@@ -416,20 +434,22 @@ export default function TrainingResultsPage() {
         {/* Matchup history */}
         {matchups.length > 0 && (
           <div style={{ marginTop: SPACE.xl }}>
-            <SectionLabel>{t('matches_title')}</SectionLabel>
+            <SecHead count={matchups.length}>{t('matches_title')}</SecHead>
             {matchups.map(m => {
               // § 53: name via getSquadName (training-aware), color from SQUAD_META.
               const home = { name: getSquadName(training, m.homeSquad), color: SQUAD_META[m.homeSquad]?.color || COLORS.textMuted };
               const away = { name: getSquadName(training, m.awaySquad), color: SQUAD_META[m.awaySquad]?.color || COLORS.textMuted };
               const sA = m.scoreA || 0, sB = m.scoreB || 0;
               return (
-                <div key={m.id}
+                <div key={m.id} className="rd-press" role="button" tabIndex={0}
                   onClick={() => navigate(`/training/${trainingId}/matchup/${m.id}`)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/training/${trainingId}/matchup/${m.id}`); } }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: SPACE.md,
                     padding: '12px 14px', marginBottom: SPACE.xs,
-                    background: COLORS.surfaceDark,
-                    border: `1px solid ${COLORS.border}`,
+                    background: ELEV.surface,
+                    border: `1px solid ${ELEV.hairline}`,
+                    boxShadow: ELEV.shadow1,
                     borderRadius: RADIUS.lg,
                     cursor: 'pointer', minHeight: 52,
                   }}>
@@ -465,41 +485,46 @@ export default function TrainingResultsPage() {
   );
 }
 
-function PlayerRow({ row, rank, onClick }) {
+function PlayerRow({ row, rank, player, onClick }) {
+  // Pre-existing win-rate gradient (high=success / mid=accent / low=danger) — a
+  // performance metric, not a win/loss outcome; preserved as-is.
   const wrColor = row.winRate == null
     ? COLORS.textMuted
     : row.winRate >= 60 ? COLORS.success : row.winRate >= 40 ? COLORS.accent : COLORS.danger;
+  const go = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } };
   return (
-    <div onClick={onClick}
+    <div className="rd-press" role="button" tabIndex={0} onClick={onClick} onKeyDown={go}
       style={{
         display: 'flex', alignItems: 'center', gap: SPACE.md,
         padding: '12px 14px', marginBottom: SPACE.xs,
-        background: COLORS.surfaceDark,
-        border: `1px solid ${COLORS.border}`,
+        background: ELEV.surface,
+        border: `1px solid ${ELEV.hairline}`,
+        boxShadow: ELEV.shadow1,
         borderRadius: RADIUS.lg,
         cursor: 'pointer',
         minHeight: 52,
       }}>
       <span style={{
         fontFamily: FONT, fontSize: 13, fontWeight: 800,
-        color: COLORS.borderLight, width: 22, textAlign: 'right',
+        color: COLORS.textMuted, width: 20, textAlign: 'right', flexShrink: 0,
       }}>{rank}</span>
+      <PlayerAvatar player={player || { name: row.name, number: row.number }} size={36} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontFamily: FONT, fontSize: 14, fontWeight: 600, color: COLORS.text,
+          fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {row.number ? `#${row.number} ` : ''}{row.name}
+          {row.number ? <span style={{ color: COLORS.accent, fontWeight: 800 }}>#{row.number}</span> : null}{row.number ? ' ' : ''}{row.name}
         </div>
         <div style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
+          fontFamily: FONT, fontSize: 10.5, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
         }}>
-          {row.played} pts · {row.wins}W-{row.losses}L{row.diff !== 0 ? ` (${row.diff > 0 ? '+' : ''}${row.diff})` : ''}
+          {row.played} pts · <span style={{ color: COLORS.success, fontWeight: 700 }}>{row.wins}W</span>–<span style={{ color: COLORS.danger, fontWeight: 700 }}>{row.losses}L</span>{row.diff !== 0 ? ` (${row.diff > 0 ? '+' : ''}${row.diff})` : ''}
         </div>
       </div>
       <span style={{
         fontFamily: FONT, fontSize: 15, fontWeight: 800, color: wrColor,
-        minWidth: 44, textAlign: 'right',
+        minWidth: 44, textAlign: 'right', flexShrink: 0,
       }}>
         {row.winRate == null ? '—' : `${row.winRate}%`}
       </span>
@@ -522,8 +547,9 @@ function ReviewItem({ item, ordinal, playersById, onAccept, onReassign, onDismis
   return (
     <div style={{
       marginBottom: SPACE.sm, padding: SPACE.sm,
-      background: COLORS.surfaceDark,
-      border: `1px solid ${COLORS.border}`,
+      background: ELEV.surface,
+      border: `1px solid ${ELEV.hairline}`,
+      boxShadow: ELEV.shadow1,
       borderRadius: RADIUS.lg,
     }}>
       <div style={{
@@ -538,10 +564,10 @@ function ReviewItem({ item, ordinal, playersById, onAccept, onReassign, onDismis
       <LogRow row={item.selfReport} ordinal={ordinal} isPending={false} />
       <div style={{ display: 'flex', gap: SPACE.xs, flexWrap: 'wrap', marginTop: 6 }}>
         <Btn variant="accent" size="sm" disabled={busy} onClick={run(onAccept)}>
-          <Check size={14} strokeWidth={2.5} /> {t('results_accept', candOrder)}
+          <RdIcon name="check" size={14} /> {t('results_accept', candOrder)}
         </Btn>
         <Btn variant="default" size="sm" disabled={busy} onClick={run(onDismiss)}>
-          <X size={14} strokeWidth={2.5} /> {t('results_dismiss')}
+          <RdIcon name="close" size={14} /> {t('results_dismiss')}
         </Btn>
       </div>
       {item.reassignOptions.length > 0 && (
@@ -571,8 +597,9 @@ function BunkerRow({ b }) {
     <div style={{
       display: 'flex', alignItems: 'center', gap: SPACE.md,
       padding: '12px 14px', marginBottom: SPACE.xs,
-      background: COLORS.surfaceDark,
-      border: `1px solid ${COLORS.border}`,
+      background: ELEV.surface,
+      border: `1px solid ${ELEV.hairline}`,
+      boxShadow: ELEV.shadow1,
       borderRadius: RADIUS.lg,
       minHeight: 52,
     }}>
