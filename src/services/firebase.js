@@ -150,6 +150,9 @@ function inviteActionUrl() {
 }
 
 export async function sendInviteEmailLink(email) {
+  // Access rule: do not issue invites to European teams while Jacek competes for
+  // Ranger. Operational/manual gate (no automated geofence here). See
+  // docs/product/PAINTBALL_INTELLIGENCE.md §6.
   const url = inviteActionUrl();
   await sendSignInLinkToEmail(auth, email, { url, handleCodeInApp: true });
   // Remember the email on THIS device so completion can skip the prompt when the
