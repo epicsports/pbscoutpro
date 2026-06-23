@@ -4,8 +4,9 @@ import { useUserWorkspaces } from '../../hooks/useUserWorkspaces';
 import { useLanguage } from '../../hooks/useLanguage';
 import { MoreItem } from '../tabs/MoreShell';
 import { Modal } from '../ui';
+import RdIcon from '../RdIcon';
 import WorkspaceLogo from './WorkspaceLogo';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../../utils/theme';
 
 /**
  * WorkspaceSwitcher — § 92 OPERATION switcher (replaces the static "Mój
@@ -62,16 +63,16 @@ export default function WorkspaceSwitcher({ variant = 'item' }) {
           onClick={() => setOpen(true)}
           style={{
             margin: '10px 12px 2px',
-            border: `1px dashed ${COLORS.border}`,
+            border: `1px dashed ${ELEV.hairlineStrong}`,
             borderRadius: RADIUS.md,
             padding: '0 12px', minHeight: TOUCH.minTarget,
             display: 'flex', alignItems: 'center', gap: 8,
-            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, letterSpacing: TRACKING.label,
             color: COLORS.textDim, cursor: 'pointer',
             WebkitTapHighlightColor: 'transparent', flexShrink: 0,
           }}
         >
-          <span aria-hidden="true">⇄</span> {t('change_workspace')}
+          <RdIcon name="swap" size={14} /> {t('change_workspace')}
           <span style={{
             marginLeft: 'auto', fontFamily: FONT, fontSize: FONT_SIZE.xxs,
             fontWeight: 600, color: COLORS.textMuted,
@@ -79,7 +80,7 @@ export default function WorkspaceSwitcher({ variant = 'item' }) {
         </div>
       ) : (
         <MoreItem
-          icon={workspace?.logoUrl ? <WorkspaceLogo url={workspace.logoUrl} size={20} /> : '🏠'}
+          icon={workspace?.logoUrl ? <WorkspaceLogo url={workspace.logoUrl} size={20} /> : <RdIcon name="home" size={18} />}
           label={t('my_workspace')}
           sub={activeSlug || undefined}
           onClick={multi ? () => setOpen(true) : undefined}
@@ -113,8 +114,9 @@ export default function WorkspaceSwitcher({ variant = 'item' }) {
                     padding: `${SPACE.sm}px ${SPACE.md}px`,
                     borderRadius: RADIUS.md,
                     // § 27: active = subtle background change (not a border swap).
-                    background: isActive ? `${COLORS.accent}15` : COLORS.surfaceLight,
-                    border: `1px solid ${isActive ? `${COLORS.accent}55` : COLORS.border}`,
+                    background: isActive ? `${COLORS.accent}15` : ELEV.surface,
+                    border: `1px solid ${isActive ? `${COLORS.accent}55` : ELEV.hairline}`,
+                    boxShadow: ELEV.shadow1,
                     cursor: switching ? 'default' : 'pointer',
                     opacity: switching && !isActive ? 0.6 : 1,
                     WebkitTapHighlightColor: 'transparent',
@@ -135,10 +137,9 @@ export default function WorkspaceSwitcher({ variant = 'item' }) {
                     }}>{w.slug}</div>
                   </div>
                   {isActive && (
-                    <span style={{
-                      fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800,
-                      color: COLORS.accent, flexShrink: 0,
-                    }}>✓</span>
+                    <span style={{ color: COLORS.accent, flexShrink: 0, display: 'flex' }}>
+                      <RdIcon name="check" size={17} />
+                    </span>
                   )}
                 </button>
               );
