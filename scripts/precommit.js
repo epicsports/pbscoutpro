@@ -50,6 +50,12 @@ run('i18n call-shape vs definition', 'node scripts/lint-i18n-shapes.js');
 // module-level sub-components that don't inherit the main component's useLanguage().
 run('i18n t-scope (no unbound t() calls)', 'node scripts/lint-i18n-tscope.js');
 
+// 2d. i18n missing-key lint — every t('literal') must be DEFINED in i18n.js, else
+// t() returns the raw key string and it renders as the key-name in the UI (the
+// `t('k') || 'fallback'` fallback never fires — the key is truthy). 38 keys shipped
+// this way 2026-06-23; this guard prevents recurrence.
+run('i18n missing keys (referenced t() must be defined)', 'node scripts/lint-i18n-missing.js');
+
 // 3. § 27 Apple HIG nudges (warning-only — baseline has violations)
 // These are INFORMATIONAL. They don't block commits.
 // Real enforcement: docs/REVIEW_CHECKLIST.md self-review by CC.
