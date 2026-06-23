@@ -15,7 +15,9 @@ import { useScreenLoader } from '../hooks/useScreenLoader';
 import { useTournaments, useLayouts } from '../hooks/useFirestore';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, SPACE, ELEV, TRACKING, TNUM } from '../utils/theme';
+import { useDevice } from '../hooks/useDevice';
+import { useWorkspace } from '../hooks/useWorkspace';
 import { computeScoutStats, scoutStars, compositeColor } from '../utils/scoutStats';
 import { useLanguage } from '../hooks/useLanguage';
 import { leagueDisplayName } from '../hooks/useLeagues';
@@ -30,6 +32,11 @@ export default function ScoutRankingPage() {
   const [scope, setScope] = useState('global'); // 'global' | 'layout' | 'tournament'
   const [selectedTournamentId, setSelectedTournamentId] = useState('');
   const [selectedLayoutId, setSelectedLayoutId] = useState('');
+  const [selectedUid, setSelectedUid] = useState(null); // wide master-detail selection
+  const device = useDevice();
+  const wide = device.width >= 720;
+  const { user } = useWorkspace();
+  const myUid = user?.uid || null;
 
   useEffect(() => {
     let cancelled = false;
@@ -82,13 +89,13 @@ export default function ScoutRankingPage() {
 
   // Premium determinate loader (creep-and-snap on the single `loading` boolean).
   const { shown: loaderShown, progress: loaderP, close: closeLoader } = useScreenLoader(loading);
+  const maxPts = useMemo(() => Math.max(...stats.map(s => s.points), 1), [stats]);
+  const selected = stats.find(s => s.uid === selectedUid) || stats[0] || null;
 
   return (
-    // §arc-B — kept at the DETAIL tier (640) to preserve the current hardcoded
-    // width exactly (diff=0 at all widths). It is semantically a list; if the
-    // desktop list-760 widening is ratified, re-tag archetype="list" then
-    // (itself a desktop-delta change subject to the eyeball gate).
-    <Screen archetype="detail" header={<PageHeader back={{ to: '/' }} title={t('scout_ranking')} subtitle={t('scout_ranking_sub')} />}>
+    // §arc-B — LIST tier (960 desktop cap): the premium redesign uses the wide
+    // width for the ≥720 master-detail (leaderboard + selected-scout ring pane).
+    <Screen archetype="list" header={<PageHeader back={{ to: '/' }} title={t('scout_ranking')} subtitle={t('scout_ranking_sub')} />}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: SPACE.sm,
         padding: `${SPACE.md}px ${SPACE.lg}px 0`, flexWrap: 'wrap',
@@ -139,72 +146,129 @@ export default function ScoutRankingPage() {
           <EmptyState icon="👤" text={t('scout_empty')} subtitle={t('scout_empty_sub')} />
         </div>
       ) : (
-        <div style={{ padding: SPACE.lg, display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {stats.map((s, idx) => {
-            const name = names[s.uid] || fallbackScoutLabel(s.uid);
-            return (
-              <ScoutCard
-                key={s.uid}
-                rank={idx + 1}
-                name={name}
-                points={s.points}
-                composite={s.composite}
-                stars={scoutStars(s.composite)}
-                onClick={() => navigate(`/scouts/${s.uid}`)}
-              />
-            );
-          })}
+        <div style={{
+          padding: SPACE.lg, alignItems: 'start',
+          display: wide ? 'grid' : 'flex', flexDirection: wide ? undefined : 'column',
+          gridTemplateColumns: wide ? 'minmax(0, 1fr) minmax(0, 380px)' : undefined,
+          gap: wide ? 20 : 10,
+        }}>
+          {/* leaderboard (master) */}
+          <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {stats.map((s, idx) => {
+              const name = names[s.uid] || fallbackScoutLabel(s.uid);
+              return (
+                <ScoutCard
+                  key={s.uid}
+                  rank={idx + 1}
+                  name={name}
+                  points={s.points}
+                  composite={s.composite}
+                  stars={scoutStars(s.composite)}
+                  maxPts={maxPts}
+                  me={s.uid === myUid}
+                  active={wide && selected?.uid === s.uid}
+                  // Phone: tap → full detail. Wide: tap → select the right-hand pane.
+                  onClick={() => (wide ? setSelectedUid(s.uid) : navigate(`/scouts/${s.uid}`))}
+                  t={t}
+                />
+              );
+            })}
+          </div>
+          {/* selected-scout detail (wide only) */}
+          {wide && selected && (
+            <ScoutDetailPane
+              scout={selected}
+              name={names[selected.uid] || fallbackScoutLabel(selected.uid)}
+              rank={stats.findIndex(s => s.uid === selected.uid) + 1}
+              stars={scoutStars(selected.composite)}
+              onOpen={() => navigate(`/scouts/${selected.uid}`)}
+            />
+          )}
         </div>
       )}
     </Screen>
   );
 }
 
-function ScoutCard({ rank, name, points, composite, stars, onClick }) {
-  const { t } = useLanguage();
-  const color = compositeColor(composite);
+// Premium 5-star row — filled accent / hairline outline (no glyph/emoji).
+function Stars({ n, size = 14 }) {
+  return (
+    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+      {[1, 2, 3, 4, 5].map(i => (
+        <svg key={i} width={size} height={size} viewBox="0 0 16 16" style={{ display: 'block' }}>
+          <path d="M8 1.6l1.9 4 4.4.5-3.3 3 .9 4.3L8 11.3 4.1 13.4l.9-4.3-3.3-3 4.4-.5z"
+            fill={i <= n ? COLORS.accent : 'none'}
+            stroke={i <= n ? COLORS.accent : ELEV.hairlineStrong} strokeWidth="1.1" strokeLinejoin="round" />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
+// Premium leaderboard row — rank + initial tile + name + points bar + quality% + stars.
+// `me` = the current user's row (accent border); `active` = selected in the wide pane.
+function ScoutCard({ rank, name, points, composite, stars, maxPts, me, active, onClick, t }) {
   const initial = (name || '?').charAt(0).toUpperCase();
   return (
     <div
       onClick={onClick}
       style={{
-        background: COLORS.surfaceDark,
-        border: `1px solid ${COLORS.border}`,
-        borderRadius: 12,
-        padding: '14px 16px',
-        display: 'flex', alignItems: 'center', gap: 12,
-        cursor: 'pointer', minHeight: 60,
-        WebkitTapHighlightColor: 'transparent',
+        background: active ? COLORS.accentA12 : ELEV.surface,
+        border: `1px solid ${active || me ? COLORS.accentA40 : ELEV.hairline}`,
+        boxShadow: active ? ELEV.shadow2 : ELEV.shadow1,
+        borderRadius: 14, padding: '14px 14px',
+        display: 'flex', alignItems: 'center', gap: 14,
+        cursor: 'pointer', minHeight: 60, WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <span style={{
-        fontFamily: FONT, fontSize: 18, fontWeight: 800,
-        color: COLORS.borderLight, width: 24, textAlign: 'center', flexShrink: 0,
-      }}>{rank}</span>
-      <div style={{
-        width: 36, height: 36, borderRadius: '50%',
-        background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: FONT, fontWeight: 700, fontSize: 14, color: COLORS.text,
-        flexShrink: 0,
-      }}>{initial}</div>
+      <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: rank <= 3 ? COLORS.accent : COLORS.textMuted, minWidth: 22, textAlign: 'center', flexShrink: 0, ...TNUM }}>{rank}</span>
+      <div style={{ width: 44, height: 44, borderRadius: 13, background: ELEV.sunken, border: `1px solid ${ELEV.hairlineStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 800, fontSize: 17, color: COLORS.textDim, flexShrink: 0 }}>{initial}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 600,
-          color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        }}>{name}</div>
-        <div style={{
-          fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
-        }}>
-          {t('scout_points', points)} · {t('scout_quality', composite)}
+        <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
+          <div style={{ flex: 1, maxWidth: 130, height: 5, borderRadius: 3, background: ELEV.sunken, overflow: 'hidden' }}>
+            <div style={{ width: `${Math.round((points / maxPts) * 100)}%`, height: '100%', background: COLORS.accent }} />
+          </div>
+          <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, ...TNUM }}>{t('scout_points', points)} · {t('scout_quality', composite)}</span>
         </div>
       </div>
-      <div style={{
-        fontFamily: FONT, fontSize: 12, fontWeight: 700, color,
-        letterSpacing: 1,
-      }}>
-        {'★'.repeat(stars)}<span style={{ color: COLORS.borderLight }}>{'★'.repeat(5 - stars)}</span>
+      <Stars n={stars} />
+    </div>
+  );
+}
+
+// Wide selected-scout detail — conic quality ring (color by composite, NEVER green
+// at 0 — `compositeColor` is the survival-style 0→red/mid→amber/high→green scale).
+function ScoutDetailPane({ scout, name, rank, stars, onOpen }) {
+  const color = compositeColor(scout.composite);
+  const initial = (name || '?').charAt(0).toUpperCase();
+  return (
+    <div style={{ position: 'sticky', top: 12, minWidth: 0 }}>
+      <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1, borderRadius: 18, padding: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 58, height: 58, borderRadius: 16, background: ELEV.sunken, border: `1px solid ${ELEV.hairlineStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 24, fontWeight: 800, color: COLORS.textDim, flexShrink: 0 }}>{initial}</div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
+            <div style={{ marginTop: 7 }}><Stars n={stars} size={16} /></div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, margin: '22px 0 4px' }}>
+          <div style={{ position: 'relative', width: 112, height: 112, flexShrink: 0, borderRadius: '50%', background: `conic-gradient(${color} ${scout.composite}%, ${ELEV.sunken} 0)` }}>
+            <div style={{ position: 'absolute', inset: 9, borderRadius: '50%', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color, lineHeight: 1, ...TNUM }}>{scout.composite}<span style={{ fontSize: 14 }}>%</span></span>
+              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: COLORS.textMuted, letterSpacing: TRACKING.label, marginTop: 3 }}>JAKOŚĆ</span>
+            </div>
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {[['Pozycja', `#${rank}`, rank <= 3 ? COLORS.accent : COLORS.text], ['Zascoutowane', `${scout.points}`, COLORS.text], ['Ocena', `${stars}/5`, COLORS.accent]].map(([lab, val, col]) => (
+              <div key={lab} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 9, borderBottom: `1px solid ${ELEV.hairline}` }}>
+                <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim }}>{lab}</span>
+                <span style={{ fontFamily: FONT, fontSize: 19, fontWeight: 800, color: col, ...TNUM }}>{val}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div onClick={onOpen} style={{ marginTop: 16, textAlign: 'center', padding: '13px', borderRadius: 12, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40`, WebkitTapHighlightColor: 'transparent' }}>Otwórz profil →</div>
       </div>
     </div>
   );
