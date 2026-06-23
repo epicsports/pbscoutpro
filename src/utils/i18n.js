@@ -228,6 +228,9 @@ const T = {
     role_scout:  'Scout',
     role_viewer: 'Viewer',
     role_player: 'Player',
+    roster_group_coaching: 'Sztab trenerski',
+    roster_group_players:  'Zawodnicy',
+    roster_group_staff:    'Sztab',
     /* View Switcher — admin role impersonation preview (§ 38.5) */
     view_as_pill_label:                'Podgląd jako…',
     view_as_pill_active:               ({ role }) => `Podgląd aktywny: ${role}`,
@@ -2259,6 +2262,9 @@ const T = {
     role_scout:  'Scout',
     role_viewer: 'Viewer',
     role_player: 'Player',
+    roster_group_coaching: 'Coaching Staff',
+    roster_group_players:  'Players',
+    roster_group_staff:    'Support Staff',
     /* View Switcher — admin role impersonation preview (§ 38.5) */
     view_as_pill_label:                'View as\u2026',
     view_as_pill_active:               ({ role }) => `Previewing: ${role}`,
