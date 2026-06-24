@@ -4,12 +4,10 @@ import { COLORS, ELEV, FONT, TRACKING, TNUM } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
-import { useMatches, useActiveTeams, useScoutedTeams, useLayouts } from '../hooks/useFirestore';
-import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
-import { useField } from '../hooks/useField';
+import { useMatches, useActiveTeams, useScoutedTeams } from '../hooks/useFirestore';
 import { computeTeamRecords } from '../utils/teamStats';
-import { classifyMatch } from '../utils/matchClassify';
 import StandingsTable from './tabs/StandingsTable';
+import MatchListPremium from './MatchListPremium';
 import { winRateColor } from '../utils/colorScale';
 import { useViewAs } from '../hooks/useViewAs';
 import RdIcon from './RdIcon';
@@ -21,13 +19,16 @@ import TeamBadge from './TeamBadge';
  * Persistent left sidebar (RdSideNav) + a content area. Dispatched by AppShell at
  * viewport width >= 720 (`useDevice().width`); the mobile bottom-tab shell is
  * unchanged below that. Ported from `prototype/redesign.jsx` (AppShellPremiumWide
- * + RdSideNav + RdContentHead + ScoutWide); wired to the app's REAL data/nav — one
- * data source, one nav (it reuses AppShell's `activeTab`/`onTabChange`/`visibleTabs`,
+ * + RdSideNav + RdContentHead); wired to the app's REAL data/nav — one data
+ * source, one nav (it reuses AppShell's `activeTab`/`onTabChange`/`visibleTabs`,
  * not a parallel tab state).
  *
- * Increment 1 (Scout): the scout tab renders the master-detail `ScoutWide`; every
- * other tab renders `children` (the existing tab content) full-bleed as a safe
- * fallback until its own *Wide body lands (CoachWide / PlayerWide next).
+ * Scout: the scout tab renders the unified, responsive `MatchListPremium wide`
+ * (the SAME component the phone tab mounts at `wide=false`) — a reflowed grid of
+ * fixtures, not a master-detail fork. The old `ScoutWide` master-detail + field
+ * pane was retired (feat/match-list-premium-unified): field/heatmap lives on the
+ * full MatchPage, reached via the card's score-tap preview. Coach/player keep
+ * their bespoke *Wide bodies; every other tab renders `children` full-bleed.
  */
 
 // Pulsing live dot (prototype LivePulse) — uses the global rdPulse keyframe.
@@ -125,134 +126,6 @@ function RdContentHead({ title, count, sub, right }) {
         {sub && <div style={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 600, color: COLORS.textMuted, marginTop: 3 }}>{sub}</div>}
       </div>
       {right}
-    </div>
-  );
-}
-
-// SCOUT — master list + scouting detail pane, wired to the tournament's REAL
-// matches + the same scout route MatchCard uses (tournament scouting, not self-log).
-function ScoutWide({ tournamentId, tournament }) {
-  const navigate = useNavigate();
-  const { t } = useLanguage();
-  const { matches } = useMatches(tournamentId);
-  const { teams } = useActiveTeams();
-  const { scouted } = useScoutedTeams(tournamentId);
-  const { layouts } = useLayouts();
-  const field = useField(tournament, layouts); // tournament's layout → field.fieldImage
-  const liveCandidateIds = matches.filter(m => m.status !== 'closed').map(m => m.id);
-  const liveScores = useLiveMatchScores(tournamentId, liveCandidateIds);
-
-  const getTeam = (scoutedId) => {
-    const s = scouted.find(x => x.id === scoutedId);
-    return s ? teams.find(x => x.id === s.teamId) || null : null;
-  };
-  const getName = (scoutedId) => getTeam(scoutedId)?.name || '?';
-  const classify = (m) => classifyMatch(m, liveScores);
-  const live = matches.filter(m => classify(m) === 'live');
-  const scheduled = matches.filter(m => classify(m) === 'scheduled');
-  const completed = matches.filter(m => classify(m) === 'completed');
-  const ordered = [...live, ...scheduled, ...completed];
-  const [sel, setSel] = useState(ordered[0]?.id || null);
-  const m = ordered.find(x => x.id === sel) || ordered[0] || null;
-  const scoutSide = (scoutedId) => navigate(`/tournament/${tournamentId}/match/${m.id}?scout=${scoutedId}&mode=new`);
-  const review = () => navigate(`/tournament/${tournamentId}/match/${m.id}`);
-
-  const Row = ({ x }) => {
-    const on = x.id === sel;
-    const st = classify(x);
-    const lv = st === 'live';
-    const done = st === 'completed';
-    const ls = liveScores[x.id]?.score || null;
-    const sA = ls ? ls.a : (x.scoreA || 0);
-    const sB = ls ? ls.b : (x.scoreB || 0);
-    return (
-      <div className="rd-press" onClick={() => setSel(x.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 12px', borderRadius: 13, background: on ? COLORS.accentA12 : ELEV.surface, border: `1px solid ${on ? COLORS.accentA40 : ELEV.hairline}`, boxShadow: on ? 'none' : ELEV.shadow1, cursor: 'pointer', marginBottom: 9 }}>
-        <TeamBadge team={getTeam(x.teamA)} size={30} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getName(x.teamA)} <span style={{ color: COLORS.textMuted, fontWeight: 600 }}>vs</span> {getName(x.teamB)}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-            {lv && <LivePulse />}
-            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: lv ? COLORS.danger : COLORS.textMuted, letterSpacing: '.3px' }}>{lv ? 'NA ŻYWO' : done ? 'ZAKOŃCZONY' : (x.division || t('scout_tab_scheduled') || 'Zaplanowany')}</span>
-          </div>
-        </div>
-        <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color: (lv || done) ? COLORS.text : COLORS.textMuted, ...TNUM }}>{(lv || done) ? `${sA}:${sB}` : '—'}</div>
-      </div>
-    );
-  };
-
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-      <RdContentHead title={t('tab_scout') || 'Mecze'} count={matches.length} sub={t('section_matches') || 'Mecze'} />
-      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-        {/* master list */}
-        <div className="rd-scroll" style={{ width: 384, flexShrink: 0, borderRight: `1px solid ${ELEV.hairline}`, overflowY: 'auto', padding: '16px 16px 24px' }}>
-          {live.length > 0 && (<>
-            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.accent, letterSpacing: TRACKING.label, textTransform: 'uppercase', margin: '0 2px 10px' }}>Na żywo · {live.length}</div>
-            {live.map(x => <Row key={x.id} x={x} />)}
-            <div style={{ height: 8 }} />
-          </>)}
-          {scheduled.length > 0 && (<>
-            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', margin: '0 2px 10px' }}>Zaplanowane · {scheduled.length}</div>
-            {scheduled.map(x => <Row key={x.id} x={x} />)}
-            <div style={{ height: 8 }} />
-          </>)}
-          {completed.length > 0 && (<>
-            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', margin: '0 2px 10px' }}>Zakończone · {completed.length}</div>
-            {completed.map(x => <Row key={x.id} x={x} />)}
-          </>)}
-          {ordered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '32px 16px', fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>{t('scout_tab_no_matches_yet') || 'Brak meczów'}</div>
-          )}
-        </div>
-        {/* detail pane */}
-        {m ? (
-          <div className="rd-scroll" style={{ flex: 1, minWidth: 0, overflowY: 'auto', padding: '22px 24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 18 }}>
-              <div className="rd-press" onClick={() => scoutSide(m.teamA)} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 13, minWidth: 0, cursor: 'pointer' }} title="Scoutuj">
-                <TeamBadge team={getTeam(m.teamA)} size={54} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 800, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getName(m.teamA)}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.accent }}>{(t('tap_to_scout') || 'scoutuj')}</div>
-                </div>
-              </div>
-              <div style={{ textAlign: 'center', flexShrink: 0 }}>
-                {(() => { const lv = classify(m) === 'live'; const ls = liveScores[m.id]?.score; const sA = ls ? ls.a : (m.scoreA || 0); const sB = ls ? ls.b : (m.scoreB || 0); return (<>
-                  <div style={{ fontFamily: FONT, fontSize: 38, fontWeight: 800, color: COLORS.text, lineHeight: 1, ...TNUM }}>{lv ? `${sA}:${sB}` : '—:—'}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 6 }}>
-                    {lv && <LivePulse />}
-                    <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: lv ? COLORS.danger : COLORS.textMuted, letterSpacing: '1px' }}>{lv ? 'NA ŻYWO' : (m.division || '').toUpperCase()}</span>
-                  </div>
-                </>); })()}
-              </div>
-              <div className="rd-press" onClick={() => scoutSide(m.teamB)} style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 13, minWidth: 0, cursor: 'pointer' }} title="Scoutuj">
-                <div style={{ minWidth: 0, textAlign: 'right' }}>
-                  <div style={{ fontFamily: FONT, fontSize: 19, fontWeight: 800, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getName(m.teamB)}</div>
-                  <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.accent }}>{(t('tap_to_scout') || 'scoutuj')}</div>
-                </div>
-                <TeamBadge team={getTeam(m.teamB)} size={54} />
-              </div>
-            </div>
-            {field?.fieldImage ? (
-              /* Real layout/field preview (the tournament's resolved field image). A
-                 points-heatmap overlay is a follow-up — the per-match mapping is the
-                 fragile mirror logic local to MatchPage/ScoutedTeamPage. */
-              <div style={{ flex: 1, minHeight: 220, borderRadius: 14, overflow: 'hidden', border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow1, background: ELEV.sunken, display: 'flex' }}>
-                <img src={field.fieldImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
-              </div>
-            ) : (
-              <div style={{ flex: 1, minHeight: 220, borderRadius: 14, border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow1, background: `radial-gradient(120% 120% at 50% 0%, ${ELEV.raised}, ${ELEV.surface})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.textMuted, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{getName(m.teamA)} vs {getName(m.teamB)}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
-              <div className="rd-press" onClick={() => scoutSide(m.teamA)} style={{ flex: 1, textAlign: 'center', padding: '15px', borderRadius: 13, fontFamily: FONT, fontSize: 16, fontWeight: 800, cursor: 'pointer', background: COLORS.accent, color: '#1a1206', border: `1px solid ${COLORS.accent}`, boxShadow: `0 4px 14px ${COLORS.accent}40` }}>{(t('scout') || 'Scoutuj')} →</div>
-              <div className="rd-press" onClick={review} style={{ padding: '15px 22px', borderRadius: 13, fontFamily: FONT, fontSize: 16, fontWeight: 700, cursor: 'pointer', background: ELEV.surface, color: COLORS.text, border: `1px solid ${ELEV.hairline}` }}>{t('match_details') || 'Szczegóły'}</div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 14, color: COLORS.textMuted }}>{t('scout_tab_no_matches_yet') || 'Brak meczów'}</div>
-        )}
-      </div>
     </div>
   );
 }
@@ -512,7 +385,7 @@ export default function AppShellPremiumWide({ children, activeTab, onTabChange, 
       />
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {playerView ? <PlayerWide />
-          : scoutWide ? <ScoutWide tournamentId={tournamentId} tournament={tournament} />
+          : scoutWide ? <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}><MatchListPremium tournamentId={tournamentId} wide /></div>
           : coachWide ? <CoachWide tournamentId={tournamentId} />
           : (<div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>{children}</div>)}
       </div>
