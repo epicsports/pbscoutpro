@@ -497,6 +497,9 @@ const T = {
     phase_row_label:          'Fazy punktu',
     phase_play_disabled_hint: 'Brak zarejestrowanych faz Settle/Mid',
     review_preview_hint:      'tap wynik = podgląd na polu',
+    review_meta_eliminations: 'Eliminacje',
+    review_meta_penalties:    'Kary',
+    review_meta_empty:        'Brak dodatkowych danych scoutingu',
 
     /* ─── Confirm modals ────────────────────────────────── */
     delete_match:       'Usunąć mecz?',
@@ -2557,6 +2560,9 @@ const T = {
     phase_row_label:          'Point phases',
     phase_play_disabled_hint: 'No Settle/Mid stages captured yet',
     review_preview_hint:      'tap score = preview on field',
+    review_meta_eliminations: 'Eliminations',
+    review_meta_penalties:    'Penalties',
+    review_meta_empty:        'No additional scouting data',
 
     delete_match:       'Delete match?',
     delete_matchup:     'Delete matchup?',
