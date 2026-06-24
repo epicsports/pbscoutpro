@@ -15,7 +15,7 @@ import {
 } from '../../services/playerPerformanceTrackerService';
 import { getPending } from '../../services/pptPendingQueue';
 import { useTabBarVisible } from '../TabBar';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TNUM } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TNUM, TRACKING, ZONE_COLORS } from '../../utils/theme';
 import { useDevice } from '../../hooks/useDevice';
 
 /**
@@ -259,12 +259,112 @@ function PremiumLogCard({ row, ordinal, isPending, onMenu, t, wide }) {
   );
 }
 
-// Wide (≥720) day-summary stat cell (prototype TodayPointsWide) — derived, never invented.
-function DayStat({ label, value, color }) {
+// ── Wide (≥720) landscape HERO rail (prototype TodayPointsWide :319). LEFT
+// column of the 2-col layout: survival ring + number watermark + stat tiles +
+// streak + "where you ran" side split + "most common loss" insight. All values
+// DERIVED from `combined` (the same merged server+pending rows the list shows)
+// — never invented. Ring is value-semantic per § 27 (0%→red, mid→amber,
+// ≥60%→green); amber here is reserved for the survival mid-band metric, not
+// decoration.
+const SIDE_KEYS = ['dorito', 'snake', 'center'];
+const SIDE_COLOR = { dorito: ZONE_COLORS.dorito, snake: ZONE_COLORS.snake, center: COLORS.textDim };
+function sideLabel(side, t) {
+  return side === 'dorito' ? t('side_dorito_label')
+    : side === 'snake' ? t('side_snake_label')
+    : t('side_center_label');
+}
+
+function TodayHeroWide({ rows, t }) {
+  const total = rows.length;
+  const alive = rows.filter(r => r.outcome === 'alive').length;
+  const lost = total - alive;
+  const survPct = total ? Math.round((alive / total) * 100) : 0;
+  // § 27 value-semantic ring: 0% is the worst (red), never green.
+  const survCol = survPct >= 60 ? COLORS.success : survPct >= 40 ? COLORS.accent : COLORS.danger;
+
+  // Streak — current run of survivals from the newest end. `rows` is newest-first.
+  let streak = 0;
+  for (let i = 0; i < rows.length; i++) { if (rows[i].outcome === 'alive') streak++; else break; }
+
+  // Side split — derived from breakout.side.
+  const sideCount = {};
+  rows.forEach(r => { const s = r.breakout?.side; if (s) sideCount[s] = (sideCount[s] || 0) + 1; });
+  const sides = SIDE_KEYS.filter(k => sideCount[k]).map(k => [k, sideCount[k]]).sort((a, b) => b[1] - a[1]);
+  const sideTotal = sides.reduce((n, [, c]) => n + c, 0);
+
+  // Most common loss reason — outcomeDetail among NON-alive rows.
+  const lossCount = {};
+  rows.filter(r => r.outcome !== 'alive' && r.outcomeDetail).forEach(r => {
+    lossCount[r.outcomeDetail] = (lossCount[r.outcomeDetail] || 0) + 1;
+  });
+  const topLoss = Object.entries(lossCount).sort((a, b) => b[1] - a[1])[0];
+
+  const Tile = ({ label, value, color }) => (
+    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 9, borderBottom: `1px solid ${ELEV.hairline}` }}>
+      <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim }}>{label}</span>
+      <span style={{ fontFamily: FONT, fontSize: 21, fontWeight: 800, color, ...TNUM }}>{value}</span>
+    </div>
+  );
+
   return (
-    <div style={{ flex: 1, textAlign: 'center', padding: '14px 8px' }}>
-      <div style={{ fontFamily: FONT, fontSize: 30, fontWeight: 800, color: color || COLORS.text, ...TNUM }}>{value}</div>
-      <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '.6px', marginTop: 4 }}>{label}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Hero band — survival ring + number watermark */}
+      <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 16, boxShadow: ELEV.shadow1, padding: 0, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', overflow: 'hidden', padding: '22px 20px 20px', background: `radial-gradient(125% 130% at 85% 6%, ${COLORS.accentA30}, ${COLORS.accentA08} 46%, transparent 70%), linear-gradient(165deg, ${ELEV.raised}, ${ELEV.surface})` }}>
+          <div aria-hidden style={{ position: 'absolute', top: -28, right: -6, fontFamily: FONT, fontSize: 150, fontWeight: 900, lineHeight: 1, color: COLORS.white, opacity: 0.05, letterSpacing: '-6px', pointerEvents: 'none', ...TNUM }}>{total}</div>
+          <div style={{ position: 'relative' }}>
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 900, color: COLORS.accent, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{t('ppt_logs_title')}</div>
+          </div>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 20, marginTop: 18 }}>
+            <div style={{ position: 'relative', width: 122, height: 122, flexShrink: 0, borderRadius: '50%', background: `conic-gradient(${survCol} ${survPct}%, ${ELEV.sunken} 0)` }}>
+              <div style={{ position: 'absolute', inset: 9, borderRadius: '50%', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontFamily: FONT, fontSize: 34, fontWeight: 800, color: survCol, lineHeight: 1, ...TNUM }}>{survPct}<span style={{ fontSize: 16 }}>%</span></span>
+                <span style={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 800, color: COLORS.textMuted, letterSpacing: TRACKING.label, marginTop: 4, textTransform: 'uppercase' }}>{t('ppt_today_survival')}</span>
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Tile label={t('ppt_today_points')} value={total} color={COLORS.text} />
+              <Tile label={t('ppt_today_survived')} value={alive} color={COLORS.success} />
+              <Tile label={t('ppt_today_lost')} value={lost} color={lost > 0 ? COLORS.danger : COLORS.textMuted} />
+              {streak >= 2 && (
+                <div style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 6, fontFamily: FONT, fontSize: 11.5, fontWeight: 800, color: COLORS.success, background: `${COLORS.success}16`, border: `1px solid ${COLORS.success}55`, borderRadius: 999, padding: '5px 11px' }}>
+                  <RdIcon name="impact" size={13} /> {t('ppt_today_streak', streak)}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Insight — where you ran today (side split) */}
+      {sideTotal > 0 && (
+        <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 16, boxShadow: ELEV.shadow1, padding: 18 }}>
+          <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, marginBottom: 14, textTransform: 'uppercase' }}>{t('ppt_today_run_split')}</div>
+          <div style={{ display: 'flex', height: 12, borderRadius: 999, overflow: 'hidden', background: ELEV.sunken, marginBottom: 14 }}>
+            {sides.map(([k, c]) => <div key={k} style={{ width: `${(c / sideTotal) * 100}%`, background: SIDE_COLOR[k] }} />)}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+            {sides.map(([k, c]) => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: SIDE_COLOR[k], flexShrink: 0 }} />
+                <span style={{ flex: 1, fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>{sideLabel(k, t)}</span>
+                <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.textDim, ...TNUM }}>{c} <span style={{ fontSize: 11.5, color: COLORS.textMuted, fontWeight: 700 }}>{t('ppt_today_run_unit')}</span></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Insight — most common loss today */}
+      {topLoss && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '14px 16px', borderRadius: 16, border: `1px solid ${COLORS.danger}44`, background: `${COLORS.danger}10` }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${COLORS.danger}1c`, border: `1px solid ${COLORS.danger}55`, color: COLORS.danger }}><RdIcon name="warn" size={18} /></span>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.danger, letterSpacing: '.4px', textTransform: 'uppercase' }}>{t('ppt_today_top_loss')}</div>
+            <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 800, color: COLORS.text, marginTop: 2 }}>{detailShort(topLoss[0], t)} <span style={{ fontWeight: 700, color: COLORS.textMuted, fontSize: 13 }}>· {t('ppt_today_top_loss_count', topLoss[1])}</span></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -351,6 +451,55 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
     ];
   }, [rows, pendingRows]);
 
+  // Row list — single-sourced so phone (single column) and wide (right column
+  // of the 2-col hero) consume the identical render. Phone path unchanged.
+  const rowList = combined.map((row, idx) => {
+    // Deletable, two cases — both persisted (has id, not a local-queue pending
+    // row):
+    //   • LINKED /selfReports/ — only when NOT propagated (§110).
+    //   • UNLINKED /pendingSelfReports/ — always safe (§110 Part b): an unlinked
+    //     draft is never propagated → no point/rollup contribution.
+    const canDelete = !row._isPending && !!row.id
+      && (isLinked ? !row.propagatedAt : true);
+    // PROPAGATED linked row (§110.1 Part a — block-while-propagated): its
+    // observation is merged into a W4 point's slot-level consensus (§70,
+    // sources-immutable); standalone delete is rejected (mixed-source, no
+    // per-entry provenance). Still opens the ⋮ — but to an HONEST explanatory
+    // state, never a dead/absent control. Correction is Stage 4 reassign
+    // territory (queued).
+    const isPropagatedRow = isLinked && !row._isPending && !!row.id && !!row.propagatedAt;
+    return (
+      <PremiumLogCard
+        key={row.id || `row_${idx}`}
+        row={row}
+        ordinal={combined.length - idx}
+        isPending={row._isPending}
+        onMenu={(canDelete || isPropagatedRow) ? () => setMenuRow(row) : undefined}
+        t={t}
+        wide={wide}
+      />
+    );
+  });
+
+  // Brief E Gap 3 — "Zobacz statystyki dnia" footer link. Visible only when
+  // (a) player is linked (anonymous PPT logs not yet mapped to a stats page)
+  // and (b) at least one log exists today. Ghost variant by design — the
+  // sticky "+ Nowy punkt" amber CTA stays the screen's primary action (§ 27
+  // anti-pattern: multiple CTAs competing on same surface).
+  const statsLink = (playerId && combined.length > 0) ? (
+    <div style={{ marginTop: SPACE.lg, textAlign: 'center' }}>
+      <Btn variant="ghost"
+        onClick={() => navigate(`/player/${playerId}/stats`)}
+        style={{ minHeight: 44, color: COLORS.accent, fontWeight: 700 }}>
+        {t('ppt_logs_view_stats_link') || 'Zobacz statystyki dnia →'}
+      </Btn>
+    </div>
+  ) : null;
+
+  // Wide (≥720) landscape HERO: 2-col layout (sticky stats rail ↔ points axis).
+  // Only when there's content — empty/loading falls back to the single column.
+  const wideHero = wide && combined.length > 0;
+
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.bg }}>
       <PageHeader
@@ -372,9 +521,8 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
         }
       />
 
-      <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, paddingBottom: 'calc(176px + env(safe-area-inset-bottom, 0px))', width: '100%', boxSizing: 'border-box', maxWidth: wide ? 760 : undefined, margin: wide ? '0 auto' : undefined }}>
-        {/* Unlinked banner — same affordance as the wizard's. Lets the
-            user link from the list view too without going via wizard. */}
+      <div style={{ padding: `${SPACE.md}px ${SPACE.lg}px`, paddingBottom: wideHero ? `${SPACE.xl}px` : 'calc(176px + env(safe-area-inset-bottom, 0px))', width: '100%', boxSizing: 'border-box', maxWidth: wideHero ? 1120 : (wide ? 760 : undefined), margin: wide ? '0 auto' : undefined }}>
+        {/* Banners (unlinked + pending) — full-bleed above the layout on both paths. */}
         {!isLinked && (
           <div
             onClick={() => navigate('/profile')}
@@ -421,101 +569,77 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
           </div>
         )}
 
-        {wide && combined.length > 0 && (() => {
-          const aliveN = combined.filter(r => r.outcome === 'alive').length;
-          const lostN = combined.length - aliveN;
-          return (
-            <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 14, boxShadow: ELEV.shadow1, padding: 6, display: 'flex', alignItems: 'stretch', marginBottom: 18 }}>
-              <DayStat label="PUNKTY" value={combined.length} />
-              <div style={{ width: 1, background: ELEV.hairline, margin: '10px 0' }} />
-              <DayStat label="PRZEŻYTE" value={aliveN} color={COLORS.success} />
-              <div style={{ width: 1, background: ELEV.hairline, margin: '10px 0' }} />
-              <DayStat label="STRACONE" value={lostN} color={lostN > 0 ? COLORS.danger : COLORS.textMuted} />
+        {wideHero ? (
+          /* ── Wide (≥720) landscape HERO — 2-col: sticky stats rail ↔ points
+             axis. Prototype TodayPointsWide :319. ───────────────────────── */
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 380px) minmax(0, 1fr)', gap: 24, alignItems: 'start' }}>
+            <div style={{ position: 'sticky', top: SPACE.lg, minWidth: 0 }}>
+              <TodayHeroWide rows={combined} t={t} />
             </div>
-          );
-        })()}
-
-        {loading && combined.length === 0 && (
-          <div style={{
-            padding: SPACE.xl, textAlign: 'center',
-            fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
-          }}>
-            {t('loading')}
+            <div style={{ minWidth: 0 }}>
+              {/* Single primary CTA per surface (§ 27) — on wide it lives here at
+                  the top of the axis; the fixed footer CTA is phone-only. */}
+              <Btn variant="accent" onClick={onNewPoint}
+                style={{ width: '100%', minHeight: 56, fontSize: 16, fontWeight: 800, gap: 8, marginBottom: SPACE.md }}>
+                <Plus size={18} strokeWidth={2.8} /> {t('ppt_today_new_point')}
+              </Btn>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: `0 2px ${SPACE.sm}px` }}>
+                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{t('ppt_today_axis')}</span>
+                <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+                <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.textMuted, ...TNUM }}>{combined.length}</span>
+              </div>
+              {rowList}
+              {statsLink}
+            </div>
           </div>
-        )}
+        ) : (
+          /* ── Phone (and wide-empty) — single column, unchanged. ───────── */
+          <>
+            {loading && combined.length === 0 && (
+              <div style={{
+                padding: SPACE.xl, textAlign: 'center',
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+              }}>
+                {t('loading')}
+              </div>
+            )}
 
-        {!loading && combined.length === 0 && (
-          <div style={{
-            padding: SPACE.xl, textAlign: 'center',
-            fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
-            fontStyle: 'italic',
-          }}>
-            {t('ppt_logs_empty')}
-          </div>
-        )}
+            {!loading && combined.length === 0 && (
+              <div style={{
+                padding: SPACE.xl, textAlign: 'center',
+                fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
+                fontStyle: 'italic',
+              }}>
+                {t('ppt_logs_empty')}
+              </div>
+            )}
 
-        {combined.map((row, idx) => {
-          // Deletable, two cases — both persisted (has id, not a local-queue
-          // pending row):
-          //   • LINKED /selfReports/ — only when NOT propagated (§110).
-          //   • UNLINKED /pendingSelfReports/ — always safe (§110 Part b): an
-          //     unlinked draft is never propagated → no point/rollup contribution.
-          const canDelete = !row._isPending && !!row.id
-            && (isLinked ? !row.propagatedAt : true);
-          // PROPAGATED linked row (§110.1 Part a — block-while-propagated): its
-          // observation is merged into a W4 point's slot-level consensus (§70,
-          // sources-immutable); standalone delete is rejected (mixed-source, no
-          // per-entry provenance). Still opens the ⋮ — but to an HONEST
-          // explanatory state, never a dead/absent control. Correction is Stage 4
-          // reassign territory (queued).
-          const isPropagatedRow = isLinked && !row._isPending && !!row.id && !!row.propagatedAt;
-          return (
-            <PremiumLogCard
-              key={row.id || `row_${idx}`}
-              row={row}
-              ordinal={combined.length - idx}
-              isPending={row._isPending}
-              onMenu={(canDelete || isPropagatedRow) ? () => setMenuRow(row) : undefined}
-              t={t}
-              wide={wide}
-            />
-          );
-        })}
-
-        {/* Brief E Gap 3 — "Zobacz statystyki dnia" footer link. Visible
-            only when (a) player is linked (anonymous PPT logs not yet
-            mapped to a stats page) and (b) at least one log exists today.
-            Ghost variant by design — the sticky "+ Nowy punkt" amber CTA
-            below stays the screen's primary action (§ 27 anti-pattern:
-            multiple CTAs competing on same surface). */}
-        {playerId && combined.length > 0 && (
-          <div style={{ marginTop: SPACE.lg, textAlign: 'center' }}>
-            <Btn variant="ghost"
-              onClick={() => navigate(`/player/${playerId}/stats`)}
-              style={{ minHeight: 44, color: COLORS.accent, fontWeight: 700 }}>
-              {t('ppt_logs_view_stats_link') || 'Zobacz statystyki dnia →'}
-            </Btn>
-          </div>
+            {rowList}
+            {statsLink}
+          </>
         )}
       </div>
 
-      {/* Sticky + Nowy punkt — routes via parent (picker vs wizard decision). */}
-      <div style={{
-        position: 'fixed',
-        left: 0, right: 0,
-        // § Gracz fix — sits ABOVE the shared TabBar (height 56 + safe-area)
-        // when it renders; §C3 single-role users have no bar → hug the bottom.
-        bottom: tabBarVisible
-          ? 'calc(56px + env(safe-area-inset-bottom, 0px))'
-          : 'env(safe-area-inset-bottom, 0px)',
-        padding: `${SPACE.md}px ${SPACE.lg}px`,
-        background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
-      }}>
-        <Btn variant="accent" onClick={onNewPoint}
-          style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800, gap: 8 }}>
-          <Plus size={20} strokeWidth={2.8} /> {t('ppt_logs_new_point')}
-        </Btn>
-      </div>
+      {/* Sticky + Nowy punkt — phone only (wide renders an inline CTA in the
+          axis column, § 27 single-CTA). Routes via parent (picker vs wizard). */}
+      {!wideHero && (
+        <div style={{
+          position: 'fixed',
+          left: 0, right: 0,
+          // § Gracz fix — sits ABOVE the shared TabBar (height 56 + safe-area)
+          // when it renders; §C3 single-role users have no bar → hug the bottom.
+          bottom: tabBarVisible
+            ? 'calc(56px + env(safe-area-inset-bottom, 0px))'
+            : 'env(safe-area-inset-bottom, 0px)',
+          padding: `${SPACE.md}px ${SPACE.lg}px`,
+          background: `linear-gradient(180deg, rgba(8,12,20,0) 0%, ${COLORS.bg} 30%)`,
+        }}>
+          <Btn variant="accent" onClick={onNewPoint}
+            style={{ width: '100%', minHeight: 64, fontSize: 17, fontWeight: 800, gap: 8 }}>
+            <Plus size={20} strokeWidth={2.8} /> {t('ppt_logs_new_point')}
+          </Btn>
+        </div>
+      )}
 
       <Toast
         message={
