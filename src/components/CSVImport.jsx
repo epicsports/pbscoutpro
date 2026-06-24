@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
 import RdIcon from './RdIcon';
-import { COLORS, FONT, FONT_SIZE, ELEV, TRACKING, RADIUS } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, ELEV, TRACKING, RADIUS, TNUM } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
 import { repairMojibake } from '../utils/mojibake';
 import { playerTeams } from '../utils/playerTeams';
@@ -9,6 +9,7 @@ import { resolvePbliImport } from '../utils/playerImportDedup';
 import { useLeagues } from '../hooks/useLeagues';
 import { useLeagueDivisions } from '../hooks/useLeagueDivisions';
 import { useLanguage } from '../hooks/useLanguage';
+import { useDevice } from '../hooks/useDevice';
 
 /**
  * CSVImport — import/update teams + players from CSV (PBLeagues format).
@@ -136,6 +137,9 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
   const allowedDivisions = useLeagueDivisions(league).map(d => d.name);
   const [mergeByName, setMergeByName] = useState(true); // default ON — safest for re-imports
   const fileRef = useRef(null);
+  const device = useDevice();
+  const wide = device.width >= 720;
+  const mappedCount = MAPPABLE.filter(m => colMap[m.key] != null && colMap[m.key] !== '').length;
 
   const reset = () => { setStep('upload'); setCsvData(null); setParsed([]); setPreview(null); setLog([]); setColMap({}); };
 
@@ -465,7 +469,7 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={() => { onClose(); reset(); }} title="Import CSV — teams & players">
+    <Modal open={open} onClose={() => { onClose(); reset(); }} title="Import CSV — teams & players" maxWidth={820}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {step === 'upload' && (
@@ -505,7 +509,16 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
               </div>
             </label>
             <input ref={fileRef} type="file" accept=".csv,.txt,.tsv" onChange={handleFile} style={{ display: 'none' }} />
-            <Btn variant="accent" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}><RdIcon name="todo" size={16} /> Wybierz plik CSV</Btn>
+            <div role="button" tabIndex={0} className="rd-press" onClick={() => fileRef.current?.click()}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 16px', minHeight: 64, borderRadius: RADIUS.md, cursor: 'pointer', background: `${COLORS.accent}14`, border: `1px dashed ${COLORS.accent}55` }}>
+              <span style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accent, color: COLORS.black }}><RdIcon name="file" size={21} /></span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.text }}>Wybierz plik CSV</div>
+                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 1 }}>.csv · .txt · .tsv — PBLeagues lub własny</div>
+              </div>
+              <span style={{ color: COLORS.accent, display: 'flex', flexShrink: 0 }}><RdIcon name="chevron" size={16} /></span>
+            </div>
           </>
         )}
 
@@ -513,6 +526,12 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
           <>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.accent, fontWeight: 800 }}>
               {csvData.rows.length} wierszy · {csvData.headers.length} kolumn · sep: {csvData.sep === ';' ? 'średnik' : 'przecinek'}
+            </div>
+            <div style={{ display: wide ? 'grid' : 'flex', flexDirection: wide ? undefined : 'column', gridTemplateColumns: wide ? 'minmax(0, 380px) minmax(0, 1fr)' : undefined, gap: wide ? 18 : 12, alignItems: 'start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim }}>Mapowanie kolumn</span>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: mappedCount >= 2 ? COLORS.success : COLORS.textMuted, ...TNUM }}>{mappedCount} z {MAPPABLE.length} zmapowanych</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
               {MAPPABLE.map(m => (
@@ -529,7 +548,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
               ))}
             </div>
             <Btn variant="default" onClick={handlePreview} disabled={!colMap.team || !colMap.player}><RdIcon name="eye" size={15} /> Podgląd</Btn>
-            {preview && (
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, width: '100%' }}>
+            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim }}>Podgląd</span>
+            {preview ? (
               <>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <StatRow label={t('csv_import_stat_teams')} create={preview.newTeams} update={preview.updTeams} noChange={t('csv_import_no_change')} />
@@ -574,7 +596,11 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                   <Icons.Check /> Import: {preview.newPlayers} nowych, {preview.updPlayers} aktualizacji
                 </Btn>
               </>
+            ) : (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '24px 14px', textAlign: 'center', lineHeight: 1.5 }}>Zmapuj wymagane kolumny i kliknij „Podgląd".</div>
             )}
+            </div>
+            </div>
           </>
         )}
 
