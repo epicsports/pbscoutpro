@@ -18,6 +18,20 @@ import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../utils/theme';
 import RdIcon from './RdIcon';
+
+// Module-level so the component identity is STABLE across renders. Defining this
+// inside the render body (as `const Grid = …`) gives it a new function identity
+// every render → React remounts the whole match list on each liveScores poll
+// (flicker + lost scroll). `wide` drives the grid reflow; phone = transparent.
+const GRID_STYLE = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+  gap: SPACE.sm,
+  alignItems: 'start',
+};
+function Grid({ wide, children }) {
+  return wide ? <div style={GRID_STYLE}>{children}</div> : <>{children}</>;
+}
 import DivisionTabs from './tabs/DivisionTabs';
 import { playerOnTeam } from '../utils/playerTeams';
 import { STATIC_FLAGS } from '../utils/featureFlags';
@@ -301,16 +315,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
   // is a transparent Fragment so the markup stays byte-identical to before — no
   // extra wrapper div, no style change. auto-fill + minmax(340px) yields 2 cols
   // ~720–1080, 3 cols above, gracefully 1 col when narrow.
-  const Grid = wide
-    ? ({ children }) => (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-          gap: SPACE.sm,
-          alignItems: 'start',
-        }}>{children}</div>
-      )
-    : ({ children }) => <>{children}</>;
+  // Grid is module-level (stable identity) — see top of file. Pass `wide` to it.
 
   return (
     <div style={{
@@ -407,7 +412,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
               const flatten = stages.length === 1 && stages[0].groups.length === 1 && !stages[0].groups[0].groupName;
               if (flatten) {
                 return (
-                  <Grid>
+                  <Grid wide={wide}>
                     {stages[0].groups[0].matches.map(m => (
                       <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
                     ))}
@@ -433,7 +438,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
                           Grupa {g.groupName}
                         </div>
                       )}
-                      <Grid>
+                      <Grid wide={wide}>
                         {g.matches.map(m => (
                           <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
                         ))}
@@ -449,7 +454,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
         {completed.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
             <SectionLabel>Completed ({completed.length})</SectionLabel>
-            <Grid>
+            <Grid wide={wide}>
               {completed.map(m => (
                 <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} />
               ))}
