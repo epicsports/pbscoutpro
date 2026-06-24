@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1a — review-block tokenize (chat GO, behind net)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-skin-pass1`. `MatchPage.jsx` (`+14/−6`). The FIRST step of the gated MatchPage re-skin (net banked 12/12 first).
+- **Behaviour-FROZEN tokenize** of the review block toward `LiveMatchPremium`: scoreboard → `ELEV.surface`+`shadow1`, score zone → `ELEV.sunken`+`TNUM`, review/FINAL badge → **neutral** (`ELEV.sunken`/`textDim` — CD refinement #1, review is not an active state). Emoji `👁`/`💬`/`⋮` → `RdIcon` (eye/note/dots), behavioral meaning kept.
+- **PROOF (the gate held):** full net **12/12** (`matchpage-modes`+`log-point`+`capture-parity` golden+`matchreview-rail`+`phase-view`) + precommit green. 0 logic deletions (state/`viewMode`/`handleSave`/lock-flows/testids/heatmap/landscape-rail frozen). Editor body + ≥720 wide untouched.
+- **Honest scope:** this is a LIGHT partial — the structural re-skin (consolidated head-to-head `RdLivePointRow` #2, scoreboard **crests** + initials fallback #3 [2-line names already present], header/completeness migration) is **Pass 1b**, a focused net-guarded step (deferred: the Pass 1 fork stalled mid-verify, and a 700-line restructure shouldn't be rushed on the data-critical live-scoring component).
+- **Smoke (Jacek, prod):** match review → cleaner scoreboard (ELEV), no emoji, FINAL badge neutral.
+- **Next:** Pass 1b (consolidated row + crests), then Pass 2 (editor body + ≥720 wide + shared-helper unification).
+
 ## 2026-06-24 — [BUGFIX/Tier-1] ScoutWide (tablet) shows completed matches (chat GO, bug-mode)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/scoutwide-completed-and-heatmap`. `AppShellPremiumWide.jsx` (`+16/−6`).
 - **Bug (user-reported, tablet):** ScoutWide computed `live`+`scheduled` but never `completed`; `ordered` excluded them → finished matches vanished (DPL #2 "2 mecze" showed only the 1 live). **Fix:** add `completed = matches.filter(classifyMatch === 'completed')`, include in `ordered` (selectable), new **"Zakończone · N"** master-list group, completed Rows show final `scoreA:scoreB` + "ZAKOŃCZONY" (was `—`).
