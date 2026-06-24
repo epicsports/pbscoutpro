@@ -1280,6 +1280,9 @@ const T = {
     ppt_row_variant:             'Jak',
     ppt_row_shots:               'Strzały',
     ppt_row_outcome:             'Jak spadłeś',
+    ppt_row_summary:             'Podsumowanie',
+    ppt_rail_eyebrow:            'Logowanie punktu',
+    ppt_back:                    'Wstecz',
     ppt_shots_skipped:           (variant) => `Pominięte (${variant || ''})`.trim(),
     ppt_shots_none:              'Nic nie strzelałem',
 
@@ -2128,6 +2131,9 @@ const T = {
     ppt_row_variant:             'How',
     ppt_row_shots:               'Shots',
     ppt_row_outcome:             'Down',
+    ppt_row_summary:             'Summary',
+    ppt_rail_eyebrow:            'Logging point',
+    ppt_back:                    'Back',
     ppt_shots_skipped:           (variant) => `Skipped (${variant || ''})`.trim(),
     ppt_shots_none:              'Nothing shot',
 
