@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] CSV import full premium skin — CD backlog #1 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/csv-import-premium-full`. `CSVImport.jsx` + `RdIcon.jsx` (new `file` glyph). Restyle-only on top of the earlier light pass.
+- **Premium pieces:** clickable file-card (`RdIcon file`, no emoji); eyebrow section headers; mapped-counter "X z N zmapowanych" (TNUM, success ≥2); **wide (≥720) 2-col** mapping(380px)|preview, Modal→820; phone stacked.
+- **Behaviour FROZEN (0 deletions):** parser (`handleFile`/`parseRow`/BOM/sep/header-detect), `MAPPABLE`/`colMap`, `handlePreview`/`handleImport`, payload, validation, `resolvePbliImport` dedup, all `ds.*`, props/testids. build+precommit green; b4-home 3/3.
+- **🟡 Fidelity flag for CD (restyle-only forced these — NOT a 1:1 prototype match):** (a) app mapping is **field-centric** (`colMap[field]=colIdx`) vs prototype **column-centric** (row per source-column→Select) — inverting = mapping-logic change, kept field-centric. (b) preview shows the import **RESULT** (team→player) vs prototype's **raw-CSV-column** live-preview w/ struck skipped cols — different logic, kept result-preview. (c) counter inline, not a true sticky footer. **The full column-centric / raw-preview IA = a separate behaviour/IA call for CD.**
+- **Smoke (Jacek, prod):** admin → CSV import → premium file-card + Select mapping; ≥720 = 2-col.
+- **Next (CD backlog):** workspace switcher (full premium) → states (offline/error/delete-confirm). Separate: **ELEV-as-theme-palette** root-cause fix (theme switch doesn't repaint premium screens — `setTheme` remaps COLORS only, not ELEV).
+
 ## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1 CLOSE — premium header + CompletenessCard + scout-name in expanded (behind net)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-pass1-close`. `MatchPage.jsx` (+79) + `CompletenessCard.jsx` (re-skin) + `i18n.js` (1 key). **Closes Pass 1.**
 - **A header:** review header premium-ized INLINE (ELEV back tile + RdIcon chevron + title + neutral badge) — the shared `PageHeader` NOT touched (still used at the editor header). **Completeness:** `CompletenessCard.jsx` re-skinned to RdCompleteness (ELEV card + TRACKING.label eyebrow + ELEV.sunken bar track + TNUM% + RdIcon; lucide retired). Props/API/5 metrics+composite/4-tier scale/role-gating/collapse preserved.
