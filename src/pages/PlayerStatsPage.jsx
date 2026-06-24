@@ -269,6 +269,42 @@ function MetricGridCell({ label, value, suffix, color, isRate, barPct, source, t
 // § 59.4 bunker cards → replaced by the premium RdGaugeCards (survival rings)
 // in the redesign; the BunkerCard helper was retired with the BarRow swap.
 
+// ─── WidePanel (≥720 wide variant only) ─────────────────────────────────────
+// Bordered card wrapper for an analytics block in the wide 2-col layout
+// (prototype PlayerStatsWide `Panel`). Mirrors SectionHeader's eyebrow (neutral
+// icon-tile + uppercase tracked label + hairline rule + DataSourcePill) but adds
+// the surface/border/shadow chrome so each block reads as a card in the grid.
+// `span` makes the panel full-width (grid-column: 1 / -1). § 27: amber stays
+// reserved for interactive/active — the icon tile is sunken/hairline/textDim.
+function WidePanel({ title, icon, source, span, children, style, t }) {
+  return (
+    <div style={{
+      gridColumn: span ? '1 / -1' : 'auto',
+      background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+      boxShadow: ELEV.shadow1, borderRadius: 16, padding: '15px 17px 17px',
+      minWidth: 0, ...style,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 13 }}>
+        {icon && (
+          <span style={{
+            width: 26, height: 26, borderRadius: 8, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+            color: COLORS.textDim,
+          }}><RdIcon name={icon} /></span>
+        )}
+        <span style={{
+          fontFamily: FONT, fontSize: 12, fontWeight: 800,
+          color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
+        }}>{title}</span>
+        <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+        {source && <DataSourcePill source={source} t={t} />}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 export default function PlayerStatsPage() {
   const { playerId } = useParams();
   const navigate = useNavigate();
@@ -820,6 +856,10 @@ export default function PlayerStatsPage() {
   // (`columnEl`); portrait is unchanged. `heatmapHeroEl` is the SAME canvas shown
   // inline in the portrait section (defined once, used in whichever branch renders).
   const landscape = device.isLandscape;
+  // ≥720 wide variant (tablet/desktop) — additive 2-col landscape layout
+  // (hero + self-review rail LEFT · analytics grid RIGHT). Phone (<640) never
+  // hits this, so the phone path below stays byte-identical.
+  const wide = device.width >= 720;
   const heatmapHeroEl = (outgoingZones.hasAny || breakoutPoints.length > 0) && statsField?.fieldImage ? (
     <HeatmapCanvas
       fieldImage={statsField.fieldImage}
@@ -842,9 +882,13 @@ export default function PlayerStatsPage() {
     />
   );
 
-  const columnEl = (
-      <div data-testid="player-report-column" style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
-
+  // ─── Shared report "chrome" (identical phone + wide) ────────────────────────
+  // Cold-review entry · hero card · scope pills + pickers · layout summary ·
+  // loader gate · deferred-global CTA · empty state. Extracted so the wide 2-col
+  // layout reuses the SAME elements verbatim (phone output byte-identical — same
+  // JSX, same order, now referenced via {reportChromeEl}).
+  const reportChromeEl = (
+      <>
         {/* ─── Cold-review entry (claim flow 1b, W4) — own player only;
               quiet at N=0 (renders nothing). ─────────────────────────── */}
         {isSelfView && (
@@ -1010,6 +1054,12 @@ export default function PlayerStatsPage() {
           && !(scopeParam === 'global' && !runHeavy) && (
           <EmptyState icon="?" text="No scouted points yet" subtitle={t('player_stats_empty_subtitle')} />
         )}
+      </>
+  );
+
+  const columnEl = (
+      <div data-testid="player-report-column" style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {reportChromeEl}
 
         {!dataLoading && stats.played > 0 && (() => {
           // § 59.7: collapse position-zone depth into side totals.
@@ -1298,6 +1348,201 @@ export default function PlayerStatsPage() {
       </div>
   );
 
+  // ─── WIDE (≥720) 2-col layout ───────────────────────────────────────────────
+  // Prototype PlayerStatsWide (redesign.jsx :1237). LEFT = hero card + self-review
+  // rail (reportChromeEl carries the hero/scope-pills/loader/CTA; Samoocena rail
+  // sits beneath it). RIGHT = analytics grid: headline metrics + breakout heatmap
+  // (full-span) then tendency/start/break/obstacle/fall/death/chemia/history blocks
+  // reflowed into auto-fill WidePanels. All REAL data — same `stats`/`raw`/lineup
+  // the phone column computes; only the layout differs (additive).
+  const wideAnalyticsEl = (!dataLoading && stats.played > 0) ? (() => {
+    const sides = aggregateBySide(stats.positions);
+    const plusMinus = stats.wins - stats.losses;
+    const metricGrid = (
+      <div data-testid="player-stat-grid" style={{
+        gridColumn: '1 / -1',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12,
+      }}>
+        <MetricGridCell t={t} label={t('stats_metric_win_rate')} value={stats.winRate ?? '—'} suffix={stats.winRate != null ? '%' : ''} color={winRateColor(stats.winRate)} isRate barPct={stats.winRate} source="scout" />
+        <MetricGridCell t={t} label={t('stats_metric_survival')} value={stats.survivalRate ?? '—'} suffix={stats.survivalRate != null ? '%' : ''} color={winRateColor(stats.survivalRate)} isRate barPct={stats.survivalRate} source="scout+self" />
+        <MetricGridCell t={t} label={t('stats_metric_punkty')} value={stats.played} source="scout+self" />
+        <MetricGridCell t={t} label={t('stats_metric_plusminus')} value={`${plusMinus > 0 ? '+' : ''}${plusMinus}`} color={plusMinusColor(plusMinus)} source="scout" />
+        <MetricGridCell t={t} label={t('stats_metric_kills')} value={stats.kills} source="scout" />
+        <MetricGridCell t={t} label={t('stats_metric_kpt')} value={stats.killsPerPoint.toFixed(1)} source="scout" />
+      </div>
+    );
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }}>
+        {metricGrid}
+
+        {/* OUTGOING zone-shots breakout heatmap — full-span (real data). */}
+        {(outgoingZones.hasAny || breakoutPoints.length > 0) && statsField?.fieldImage && (
+          <WidePanel t={t} span source="scout+self" icon="impact" title={t('player_stats_zone_section_title')}>
+            {heatmapHeroEl}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
+                <span style={{ width: 9, height: 9, borderRadius: '50%', background: COLORS.success }} />
+                {t('player_stats_legend_breakout')}
+              </span>
+              {outgoingZones.hasAny && (
+                <span style={{ fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>{t('player_stats_legend_zones')}</span>
+              )}
+              {outgoingZones.kill.length > 0 && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 11, color: COLORS.textMuted }}>
+                  <span style={{ width: 12, height: 12, borderRadius: 3, border: `2px solid ${COLORS.danger}` }} />
+                  {t('player_stats_legend_elim_zone')}
+                </span>
+              )}
+            </div>
+          </WidePanel>
+        )}
+
+        {sides.total > 0 && (
+          <WidePanel t={t} source="scout+self" icon="compass" title={t('stats_zazwyczaj_gra_po_stronie')}>
+            <RdSplitBar
+              names={{ snake: 'Snake', center: 'Centrum', dorito: 'Dorito' }}
+              unit="pkt"
+              items={[
+                { side: 'snake',  pct: Math.round((sides.Snake  / sides.total) * 100), n: sides.Snake },
+                { side: 'center', pct: Math.round((sides.Center / sides.total) * 100), n: sides.Center },
+                { side: 'dorito', pct: Math.round((sides.Dorito / sides.total) * 100), n: sides.Dorito },
+              ]}
+            />
+          </WidePanel>
+        )}
+
+        {stats.causes.length > 0 && (
+          <WidePanel t={t} source="scout+self" icon="impact" title={t('stats_powod_spadania')}>
+            <RdDonut
+              palette={Object.fromEntries(stats.causes.map(({ id }) => [id, (CAUSE_META[id] || { color: COLORS.textDim }).color]))}
+              items={stats.causes.map(({ id, count, pct }) => ({ side: id, k: (CAUSE_META[id] || { label: id }).label, pct, n: count }))}
+            />
+          </WidePanel>
+        )}
+
+        {stats.breakShots && (
+          <WidePanel t={t} source="scout+self" icon="target" title={t('stats_na_breaku_strzela')}>
+            <RdStack items={[
+              { side: 'snake',  k: 'Snake',   pct: stats.breakShots.snake },
+              { side: 'center', k: 'Centrum', pct: stats.breakShots.center },
+              { side: 'dorito', k: 'Dorito',  pct: stats.breakShots.dorito },
+            ]} />
+          </WidePanel>
+        )}
+
+        {stats.obstacleShots && (
+          <WidePanel t={t} source="scout-only" icon="footsteps" title={t('stats_na_pierwszej_przeszkodzie')}>
+            <RdStack items={[
+              { side: 'snake',  k: 'Snake',   pct: stats.obstacleShots.snake },
+              { side: 'center', k: 'Centrum', pct: stats.obstacleShots.center },
+              { side: 'dorito', k: 'Dorito',  pct: stats.obstacleShots.dorito },
+            ]} />
+          </WidePanel>
+        )}
+
+        {stats.bunkers.length > 0 && (
+          <WidePanel t={t} span source="scout+self" icon="flag" title={t('stats_najczesciej_zaczyna_gre_na')}>
+            <RdGaugeCards
+              colorFn={winRateColor}
+              unit="pkt"
+              items={stats.bunkers.slice(0, 3).map(b => ({ k: b.name, surv: b.survivalRate ?? 0, pts: b.played ?? b.count }))}
+            />
+          </WidePanel>
+        )}
+
+        {stats.deathBunkers.length > 0 && (
+          <WidePanel t={t} source="scout-only" title={t('stats_najczesciej_trafiane')}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {stats.deathBunkers.slice(0, 3).map(({ name, count, pct }) => (
+                <BarRow key={name} label={name} labelColor={sideColor(sideFromBunkerName(name))} pct={pct} barColor={COLORS.danger} right={`${count}×`} />
+              ))}
+            </div>
+          </WidePanel>
+        )}
+
+        {lineupStats && lineupStats.length > 0 && (
+          /* LineupStatsSection renders its own duet/trójka sub-headers — keep it
+             bare (no WidePanel) as a full-span grid item, matching the phone path. */
+          <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <LineupStatsSection lineupStats={lineupStats} t={t} />
+          </div>
+        )}
+
+        {raw.matches.length > 0 && (
+          <WidePanel t={t} span source={null} title={t('stats_historia_meczow')}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 8 }}>
+              {raw.matches.map(m => {
+                const badgeColor = m.isWin ? COLORS.success : COLORS.danger;
+                const badgeText = m.isWin ? 'W' : 'L';
+                const oppColor = m.opponentSquadKey ? squadColor(m.opponentSquadKey) : COLORS.textDim;
+                return (
+                  <div
+                    key={`${m.tid}-${m.id}`}
+                    onClick={() => navigate(m.isTraining ? `/training/${m.tid}/matchup/${m.id}` : `/tournament/${m.tid}/match/${m.id}`)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '13px 16px', minHeight: 52,
+                      background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+                      borderRadius: 10, cursor: 'pointer',
+                    }}>
+                    <div style={{ width: 28, height: 28, borderRadius: 5, background: `${badgeColor}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontWeight: 800, fontSize: 13, color: badgeColor }}>{badgeText}</div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {m.opponentSquadKey && (
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: oppColor, flexShrink: 0 }} />
+                      )}
+                      <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 500, color: COLORS.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>vs <span style={{ color: oppColor, fontWeight: 700 }}>{m.opponent}</span></div>
+                    </div>
+                    <div style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{m.scoreA}–{m.scoreB}</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginLeft: 4 }}>
+                      <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 500, color: COLORS.textMuted }}>{t('stats_zagranych')}</span>
+                      <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text }}>{m.playedCount}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </WidePanel>
+        )}
+      </div>
+    );
+  })() : null;
+
+  // Samoocena (self-review) rail — same real selfReports, wrapped in a WidePanel
+  // so it reads as a card in the LEFT column.
+  const wideSelfReviewEl = (!dataLoading && selfReports.length > 0) ? (() => {
+    const trainingsById = {};
+    for (const tr of trainings || []) { if (tr?.id) trainingsById[tr.id] = tr; }
+    return (
+      <WidePanel t={t} source={null} icon="note" title={t('stats_samoocena')}>
+        <div>
+          {selfReports.map((r, idx) => {
+            const eventLabel = r.trainingId ? (trainingsById[r.trainingId]?.name ?? null) : null;
+            return (
+              <LogRow key={r.id} row={r} ordinal={selfReports.length - idx} isPending={false} eventLabel={eventLabel} />
+            );
+          })}
+        </div>
+      </WidePanel>
+    );
+  })() : null;
+
+  const wideLayoutEl = (
+    <div data-testid="player-report-column" style={{ flex: 1, overflowY: 'auto', padding: '24px 26px 48px' }} className="rd-scroll">
+      <div style={{ maxWidth: 1280, margin: '0 auto', display: 'grid', gridTemplateColumns: 'minmax(320px, 380px) minmax(0, 1fr)', gap: 22, alignItems: 'start' }}>
+        {/* LEFT — identity + scope chrome + self-review rail (prototype: normal
+            grid item, alignItems:start; not sticky — the rail can be tall). */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+          {reportChromeEl}
+          {wideSelfReviewEl}
+        </div>
+        {/* RIGHT — analytics grid */}
+        <div style={{ minWidth: 0 }}>
+          {wideAnalyticsEl}
+        </div>
+      </div>
+    </div>
+  );
+
   // Photo lightbox — tap-to-enlarge for the profile avatar. PBLeagues photos are
   // usually head-to-toe shots tightly cropped by the 64px circle, so tapping opens
   // the full image. Click anywhere closes. (Valid in both orientations.)
@@ -1330,6 +1575,20 @@ export default function PlayerStatsPage() {
         }}>×</div>
     </div>
   ) : null;
+
+  // WIDE (≥720, tablet/desktop) — additive 2-col layout (hero + self-review rail
+  // LEFT · analytics grid RIGHT). Takes precedence over the heatmap-hero landscape
+  // mode on wide viewports (the heatmap is embedded as a full-span analytics panel
+  // here instead). Phone (<640) never reaches this branch → phone path unchanged.
+  if (wide) {
+    return (
+      <div style={{ minHeight: '100vh', maxWidth: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', background: COLORS.bg }}>
+        {pageHeaderEl}
+        {wideLayoutEl}
+        {photoLightboxEl}
+      </div>
+    );
+  }
 
   // LANDSCAPE (with a heatmap to promote): field is the HERO, report column is the
   // rail (by reference). Collapses to the §116 strip on cramped tablet-landscape.
