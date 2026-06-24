@@ -231,9 +231,12 @@ const T = {
     // ── i18n hotfix 2026-06-23: keys referenced via t() but previously unregistered
     // (rendered as raw key-names, worst on the wide shell). PL = the intended inline
     // `|| '…'` fallbacks from the call sites.
+    analyze_opponent:           'Analizuj przeciwnika',
+    analyze_opponent_sub:       (name) => `Rozbiegi, strzelanie i strefy — pełna analiza ${name}`,
     coach_all_hidden:           'Wszystkie drużyny ukryte',
     coach_last_match:           'Ostatni mecz',
     coach_select_team:          'Wybierz drużynę z listy',
+    coach_select_team_sub:      'Kliknij drużynę po lewej, aby zobaczyć przegląd i przejść do analizy przeciwnika.',
     coach_wide_sub:             'Wybierz drużynę, aby analizować przeciwnika',
     full_analysis:              'Pełna analiza',
     log_point:                  'Zaloguj punkt',
@@ -2373,9 +2376,12 @@ const T = {
     neterror_retry:             'Try again',
     neterror_retrying:          'Connecting…',
     // ── i18n hotfix 2026-06-23: keys referenced via t() but previously unregistered.
+    analyze_opponent:           'Analyze opponent',
+    analyze_opponent_sub:       (name) => `Breaks, shooting and zones — full analysis of ${name}`,
     coach_all_hidden:           'All teams hidden',
     coach_last_match:           'Last match',
     coach_select_team:          'Select a team from the list',
+    coach_select_team_sub:      'Tap a team on the left to see an overview and open the opponent analysis.',
     coach_wide_sub:             'Select a team to analyze the opponent',
     full_analysis:              'Full analysis',
     log_point:                  'Log point',
