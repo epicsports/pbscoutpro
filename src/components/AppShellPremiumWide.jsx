@@ -150,7 +150,8 @@ function ScoutWide({ tournamentId, tournament }) {
   const classify = (m) => classifyMatch(m, liveScores);
   const live = matches.filter(m => classify(m) === 'live');
   const scheduled = matches.filter(m => classify(m) === 'scheduled');
-  const ordered = [...live, ...scheduled];
+  const completed = matches.filter(m => classify(m) === 'completed');
+  const ordered = [...live, ...scheduled, ...completed];
   const [sel, setSel] = useState(ordered[0]?.id || null);
   const m = ordered.find(x => x.id === sel) || ordered[0] || null;
   const scoutSide = (scoutedId) => navigate(`/tournament/${tournamentId}/match/${m.id}?scout=${scoutedId}&mode=new`);
@@ -158,7 +159,9 @@ function ScoutWide({ tournamentId, tournament }) {
 
   const Row = ({ x }) => {
     const on = x.id === sel;
-    const lv = classify(x) === 'live';
+    const st = classify(x);
+    const lv = st === 'live';
+    const done = st === 'completed';
     const ls = liveScores[x.id]?.score || null;
     const sA = ls ? ls.a : (x.scoreA || 0);
     const sB = ls ? ls.b : (x.scoreB || 0);
@@ -169,10 +172,10 @@ function ScoutWide({ tournamentId, tournament }) {
           <div style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{getName(x.teamA)} <span style={{ color: COLORS.textMuted, fontWeight: 600 }}>vs</span> {getName(x.teamB)}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
             {lv && <LivePulse />}
-            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: lv ? COLORS.danger : COLORS.textMuted, letterSpacing: '.3px' }}>{lv ? 'NA ŻYWO' : (x.division || t('scout_tab_scheduled') || 'Zaplanowany')}</span>
+            <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: lv ? COLORS.danger : COLORS.textMuted, letterSpacing: '.3px' }}>{lv ? 'NA ŻYWO' : done ? 'ZAKOŃCZONY' : (x.division || t('scout_tab_scheduled') || 'Zaplanowany')}</span>
           </div>
         </div>
-        <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color: lv ? COLORS.text : COLORS.textMuted, ...TNUM }}>{lv ? `${sA}:${sB}` : '—'}</div>
+        <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color: (lv || done) ? COLORS.text : COLORS.textMuted, ...TNUM }}>{(lv || done) ? `${sA}:${sB}` : '—'}</div>
       </div>
     );
   };
@@ -188,8 +191,15 @@ function ScoutWide({ tournamentId, tournament }) {
             {live.map(x => <Row key={x.id} x={x} />)}
             <div style={{ height: 8 }} />
           </>)}
-          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', margin: '0 2px 10px' }}>Zaplanowane · {scheduled.length}</div>
-          {scheduled.map(x => <Row key={x.id} x={x} />)}
+          {scheduled.length > 0 && (<>
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', margin: '0 2px 10px' }}>Zaplanowane · {scheduled.length}</div>
+            {scheduled.map(x => <Row key={x.id} x={x} />)}
+            <div style={{ height: 8 }} />
+          </>)}
+          {completed.length > 0 && (<>
+            <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', margin: '0 2px 10px' }}>Zakończone · {completed.length}</div>
+            {completed.map(x => <Row key={x.id} x={x} />)}
+          </>)}
           {ordered.length === 0 && (
             <div style={{ textAlign: 'center', padding: '32px 16px', fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.textMuted }}>{t('scout_tab_no_matches_yet') || 'Brak meczów'}</div>
           )}
