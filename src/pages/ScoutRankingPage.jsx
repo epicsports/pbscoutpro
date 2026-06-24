@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import Screen from '../components/Screen';
+import RdIcon from '../components/RdIcon';
 import { Btn, EmptyState, Select } from '../components/ui';
 import Preloader from '../components/Preloader';
 import { useScreenLoader } from '../hooks/useScreenLoader';
@@ -90,7 +91,9 @@ export default function ScoutRankingPage() {
   // Premium determinate loader (creep-and-snap on the single `loading` boolean).
   const { shown: loaderShown, progress: loaderP, close: closeLoader } = useScreenLoader(loading);
   const maxPts = useMemo(() => Math.max(...stats.map(s => s.points), 1), [stats]);
-  const selected = stats.find(s => s.uid === selectedUid) || stats[0] || null;
+  // Wide master-detail: nothing is auto-picked — the right pane shows an
+  // empty-state prompt until the user selects a scout from the leaderboard.
+  const selected = selectedUid ? (stats.find(s => s.uid === selectedUid) || null) : null;
 
   return (
     // §arc-B — LIST tier (960 desktop cap): the premium redesign uses the wide
@@ -174,15 +177,22 @@ export default function ScoutRankingPage() {
               );
             })}
           </div>
-          {/* selected-scout detail (wide only) */}
-          {wide && selected && (
-            <ScoutDetailPane
-              scout={selected}
-              name={names[selected.uid] || fallbackScoutLabel(selected.uid)}
-              rank={stats.findIndex(s => s.uid === selected.uid) + 1}
-              stars={scoutStars(selected.composite)}
-              onOpen={() => navigate(`/scouts/${selected.uid}`)}
-            />
+          {/* selected-scout detail (wide only) — empty-state until one is picked */}
+          {wide && (
+            <div style={{ position: 'sticky', top: 12, zIndex: 1, minWidth: 0 }}>
+              {selected ? (
+                <ScoutDetailPane
+                  scout={selected}
+                  name={names[selected.uid] || fallbackScoutLabel(selected.uid)}
+                  rank={stats.findIndex(s => s.uid === selected.uid) + 1}
+                  stars={scoutStars(selected.composite)}
+                  onOpen={() => navigate(`/scouts/${selected.uid}`)}
+                  t={t}
+                />
+              ) : (
+                <ScoutDetailEmpty t={t} />
+              )}
+            </div>
           )}
         </div>
       )}
@@ -239,11 +249,11 @@ function ScoutCard({ rank, name, points, composite, stars, maxPts, me, active, o
 
 // Wide selected-scout detail — conic quality ring (color by composite, NEVER green
 // at 0 — `compositeColor` is the survival-style 0→red/mid→amber/high→green scale).
-function ScoutDetailPane({ scout, name, rank, stars, onOpen }) {
+function ScoutDetailPane({ scout, name, rank, stars, onOpen, t }) {
   const color = compositeColor(scout.composite);
   const initial = (name || '?').charAt(0).toUpperCase();
   return (
-    <div style={{ position: 'sticky', top: 12, minWidth: 0 }}>
+    <>
       <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1, borderRadius: 18, padding: 22 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ width: 58, height: 58, borderRadius: 16, background: ELEV.sunken, border: `1px solid ${ELEV.hairlineStrong}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 24, fontWeight: 800, color: COLORS.textDim, flexShrink: 0 }}>{initial}</div>
@@ -256,11 +266,11 @@ function ScoutDetailPane({ scout, name, rank, stars, onOpen }) {
           <div style={{ position: 'relative', width: 112, height: 112, flexShrink: 0, borderRadius: '50%', background: `conic-gradient(${color} ${scout.composite}%, ${ELEV.sunken} 0)` }}>
             <div style={{ position: 'absolute', inset: 9, borderRadius: '50%', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: FONT, fontSize: 28, fontWeight: 800, color, lineHeight: 1, ...TNUM }}>{scout.composite}<span style={{ fontSize: 14 }}>%</span></span>
-              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: COLORS.textMuted, letterSpacing: TRACKING.label, marginTop: 3 }}>JAKOŚĆ</span>
+              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, color: COLORS.textMuted, letterSpacing: TRACKING.label, marginTop: 3 }}>{t('scout_quality_label')}</span>
             </div>
           </div>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {[['Pozycja', `#${rank}`, rank <= 3 ? COLORS.accent : COLORS.text], ['Zascoutowane', `${scout.points}`, COLORS.text], ['Ocena', `${stars}/5`, COLORS.accent]].map(([lab, val, col]) => (
+            {[[t('scout_position'), `#${rank}`, rank <= 3 ? COLORS.accent : COLORS.text], [t('scout_scouted'), `${scout.points}`, COLORS.text], [t('scout_rating'), `${stars}/5`, COLORS.accent]].map(([lab, val, col]) => (
               <div key={lab} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 9, borderBottom: `1px solid ${ELEV.hairline}` }}>
                 <span style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim }}>{lab}</span>
                 <span style={{ fontFamily: FONT, fontSize: 19, fontWeight: 800, color: col, ...TNUM }}>{val}</span>
@@ -268,8 +278,32 @@ function ScoutDetailPane({ scout, name, rank, stars, onOpen }) {
             ))}
           </div>
         </div>
-        <div onClick={onOpen} style={{ marginTop: 16, textAlign: 'center', padding: '13px', borderRadius: 12, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40`, WebkitTapHighlightColor: 'transparent' }}>Otwórz profil →</div>
+        <div onClick={onOpen} style={{ marginTop: 16, minHeight: 48, textAlign: 'center', padding: '13px', borderRadius: 12, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 15, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40`, WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {t('scout_open_profile')}
+        </div>
       </div>
+    </>
+  );
+}
+
+// Wide right-pane empty state — shown until a scout is selected from the
+// leaderboard. textMuted + RdIcon (NOT blank); no amber, no glow.
+function ScoutDetailEmpty({ t }) {
+  return (
+    <div style={{
+      background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
+      borderRadius: 18, padding: '48px 28px', textAlign: 'center',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+    }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: 16, background: ELEV.sunken,
+        border: `1px solid ${ELEV.hairlineStrong}`, display: 'flex',
+        alignItems: 'center', justifyContent: 'center', color: COLORS.textMuted,
+      }}>
+        <RdIcon name="user" size={26} />
+      </div>
+      <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.textDim }}>{t('scout_select_prompt')}</div>
+      <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, maxWidth: 240, lineHeight: 1.5 }}>{t('scout_select_sub')}</div>
     </div>
   );
 }
