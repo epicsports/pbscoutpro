@@ -1,3 +1,12 @@
+/**
+ * PlayersPage — the workspace roster manager: add / edit / delete players +
+ * coaching staff + support staff, with search + URL-backed filters.
+ *
+ * Wide (≥720px viewport): renders RosterManageWide — a sticky-toolbar,
+ * role-grouped (Coaching / Players / Support) responsive auto-fill grid of
+ * avatar-ring cards, wired to the SAME real roster data + add/edit/delete
+ * actions. Phone (<720px): the existing list, UNCHANGED (additive dispatch).
+ */
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useModal } from '../hooks/useModal';
@@ -5,6 +14,7 @@ import { useDevice } from '../hooks/useDevice';
 
 import PageHeader from '../components/PageHeader';
 import Screen from '../components/Screen';
+import RdIcon from '../components/RdIcon';
 import { Btn, Card, SectionTitle, EmptyState, SkeletonList, Icons, ConfirmModal } from '../components/ui';
 import SearchFilterPanel from '../components/SearchFilterPanel';
 import PlayerEditModal from '../components/PlayerEditModal';
@@ -16,7 +26,7 @@ import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { useLeagues } from '../hooks/useLeagues';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
-import { COLORS, responsive } from '../utils/theme';
+import { COLORS, ELEV, FONT, FONT_SIZE, TYPE, TRACKING, TNUM, TOUCH, RADIUS, responsive } from '../utils/theme';
 import { playerDisplayName } from '../utils/helpers';
 import { playerOnTeam } from '../utils/playerTeams';
 import { matchEntity, playerInLeague, playerInDivision } from '../utils/entityFilters';
@@ -154,9 +164,27 @@ export default function PlayersPage() {
 
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '—';
 
+  // ── Wide dispatch (≥720) — role-grouped card-grid variant; phone path untouched ──
+  const wide = device.width >= 720;
+
   return (
     <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
       header={<PageHeader back={{ to: '/' }} title={t('players_label')} />}>
+      {wide ? (
+        <RosterManageWide
+          t={t}
+          loading={loading}
+          players={filtered}
+          totalCount={players.length}
+          search={search}
+          onSearchChange={v => setParam('q', v)}
+          isSuperAdmin={isSuperAdmin}
+          getTeamName={getTeamName}
+          onAdd={openAdd}
+          onEdit={openEdit}
+          onDelete={(p) => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}
+        />
+      ) : (
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
         <SectionTitle right={
           <div style={{ display: 'flex', gap: 4 }}>
@@ -217,6 +245,7 @@ export default function PlayersPage() {
           );
         })}
       </div>
+      )}
 
       <PlayerMultiSelectBar
         count={selectedIds.size}
@@ -264,5 +293,225 @@ export default function PlayersPage() {
 
       <CSVImport open={csvOpen} onClose={() => setCsvOpen(false)} teams={teams} players={players} ds={ds} />
     </Screen>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// RosterManageWide — sticky-toolbar, role-grouped (Coaching / Players / Support)
+// responsive auto-fill card grid. Wired to the page's REAL roster + the SAME
+// add / edit / delete actions; no mock data. Ported (look) from prototype
+// redesign6.jsx:602 (RosterManageWide / WRosterCard / WRosterGroup) → our theme
+// tokens (COLORS/ELEV/FONT/RADIUS/TYPE/TRACKING/TNUM/TOUCH), RdIcon, no emoji.
+//
+// § 27: amber is reserved for the HERO accent + the Add CTA + the active card
+// ring (interactive/active only). Group accents (info / textDim) are non-amber.
+// The whole card navigates → edit, so it carries NO chevron; the only inline
+// affordance is a super_admin-only delete button (stop-propagated).
+// ════════════════════════════════════════════════════════════════════════════
+const isPlayerRole = (p) => !p.role || p.role === 'player';
+
+function WRosterGroup({ icon, title, count, accent, children }) {
+  return (
+    <div style={{ marginBottom: 26 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 13 }}>
+        <span style={{
+          width: 30, height: 30, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: accent || COLORS.textDim, flexShrink: 0,
+        }}><RdIcon name={icon} size={16} /></span>
+        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label }}>{title}</span>
+        <span style={{
+          fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.textMuted,
+          background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.full, padding: '2px 9px', ...TNUM,
+        }}>{count}</span>
+        <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(248px, 1fr))', gap: 12 }}>{children}</div>
+    </div>
+  );
+}
+
+// Single roster card. Player → avatar in a HERO/neutral ring + jersey-number
+// badge; coach/staff → avatar in a role-tinted ring + role icon-badge and a
+// role eyebrow. Whole card opens edit. Edge cases: PlayerAvatar self-handles
+// the empty-photo → initials ring; long names wrap to 2 lines (no shrink); a
+// missing nickname drops the eyebrow; a missing number falls back to the role
+// icon badge so nothing renders "#" with no value.
+function WRosterCard({ p, roleColor, teamName, canDelete, onEdit, onDelete, t }) {
+  const player = isPlayerRole(p);
+  const hero = !!p.hero;
+  const ring = player ? (hero ? COLORS.accent : ELEV.hairlineStrong) : roleColor;
+  const num = (p.number ?? '').toString().trim();
+  const nick = (p.nickname || '').trim();
+  const roleLabel = p.role === 'coach' ? t('role_coach') : t('role_staff');
+  // Class is the per-player descriptor (Pro / D1 …); team name is the fallback.
+  const sub = p.playerClass || teamName;
+  return (
+    <div
+      onClick={onEdit}
+      style={{
+        position: 'relative', display: 'flex', alignItems: 'center', gap: 14,
+        padding: 15, minHeight: TOUCH.targetLg, cursor: 'pointer', boxSizing: 'border-box',
+        background: ELEV.surface, borderRadius: RADIUS.lg,
+        border: `1px solid ${hero ? COLORS.accentA40 : ELEV.hairline}`,
+        boxShadow: ELEV.shadow1,
+      }}
+    >
+      {/* avatar in a role/HERO ring + number-or-role badge */}
+      <div style={{ position: 'relative', flexShrink: 0 }}>
+        <PlayerAvatar player={p} size={54} ringColor={ring} />
+        {player && num
+          ? <span style={{
+              position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)',
+              background: hero ? COLORS.accent : ELEV.surface, color: hero ? COLORS.black : COLORS.textDim,
+              border: `2px solid ${ELEV.surface}`, borderRadius: RADIUS.full,
+              fontFamily: FONT, fontSize: 11, fontWeight: 800, padding: '1px 8px', ...TNUM,
+            }}>#{num}</span>
+          : <span style={{
+              position: 'absolute', bottom: -4, right: -4, width: 21, height: 21, borderRadius: '50%',
+              background: roleColor, border: `2px solid ${ELEV.surface}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: COLORS.white,
+            }}><RdIcon name={p.role === 'coach' ? 'book' : (player ? 'jersey' : 'building')} size={11} /></span>}
+      </div>
+
+      {/* name + meta */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {!player && (
+          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: '.8px', color: roleColor, marginBottom: 3 }}>
+            {roleLabel.toUpperCase()}
+          </div>
+        )}
+        <div style={{
+          fontFamily: FONT, fontSize: 15.5, fontWeight: 800, color: COLORS.text, lineHeight: 1.2,
+          letterSpacing: TRACKING.tight,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
+          {p.name}{player && nick && <span style={{ color: COLORS.textDim, fontWeight: 600 }}> „{nick}"</span>}
+        </div>
+        {player && (sub || hero) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5, flexWrap: 'wrap' }}>
+            {sub && <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textMuted }}>{sub}</span>}
+            {hero && <span style={{
+              fontFamily: FONT, fontSize: 10, fontWeight: 800, color: COLORS.accent,
+              background: COLORS.accentA12, border: `1px solid ${COLORS.accentA40}`, borderRadius: RADIUS.sm,
+              padding: '2px 7px', letterSpacing: '.4px',
+            }}>★ HERO</span>}
+          </div>
+        )}
+      </div>
+
+      {/* super_admin-only delete (stop-propagated so it doesn't open edit) */}
+      {canDelete && (
+        <button
+          type="button"
+          aria-label={t('b13_aria_delete_player')}
+          title={t('b13_aria_delete_player')}
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          style={{
+            flexShrink: 0, width: TOUCH.minTarget, height: TOUCH.minTarget,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'transparent', border: 'none', borderRadius: RADIUS.md,
+            color: COLORS.textMuted, cursor: 'pointer',
+          }}
+        ><RdIcon name="trash" size={17} /></button>
+      )}
+    </div>
+  );
+}
+
+function RosterManageWide({ t, loading, players, totalCount, search, onSearchChange, isSuperAdmin, getTeamName, onAdd, onEdit, onDelete }) {
+  const coaches = players.filter(p => p.role === 'coach');
+  const roster = players.filter(isPlayerRole);
+  const staff = players.filter(p => p.role === 'staff');
+  const heroCount = roster.filter(p => p.hero).length;
+
+  const card = (p, roleColor) => (
+    <WRosterCard
+      key={p.id} p={p} roleColor={roleColor} teamName={getTeamName(p.teamId)}
+      canDelete={isSuperAdmin} t={t}
+      onEdit={() => onEdit(p)} onDelete={() => onDelete(p)}
+    />
+  );
+
+  return (
+    <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: ELEV.bg, fontFamily: FONT }}>
+      {/* ── sticky toolbar: search + count + HERO tally + add ── */}
+      <div style={{
+        position: 'sticky', top: 0, zIndex: 5,
+        display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+        padding: '14px 28px', borderBottom: `1px solid ${ELEV.hairline}`,
+        background: `${ELEV.bg}f2`, backdropFilter: 'blur(8px)',
+      }}>
+        <div style={{ position: 'relative', flex: '1 1 280px', minWidth: 220, maxWidth: 420 }}>
+          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: COLORS.textMuted, display: 'flex', pointerEvents: 'none' }}>
+            <RdIcon name="user" size={15} />
+          </span>
+          <input
+            value={search}
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder={t('players_search_ph')}
+            style={{
+              width: '100%', boxSizing: 'border-box', minHeight: TOUCH.minTarget,
+              padding: '10px 12px 10px 34px', borderRadius: RADIUS.md,
+              background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+              color: COLORS.text, fontFamily: FONT, fontSize: FONT_SIZE.base, outline: 'none',
+            }}
+          />
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.textMuted, ...TNUM }}>
+          {t('players_count_title', totalCount)}
+        </span>
+        {heroCount > 0 && (
+          <span style={{
+            fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.accent,
+            background: COLORS.accentA12, border: `1px solid ${COLORS.accentA40}`, borderRadius: RADIUS.full,
+            padding: '4px 10px', letterSpacing: '.3px',
+          }}>{heroCount} HERO</span>
+        )}
+        <Btn variant="accent" size="sm" onClick={onAdd}>
+          <Icons.Plus /> {t('players_add_btn')}
+        </Btn>
+      </div>
+
+      {/* ── grouped grid ── */}
+      <div style={{ maxWidth: 1120, margin: '0 auto', padding: '24px 28px 56px', boxSizing: 'border-box' }}>
+        {loading && <SkeletonList count={5} />}
+
+        {!loading && totalCount === 0 && (
+          <EmptyState icon="👤" text={t('players_empty_add_first')} />
+        )}
+
+        {!loading && totalCount > 0 && players.length === 0 && (
+          <div style={{ padding: '64px 16px', textAlign: 'center', color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 600 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, opacity: 0.6 }}>
+              <RdIcon name="user" size={30} />
+            </div>
+            {t('no_results')}
+          </div>
+        )}
+
+        {!loading && players.length > 0 && (
+          <>
+            {coaches.length > 0 && (
+              <WRosterGroup icon="book" title={t('roster_group_coaching').toUpperCase()} count={coaches.length} accent={COLORS.info}>
+                {coaches.map(p => card(p, COLORS.info))}
+              </WRosterGroup>
+            )}
+            {roster.length > 0 && (
+              <WRosterGroup icon="jersey" title={t('roster_group_players').toUpperCase()} count={roster.length} accent={COLORS.textDim}>
+                {roster.map(p => card(p, COLORS.textDim))}
+              </WRosterGroup>
+            )}
+            {staff.length > 0 && (
+              <WRosterGroup icon="building" title={t('roster_group_staff').toUpperCase()} count={staff.length} accent={COLORS.textDim}>
+                {staff.map(p => card(p, COLORS.textDim))}
+              </WRosterGroup>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
