@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-24 — [BUGFIX/Tier-1] ScoutWide (tablet) shows completed matches (chat GO, bug-mode)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/scoutwide-completed-and-heatmap`. `AppShellPremiumWide.jsx` (`+16/−6`).
+- **Bug (user-reported, tablet):** ScoutWide computed `live`+`scheduled` but never `completed`; `ordered` excluded them → finished matches vanished (DPL #2 "2 mecze" showed only the 1 live). **Fix:** add `completed = matches.filter(classifyMatch === 'completed')`, include in `ordered` (selectable), new **"Zakończone · N"** master-list group, completed Rows show final `scoreA:scoreB` + "ZAKOŃCZONY" (was `—`).
+- **CTAs/nav/selection byte-identical** (0 deletions). build + precommit green; `scoutedteam-rail` + `b4-home` 7/7.
+- **Bug 1 (points-heatmap "no data on the layout") — NOT fixed, deferred (correct call):** the both-sides MATCH heatmap is MatchPage's fragile `getHeatmapPoints` (mirror/`homeData`/`fieldSide`); ScoutedTeamPage's is team-scoped/one-side, not reusable for match-detail. Doing it right = **extract a shared match-heatmap mapper out of MatchPage** (refactor + re-verify capture-parity/matchreview-rail) — pairs with the gated MatchPage #4. Static field image stays; the **"Szczegóły" CTA** already opens the full review heatmap. Tracked in NEXT_TASKS.
+- **Smoke (Jacek, prod, tablet):** Scout tab → "Zakończone" group lists finished matches with final scores.
+
 ## 2026-06-23 — [REFACTOR/Tier-1] Extract shared matchClassify util (3 copies → 1) (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/schedule-list-dedup`. New `utils/matchClassify.js` + ScoutTab/CoachTab/AppShellPremiumWide (`+20/−25`).
 - **Dedup:** the live/scheduled/completed classify (closed→completed; `liveCount>0 || m.scoreA>0 || m.scoreB>0`→live; else scheduled) was hand-rolled byte-identical in 3 surfaces (ScoutTab `cachedA/cachedB` = `m.scoreA/B`). Extracted to `classifyMatch(m, liveScores)`; all 3 call it → stay in lockstep.
