@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] Workspace switcher premium presentation — CD backlog #2 (partial) (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/workspace-switcher-premium-full`. `WorkspaceSwitcher.jsx` (+13). 
+- **Done:** phone bottom-sheet **grabber bar** + premium **swap-tile header** (RdIcon `swap` + "Zmień workspace" + "{N} dostępne") via `useDevice` (shared `<Modal>` is sheet-on-phone/centered-on-wide). Logo tiles (WorkspaceLogo initials fallback) + active-check kept.
+- **Behaviour FROZEN:** `setActiveWorkspace`/`handlePick`, persist+reload, `useUserWorkspaces`, single-ws static row, `variant`, `ws-switcher-row` testid — untouched. One component, all 3 call-sites (NavDrawer/MoreTab/TrainingMoreTab) covered. build+precommit green; **nav-drawer 6/6** (switcher visibility).
+- **🟡 Deferred (flags):** (a) **"domowy" home badge / home-icon tile** — wireable but needs the component to read `defaultWorkspace` (`useWorkspace`); small follow-up wire (not done — kept restyle-only). (b) **"Dołącz do workspace" CTA** — the app has **NO generic join action** (joining = invite-link only, `#/invite/{token}`); a join button would be NEW behaviour → needs a product/join-flow decision (CD), can't wire today.
+- **Smoke (Jacek, prod):** drawer/More → workspace switcher → grabber on phone, premium header.
+- **Next:** Item 3 (states: offline/error banners + premium delete-confirm) closes the CD backlog.
+
 ## 2026-06-24 — [BUGFIX/Tier-1] ELEV as theme palette — theme switch now repaints premium screens (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/elev-theme-palette`. `theme.js` only (+11).
 - **Root cause:** `setTheme()` did `Object.assign(COLORS, src)` ONLY — `ELEV.*` (the palette EVERY premium screen renders on) was a frozen constant → switching theme left all premium surfaces stuck on dark ELEV (only legacy COLORS.* screens repainted).
