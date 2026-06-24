@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Btn, ConfirmModal } from '../ui';
+import { Btn, ConfirmModal, SideTag } from '../ui';
 import RdIcon from '../RdIcon';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useDevice } from '../../hooks/useDevice';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TRACKING } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TRACKING, TNUM } from '../../utils/theme';
 import Step1Breakout from './steps/Step1Breakout';
 import Step2Variant from './steps/Step2Variant';
 import Step3Shots from './steps/Step3Shots';
@@ -121,6 +121,49 @@ function totalStepsFor(variant) {
 
 function hasDirtyData(state) {
   return !!(state.breakout || state.variant || state.shots || state.outcome || state.outcomeDetail);
+}
+
+// ── Wide-rail live-summary label resolvers (mirror Step5Summary) ──
+// These are presentation-only: they read the SAME `state` the steps write,
+// never mutate it, and never touch routing/validation/save. Used by the
+// wide 2-pane dialog's left stepper to show a live value per step.
+function variantLabelFor(variant, t) {
+  if (!variant) return null;
+  const key = `ppt_variant_${variant.replace(/-/g, '_')}`;
+  return t(key) || variant;
+}
+
+function outcomeLabelFor(state, t) {
+  if (!state.outcome) return null;
+  return t(`ppt_outcome_${state.outcome}`) || state.outcome;
+}
+
+// Live value for a given step number ('1'..'5'), as a renderable node or null.
+function stepValue(step, state, t) {
+  switch (step) {
+    case 1:
+      return state.breakout
+        ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <SideTag side={state.breakout.side} /> <span>{state.breakout.bunker}</span>
+          </span>
+        )
+        : null;
+    case 2:
+      return variantLabelFor(state.variant, t);
+    case 3: {
+      if (SKIP_SHOTS.includes(state.variant)) return t('ppt_shots_skipped', variantLabelFor(state.variant, t));
+      const named = (state.shots || []).filter(s => s?.bunker);
+      const total = (state.shots || []).length;
+      if (named.length > 0) return named.map(s => s.bunker).join(' → ');
+      if (total > 0) return t('ppt_zone_tile_count', total);
+      return null;
+    }
+    case 4:
+      return outcomeLabelFor(state, t);
+    default:
+      return null;
+  }
 }
 
 export default function WizardShell({ training, layout, playerId, uid, todaysPointsCount = 0, backTo = '/player/log' }) {
@@ -340,6 +383,320 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
 
   const trainingName = training?.name || t('tab_training') || 'Trening';
 
+  // ── Shared overlays — identical in both phone + wide layouts ──
+  // The exit-confirm modal + inline save toast are layout-agnostic, so
+  // both render trees include the same nodes (no behavior change).
+  const exitConfirmModal = (
+    <ConfirmModal
+      open={!!exitConfirm}
+      onClose={() => setExitConfirm(null)}
+      title={t('ppt_exit_title')}
+      message={t('ppt_exit_message')}
+      confirmLabel={t('ppt_exit_confirm')}
+      danger
+      onConfirm={confirmExit}
+    />
+  );
+  const saveToastNode = saveToast && (
+    <div style={{
+      position: 'fixed',
+      left: '50%', transform: 'translateX(-50%)',
+      bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
+      maxWidth: 360, width: 'calc(100% - 32px)',
+      padding: '12px 16px',
+      background: COLORS.surface,
+      border: `1px solid ${COLORS.accent}60`,
+      borderRadius: RADIUS.lg,
+      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+      color: COLORS.text,
+      fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
+      textAlign: 'center',
+      zIndex: 50,
+      pointerEvents: 'none',
+    }}>
+      {saveToast.type === 'saved'
+        ? t('ppt_toast_saved', saveToast.n)
+        : t('ppt_toast_saved_offline')}
+    </div>
+  );
+
+  // ── WIDE (≥720): centered 2-pane dialog on a dimmed field ──
+  // Additive reflow ONLY. Reuses the exact same state + handlers + step
+  // bodies as the phone path: LEFT rail = session pill + vertical stepper
+  // with a live per-step value summary; RIGHT pane = the active step body
+  // (unchanged) under a header, with a functional Back footer (m1369:
+  // chevron-left before the label). The step bodies own their own advance
+  // CTAs (Step 3 "Dalej", Step 5 "Save", taps on 1/2/4) — we do NOT add a
+  // Next button, so step logic / validation / save stay byte-identical.
+  if (wide) {
+    // Rail steps — derived from displayStep so skip-shots collapses to 4
+    // and '4b' folds into step 4. `realStep` is the routing target a
+    // completed row jumps back to (jumpTo preserves state per § 48.3).
+    const railDefs = [
+      { display: 1, realStep: 1, labelKey: 'ppt_row_breakout' },
+      { display: 2, realStep: 2, labelKey: 'ppt_row_variant' },
+      ...(SKIP_SHOTS.includes(state.variant) ? [] : [{ display: 3, realStep: 3, labelKey: 'ppt_row_shots' }]),
+      { display: SKIP_SHOTS.includes(state.variant) ? 3 : 4, realStep: 4, labelKey: 'ppt_row_outcome' },
+      { display: total, realStep: 5, labelKey: 'ppt_row_summary' },
+    ];
+
+    return (
+      <div style={{
+        minHeight: '100dvh', background: COLORS.bg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '32px 28px', boxSizing: 'border-box',
+      }}>
+        <div style={{
+          width: '100%', maxWidth: 920,
+          background: ELEV.surface,
+          border: `1px solid ${ELEV.hairlineStrong}`,
+          borderRadius: 22,
+          boxShadow: ELEV.shadow3,
+          overflow: 'hidden',
+          display: 'grid', gridTemplateColumns: '270px minmax(0, 1fr)',
+        }}>
+          {/* LEFT rail — session + live stepper */}
+          <div style={{
+            background: ELEV.sunken,
+            borderRight: `1px solid ${ELEV.hairline}`,
+            padding: '22px 20px',
+            display: 'flex', flexDirection: 'column', gap: 18,
+          }}>
+            <div>
+              <div style={{
+                fontFamily: FONT, fontSize: 11, fontWeight: 800,
+                color: COLORS.textMuted, letterSpacing: TRACKING.label, textTransform: 'uppercase',
+              }}>
+                {t('ppt_rail_eyebrow')}
+              </div>
+              {/* Session pill — same "Zmień trening" affordance as phone */}
+              <div
+                onClick={handleTrainingPillTap}
+                role="button"
+                aria-label={t('ppt_pill_change_aria') || 'Zmień trening'}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  marginTop: 12, padding: '11px 12px', minHeight: 44,
+                  borderRadius: 12, background: ELEV.surface,
+                  border: `1px solid ${ELEV.hairline}`,
+                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span style={{
+                  width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: COLORS.accentA12, border: `1px solid ${COLORS.accentA40}`,
+                  color: COLORS.accent,
+                }}>
+                  <RdIcon name="clock" size={15} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: FONT, fontSize: 13.5, fontWeight: 800, color: COLORS.text,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {trainingName}
+                  </div>
+                  <div style={{
+                    fontFamily: FONT, fontSize: 11.5, color: COLORS.textMuted, marginTop: 1,
+                  }}>
+                    #{localCount} {t('ppt_pill_suffix')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Vertical stepper — live per-step value summary */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {railDefs.map((st) => {
+                const done = st.display < display;
+                const cur = st.display === display;
+                const val = stepValue(st.realStep, state, t);
+                const clickable = done;
+                return (
+                  <div
+                    key={st.realStep}
+                    onClick={() => clickable && jumpTo(st.realStep)}
+                    role={clickable ? 'button' : undefined}
+                    style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 12,
+                      padding: '10px 10px', minHeight: 44, boxSizing: 'border-box',
+                      borderRadius: 11,
+                      background: cur ? COLORS.accentA12 : 'transparent',
+                      cursor: clickable ? 'pointer' : 'default',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    <span style={{
+                      width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: FONT, fontSize: 12, fontWeight: 800,
+                      background: done ? COLORS.accent : (cur ? COLORS.accentA12 : ELEV.surface),
+                      color: done ? '#1a1206' : (cur ? COLORS.accent : COLORS.textMuted),
+                      border: `1px solid ${done || cur ? COLORS.accentA40 : ELEV.hairline}`,
+                      ...TNUM,
+                    }}>
+                      {done ? <RdIcon name="check" size={13} /> : st.display}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0, paddingTop: 1 }}>
+                      <div style={{
+                        fontFamily: FONT, fontSize: 13, fontWeight: cur ? 800 : 700,
+                        color: cur ? COLORS.text : (done ? COLORS.textDim : COLORS.textMuted),
+                        lineHeight: 1.2,
+                      }}>
+                        {t(st.labelKey)}
+                      </div>
+                      {val && (
+                        <div style={{
+                          fontFamily: FONT, fontSize: 12.5, fontWeight: 700,
+                          color: COLORS.accent, marginTop: 3,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          display: 'flex', alignItems: 'center', gap: 5,
+                        }}>
+                          {val}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* RIGHT pane — header + active step + Back footer */}
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: 560 }}>
+            {/* header — back chevron, "Krok N z M", exit */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, padding: '16px 22px',
+              borderBottom: `1px solid ${ELEV.hairline}`, flexShrink: 0,
+              background: ELEV.sunken,
+            }}>
+              <div
+                onClick={handleBackChevron}
+                role="button"
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+                  cursor: 'pointer', color: COLORS.text,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span style={{ display: 'flex', transform: 'rotate(180deg)' }}><RdIcon name="chevron" size={15} /></span>
+              </div>
+              <div style={{
+                fontFamily: FONT, fontSize: 12.5, fontWeight: 800,
+                color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
+              }}>
+                {t('ppt_step_label')} <span style={{ color: COLORS.accent }}>{display}</span> {t('ppt_step_of')} {total}
+              </div>
+              <div
+                onClick={handleExitButton}
+                role="button"
+                style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+                  cursor: 'pointer', color: COLORS.textDim,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <RdIcon name="close" size={15} />
+              </div>
+            </div>
+
+            {/* Unlinked banner — same affordance as phone, narrower padding */}
+            {!isLinked && (
+              <div
+                onClick={() => navigate('/profile')}
+                role="button"
+                style={{
+                  margin: `${SPACE.md}px ${SPACE.xl}px 0`,
+                  padding: '10px 14px', minHeight: 44,
+                  background: 'rgba(245,158,11,0.08)',
+                  border: `1px solid rgba(245,158,11,0.25)`,
+                  borderRadius: RADIUS.md,
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span aria-hidden style={{ flexShrink: 0, display: 'inline-flex' }}><RdIcon name="user" size={14} /></span>
+                <span style={{
+                  flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
+                  color: COLORS.text, lineHeight: 1.4,
+                }}>
+                  {t('ppt_unlinked_banner') || 'Logujesz bez profilu — punkty trafią do gracza po połączeniu.'}
+                </span>
+                <span style={{
+                  color: COLORS.accent, fontSize: 11, fontWeight: 800,
+                  letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
+                }}>
+                  {t('ppt_unlinked_banner_cta') || 'Połącz'}
+                </span>
+              </div>
+            )}
+
+            {/* Active step body — unchanged step components. stepEnterKey
+                forces re-mount so the slide animation re-runs per step. */}
+            <div
+              key={stepEnterKey.current}
+              style={{
+                flex: 1, overflowY: 'auto',
+                padding: '26px 28px 80px', boxSizing: 'border-box',
+                animation: `ppt-slide-${slideDir} 100ms ease-out`,
+              }}
+            >
+              {stepBody}
+            </div>
+
+            {/* Footer — functional Back only (m1369: chevron-left before
+                label). The step bodies own their forward CTAs, so there is
+                no Next button here (step logic unchanged). Step 1 Back = exit. */}
+            <div style={{
+              padding: '14px 22px 18px',
+              borderTop: `1px solid ${ELEV.hairline}`,
+              flexShrink: 0, display: 'flex', justifyContent: 'flex-start',
+              background: ELEV.sunken,
+            }}>
+              <div
+                onClick={handleBackChevron}
+                role="button"
+                style={{
+                  padding: '0 22px', minHeight: 52,
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  borderRadius: 13, background: ELEV.surface,
+                  border: `1px solid ${ELEV.hairlineStrong}`,
+                  color: COLORS.text,
+                  fontFamily: FONT, fontSize: 16, fontWeight: 800,
+                  cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span style={{ display: 'flex', transform: 'rotate(180deg)' }}><RdIcon name="chevron" size={15} /></span>
+                {t('ppt_back')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Local animation keyframes — same as phone, idempotent. */}
+        <style>{`
+          @keyframes ppt-slide-forward {
+            from { transform: translateX(20%); opacity: 0.6; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes ppt-slide-backward {
+            from { transform: translateX(-20%); opacity: 0.6; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+        `}</style>
+
+        {exitConfirmModal}
+        {saveToastNode}
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
       {/* Header — sticky, shared across steps. Premium WizHead: rounded ELEV
@@ -521,41 +878,12 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
         }
       `}</style>
 
-      <ConfirmModal
-        open={!!exitConfirm}
-        onClose={() => setExitConfirm(null)}
-        title={t('ppt_exit_title')}
-        message={t('ppt_exit_message')}
-        confirmLabel={t('ppt_exit_confirm')}
-        danger
-        onConfirm={confirmExit}
-      />
+      {exitConfirmModal}
 
       {/* Inline save toast — replaces the post-save TodaysLogsList toast
           since the wizard now stays in place after save (sticky-training
           hotfix 2026-04-24). Auto-dismisses via the saveToast effect above. */}
-      {saveToast && (
-        <div style={{
-          position: 'fixed',
-          left: '50%', transform: 'translateX(-50%)',
-          bottom: 'calc(100px + env(safe-area-inset-bottom, 0px))',
-          maxWidth: 360, width: 'calc(100% - 32px)',
-          padding: '12px 16px',
-          background: COLORS.surface,
-          border: `1px solid ${COLORS.accent}60`,
-          borderRadius: RADIUS.lg,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          color: COLORS.text,
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-          textAlign: 'center',
-          zIndex: 50,
-          pointerEvents: 'none',
-        }}>
-          {saveToast.type === 'saved'
-            ? t('ppt_toast_saved', saveToast.n)
-            : t('ppt_toast_saved_offline')}
-        </div>
-      )}
+      {saveToastNode}
     </div>
   );
 }
