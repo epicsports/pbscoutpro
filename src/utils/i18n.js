@@ -500,6 +500,7 @@ const T = {
     review_meta_eliminations: 'Eliminacje',
     review_meta_penalties:    'Kary',
     review_meta_empty:        'Brak dodatkowych danych scoutingu',
+    review_meta_not_scouted:  'niescoutowany',
 
     /* ─── Confirm modals ────────────────────────────────── */
     delete_match:       'Usunąć mecz?',
@@ -2563,6 +2564,7 @@ const T = {
     review_meta_eliminations: 'Eliminations',
     review_meta_penalties:    'Penalties',
     review_meta_empty:        'No additional scouting data',
+    review_meta_not_scouted:  'not scouted',
 
     delete_match:       'Delete match?',
     delete_matchup:     'Delete matchup?',
