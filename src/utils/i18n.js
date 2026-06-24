@@ -214,6 +214,13 @@ const T = {
     members_remove_confirm_body:'Użytkownik straci dostęp do wszystkich turniejów, drużyn i danych scoutingowych w tym workspace. Profil gracza zostanie rozlinkowany. Tej operacji nie można łatwo cofnąć.',
     members_admin_last_protect: 'Nie można usunąć ostatniego admina workspace. Najpierw promuj innego członka.',
     member_fallback:            'Użytkownik',
+    offline_banner:             'Offline — zmiany zapiszą się na urządzeniu i zsynchronizują po połączeniu',
+    offline_reconnected:        'Z powrotem online — synchronizuję zmiany…',
+    neterror_eyebrow:           'Błąd sieci',
+    neterror_title:             'Nie udało się załadować',
+    neterror_msg:               'Sprawdź połączenie z internetem i spróbuj ponownie.',
+    neterror_retry:             'Ponów próbę',
+    neterror_retrying:          'Łączenie…',
     // ── i18n hotfix 2026-06-23: keys referenced via t() but previously unregistered
     // (rendered as raw key-names, worst on the wide shell). PL = the intended inline
     // `|| '…'` fallbacks from the call sites.
@@ -2294,6 +2301,13 @@ const T = {
     members_remove_confirm_body:'They will lose access to all tournaments, teams, and scouting data in this workspace. Their player profile will be un-linked. This cannot be undone easily.',
     members_admin_last_protect: 'Cannot remove the last admin from the workspace. Promote another member first.',
     member_fallback:            'Member',
+    offline_banner:             'Offline — changes save on this device and sync when you reconnect',
+    offline_reconnected:        'Back online — syncing changes…',
+    neterror_eyebrow:           'Network error',
+    neterror_title:             'Couldn’t load',
+    neterror_msg:               'Check your internet connection and try again.',
+    neterror_retry:             'Try again',
+    neterror_retrying:          'Connecting…',
     // ── i18n hotfix 2026-06-23: keys referenced via t() but previously unregistered.
     coach_all_hidden:           'All teams hidden',
     coach_last_match:           'Last match',

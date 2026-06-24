@@ -50,6 +50,8 @@ export default function RdIcon({ name, size = 16, fill }) {
     case 'dots': return <svg {...p}><circle cx="8" cy="3.4" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="8" r="1.1" fill="currentColor" stroke="none" /><circle cx="8" cy="12.6" r="1.1" fill="currentColor" stroke="none" /></svg>;
     // ── app extras (same vocabulary; not in the handoff set) ──
     case 'trash': return <svg {...p}><path d="M3 4.2h10M6.4 4.2V2.9a.8.8 0 01.8-.8h1.6a.8.8 0 01.8.8v1.3M4.2 4.2l.7 8.4a.9.9 0 00.9.8h4.4a.9.9 0 00.9-.8l.7-8.4" {...s} /><path d="M6.6 6.6v4.2M9.4 6.6v4.2" {...s} /></svg>;
+    case 'wifioff': return <svg {...p}><path d="M2.2 5.6a13 13 0 0111-1.4M4.2 8.1a9 9 0 016.4-1M6.2 10.5a5 5 0 013.9-.4" {...s} /><circle cx="8" cy="13" r=".7" fill="currentColor" stroke="none" /><path d="M2.4 2.4l11.2 11.2" {...s} /></svg>;
+    case 'refresh': return <svg {...p}><path d="M13.3 8a5.3 5.3 0 11-1.5-3.7" {...s} /><path d="M13.6 2.8v3h-3" {...s} /></svg>;
     case 'shield': return <svg {...p}><path d="M8 2.2l4.8 1.8v3.6c0 3-2 5.2-4.8 6.2-2.8-1-4.8-3.2-4.8-6.2V4z" {...s} /><path d="M5.9 8l1.5 1.5L10.3 6.6" {...s} /></svg>;
     case 'globe': return <svg {...p}><circle cx="8" cy="8" r="6.2" {...s} /><path d="M1.8 8h12.4M8 1.8c1.7 1.7 2.6 3.9 2.6 6.2S9.7 12.5 8 14.2C6.3 12.5 5.4 10.3 5.4 8S6.3 3.5 8 1.8z" {...s} /></svg>;
     case 'palette': return <svg {...p}><path d="M8 2.2c3.4 0 5.8 2.2 5.8 5 0 1.9-1.6 2.6-2.8 2.6h-1.2c-.8 0-1.4.6-1.4 1.4 0 .4.2.7.2 1.1 0 .8-.6 1.5-1.6 1.5-3 0-5-2.7-5-5.8 0-3.4 2.6-5.8 6-5.8z" {...s} /><circle cx="5.6" cy="7" r=".7" fill="currentColor" stroke="none" /><circle cx="8" cy="5.3" r=".7" fill="currentColor" stroke="none" /><circle cx="10.4" cy="7" r=".7" fill="currentColor" stroke="none" /></svg>;
