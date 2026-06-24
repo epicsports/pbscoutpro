@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1 CLOSE — premium header + CompletenessCard + scout-name in expanded (behind net)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-pass1-close`. `MatchPage.jsx` (+79) + `CompletenessCard.jsx` (re-skin) + `i18n.js` (1 key). **Closes Pass 1.**
+- **A header:** review header premium-ized INLINE (ELEV back tile + RdIcon chevron + title + neutral badge) — the shared `PageHeader` NOT touched (still used at the editor header). **Completeness:** `CompletenessCard.jsx` re-skinned to RdCompleteness (ELEV card + TRACKING.label eyebrow + ELEV.sunken bar track + TNUM% + RdIcon; lucide retired). Props/API/5 metrics+composite/4-tier scale/role-gating/collapse preserved.
+- **B scout-name (revives dead code):** the expanded (`isPreviewing`) section now shows per-side who scouted — scouted → `{TP/BS} {scoutShortName}` (textMuted/textDim), unscouted → `— niescoutowany`. Reuses `scoutShortName` (+ `scoutUids→useUserNames→scoutNamesMap`) → **no longer dead** (the #2 cleanup note resolved). Collapsed ●● dots unchanged.
+- **Behaviour FROZEN:** back-nav/title/badge logic, CompletenessCard metrics/role-gate/collapse, row interactions/testids — untouched. Render-only.
+- **PROOF:** full net **12/12** (capture-parity golden + matchreview-rail; run on CC's shell — the fork's shell hit a Playwright permission block) + precommit (incl. the i18n-missing guard on the new pl+en key) + §27 self-review PASS.
+- **Smoke (Jacek, prod):** match review → premium header tile + premium completeness card; tap a point → expanded shows who scouted TP/BS + eliminations/penalties/comments.
+- **✅ PASS 1 COMPLETE:** review block fully on the LiveMatchPremium language — header · scoreboard (crests) · consolidated head-to-head rows + expanded meta+scout-names · completeness. All 3 CD refinements done. **Next = Pass 2 (separate):** the `?scout=` editor body + ≥720 tablet/desktop layouts + shared-helper unification.
+
 ## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1 #2 — consolidated head-to-head review row + expanded meta (CD decision, behind net)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-pass1-row`. `MatchPage.jsx` (`+101/−40`) + `i18n.js` (3 keys ×pl+en). The biggest visible piece of the review re-skin.
 - **CD decision:** collapsed row stays clean + scannable; rich meta → expanded (selected) state, **nothing dropped, no new screen.**
