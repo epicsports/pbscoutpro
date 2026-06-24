@@ -3,6 +3,7 @@
 ## 2026-06-24 — [NIGHT-BATCH/Tier-2] Responsive WIDE-PASS (CD handoff `_CC_BRIEF_wide_pass.md`) — autonomous night run
 **App (auto-deploy, e2e-gated). No rules/data.** Per-screen `*Wide` variants, each **additive (phone byte-identical)**, build+precommit green, merged autonomously (night-mode GO). Wide path has **no e2e** → **Jacek smokes prod (tablet/desktop)**. Source = handoff `prototype/`. Field block PAUSED behind this (§8 order).
 - **`LayoutsListWide`** (`LayoutsPage`) — full-bleed `auto-fill minmax(320px)` grid of field-thumbnail cards + sticky search + dynamic league chips (from real `useLayouts`) + count + empty/no-results. Phone unchanged. §27 PASS. *Note: search uses RdIcon `compass` (no magnifier glyph — add `search` to RdIcon later); tactic-count meta omitted (not on doc).*
+- **`RosterManageWide`** (`PlayersPage`) — role-grouped grid (Coaching/Players/Support) of `WRosterCard` (avatar role-ring + number-badge or staff-icon + class + ★HERO), sticky search/count/HERO-tally/Add, wired to real roster + add/edit/delete (super_admin trash). Phone unchanged. §27 PASS. *Note: pos→playerClass (no position field); standard PageHeader kept.*
 
 ## 2026-06-24 — [FEATURE/Tier-2] Unified match list — one responsive MatchListPremium, ScoutWide retired (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/match-list-premium-unified`. NEW `MatchListPremium.jsx`; `ScoutTabContent` → thin wrapper; `AppShellPremiumWide` ScoutWide retired (`+704/−752`).
