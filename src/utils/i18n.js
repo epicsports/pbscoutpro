@@ -1366,6 +1366,8 @@ const T = {
     layouts_library_title: 'Biblioteka pól',
     layouts_library_all_added: 'Wszystkie pola z biblioteki są już w tym workspace',
     layouts_library_empty: 'Brak pól w bibliotece',
+    layouts_search_ph:   'Szukaj layoutu lub roku…',
+    layouts_no_results:  'Brak layoutów dla tych filtrów',
     /* Profile page placeholders */
     profile_player_name_ph: 'Jan Kowalski',
     profile_player_nickname_ph: 'Pseudonim',
@@ -3298,6 +3300,8 @@ const T = {
     layouts_library_title: 'Field library',
     layouts_library_all_added: 'Every library field is already in this workspace',
     layouts_library_empty: 'No fields in the library yet',
+    layouts_search_ph:   'Search layout or year…',
+    layouts_no_results:  'No layouts match these filters',
     /* Profile page placeholders */
     profile_player_name_ph: 'John Smith',
     profile_player_nickname_ph: 'Nickname',
