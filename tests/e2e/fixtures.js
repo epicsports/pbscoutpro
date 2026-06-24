@@ -159,3 +159,8 @@ export const FIELD = { discoLine: 0.30, zeekerLine: 0.80, doritoSide: 'top' };
 export const matchScoutUrl = `#/tournament/${TRN}/match/${MATCH}?scout=${TEAM_A}&mode=new`;
 // Review view (no ?scout) — reads points back.
 export const matchReviewUrl = `#/tournament/${TRN}/match/${MATCH}`;
+
+// MatchPage 3-mode net — ISOLATED match (its own point writes never touch mat-demo).
+export const MATCH_MODES = 'mat-modes';
+export const matchModesReviewUrl = `#/tournament/${TRN}/match/${MATCH_MODES}`;
+export const matchModesScoutUrl = `#/tournament/${TRN}/match/${MATCH_MODES}?scout=${TEAM_A}&mode=new`;
