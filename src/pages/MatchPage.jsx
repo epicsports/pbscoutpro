@@ -1944,17 +1944,32 @@ export default function MatchPage() {
                 const totalElim = elimA + elimB;
                 const prog = progression[idx] || { a: 0, b: 0 };
                 const isPreviewing = previewPointId === pt.id;
+                // Head-to-head short labels (first word, capped) — crest carries
+                // the brand; the short is the readable team tag (TP/BS).
+                const shortName = (n) => {
+                  const w = (n || '').trim().split(/\s+/).filter(Boolean);
+                  return ((w[0] || '?').slice(0, 6)).toUpperCase();
+                };
+                const shortA = shortName(teamA?.name || 'Home');
+                const shortB = shortName(teamB?.name || 'Away');
+                const hasPenalty = !!(ptDataA.penalty || ptDataB.penalty);
+                const hasMeta = totalElim > 0 || hasPenalty || !!pt.comment;
                 return (
                   <div key={pt.id} className="fade-in" style={{
-                    display: 'flex', alignItems: 'stretch',
+                    display: 'flex', flexDirection: 'column',
                     background: isPreviewing ? COLORS.accentA08 : COLORS.surfaceDark,
                     border: `1px solid ${isPreviewing ? COLORS.accentA40 : isOpen ? COLORS.accent + '60' : COLORS.surfaceLight}`,
                     borderRadius: 12,
                     marginBottom: 6,
                     overflow: 'hidden',
-                    minHeight: 58,
                     transition: 'border-color 0.15s, background 0.15s',
                   }}>
+                    {/* ── Collapsed head-to-head line ──────────────────────
+                        nr · crestA + shortA (🏆 winner) · score · shortB +
+                        crestB (🏆 winner) · ●● scout-completeness dots.
+                        Interactions byte-identical: A-zone/B-zone → goScoutPoint,
+                        center → preview toggle (+ testid), ⋮ → pointMenu. */}
+                    <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 58 }}>
                     {/* Team A zone */}
                     <div
                       onClick={(e) => { e.stopPropagation(); if (!isLocked) goScoutPoint(match?.teamA, pt.id); }}
@@ -1965,25 +1980,23 @@ export default function MatchPage() {
                       }}
                     >
                       <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: aBar, flexShrink: 0 }} />
+                      <TeamBadge team={teamA || { name: 'Home' }} size={26} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>#{idx+1}</span>
+                          <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, ...TNUM }}>#{idx+1}</span>
                           {pt.isOT && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, letterSpacing: '.3px' }}>OT</span>}
                           {isOpen && <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, letterSpacing: '.3px' }}>{t('match_point_open')}</span>}
                         </div>
-                        <div style={{
-                          fontFamily: FONT, fontSize: 14,
-                          fontWeight: aWon ? 600 : 500,
-                          color: aWon ? COLORS.text : COLORS.textMuted,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          marginTop: 1,
-                        }}>{teamA?.name || 'Home'}</div>
-                        {ptDataA.scoutedBy && (
-                          <div style={{
-                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted,
-                            marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>{scoutShortName(ptDataA.scoutedBy)}</div>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1, minWidth: 0 }}>
+                          <span style={{
+                            fontFamily: FONT, fontSize: 14,
+                            fontWeight: aWon ? 700 : 500,
+                            color: aWon ? COLORS.text : COLORS.textMuted,
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            letterSpacing: '.3px',
+                          }}>{shortA}</span>
+                          {aWon && <span aria-hidden="true" style={{ display: 'flex', color: COLORS.accent, flexShrink: 0 }}><RdIcon name="trophy" size={11} /></span>}
+                        </div>
                       </div>
                     </div>
                     {/* Score center — tap to toggle preview */}
@@ -1994,7 +2007,7 @@ export default function MatchPage() {
                         flex: '0 0 auto', minWidth: 68,
                         padding: '8px 10px',
                         background: COLORS.surfaceBar,
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4,
                         cursor: 'pointer',
                         borderLeft: `1px solid ${COLORS.surfaceLight}`,
                         borderRight: `1px solid ${COLORS.surfaceLight}`,
@@ -2005,17 +2018,24 @@ export default function MatchPage() {
                         color: isPreviewing ? COLORS.accent : COLORS.textSubtle,
                         lineHeight: 1,
                         display: 'flex', alignItems: 'center', gap: 3,
+                        ...TNUM,
                       }}>
-                        {/* §B B6 — 👁 marks the ACTIVE preview (amber = active
+                        {/* §B B6 — eye marks the ACTIVE preview (amber = active
                             state, §27); inherits the previewing colour. */}
                         {isPreviewing && <span aria-hidden="true" style={{ display: 'flex', color: COLORS.accent }}><RdIcon name="eye" size={12} /></span>}
                         <span>{prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}</span>
                       </div>
-                      {totalElim > 0 && (
-                        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 600, color: COLORS.textMuted, marginTop: 3 }}>
-                          {totalElim} elim
-                        </div>
-                      )}
+                      {/* Scout-completeness dots — filled=success if that side is
+                          scouted, hollow otherwise. Identity, not amber (§27). */}
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {[ptDataA.scoutedBy, ptDataB.scoutedBy].map((scouted, i) => (
+                          <span key={i} style={{
+                            width: 6, height: 6, borderRadius: '50%',
+                            background: scouted ? COLORS.success : 'transparent',
+                            border: scouted ? 'none' : `1px solid ${COLORS.textMuted}`,
+                          }} />
+                        ))}
+                      </div>
                     </div>
                     {/* Team B zone */}
                     <div
@@ -2026,27 +2046,17 @@ export default function MatchPage() {
                         cursor: isLocked ? 'default' : 'pointer',
                       }}
                     >
-                      <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
-                        <div style={{
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                        {bWon && <span aria-hidden="true" style={{ display: 'flex', color: COLORS.accent, flexShrink: 0 }}><RdIcon name="trophy" size={11} /></span>}
+                        <span style={{
                           fontFamily: FONT, fontSize: 14,
-                          fontWeight: bWon ? 600 : 500,
+                          fontWeight: bWon ? 700 : 500,
                           color: bWon ? COLORS.text : COLORS.textMuted,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>{teamB?.name || 'Away'}</div>
-                        {ptDataB.scoutedBy && (
-                          <div style={{
-                            fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted,
-                            marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>{scoutShortName(ptDataB.scoutedBy)}</div>
-                        )}
-                        {(ptDataA.penalty || ptDataB.penalty || pt.comment) && (
-                          <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {ptDataA.penalty && <span style={{ color: COLORS.danger }}>{ptDataA.penalty} </span>}
-                            {ptDataB.penalty && <span style={{ color: COLORS.danger }}>{ptDataB.penalty} </span>}
-                            {pt.comment && <span style={{ fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 3 }}><RdIcon name="note" size={10} /> {pt.comment}</span>}
-                          </div>
-                        )}
+                          letterSpacing: '.3px',
+                        }}>{shortB}</span>
                       </div>
+                      <TeamBadge team={teamB || { name: 'Away' }} size={26} />
                       <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: bBar, flexShrink: 0 }} />
                     </div>
                     {/* ⋮ menu */}
@@ -2054,6 +2064,51 @@ export default function MatchPage() {
                       style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: COLORS.textMuted }}>
                       <RdIcon name="dots" size={16} />
                     </div>
+                    </div>
+                    {/* ── Expanded scouting meta (only when previewing) ────────
+                        Elim count per side · amber penalty chip (penalty=warn,
+                        ONLY if present) · comment · else a single empty line. */}
+                    {isPreviewing && (
+                      <div style={{
+                        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8,
+                        padding: '8px 12px',
+                        borderTop: `1px solid ${ELEV.hairline}`,
+                        animation: 'rdFade .18s ease',
+                      }}>
+                        {!hasMeta && (
+                          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted }}>
+                            {t('review_meta_empty')}
+                          </span>
+                        )}
+                        {totalElim > 0 && (
+                          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textDim, ...TNUM }}>
+                            {shortA} {elimA} · {shortB} {elimB}
+                          </span>
+                        )}
+                        {hasPenalty && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '2px 8px', borderRadius: 8,
+                            background: COLORS.accentA12, border: `1px solid ${COLORS.accentA30}`,
+                            fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.accent,
+                          }}>
+                            <RdIcon name="warn" size={11} />
+                            <span style={{ ...TNUM }}>
+                              {t('review_meta_penalties')}: {[ptDataA.penalty, ptDataB.penalty].filter(Boolean).join(' · ')}
+                            </span>
+                          </span>
+                        )}
+                        {pt.comment && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0,
+                            fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textDim, fontStyle: 'italic',
+                          }}>
+                            <span style={{ display: 'flex', flexShrink: 0, color: COLORS.textMuted }}><RdIcon name="note" size={11} /></span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pt.comment}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               });
