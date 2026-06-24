@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useUserWorkspaces } from '../../hooks/useUserWorkspaces';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDevice } from '../../hooks/useDevice';
 import { MoreItem } from '../tabs/MoreShell';
 import { Modal } from '../ui';
 import RdIcon from '../RdIcon';
@@ -29,6 +30,7 @@ export default function WorkspaceSwitcher({ variant = 'item' }) {
   const { workspaces, loading } = useUserWorkspaces();
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const isWide = useDevice().width >= 720;
 
   const activeSlug = workspace?.slug;
   // Show only workspaces where the user has an ASSIGNED role (super_admin
@@ -91,8 +93,18 @@ export default function WorkspaceSwitcher({ variant = 'item' }) {
         <Modal
           open={open}
           onClose={() => !switching && setOpen(false)}
-          title={t('change_workspace')}
         >
+          {/* Phone = bottom-sheet grabber affordance (the shared Modal is a sheet on
+              phone / centered modal on wide — so this is the responsive split). */}
+          {!isWide && <div style={{ width: 38, height: 4, borderRadius: 2, background: ELEV.hairlineStrong, margin: '2px auto 14px' }} />}
+          {/* Premium header — swap-tile + title + count (replaces the plain Modal title). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: SPACE.md }}>
+            <span style={{ width: 38, height: 38, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${COLORS.accent}12`, border: `1px solid ${COLORS.accent}40`, color: COLORS.accent }}><RdIcon name="swap" size={18} /></span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xl, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight }}>{t('change_workspace')}</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.textMuted, marginTop: 1 }}>{t('drawer_available', list.length)}</div>
+            </div>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {loading && list.length === 0 && (
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: SPACE.sm }}>
