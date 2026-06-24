@@ -36,6 +36,7 @@ import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints,
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive, ELEV, TNUM, TRACKING } from '../utils/theme';
 import RdIcon from '../components/RdIcon';
+import TeamBadge from '../components/TeamBadge';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { mirrorPointToLeft, mirrorShotsToRight, matchScore } from '../utils/helpers';
@@ -1697,11 +1698,15 @@ export default function MatchPage() {
                 cursor: 'pointer',
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
               }}>
-              <div style={{
-                fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
-              }}>{teamA?.name || 'Home'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 7 : 10, minWidth: 0 }}>
+                <TeamBadge team={teamA || { name: 'Home' }} size={compact ? 22 : 34} />
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
+                }}>{teamA?.name || 'Home'}</div>
+              </div>
               {/* §B B5 + post-night STEP 3: compact rail variant. Tournament →
                   bare chevron (whole zone = Scout tap). TRAINING → Quick is a
                   valid path here (only removed in tournaments, D6c), so the
@@ -1756,11 +1761,15 @@ export default function MatchPage() {
                 display: 'flex', flexDirection: 'column', justifyContent: 'center',
                 textAlign: 'right',
               }}>
-              <div style={{
-                fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
-              }}>{teamB?.name || 'Away'}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 7 : 10, minWidth: 0, justifyContent: 'flex-end' }}>
+                <div style={{
+                  flex: 1, minWidth: 0,
+                  fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
+                }}>{teamB?.name || 'Away'}</div>
+                <TeamBadge team={teamB || { name: 'Away' }} size={compact ? 22 : 34} />
+              </div>
               {!isLocked && (compact ? (
                 isTraining ? (
                   <div style={{ display: 'flex', gap: 8, marginTop: 1, justifyContent: 'flex-end' }}>
