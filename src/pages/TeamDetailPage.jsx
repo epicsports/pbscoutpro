@@ -234,9 +234,238 @@ export default function TeamDetailPage() {
     navigate(backTo);
   };
 
+  // ── Wide (≥720) — DASHBOARD layout (hero crest band ↔ roster grid) ──
+  // Ports prototype `TeamProfileWide` (redesign6.jsx:211). Phone path below is
+  // untouched (additive). Wired to the SAME real team/roster/handlers — only the
+  // shell differs. Two-col grid collapses to single column under 820 (the hero
+  // crest stays full-width on the narrower wide range, mirroring the prototype's
+  // internal `useWide(760)` breakpoint). Logo "slot" reuses the EXISTING URL
+  // field (§93 — URL ref, never base64/upload; real file→storage = m1247): the
+  // slot focuses the logo URL Input on the right, it does NOT introduce upload.
+  const twoCol = device.width >= 820;
+  // The brand-color accent is the TEAM's identity color (not amber decoration);
+  // falls back to TeamBadge's stable id-hash color when no explicit color is set.
+  const crestColor = isHex(effColor) ? effColor : null;
+  const activeDiv = effLeagues.map(l => effDivisions[l]).find(Boolean) || null;
+  const leagueLine = effLeagues.join(' · ') || t('team_detail_no_league');
+
+  const wcard = { background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 18, boxShadow: ELEV.shadow1 };
+  const wlabel = { fontFamily: FONT, fontSize: 10.5, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '.6px', textTransform: 'uppercase' };
+
+  // Section wrapper as a plain function (NOT a render-scoped component) — invoked
+  // inline so inputs inside don't remount on every keystroke (focus loss).
+  const wSection = (title, right, children) => (
+    <div style={{ ...wcard, padding: 20, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
+        <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: COLORS.text }}>{title}</span>
+        {right}
+      </div>
+      {children}
+    </div>
+  );
+
+  // Roster card — wide grid cell. Avatar ring (HERO→amber, coach→info, staff→
+  // neutral, plain→hairline), number badge, position/role, ★HERO toggle.
+  const isCoach = p => p.role === 'coach';
+  const isStaff = p => p.role === 'staff';
+  const isPlayer = p => !p.role || p.role === 'player';
+  const wRosterCard = (p) => {
+    const grp = isCoach(p) ? 'coach' : isStaff(p) ? 'staff' : 'player';
+    const accent = grp === 'coach' ? COLORS.info : grp === 'staff' ? COLORS.textDim : COLORS.accent;
+    const ringColor = grp === 'player' ? (p.hero ? COLORS.accent : ELEV.hairlineStrong) : accent;
+    const meta = grp === 'player'
+      ? [p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' · ')
+      : null;
+    return (
+      <div key={p.id} style={{
+        display: 'flex', alignItems: 'center', gap: 11, padding: '14px 15px',
+        borderRadius: 14, background: ELEV.surface,
+        border: `1px solid ${p.hero && grp === 'player' ? COLORS.accentA25 : ELEV.hairline}`,
+        boxShadow: ELEV.shadow1, minHeight: TOUCH.minTarget, minWidth: 0,
+      }}>
+        <span style={{ display: 'inline-flex', borderRadius: '50%', padding: 2, border: `2px solid ${ringColor}`, flexShrink: 0 }}>
+          <PlayerAvatar player={p} size={40} />
+        </span>
+        {grp === 'player' && p.number != null && p.number !== '' && (
+          <span style={{ fontFamily: FONT, fontWeight: 800, fontSize: TOUCH.fontLg, color: COLORS.accent, minWidth: 30, ...TNUM }}>#{p.number}</span>
+        )}
+        <div
+          onClick={grp === 'player' ? () => navigate(`/player/${p.id}/stats?scope=global`) : undefined}
+          style={{ flex: 1, cursor: grp === 'player' ? 'pointer' : 'default', minWidth: 0 }}>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+          {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nickname}</div>}
+          {meta && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</div>}
+        </div>
+        {grp === 'player' ? (
+          <div
+            onClick={() => ds.setPlayerHero(p.id, !p.hero)}
+            title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '6px 8px', borderRadius: RADIUS.sm,
+              cursor: 'pointer', flexShrink: 0,
+              background: p.hero ? COLORS.accentA12 : 'transparent',
+              border: `1px solid ${p.hero ? COLORS.accentA25 : COLORS.surfaceLight}`, minHeight: 44,
+            }}>
+            <span style={{ display: 'inline-flex', color: p.hero ? COLORS.accent : COLORS.textMuted }}><RdIcon name="star" size={12} /></span>
+            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
+          </div>
+        ) : (
+          <span style={{
+            fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: '.4px', textTransform: 'uppercase', flexShrink: 0,
+            color: accent, background: `${accent}14`, border: `1px solid ${accent}40`, borderRadius: RADIUS.sm, padding: '5px 9px',
+          }}>{grp === 'coach' ? t('role_coach') : t('player_form_staff_role')}</span>
+        )}
+        <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
+        <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
+      </div>
+    );
+  };
+
+  const wideBody = (
+    <div style={{ flex: 1, overflowY: 'auto', width: '100%', maxWidth: 1120, margin: '0 auto', padding: twoCol ? '28px 28px 80px' : '20px 16px 80px', boxSizing: 'border-box', display: 'grid', gridTemplateColumns: twoCol ? 'minmax(0, 380px) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: twoCol ? 24 : 16, alignItems: 'start' }}>
+      {/* LEFT — hero crest band + logo slot + brand color (sticky on wide) */}
+      <div style={{ position: twoCol ? 'sticky' : 'static', top: 16, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* hero crest band — club color is the bg accent (team identity, not amber) */}
+        <div style={{ ...wcard, padding: 0, overflow: 'hidden' }}>
+          <div style={{
+            position: 'relative', overflow: 'hidden', padding: '26px 22px 22px', textAlign: 'center',
+            background: crestColor
+              ? `radial-gradient(130% 120% at 50% 0%, ${crestColor}55, ${crestColor}12 50%, transparent 74%), linear-gradient(165deg, ${ELEV.raised}, ${ELEV.surface})`
+              : `linear-gradient(165deg, ${ELEV.raised}, ${ELEV.surface})`,
+          }}>
+            <div style={{ position: 'relative', display: 'inline-block', marginBottom: 14, borderRadius: 22, boxShadow: crestColor ? `0 8px 24px ${crestColor}40` : ELEV.shadow1 }}>
+              <TeamBadge team={{ ...team, color: effColor }} size={96} />
+            </div>
+            <div style={{ fontFamily: FONT, fontSize: 26, fontWeight: 900, color: COLORS.text, letterSpacing: '-.5px', lineHeight: 1.08, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word' }}>{team.name}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 10 }}>
+              <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: crestColor || COLORS.textDim, background: crestColor ? `${crestColor}1e` : ELEV.sunken, border: `1px solid ${crestColor ? `${crestColor}55` : ELEV.hairline}`, borderRadius: 999, padding: '5px 12px', letterSpacing: '.4px' }}>
+                {leagueLine}{activeDiv ? ` · ${activeDiv}` : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+        {/* logo slot — reuses the EXISTING logoUrl field (§93: URL ref, never
+            upload). Tapping focuses the logo URL Input on the right. Real
+            file→storage upload is a separate task (m1247). */}
+        <div style={{ ...wcard, padding: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
+            <span style={wlabel}>{t('team_detail_logo_url_label')}</span>
+          </div>
+          <div
+            onClick={() => { const el = document.getElementById('team-logo-url-input'); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.focus(); } }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '22px 16px', borderRadius: 14, border: `1px solid ${ELEV.hairlineStrong}`, background: ELEV.sunken, cursor: 'pointer', minHeight: 44, WebkitTapHighlightColor: 'transparent' }}>
+            {team.logoUrl
+              ? <TeamBadge team={{ ...team, color: effColor }} size={64} />
+              : <span style={{ width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, color: COLORS.accent }}><RdIcon name="palette" size={20} /></span>}
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.text }}>{team.logoUrl ? t('team_detail_logo_change') : t('team_detail_logo_set')}</div>
+              <div style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted, marginTop: 3 }}>{t('team_detail_logo_url_hint')}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT — info (id / color / logo url / leagues) + roster grid */}
+      <div style={{ minWidth: 0 }}>
+        {/* External ID */}
+        {wSection(t('team_detail_pbli_id_label'), null, (
+          <Input value={extIdLocal} onChange={setExtIdLocal} onBlur={handleExtIdBlur} placeholder={t('b13_team_ext_id_ph')} />
+        ))}
+
+        {/* Brand color */}
+        {wSection(t('team_detail_brand_color_label'), null, (
+          <>
+            <ColorPicker value={isHex(effColor) ? effColor : null} onChange={handleColorPreview} onCommit={handleColorCommit} />
+            <div onClick={() => handleSetColor(null)} style={{ marginTop: 8, minHeight: 44, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: !isHex(effColor) ? COLORS.accent : COLORS.textDim, WebkitTapHighlightColor: 'transparent' }}>{t('team_detail_reset_color')}</div>
+          </>
+        ))}
+
+        {/* Logo URL field — the canonical logo edit (the left slot focuses this) */}
+        {wSection(t('team_detail_logo_url_label'), null, (
+          <Input id="team-logo-url-input" value={logoLocal} onChange={setLogoLocal} onBlur={handleLogoBlur} placeholder="https://…/logo.png" />
+        ))}
+
+        {/* Leagues + divisions */}
+        {wSection(t('team_detail_leagues_label'), null, (
+          <>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {leaguesList.map(L => {
+                const l = L.shortName;
+                const a = effLeagues.includes(l);
+                return <Btn key={L.id} variant="default" size="sm" active={a}
+                  style={{ borderColor: a ? LEAGUE_COLORS[l] : COLORS.border, color: a ? LEAGUE_COLORS[l] : COLORS.textDim }}
+                  onClick={() => handleToggleLeague(l)}>{l}</Btn>;
+              })}
+            </div>
+            {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).length > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
+                {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
+                  <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 30 }}>{l}:</span>
+                    {(divisionsByShortName[l] || []).map(d => {
+                      const cur = effDivisions[l];
+                      return <Btn key={d.id} variant="default" size="sm" active={cur === d.name}
+                        onClick={() => handleToggleDivision(l, d.name)}
+                        style={{ fontSize: FONT_SIZE.xxs, padding: '2px 10px', minHeight: 44, minWidth: 44 }}>{d.name}</Btn>;
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        ))}
+
+        {/* Roster — grouped by role, each group a width-filling grid */}
+        <div style={{ ...wcard, padding: 20 }}>
+          <SectionTitle right={
+            <div style={{ display: 'flex', gap: 6 }}>
+              <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}><Icons.Plus /> New</Btn>
+              <Btn variant="default" size="sm" onClick={() => modal.open('addExisting')}><Icons.Search /> Find</Btn>
+            </div>
+          }>{t('team_detail_roster_n', teamPlayers.length)}</SectionTitle>
+
+          {!teamPlayers.length && <EmptyState icon="?" text={t('team_detail_empty_roster')} />}
+
+          {(() => {
+            const groups = [
+              { key: 'coach',  icon: 'book',     title: t('roster_group_coaching'), accent: COLORS.info,    list: teamPlayers.filter(isCoach) },
+              { key: 'player', icon: 'jersey',   title: t('roster_group_players'),  accent: COLORS.accent,  list: teamPlayers.filter(isPlayer) },
+              { key: 'staff',  icon: 'building', title: t('roster_group_staff'),    accent: COLORS.textDim, list: teamPlayers.filter(isStaff) },
+            ];
+            return groups.filter(g => g.list.length > 0).map(g => (
+              <div key={g.key} style={{ marginBottom: 18 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, margin: '14px 2px 12px' }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: g.accent, flexShrink: 0 }}>
+                    <RdIcon name={g.icon} size={15} />
+                  </span>
+                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, letterSpacing: '.6px', color: COLORS.textDim, textTransform: 'uppercase' }}>{g.title}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 999, padding: '2px 9px', ...TNUM }}>{g.list.length}</span>
+                  <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: twoCol ? 'repeat(auto-fill, minmax(300px, 1fr))' : '1fr', gap: 12 }}>
+                  {g.list.map(p => wRosterCard(p))}
+                </div>
+              </div>
+            ));
+          })()}
+        </div>
+
+        {/* Delete team */}
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, marginTop: 16 }}>
+          <Btn variant="ghost" onClick={() => setDeleteModal(true)} style={{ color: COLORS.danger, width: '100%', justifyContent: 'center' }}>
+            <Icons.Trash /> {t('team_detail_delete_btn')}
+          </Btn>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
       header={<PageHeader back={{ to: backTo }} title={team.name} subtitle={t('team_detail_subtitle')} />}>
+      {wide && wideBody}
+      {!wide && (
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, padding: R.layout.padding, display: 'flex', flexDirection: 'column', gap: R.layout.gap * 2 }}>
 
         {/* § Team branding — hero mark + subtle brand tint */}
@@ -443,6 +672,7 @@ export default function TeamDetailPage() {
           </Btn>
         </div>
       </div>
+      )}
 
       {/* Add new player (quick form) */}
       <Modal open={modal.is('addNew')} onClose={() => modal.close()} title={t('team_detail_new_player_title')}
