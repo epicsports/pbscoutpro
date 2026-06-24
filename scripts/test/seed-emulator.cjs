@@ -66,6 +66,7 @@ const TRN = 'trn-demo';
 // drawing survives the shared-stack swap (no data loss on the page render).
 const TACTIC_LEGACY = 'tac-legacy';
 const MATCH = 'mat-demo';     // #2 single-coach log-a-point
+const MATCH_MODES = 'mat-modes'; // MatchPage 3-mode net — ISOLATED so its point writes never contaminate mat-demo (log-point/capture-parity/matchreview-rail)
 const MATCH_CC = 'mat-cc';    // #1 two-coach concurrent + merge (isolated)
 // § 112 Hitability responsive — dedicated training + config node/target ids.
 const TRN_HIT = 'trn-hit';
@@ -640,6 +641,10 @@ async function main() {
   });
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH}`), {
     teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now, createdAt: now,
+  });
+  // MatchPage 3-mode net — dedicated/isolated match (own point writes).
+  batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_MODES}`), {
+    teamA: TEAM_A, teamB: TEAM_B, status: 'live', order: now + 9, createdAt: now,
   });
   // #1 keystone — separate match so the merge test is isolated from #2.
   batch.set(db.doc(`workspaces/${WS}/tournaments/${TRN}/matches/${MATCH_CC}`), {
