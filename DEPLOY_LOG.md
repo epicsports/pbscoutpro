@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1b — scoreboard crests (CD #3) (chat GO, behind net)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-skin-pass1b`. `MatchPage.jsx` (`+19/−10`).
+- **CD refinement #3 (edge-case law):** added `TeamBadge` (crest → color/initials fallback, **never empty circle**) to both review-scoreboard team zones, mirrored. 2-line names were already present (`WebkitLineClamp:2`, no shrink). 
+- **Frozen:** the zones' split-tap (`goScout`) + Scout/Quick CTAs + `review-scoreboard` testid untouched. Net **12/12** (capture-parity golden) + precommit green.
+- **#2 (consolidated head-to-head row) DEFERRED — needs a CD design call:** the current review row carries rich per-point meta (progressive score + preview · **eliminations** · **penalties** · **comments** · ⋮ menu) that the prototype's simple `RdLivePointRow` (`nr·crest+TP·score·BS+crest·dots·trophy`) omits. **Q for CD:** where does that meta go — dropped / selected-expand / inline? Guessing = lost scouting info on the data-critical screen → held. Net banked, nothing lost.
+- **Smoke (Jacek, prod):** match review → scoreboard shows team crests (initials when no logo).
+- **Next:** #2 consolidated row (CD-gated on the meta question) → header/completeness migration → Pass 2 (editor body + ≥720 wide).
+
 ## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1a — review-block tokenize (chat GO, behind net)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-skin-pass1`. `MatchPage.jsx` (`+14/−6`). The FIRST step of the gated MatchPage re-skin (net banked 12/12 first).
 - **Behaviour-FROZEN tokenize** of the review block toward `LiveMatchPremium`: scoreboard → `ELEV.surface`+`shadow1`, score zone → `ELEV.sunken`+`TNUM`, review/FINAL badge → **neutral** (`ELEV.sunken`/`textDim` — CD refinement #1, review is not an active state). Emoji `👁`/`💬`/`⋮` → `RdIcon` (eye/note/dots), behavioral meaning kept.
