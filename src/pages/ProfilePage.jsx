@@ -18,7 +18,8 @@ import { invalidateUserName } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, TNUM } from '../utils/theme';
+import { ASSIGNABLE_ROLES } from '../utils/roleUtils';
 import { useDevice } from '../hooks/useDevice';
 import RdIcon from '../components/RdIcon';
 
@@ -261,9 +262,231 @@ export default function ProfilePage() {
     }
   };
 
+  // ── Wide (≥720) — DASHBOARD layout (hero identity ↔ secondary account) ──
+  // Ports prototype `MyProfileWide` (redesign6.jsx:134). Phone path below is
+  // untouched (additive). Wired to the SAME real state/handlers — only the
+  // shell differs. Two-col grid collapses to single column under 820 (the
+  // hero stays full-width on the narrower wide range, matching the prototype's
+  // internal `useWide(820)` breakpoint).
+  const twoCol = device.width >= 820;
+  const tc = COLORS.accent;
+  const roleIcon = { admin: 'building', coach: 'book', scout: 'target', player: 'jersey' };
+  const number = (linkedPlayer?.number || '').toString().trim();
+  const nick = (linkedPlayer?.nickname || '').trim();
+  const age = linkedPlayer?.age != null && linkedPlayer.age !== '' ? linkedPlayer.age : null;
+  const fullName = (user.displayName || '').trim();
+  const emailLocal = (user.email || '').split('@')[0] || '';
+  // Name split for the hero stack — last line is the emphasised one. Falls back
+  // to the email when no display name is set (edge: no name → single line).
+  const heroName = fullName || user.email || '';
+  const nameParts = fullName ? fullName.split(' ') : [];
+  const firstName = nameParts.length > 1 ? nameParts[0] : '';
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : heroName;
+
+  const wcard = { background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 18, boxShadow: ELEV.shadow1 };
+
+  // Section wrapper as a plain function (NOT a component) — invoked inline so the
+  // inputs inside don't remount on every keystroke (React would treat a render-scoped
+  // component as a fresh type each render → focus loss in the player-data fields).
+  const wSection = (title, source, children) => (
+    <div style={{ ...wcard, padding: 20, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14 }}>
+        <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: COLORS.text }}>{title}</span>
+        {source && <span style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 800, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 999, padding: '3px 10px', letterSpacing: '.3px' }}>{source}</span>}
+      </div>
+      {children}
+    </div>
+  );
+
+  const wideBody = (
+    <div style={{ flex: 1, maxWidth: 1080, width: '100%', margin: '0 auto', padding: twoCol ? '28px 28px 80px' : '20px 16px 80px', boxSizing: 'border-box', display: 'grid', gridTemplateColumns: twoCol ? 'minmax(0, 380px) minmax(0, 1fr)' : 'minmax(0, 1fr)', gap: twoCol ? 24 : 16, alignItems: 'start' }}>
+      {/* LEFT — HERO identity card (sticky on wide) */}
+      <div style={{ position: twoCol ? 'sticky' : 'static', top: 16, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ ...wcard, padding: 0, overflow: 'hidden' }}>
+          {/* hero band */}
+          <div style={{ position: 'relative', overflow: 'hidden', padding: '26px 22px 22px', background: `radial-gradient(125% 130% at 84% 6%, ${tc}4d, ${tc}10 46%, transparent 70%), linear-gradient(165deg, ${ELEV.raised}, ${ELEV.surface})` }}>
+            {/* number watermark — only when the linked player has a number */}
+            {number && (
+              <div style={{ position: 'absolute', top: -30, right: -8, fontFamily: FONT, fontSize: 158, fontWeight: 900, lineHeight: 1, color: '#fff', opacity: 0.05, letterSpacing: '-6px', pointerEvents: 'none', ...TNUM }}>{number}</div>
+            )}
+            <div style={{ position: 'absolute', top: 0, bottom: 0, right: '20%', width: 4, transform: 'skewX(-16deg)', background: tc, opacity: 0.5, pointerEvents: 'none' }} />
+            <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <div style={{ width: 104, height: 104, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle at 50% 38%, ${tc}40, ${ELEV.sunken})`, border: `2.5px solid ${tc}88`, boxShadow: `0 6px 22px ${tc}33, ${ELEV.innerTop}`, overflow: 'hidden', fontFamily: FONT, fontSize: 38, fontWeight: 800, color: COLORS.text }}>
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="avatar"
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    (user.displayName || user.email || '?').charAt(0).toUpperCase()
+                  )}
+                </div>
+                {/* number badge — only when a number exists */}
+                {number && (
+                  <span style={{ position: 'absolute', bottom: -4, left: '50%', transform: 'translateX(-50%)', background: tc, color: '#1a1206', fontFamily: FONT, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: '3px 13px', border: `2px solid ${ELEV.surface}`, ...TNUM }}>#{number.replace(/^#/, '')}</span>
+                )}
+              </div>
+              {/* nick eyebrow — gone when no nickname */}
+              {nick && (
+                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 900, color: tc, letterSpacing: '1.4px', textTransform: 'uppercase' }}>„{nick}”</div>
+              )}
+              {firstName && (
+                <div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 500, color: COLORS.text, lineHeight: 1.05, marginTop: 4 }}>{firstName}</div>
+              )}
+              <div style={{ fontFamily: FONT, fontSize: 26, fontWeight: 900, color: COLORS.text, lineHeight: 1.05, letterSpacing: '-.5px', textTransform: 'uppercase', wordBreak: 'break-word' }}>{lastName}</div>
+              <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, marginTop: 9, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                {emailLocal && <>@{emailLocal}</>}{age != null && <>{emailLocal ? ' · ' : ''}{age} {t('profile_years') || 'lat'}</>}
+              </div>
+            </div>
+          </div>
+          {/* roles = permission tiles — all four, granted vs not */}
+          <div style={{ padding: '16px 18px', borderTop: `1px solid ${ELEV.hairline}` }}>
+            <div style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 800, color: COLORS.textMuted, letterSpacing: TRACKING.label, marginBottom: 11 }}>{(t('profile_roles_label') || 'Twoje role').toUpperCase()}</div>
+            {!workspace ? (
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, fontStyle: 'italic' }}>
+                {t('profile_roles_no_workspace') || 'Wybierz workspace aby zobaczyć swoje role.'}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9 }}>
+                {ASSIGNABLE_ROLES.map(r => {
+                  const on = roles.includes(r);
+                  return (
+                    <div key={r} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '10px 12px', borderRadius: 11, minHeight: 44, boxSizing: 'border-box', background: on ? COLORS.accentA12 : ELEV.sunken, border: `1px solid ${on ? COLORS.accentA40 : ELEV.hairline}` }}>
+                      <span style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? COLORS.accent : ELEV.surface, color: on ? '#1a1206' : COLORS.textMuted, border: on ? 'none' : `1px solid ${ELEV.hairline}` }}><RdIcon name={roleIcon[r] || 'jersey'} size={14} /></span>
+                      <span style={{ fontFamily: FONT, fontSize: 13.5, fontWeight: 800, color: on ? COLORS.accent : COLORS.textMuted }}>{t(`role_${r}`) || r}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT — account settings (secondary) */}
+      <div style={{ minWidth: 0 }}>
+        {/* Display name */}
+        {wSection(t('display_name') || 'Nazwa użytkownika', null, (
+          <>
+          <Input value={displayName} onChange={setDisplayName}
+            placeholder={t('display_name_ph') || 'Np. Jacek'} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginTop: SPACE.md }}>
+            <Btn variant="accent"
+              onClick={handleSaveName}
+              disabled={savingName || !displayName.trim() || displayName.trim() === user.displayName}>
+              {savingName ? (t('saving') || 'Zapisywanie…') : (t('save') || 'Zapisz')}
+            </Btn>
+            {nameStatus === 'saved' && (
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.success }}>✓ {t('saved') || 'Zapisano'}</span>
+            )}
+            {nameStatus === 'error' && (
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>{t('save_failed') || 'Błąd zapisu'}</span>
+            )}
+          </div>
+          </>
+        ))}
+
+        {/* Security — change password row */}
+        {wSection(t('security') || 'Bezpieczeństwo', null, (
+          <div onClick={openPwModal} style={{ display: 'flex', alignItems: 'center', gap: 13, padding: '13px 15px', borderRadius: 12, border: `1px solid ${ELEV.hairline}`, background: ELEV.sunken, cursor: 'pointer', minHeight: 52, WebkitTapHighlightColor: 'transparent' }}>
+            <span style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, color: COLORS.textDim }}><RdIcon name="shield" size={18} /></span>
+            <span style={{ flex: 1, fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{t('change_password') || 'Zmień hasło'}</span>
+            <span style={{ color: COLORS.textMuted, display: 'flex' }}><RdIcon name="chevron" size={16} /></span>
+          </div>
+        ))}
+
+        {/* Player data — claim CTA when unlinked */}
+        {workspace && !linkedPlayer && wSection(t('profile_claim_section') || 'Profil gracza', null, (
+          <>
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, lineHeight: 1.5, marginBottom: SPACE.md }}>
+              {t('profile_claim_empty') || 'Nie jesteś połączony z profilem gracza. Połącz się aby edytować swoje dane gracza, logować punkty i zobaczyć swoje statystyki.'}
+            </div>
+            <Btn variant="accent" onClick={() => { setClaimError(null); setClaimOpen(true); }}>
+              {t('profile_claim_for_stats_btn') || 'Połącz profil żeby zobaczyć statystyki'}
+            </Btn>
+          </>
+        ))}
+
+        {/* Player data — self-edit form when linked */}
+        {linkedPlayer && (
+          <>
+            {wSection(t('profile_player_label') || 'Dane gracza', t('profile_player_visible_short') || 'widoczne dla workspace', (
+              <>
+              <div style={{ display: 'grid', gridTemplateColumns: twoCol ? '1fr 1fr' : '1fr', gap: 14 }}>
+                <div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_name') || 'Imię i nazwisko'}</div>
+                  <Input value={player.name} onChange={(v) => setPlayer(p => ({ ...p, name: v }))} placeholder={t('profile_player_name_ph')} />
+                </div>
+                <div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_nickname') || 'Nick'}</div>
+                  <Input value={player.nickname} onChange={(v) => setPlayer(p => ({ ...p, nickname: v }))} placeholder={t('profile_player_nickname_ph')} />
+                </div>
+                <div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_number') || 'Numer'}</div>
+                  <Input value={player.number} onChange={(v) => setPlayer(p => ({ ...p, number: v }))} placeholder="07" />
+                </div>
+                <div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_age') || 'Wiek'}</div>
+                  <Input type="number" value={player.age} onChange={(v) => setPlayer(p => ({ ...p, age: v }))} placeholder="—" />
+                </div>
+                <div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_nationality') || 'Narodowość'}</div>
+                  <Select value={player.nationality} onChange={(v) => setPlayer(p => ({ ...p, nationality: v }))} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+                    <option value="">— {t('profile_player_nationality_none') || 'brak'} —</option>
+                    {NATIONALITIES.map(n => (<option key={n.code} value={n.code}>{n.flag} {n.name}</option>))}
+                  </Select>
+                </div>
+                <div>
+                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_fav_bunker') || 'Ulubiony bunker'}</div>
+                  <Input value={player.favoriteBunker} onChange={(v) => setPlayer(p => ({ ...p, favoriteBunker: v }))} placeholder={t('profile_player_fav_bunker_ph')} />
+                </div>
+              </div>
+
+              {/* Read-only admin-managed context */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 14, padding: '10px 12px', borderRadius: RADIUS.md, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}` }}>
+                <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: COLORS.textMuted }}>{t('profile_player_admin_fields') || 'Zarządzane przez admina'}</div>
+                {linkedTeamName && (<div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}><span style={{ color: COLORS.textMuted }}>{t('profile_player_team_label') || 'Drużyna'}: </span>{linkedTeamName}</div>)}
+                {linkedPlayer.pbliId && (<div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}><span style={{ color: COLORS.textMuted }}>{t('profile_player_pbli_label') || 'PBLI'}: </span>#{String(linkedPlayer.pbliId).replace(/^#/, '')}</div>)}
+                {linkedPlayer.role && (<div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}><span style={{ color: COLORS.textMuted }}>{t('profile_player_role_label') || 'Pozycja'}: </span>{linkedPlayer.role}</div>)}
+                {linkedPlayer.playerClass && (<div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim }}><span style={{ color: COLORS.textMuted }}>{t('profile_player_class_label') || 'Klasa'}: </span>{linkedPlayer.playerClass}</div>)}
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm, marginTop: 14 }}>
+                <Btn variant="accent" onClick={handleSavePlayer} disabled={playerSaving || !playerDirty || !playerValid}>
+                  {playerSaving ? (t('saving') || 'Zapisywanie…') : (t('profile_player_save') || 'Zapisz dane gracza')}
+                </Btn>
+                {playerStatus === 'saved' && (<span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.success }}>✓ {t('saved') || 'Zapisano'}</span>)}
+                {playerStatus === 'error' && (<span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>{t('save_failed') || 'Błąd zapisu'}</span>)}
+              </div>
+              </>
+            ))}
+
+            {/* My stats entry point — own surface (single CTA per surface) */}
+            <div style={{ ...wcard, padding: 20, marginBottom: 16 }}>
+              <Btn variant="accent" size="lg" onClick={() => navigate(`/player/${linkedPlayer.id}/stats`)} style={{ width: '100%', minHeight: 48 }}>
+                {t('profile_my_stats_btn') || 'Moje statystyki'}
+              </Btn>
+            </div>
+
+            {/* Unlink — separate surface */}
+            <div style={{ ...wcard, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: SPACE.sm, minHeight: 52 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>{linkedPlayer.nickname || linkedPlayer.name || t('profile_claim_section') || 'Profil gracza'}</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2 }}>{t('profile_unlink_body') || 'Połączenie z profilem gracza'}</div>
+              </div>
+              <button type="button" onClick={() => setUnlinkOpen(true)} style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: '10px 16px', minHeight: 44, borderRadius: 8, background: `${COLORS.danger}18`, color: COLORS.danger, border: `1px solid ${COLORS.danger}55`, cursor: 'pointer', letterSpacing: 0.3, WebkitTapHighlightColor: 'transparent' }}>{t('profile_unlink_btn') || 'Rozłącz'}</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Screen archetype="detail" padBottom={false} style={{ minHeight: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'column' }}
       header={<PageHeader back={{ to: '/' }} title={t('my_profile') || 'Mój profil'} />}>
+      {wide && wideBody}
+      {!wide && (
       <div style={{ flex: 1, padding: wide ? '26px 24px 80px' : SPACE.lg, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: SPACE.lg, width: '100%', maxWidth: wide ? 760 : 640, margin: '0 auto', boxSizing: 'border-box' }}>
 
         {/* Identity block — avatar + email. Avatar URL editor removed per
@@ -632,6 +855,7 @@ export default function ProfilePage() {
         )}
 
       </div>
+      )}
 
       {/* Self-claim modal (§ 49.8 Path A). Picker shows the FULL global catalog
           (Jacek 2026-06-14) — a player must see the whole DB to find their
