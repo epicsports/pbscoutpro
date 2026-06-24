@@ -24,7 +24,8 @@ import { KioskProvider } from './contexts/KioskContext';
 import { QuickLogProvider } from './contexts/QuickLogContext';
 import KioskPostSaveSummary from './components/kiosk/KioskPostSaveSummary';
 import KioskLobbyOverlay from './components/kiosk/KioskLobbyOverlay';
-import { COLORS, FONT } from './utils/theme';
+import { COLORS, FONT, ELEV } from './utils/theme';
+import RdIcon from './components/RdIcon';
 
 // Lazy load pages — reduces initial bundle
 const MainPage = lazy(() => import('./pages/MainPage'));
@@ -535,6 +536,7 @@ function DisabledAccountScreen({ onSignOut }) {
 // the localStorage scout draft + Firestore's queued writes both survive a drop
 // and sync on reconnect (see SCOUTING_CONCURRENCY_AND_CACHE.md § 5).
 function OfflineBanner() {
+  const { t } = useLanguage();
   const online = useOnline();
   const [reconnected, setReconnected] = useState(false);
   const wasOfflineRef = React.useRef(false);
@@ -550,17 +552,22 @@ function OfflineBanner() {
 
   if (online && !reconnected) return null;
 
+  // Premium slim bar — RdIcon + tokenized. §27 discipline preserved: danger-red
+  // while offline, success-green on reconnect; non-interactive (pointerEvents:none).
+  const tone = online ? COLORS.success : COLORS.danger;
   const bar = {
     position: 'fixed', top: 0, left: 0, right: 0,
-    padding: 'calc(6px + env(safe-area-inset-top, 0px)) 16px 6px',
-    fontFamily: FONT, fontSize: 12, fontWeight: 700, letterSpacing: '.2px',
-    textAlign: 'center', zIndex: 200, pointerEvents: 'none',
-    color: COLORS.white,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    padding: 'calc(7px + env(safe-area-inset-top, 0px)) 16px 7px',
+    fontFamily: FONT, fontSize: 12.5, fontWeight: 800, letterSpacing: '.2px',
+    zIndex: 200, pointerEvents: 'none', color: COLORS.white,
+    background: tone, boxShadow: ELEV.shadow1,
   };
-  return online ? (
-    <div style={{ ...bar, background: COLORS.success }}>Back online — syncing changes…</div>
-  ) : (
-    <div style={{ ...bar, background: COLORS.danger }}>Offline — changes save on this device and sync when you reconnect</div>
+  return (
+    <div role="status" style={bar}>
+      <RdIcon name={online ? 'check' : 'wifioff'} size={15} />
+      <span>{online ? (t('offline_reconnected') || 'Back online — syncing changes…') : (t('offline_banner') || 'Offline — changes save on this device and sync when you reconnect')}</span>
+    </div>
   );
 }
 

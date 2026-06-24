@@ -630,7 +630,10 @@ export function ConfirmModal({ open, onClose, title, message, onConfirm, confirm
           {danger ? <Icons.Trash /> : <Icons.Check />} {resolvedConfirmLabel}
         </Btn>
       </>}>
-      {message && <p style={{ fontFamily: 'var(--font)', fontSize: 15, color: 'var(--color-text-dim)', margin: '0 0 12px' }}>{message}</p>}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, marginBottom: requirePassword ? 12 : 0 }}>
+        {danger && <span style={{ width: 46, height: 46, borderRadius: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${COLORS.danger}14`, border: `1px solid ${COLORS.danger}33`, color: COLORS.danger, boxShadow: ELEV.innerTop }}><RdIcon name="trash" size={21} /></span>}
+        {message && <p style={{ flex: 1, fontFamily: FONT, fontSize: 15, color: COLORS.textDim, margin: 0, lineHeight: 1.5 }}>{message}</p>}
+      </div>
       {requirePassword && (
         <Input value={password} onChange={onPasswordChange}
           placeholder={passwordLabel} autoFocus />
