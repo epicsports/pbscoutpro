@@ -1,11 +1,17 @@
 import React, { useMemo, useState } from 'react';
-import { Star, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { COLORS, FONT, ELEV, TNUM, TRACKING } from '../../utils/theme';
+import RdIcon from '../RdIcon';
 import { useLanguage } from '../../hooks/useLanguage';
 import { computeMatchBreakdown } from '../../utils/scoutStats';
 
 /**
  * CompletenessCard — match-view scouting completeness summary.
+ *
+ * Premium "North Star" re-skin (RdCompleteness look): ELEV.surface + hairline
+ * card, TRACKING.label eyebrow header, per-metric bar on an ELEV.sunken track
+ * with a colored fill + TNUM % readout, collapse toggle via RdIcon chevron.
+ * Props/API + every metric + role-gating + collapse behaviour are preserved —
+ * this change is visual-only.
  *
  * Replaces (a) the inline 2-bar mini-summary that lived inside the Points
  * list block (Breaks + Shots only) and (b) the scout-only ScoutScoreSheet
@@ -27,10 +33,10 @@ import { computeMatchBreakdown } from '../../utils/scoutStats';
  * Color scale (§ 27 exception — documented in deploy log; precedent set
  * by `compositeColor()` already using amber for non-interactive ranking
  * tiers):
- *   ≥90% → COLORS.accent (gold) + ⭐ badge — celebrate
+ *   ≥90% → COLORS.accent (gold) + star badge — celebrate
  *   70-89% → COLORS.success (green)
  *   50-69% → COLORS.accent (amber) — needs attention (no badge)
- *   <50% → COLORS.danger (red) + ⚠ badge — incomplete
+ *   <50% → COLORS.danger (red) + warn badge — incomplete
  */
 export default function CompletenessCard({ points = [] }) {
   const { t } = useLanguage();
@@ -41,7 +47,6 @@ export default function CompletenessCard({ points = [] }) {
 
   const breakdown = useMemo(() => computeMatchBreakdown(points), [points]);
   const title = t('completeness_section_title') || 'Scouting completeness';
-  const ChevronIcon = open ? ChevronDown : ChevronRight;
 
   return (
     <div style={cardStyle}>
@@ -53,18 +58,23 @@ export default function CompletenessCard({ points = [] }) {
         onPointerLeave={() => setPressed(false)}
         style={{
           ...headerButtonStyle,
-          background: pressed ? COLORS.surfaceLight : 'transparent',
+          background: pressed ? ELEV.raised : 'transparent',
         }}
       >
         <span style={titleStyle}>{title}</span>
-        <ChevronIcon size={16} color={COLORS.textDim} strokeWidth={2} style={{ flexShrink: 0 }} />
+        <span style={{
+          display: 'flex', flexShrink: 0, color: COLORS.textDim,
+          transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease',
+        }}>
+          <RdIcon name="chevron" size={16} />
+        </span>
       </button>
       {open && (
         !points.length || !breakdown ? (
           <div style={emptyStyle}>{t('completeness_empty') || 'No points scouted yet'}</div>
         ) : (
           <>
-            <div style={{ marginTop: SPACE.md, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
                 { label: t('completeness_breaks')       || 'Breaks',       pct: breakdown.breakPct },
                 { label: t('completeness_shots')        || 'Shots',        pct: breakdown.shotPct },
@@ -111,7 +121,7 @@ function MetricRow({ label, pct }) {
 function OverallRow({ label, pct }) {
   const { color, badge } = tierFor(pct);
   return (
-    <div style={{ ...rowStyle, marginTop: SPACE.sm }}>
+    <div style={{ ...rowStyle, marginTop: 6 }}>
       <span style={overallLabelStyle}>{label}</span>
       <div style={barTrackStyle}>
         <div style={{ ...barFillStyle, width: `${pct}%`, background: color }} />
@@ -123,8 +133,8 @@ function OverallRow({ label, pct }) {
 }
 
 function BadgeIcon({ kind, color, size }) {
-  if (kind === 'star') return <Star size={size} color={color} fill={color} strokeWidth={1.5} style={{ flexShrink: 0 }} />;
-  if (kind === 'warn') return <AlertTriangle size={size} color={color} strokeWidth={2} style={{ flexShrink: 0 }} />;
+  if (kind === 'star') return <span style={{ display: 'flex', flexShrink: 0, color }}><RdIcon name="star" size={size} fill={color} /></span>;
+  if (kind === 'warn') return <span style={{ display: 'flex', flexShrink: 0, color }}><RdIcon name="warn" size={size} /></span>;
   // Empty fixed-width slot keeps the percentage column visually aligned
   // across rows whether or not a badge appears.
   return <span style={{ display: 'inline-block', width: size, flexShrink: 0 }} />;
@@ -133,10 +143,11 @@ function BadgeIcon({ kind, color, size }) {
 /* ─── styles ───────────────────────────────────────────────────────── */
 
 const cardStyle = {
-  background: COLORS.surfaceDark,
-  border: `1px solid ${COLORS.border}`,
-  borderRadius: RADIUS.lg,
-  padding: SPACE.lg,
+  background: ELEV.surface,
+  border: `1px solid ${ELEV.hairline}`,
+  borderRadius: 14,
+  boxShadow: ELEV.shadow1,
+  padding: 16,
   margin: '0 12px 12px',
 };
 
@@ -149,10 +160,10 @@ const headerButtonStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: SPACE.sm,
+  gap: 8,
   padding: 0,
   border: 'none',
-  borderRadius: RADIUS.sm,
+  borderRadius: 10,
   cursor: 'pointer',
   fontFamily: 'inherit',
   color: 'inherit',
@@ -163,22 +174,22 @@ const headerButtonStyle = {
 
 const titleStyle = {
   fontFamily: FONT,
-  fontSize: FONT_SIZE.xs,
+  fontSize: 12,
   fontWeight: 600,
   color: COLORS.textMuted,
   textTransform: 'uppercase',
-  letterSpacing: '.4px',
+  letterSpacing: TRACKING.label,
 };
 
 const rowStyle = {
   display: 'flex',
   alignItems: 'center',
-  gap: SPACE.sm,
+  gap: 8,
 };
 
 const labelStyle = {
   fontFamily: FONT,
-  fontSize: FONT_SIZE.sm,
+  fontSize: 14,
   fontWeight: 500,
   color: COLORS.text,
   flex: '0 0 auto',
@@ -190,7 +201,7 @@ const labelStyle = {
 
 const overallLabelStyle = {
   ...labelStyle,
-  fontSize: FONT_SIZE.md,
+  fontSize: 16,
   fontWeight: 700,
 };
 
@@ -198,7 +209,8 @@ const barTrackStyle = {
   flex: 1,
   height: 6,
   borderRadius: 3,
-  background: COLORS.border,
+  background: ELEV.sunken,
+  border: `1px solid ${ELEV.hairline}`,
   overflow: 'hidden',
 };
 
@@ -210,9 +222,9 @@ const barFillStyle = {
 
 const valueStyle = {
   fontFamily: FONT,
-  fontSize: FONT_SIZE.sm,
+  fontSize: 14,
   fontWeight: 700,
-  fontVariantNumeric: 'tabular-nums',
+  ...TNUM,
   textAlign: 'right',
   minWidth: 42,
   flexShrink: 0,
@@ -220,22 +232,22 @@ const valueStyle = {
 
 const overallValueStyle = {
   ...valueStyle,
-  fontSize: FONT_SIZE.md,
+  fontSize: 16,
   fontWeight: 800,
   minWidth: 48,
 };
 
 const dividerStyle = {
   height: 1,
-  background: COLORS.border,
-  margin: `${SPACE.md}px 0 ${SPACE.sm}px`,
+  background: ELEV.hairline,
+  margin: '12px 0 6px',
 };
 
 const emptyStyle = {
   fontFamily: FONT,
-  fontSize: FONT_SIZE.sm,
+  fontSize: 14,
   color: COLORS.textMuted,
   fontStyle: 'italic',
   textAlign: 'center',
-  padding: `${SPACE.md}px 0`,
+  padding: '12px 0',
 };

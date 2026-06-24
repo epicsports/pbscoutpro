@@ -34,7 +34,7 @@ import { MapPin, Pencil, Play, Pause, Zap, Shield, Timer, Flag } from 'lucide-re
 import { capturePhases, toPersistedLiteral, fromPersistedLiteral, label as phaseLabel, isReasonRadial } from '../utils/pointPhases';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive, ELEV, TNUM, TRACKING } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive, ELEV, TNUM, TRACKING, TYPE } from '../utils/theme';
 import RdIcon from '../components/RdIcon';
 import TeamBadge from '../components/TeamBadge';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -1654,23 +1654,62 @@ export default function MatchPage() {
     const landscape = device.isLandscape;
     const heroAvailable = !!field?.fieldImage;
 
-    // Match header — centered muted title per design spec §21
+    // Match header — premium RdLiveHeader aesthetic (ELEV back tile + hairline +
+    // RdIcon chevron) while KEEPING the review's title/subtitle (strict
+    // RdLiveHeader has no title; the review needs the "{A} vs {B}" + tournament
+    // context, so we apply the premium LOOK and retain the title — judgment
+    // flagged in the brief). Built inline here so the shared PageHeader component
+    // (used elsewhere) is NOT restyled. Back-nav, title, subtitle, and the
+    // neutral badge logic are byte-identical to the prior PageHeader version.
     const reviewHeaderEl = (
-        <PageHeader
-          back={{ to: () => navigate(backToParent) }}
-          title={`${teamA?.name || '?'} vs ${teamB?.name || '?'}`}
-          subtitle={tournament?.name || ''}
-          badges={
+        <div style={{
+          background: COLORS.surface,
+          borderBottom: `1px solid ${ELEV.hairline}`,
+          position: 'sticky', top: 0, zIndex: 20,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px' }}>
+            {/* Premium ELEV back tile — surface + hairline, RdIcon chevron (flipped) */}
+            <div
+              onClick={() => navigate(backToParent)}
+              style={{
+                width: 40, height: 40, flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+                borderRadius: 12, color: COLORS.accent, cursor: 'pointer',
+                boxShadow: ELEV.shadow1,
+                WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+              }}
+            >
+              <span style={{ display: 'flex', transform: 'scaleX(-1)' }}><RdIcon name="chevron" size={18} /></span>
+            </div>
+            {/* Title block */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontFamily: FONT, fontWeight: 800, fontSize: TYPE.title,
+                color: COLORS.text, letterSpacing: TRACKING.tight,
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>{`${teamA?.name || '?'} vs ${teamB?.name || '?'}`}</div>
+              {tournament?.name && (
+                <div style={{
+                  fontFamily: FONT, fontSize: 11, color: COLORS.textMuted,
+                  fontWeight: 600, letterSpacing: '.5px', marginTop: 1,
+                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                }}>{tournament.name}</div>
+              )}
+            </div>
+            {/* Neutral status badge — logic byte-identical to the prior version.
+                LIVE/unlocked = amber (active); FINAL = neutral sunken/hairline. */}
             <span style={{
+              flexShrink: 0,
               fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
               background: isLockReleased ? COLORS.accentA18 : isClosed ? ELEV.sunken : COLORS.accentA18,
               color: isLockReleased ? COLORS.accent : isClosed ? COLORS.textDim : COLORS.accent,
               border: `1px solid ${isLockReleased ? COLORS.accentA30 : isClosed ? ELEV.hairline : COLORS.accentA30}`,
               letterSpacing: '.5px',
             }}>{isLockReleased ? t('match_unlocked_badge') : isClosed ? 'FINAL' : 'LIVE'}</span>
-          }
-          action={!isLocked && <MoreBtn testId="match-menu-btn" onClick={() => setMatchMenuOpen(true)} />}
-        />
+            {!isLocked && <MoreBtn testId="match-menu-btn" onClick={() => setMatchMenuOpen(true)} />}
+          </div>
+        </div>
     );
 
     // Scoreboard card — elevated surface with split-tap zones. §B B5: the
@@ -2075,6 +2114,26 @@ export default function MatchPage() {
                         borderTop: `1px solid ${ELEV.hairline}`,
                         animation: 'rdFade .18s ease',
                       }}>
+                        {/* Per-side scout-name lines (#2-follow) — who scouted
+                            each side. Scouted → {TP/BS label}{textMuted} ·
+                            {scoutShortName}{textDim}; unscouted → "— niescoutowany".
+                            Identity, not amber (§27). Full-width so both lines
+                            stack above the eliminations/penalty/comment row. */}
+                        <div style={{ flexBasis: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                          {[
+                            { label: shortA, scoutedBy: ptDataA.scoutedBy },
+                            { label: shortB, scoutedBy: ptDataB.scoutedBy },
+                          ].map((sd, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, letterSpacing: '.3px', flexShrink: 0 }}>{sd.label}</span>
+                              {sd.scoutedBy ? (
+                                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{scoutShortName(sd.scoutedBy)}</span>
+                              ) : (
+                                <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted }}>— {t('review_meta_not_scouted')}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                         {!hasMeta && (
                           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 500, color: COLORS.textMuted }}>
                             {t('review_meta_empty')}
