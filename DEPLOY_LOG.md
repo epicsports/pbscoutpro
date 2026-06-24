@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] Unified match list — one responsive MatchListPremium, ScoutWide retired (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/match-list-premium-unified`. NEW `MatchListPremium.jsx`; `ScoutTabContent` → thin wrapper; `AppShellPremiumWide` ScoutWide retired (`+704/−752`).
+- **One responsive component, `wide` prop:** phone single-col (**byte-identical** to old ScoutTabContent — wide=false → Fragment, no DOM change), wide = 2–3 col fixture grid (`repeat(auto-fill,minmax(340px,1fr))`) + live as full-width hero rows.
+- **Interaction reused/frozen** — existing `MatchCard` split-tap at every width (team/crest/row → scout `matchId`+side; score/center → full MatchPage). No routing reimplemented.
+- **ScoutWide fork RETIRED** — master-detail + field/heatmap pane removed (field/heatmap now lives only on MatchPage via preview; Scout list = launcher). Dead imports cleaned.
+- **Preloader gate folded in** (supersedes `feat/tournament-preloader-gate`) → no "?"-name rows while teams load. **Fixed** an in-render `Grid` component (was remounting the list on every liveScores poll) → hoisted to module-level stable identity.
+- **PROOF:** phone e2e 13/13 (b4-home/scoutedteam-rail/nav-drawer) + build + precommit + §27 PASS. **Wide path e2e-gated-OFF → Jacek tablet smoke** (grid reflow + live hero + tap-team-on-tablet → scouting).
+- **Smoke (Jacek, prod):** Scout tab tablet → 2–3 col grid, live hero, tap team → scout that team+match.
+
 ## 2026-06-24 — [FEATURE/Tier-2] States — premium ConfirmModal + OfflineBanner + NetworkErrorState — CD backlog #3 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/states-premium`. `ui.jsx` (ConfirmModal) + `App.jsx` (OfflineBanner) + `states/StateBanners.jsx` (NEW) + `RdIcon.jsx` (`wifioff`/`refresh`) + `i18n.js` (offline/neterror keys, pl+en).
 - **Premium delete-confirm:** re-skinned the SHARED `ConfirmModal` (danger trash icon-tile, semantic `COLORS.danger` not amber, RdIcon, responsive via the shared Modal) → premium-izes EVERY delete site (player/team/layout/admin) in one change. No native `confirm()` left (all routed through ConfirmModal). **Delete LOGIC frozen** (`deletePlayer`/`deleteTeam`/`deleteLayout`, password-gate, props byte-identical).
