@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-24 — [BUGFIX/Tier-1] ELEV as theme palette — theme switch now repaints premium screens (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `fix/elev-theme-palette`. `theme.js` only (+11).
+- **Root cause:** `setTheme()` did `Object.assign(COLORS, src)` ONLY — `ELEV.*` (the palette EVERY premium screen renders on) was a frozen constant → switching theme left all premium surfaces stuck on dark ELEV (only legacy COLORS.* screens repainted).
+- **Fix:** DARK_COLORS + LIGHT_COLORS each carry an `elev` block (bg/sunken/surface/raised/overlay/hairline/hairlineStrong); `setTheme()` now also `Object.assign(ELEV, src.elev)`. DARK.elev = the prior ELEV values → **no visible change in the default dark theme**; switching to light now repaints premium surfaces too.
+- **Brief-vs-prod reconciliation (flagged):** prod theme = **dark/light `setTheme`**, NOT the prototype's tweaks/NEUTRALS/Midnight-Slate-Carbon (no such system in src). So (a) **no base-snapshot to patch** — dark IS the restorable default (`setTheme('dark')` = reset). (b) The **`#0a0e17` Draw-mode literal isn't in prod** (the accuracy/Draw mode = the deferred Trafność feature); the 5 `#0a0e17` hits are all don't-touch (error-harness · devsnapshot · a canvas STROKE · 2 games). 
+- **PROOF:** build + precommit green; b4-home 3/3 (theme.js is imported app-wide).
+- **DoD:** switch repaints premium ✅ · reset-to-default-incl-ELEV ✅ (via dark) · Draw-literal N/A · build+precommit ✅.
+- **Smoke (Jacek, prod):** toggle theme → premium screens repaint (not just legacy).
+
 ## 2026-06-24 — [FEATURE/Tier-2] CSV import full premium skin — CD backlog #1 (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/csv-import-premium-full`. `CSVImport.jsx` + `RdIcon.jsx` (new `file` glyph). Restyle-only on top of the earlier light pass.
 - **Premium pieces:** clickable file-card (`RdIcon file`, no emoji); eyebrow section headers; mapped-counter "X z N zmapowanych" (TNUM, success ≥2); **wide (≥720) 2-col** mapping(380px)|preview, Modal→820; phone stacked.
