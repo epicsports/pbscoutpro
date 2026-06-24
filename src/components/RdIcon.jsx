@@ -20,6 +20,7 @@ export default function RdIcon({ name, size = 16, fill }) {
     case 'impact': return <svg {...p}><path d="M8 1.4l1.7 3.5 3.8-.6-2 3.3 2 3.3-3.8-.6L8 14.6l-1.7-3.7-3.8.6 2-3.3-2-3.3 3.8.6z" {...s} /></svg>;
     case 'duo': return <svg {...p}><circle cx="5.8" cy="5.4" r="2.3" {...s} /><path d="M1.8 13.4c0-2.3 1.8-3.8 4-3.8s4 1.5 4 3.8" {...s} /><path d="M10.8 3.9a2.3 2.3 0 010 4.4M11.4 13.4c0-1.9-.8-3.2-2-3.7" {...s} /></svg>;
     case 'note': return <svg {...p}><rect x="3" y="2.4" width="10" height="11.2" rx="1.3" {...s} /><path d="M5.4 5.8h5.2M5.4 8.3h5.2M5.4 10.8h3.2" {...s} /></svg>;
+    case 'file': return <svg {...p}><path d="M4 2.2h4.8l3 3v8.4a.8.8 0 01-.8.8H4a.8.8 0 01-.8-.8V3a.8.8 0 01.8-.8z" {...s} /><path d="M8.6 2.4v2.8h2.8" {...s} /><path d="M5.8 8.6h4.4M5.8 11h3" {...s} /></svg>;
     case 'footsteps': return <svg {...p}><path d="M5 2.6c1 0 1.5 1.1 1.3 2.6C6.1 6.7 5.5 7.4 4.6 7.2 3.7 7 3.4 5.7 3.6 4.2 3.8 2.9 4.2 2.6 5 2.6z" {...s} /><path d="M3.6 9.2c.7-.2 1.3.3 1.5 1.2M10.6 6.8c1 0 1.4 1.1 1.2 2.6-.2 1.5-.8 2.2-1.7 2-.9-.2-1.2-1.5-1-3 .2-1.3.7-1.6 1.5-1.6z" {...s} /><path d="M9.3 13.4c.7-.2 1.3.3 1.5 1.1" {...s} /></svg>;
     case 'pin': return <svg {...p}><path d="M8 14.2s4.4-4.1 4.4-7.2a4.4 4.4 0 10-8.8 0c0 3.1 4.4 7.2 4.4 7.2z" {...s} /><circle cx="8" cy="7" r="1.7" {...s} /></svg>;
     case 'warn': return <svg {...p}><path d="M8 2.2l6 11.3H2z" {...s} /><path d="M8 6.6v3.1" {...s} /><circle cx="8" cy="11.4" r=".5" fill="currentColor" stroke="none" /></svg>;
