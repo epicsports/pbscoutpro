@@ -34,7 +34,8 @@ import { MapPin, Pencil, Play, Pause, Zap, Shield, Timer, Flag } from 'lucide-re
 import { capturePhases, toPersistedLiteral, fromPersistedLiteral, label as phaseLabel, isReasonRadial } from '../utils/pointPhases';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive, ELEV, TNUM, TRACKING } from '../utils/theme';
+import RdIcon from '../components/RdIcon';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { mirrorPointToLeft, mirrorShotsToRight, matchScore } from '../utils/helpers';
@@ -1661,9 +1662,9 @@ export default function MatchPage() {
           badges={
             <span style={{
               fontFamily: FONT, fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: RADIUS.xs,
-              background: isLockReleased ? COLORS.accentA18 : isClosed ? '#64748b18' : COLORS.accentA18,
-              color: isLockReleased ? COLORS.accent : isClosed ? COLORS.textMuted : COLORS.accent,
-              border: `1px solid ${isLockReleased ? COLORS.accentA30 : isClosed ? '#64748b30' : COLORS.accentA30}`,
+              background: isLockReleased ? COLORS.accentA18 : isClosed ? ELEV.sunken : COLORS.accentA18,
+              color: isLockReleased ? COLORS.accent : isClosed ? COLORS.textDim : COLORS.accent,
+              border: `1px solid ${isLockReleased ? COLORS.accentA30 : isClosed ? ELEV.hairline : COLORS.accentA30}`,
               letterSpacing: '.5px',
             }}>{isLockReleased ? t('match_unlocked_badge') : isClosed ? 'FINAL' : 'LIVE'}</span>
           }
@@ -1681,10 +1682,11 @@ export default function MatchPage() {
         <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0` }}>
           <div data-testid="review-scoreboard" style={{
             display: 'flex',
-            background: COLORS.surface,
-            border: `1px solid ${COLORS.surfaceLight}`,
+            background: ELEV.surface,
+            border: `1px solid ${ELEV.hairline}`,
             borderRadius: compact ? 12 : 14,
             overflow: 'hidden',
+            boxShadow: ELEV.shadow1,
           }}>
             {/* Left team zone */}
             <div onClick={() => goScout(match?.teamA)}
@@ -1733,10 +1735,10 @@ export default function MatchPage() {
             <div style={{
               flex: '0 0 auto', minWidth: compact ? 56 : 110,
               padding: compact ? '8px 8px' : '14px 12px',
-              background: COLORS.surfaceBar,
+              background: ELEV.sunken,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             }}>
-              <div style={{ fontFamily: FONT, fontSize: compact ? 22 : 32, fontWeight: 900, color: COLORS.text, lineHeight: 1 }}>
+              <div style={{ fontFamily: FONT, fontSize: compact ? 22 : 32, fontWeight: 900, color: COLORS.text, lineHeight: 1, ...TNUM }}>
                 {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
               </div>
               <div style={{ fontFamily: FONT, fontSize: compact ? 8 : 10, fontWeight: 600, color: COLORS.textMuted, marginTop: compact ? 2 : 4, letterSpacing: '.4px' }}>
@@ -1997,7 +1999,7 @@ export default function MatchPage() {
                       }}>
                         {/* §B B6 — 👁 marks the ACTIVE preview (amber = active
                             state, §27); inherits the previewing colour. */}
-                        {isPreviewing && <span aria-hidden="true" style={{ fontSize: 11 }}>👁</span>}
+                        {isPreviewing && <span aria-hidden="true" style={{ display: 'flex', color: COLORS.accent }}><RdIcon name="eye" size={12} /></span>}
                         <span>{prog.a}<span style={{ color: COLORS.textMuted }}>:</span>{prog.b}</span>
                       </div>
                       {totalElim > 0 && (
@@ -2032,7 +2034,7 @@ export default function MatchPage() {
                           <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {ptDataA.penalty && <span style={{ color: COLORS.danger }}>{ptDataA.penalty} </span>}
                             {ptDataB.penalty && <span style={{ color: COLORS.danger }}>{ptDataB.penalty} </span>}
-                            {pt.comment && <span style={{ fontStyle: 'italic' }}>💬 {pt.comment}</span>}
+                            {pt.comment && <span style={{ fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: 3 }}><RdIcon name="note" size={10} /> {pt.comment}</span>}
                           </div>
                         )}
                       </div>
@@ -2040,8 +2042,8 @@ export default function MatchPage() {
                     </div>
                     {/* ⋮ menu */}
                     <div onClick={(e) => { e.stopPropagation(); setPointMenu({ id: pt.id, idx: idx + 1 }); }}
-                      style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: COLORS.textMuted, fontSize: 18 }}>
-                      ⋮
+                      style={{ width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, cursor: 'pointer', color: COLORS.textMuted }}>
+                      <RdIcon name="dots" size={16} />
                     </div>
                   </div>
                 );
