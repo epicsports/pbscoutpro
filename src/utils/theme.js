@@ -192,12 +192,19 @@ const LIGHT_COLORS = {
   border: '#cbd5e1', borderActive: P.amber600,
   text: P.gray900, textDim: P.gray600, textMuted: P.gray500,
   accent: P.amber600, accentDim: P.amber700,
+  // Light-mode elevation surfaces (mirror LIGHT_COLORS) — so premium ELEV.* screens
+  // repaint to light when the theme switches.
+  elev: { bg: '#f8fafc', sunken: '#eef2f7', surface: '#ffffff', raised: '#ffffff', overlay: '#ffffff', hairline: '#e2e8f0', hairlineStrong: '#cbd5e1' },
 };
 const DARK_COLORS = {
   bg: P.gray950, surface: '#111827', surfaceLight: '#1a2234', surfaceHover: '#1f2b3d',
   border: '#2a3548', borderActive: P.amber500,
   text: P.gray200, textDim: P.gray400, textMuted: P.gray500,
   accent: P.amber500, accentDim: P.amber700,
+  // ELEV is part of the theme palette (not a constant) — else theme switching only
+  // repaints the legacy COLORS.* screens, leaving every premium screen (which renders
+  // on ELEV.*) stuck on these dark surfaces. setTheme() Object.assigns this onto ELEV.
+  elev: { bg: '#0a0e17', sunken: '#080b12', surface: '#111827', raised: '#161f31', overlay: '#1c2740', hairline: '#1e2636', hairlineStrong: '#28324a' },
 };
 
 export let currentTheme = 'dark';
@@ -205,6 +212,10 @@ export function setTheme(theme) {
   currentTheme = theme;
   const src = theme === 'light' ? LIGHT_COLORS : DARK_COLORS;
   Object.assign(COLORS, src);
+  // Remap ELEV too (the premium-screen palette) — without this, theme switching
+  // leaves every ELEV.* surface frozen. `src.elev` carries the per-theme block;
+  // the dark theme is the default, so setTheme('dark') is the reset path.
+  if (src.elev) Object.assign(ELEV, src.elev);
   // Update CSS custom properties for global.css
   const root = document.documentElement;
   if (root) {
