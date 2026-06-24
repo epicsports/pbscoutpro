@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1 #2 — consolidated head-to-head review row + expanded meta (CD decision, behind net)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-pass1-row`. `MatchPage.jsx` (`+101/−40`) + `i18n.js` (3 keys ×pl+en). The biggest visible piece of the review re-skin.
+- **CD decision:** collapsed row stays clean + scannable; rich meta → expanded (selected) state, **nothing dropped, no new screen.**
+- **Collapsed head-to-head:** `#n · crestA+shortA(🏆 winner) · score · shortB+crestB(🏆 winner) · ●●` (2 scout-completeness dots: filled=success when `scoutedBy` present, hollow otherwise). TeamBadge crest→initials; RdIcon trophy at winner.
+- **Expanded (on tap, `rdFade`, when `isPreviewing`):** eliminations `{TP} n · {BS} n` (textDim/TNUM) · **penalty chip AMBER, only if penalties exist** (0→render nothing) · comment (RdIcon note) · `review_meta_empty` line when the point has no meta.
+- **Behaviour FROZEN (0 logic deletions):** per-side `goScoutPoint` taps, center `setPreviewPointId` toggle + **`point-preview-${id}` testid**, `isPreviewing` styling, ⋮ `setPointMenu` — all preserved. Render-only.
+- **PROOF:** full net **12/12** (capture-parity golden + matchreview-rail the hard guards) + precommit green; §27 self-review PASS.
+- **Note (cleanup follow-up):** the collapsed line dropped the inline scout-NAME display (replaced by the ●● completeness dots, per CD) → `scoutShortName` helper (+ `scoutNamesMap`/`useUserNames`/`scoutUids`) now unused in MatchPage; left in place (render-only minimal diff). If CD wants the scout name back → expanded state.
+- **Smoke (Jacek, prod):** match review → clean head-to-head rows (crests, winner trophy, dots); tap a point → expanded eliminations/penalties(amber)/comments or "no data" line.
+- **Pass 1 status:** 1a tokenize ✅ · 1b crests #3 ✅ · #2 consolidated row ✅ · neutral badge #1 ✅. **Remaining:** header/completeness migration (small), then Pass 2 (editor body + ≥720 wide).
+
 ## 2026-06-24 — [FEATURE/Tier-2] MatchPage #4 Pass 1b — scoreboard crests (CD #3) (chat GO, behind net)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/matchpage-skin-pass1b`. `MatchPage.jsx` (`+19/−10`).
 - **CD refinement #3 (edge-case law):** added `TeamBadge` (crest → color/initials fallback, **never empty circle**) to both review-scoreboard team zones, mirrored. 2-line names were already present (`WebkitLineClamp:2`, no shrink). 
