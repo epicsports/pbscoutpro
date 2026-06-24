@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-24 — [FEATURE/Tier-2] States — premium ConfirmModal + OfflineBanner + NetworkErrorState — CD backlog #3 (chat GO)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/states-premium`. `ui.jsx` (ConfirmModal) + `App.jsx` (OfflineBanner) + `states/StateBanners.jsx` (NEW) + `RdIcon.jsx` (`wifioff`/`refresh`) + `i18n.js` (offline/neterror keys, pl+en).
+- **Premium delete-confirm:** re-skinned the SHARED `ConfirmModal` (danger trash icon-tile, semantic `COLORS.danger` not amber, RdIcon, responsive via the shared Modal) → premium-izes EVERY delete site (player/team/layout/admin) in one change. No native `confirm()` left (all routed through ConfirmModal). **Delete LOGIC frozen** (`deletePlayer`/`deleteTeam`/`deleteLayout`, password-gate, props byte-identical).
+- **OfflineBanner:** re-skinned IN PLACE (it already existed at App root on `useOnline`) — RdIcon wifioff/check, tokenized slim bar, i18n. §27 kept: danger-red offline / success-green reconnect, non-interactive, reconnect logic intact.
+- **NetworkErrorState:** built (premium danger panel + Retry) + exported, **NOT wired** (flag): the 5 load-timeout panels (MatchPage/LayoutDetail/PlayerStats/ScoutedTeam/Tactic) each have e2e-covered testids + emoji EmptyStates — swapping all 5 = a real cross-page error-state change whose nets a single fork can't verify → deliberate per-site follow-up.
+- **PROOF:** build + precommit green; delete-flow e2e (player-dedup/team-detail-loader/b4-home) 7/7. Zero emoji in touched files.
+- **Fidelity flags (CD):** OfflineBanner kept danger-red/non-interactive (no Retry — connectivity is automatic via `navigator.onLine`; flipping to the prototype's amber+retry would override a §27 decision); no `rd-states` demo route (prototype-only); NetworkErrorState unwired.
+- **Smoke (Jacek, prod):** delete a player/team/layout → premium danger dialog; go offline → premium banner.
+- **✅ CD BACKLOG COMPLETE:** CSV import · workspace switcher · states. + the ELEV-theme root-cause fix.
+
 ## 2026-06-24 — [FEATURE/Tier-2] Workspace switcher premium presentation — CD backlog #2 (partial) (chat GO)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/workspace-switcher-premium-full`. `WorkspaceSwitcher.jsx` (+13). 
 - **Done:** phone bottom-sheet **grabber bar** + premium **swap-tile header** (RdIcon `swap` + "Zmień workspace" + "{N} dostępne") via `useDevice` (shared `<Modal>` is sheet-on-phone/centered-on-wide). Logo tiles (WorkspaceLogo initials fallback) + active-check kept.
