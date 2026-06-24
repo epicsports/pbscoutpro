@@ -271,7 +271,17 @@ function CoachWide({ tournamentId }) {
                   <Tile label="Win%" value={winPct != null ? `${winPct}%` : '—'} color={winPct != null ? winRateColor(winPct) : COLORS.textMuted} />
                   <Tile label={t('coach_last_match') || 'Ostatni mecz'} value={last ? `${last.my}:${last.opp}` : '—'} color={last ? (last.win ? COLORS.success : COLORS.danger) : COLORS.textMuted} />
                 </div>
-                <div className="rd-press" onClick={() => navigate(`/tournament/${tournamentId}/team/${selSt.id}`)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px', borderRadius: 13, background: COLORS.accent, color: '#1a1206', fontFamily: FONT, fontSize: 16, fontWeight: 800, cursor: 'pointer', boxShadow: `0 4px 14px ${COLORS.accent}40` }}>{t('full_analysis') || 'Pełna analiza'} →</div>
+                {/* primary action — "Analyze opponent" CTA card (prototype CoachTeamListWide).
+                    amber accent container = the single primary action; navigates to the
+                    same ScoutedTeamPage route the phone uses. */}
+                <div className="rd-press" onClick={() => navigate(`/tournament/${tournamentId}/team/${selSt.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 15, padding: '20px', borderRadius: 16, background: COLORS.accentA12, border: `1px solid ${COLORS.accentA40}`, boxShadow: ELEV.shadow1, cursor: 'pointer' }}>
+                  <span style={{ width: 46, height: 46, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accent, color: '#1a1206' }}><RdIcon name="target" size={21} /></span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color: COLORS.text }}>{t('analyze_opponent') || 'Analizuj przeciwnika'}</div>
+                    <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 500, color: COLORS.textDim, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('analyze_opponent_sub', nameOf(selSt))}</div>
+                  </div>
+                  <span style={{ color: COLORS.accent, display: 'flex', flexShrink: 0 }}><RdIcon name="chevron" size={18} /></span>
+                </div>
                 {standingsRanked.length > 0 && (
                   <div style={{ marginTop: 24 }}>
                     <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', marginBottom: 12 }}>Standings · {standingsRanked.length}</div>
@@ -287,7 +297,12 @@ function CoachWide({ tournamentId }) {
             })()}
           </div>
         ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 14, color: COLORS.textMuted }}>{t('coach_select_team') || 'Wybierz drużynę z listy'}</div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, textAlign: 'center', padding: '40px' }}>
+            {/* empty-state — non-interactive icon (textMuted, NOT amber per §27) + prompt */}
+            <span style={{ width: 56, height: 56, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textMuted }}><RdIcon name="target" size={26} /></span>
+            <div style={{ fontFamily: FONT, fontSize: 16, fontWeight: 700, color: COLORS.text }}>{t('coach_select_team') || 'Wybierz drużynę z listy'}</div>
+            <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 500, color: COLORS.textDim, maxWidth: 280 }}>{t('coach_select_team_sub') || 'Kliknij drużynę po lewej, aby zobaczyć przegląd i przejść do analizy przeciwnika.'}</div>
+          </div>
         )}
       </div>
     </div>
