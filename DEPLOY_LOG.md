@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-25 — [INFRA/Tier-2] i18n Stage 1 — multi-language foundations (CD-accepted audit) (night)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/i18n-foundations` (14 files, NEW `plural.js`). pl/en output UNCHANGED — these are fallback/locale fixes for future languages.
+- **Fallback `lang → en → key`** (`useLanguage:24`, was `→ pl`) — a missing translation in any language now falls to English, not Polish.
+- **Plural helper** `plural(lang, n, {one,few,many,other})` via `Intl.PluralRules` — refactored **6 binary-plural keys** (PL needs one/few/many, e.g. 1 notatka / 2 notatki / 5 notatek). Function-valued keys now receive the active `lang` as a trailing arg (`val(...args, lang)`); fixed-arity keys ignore it.
+- **Date-locale threading:** `langToLocale(lang)` (pl→pl-PL, en→en-US) replaces ~6 hardcoded `'pl-PL'` (PlayerEditModal/TrainingPickerView/admin modals/MatchCard `dayShort`).
+- **Insight-lang threading:** `generateInsights`/`generateCounters`/`dayShort` callers pass the **active** `lang` (was `'pl'`) — fixes EN users seeing PL dates/insights.
+- **PROOF:** build + precommit (incl. i18n lint guards) green; **full e2e 115/115** (the `val(...args,lang)` change stress-tested). §audit parts 2/3/4 closed.
+- **Next:** i18n Stage 2 (extract the ~30 hardcoded strings + harden `lint-ui.js`).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Canonical LiveMatchTile + training-scout tile (neutral scrimmage crest) (night)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/training-scout-tile`. NEW `LiveMatchTile.jsx` + `MatchCard.jsx` + `TrainingScoutTab.jsx`. CD brief "player flow + training + konsolidacja" #2/#3.
 - **Shared `LiveMatchTile` primitive** extracted (the 3-zone split-tap card frame): `MatchCard` (tournament) renders through it — **behavior byte-identical** (scout/preview routing, W/L, schedule/LIVE/FINAL pills); `TrainingScoutTab` matchups render through it too. ONE component, no fork (CD brief #2).
