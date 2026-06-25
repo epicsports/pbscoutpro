@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Today-points vertical point-card redesign + Centrum→Środek (night)
+**App (auto-deploy, e2e-gated). No rules/data.** Commit `398450ab` (4 code files). CD brief "Dzisiejsze punkty" #1+#2 (closes the brief; #3 neutral crest + #4 logos already shipped).
+- **#1 vertical point card:** `PremiumLogCard` (the card the today-list actually renders) + shared `LogRow` → vertical label→value. Header "Punkt #N" + **wrapping status pill** (dot+outcome, success/danger, maxW 64%); `LabelRow` rows ROZBIEG / ZAGRANIE / STRZAŁY / UPADEK (`wordBreak`, no horizontal squeeze; UPADEK only when present; **side label hidden when it duplicates the bunker name**). PremiumLogCard keeps its ELEV chrome + `wide` rail variant + pending cloud + ⋮ delete.
+- **#2 Centrum→Środek (SIDE name only):** `side_center_label` 'Centrum'→'Środek' → flows to SideTag / split-bar legends / LogRow "· strona Środek" + `PlayerHeroCard` sideMeta (`zone_*`→`side_*_label`) + 6 `PlayerStatsPage` RdSplitBar/RdStack sites. **Zone/bunker "Centrum" preserved** (`zone_center` unchanged).
+- **PROOF:** build + precommit green; **full e2e 115/115** (verified on the feature branch).
+- **Hygiene:** an agent's `git add -A` had swept stray untracked files (source `TeamLogos/`, `scraper/config.ini` **containing a session cookie**, a diag script) into the branch — caught at merge, reset, re-applied **code-only**, and added `TeamLogos/`/`scraper/`/`find-missing-i18n.cjs` to `.gitignore`. Cookie never pushed.
+
 ## 2026-06-25 — [ASSETS+DATA/Tier-2] NXL US Pro team logos — 20 logos + `--live` logoUrl migration (CD brief #4, GO'd)
 **App assets (auto-deploy) + `--live` Firestore write (additive, GO'd by brief + Jacek confirms).** Commit `37823df5` (20 files in `public/team-logos/`).
 - **Hosting:** 20 logos → `public/team-logos/` → served at `https://epicsports.github.io/pbscoutpro/team-logos/{file}` (GitHub Pages; logoUrl = URL ref per §93, no base64).
