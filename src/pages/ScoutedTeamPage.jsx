@@ -1536,6 +1536,7 @@ export default function ScoutedTeamPage() {
                   <div style={{ flex: 1 }} />
                   <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_rozbieg')}</div>
                   <div data-testid="breakouts-col-surv" style={{ width: 72, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_przezycie')}</div>
+                  <div data-testid="breakouts-col-people" style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_osobopozycje')}</div>
                   <div style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played')}</div>
                   <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('col_played_in')}</div>
                 </div>
@@ -1550,13 +1551,14 @@ export default function ScoutedTeamPage() {
                     }}>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <SideTag side={b.side || 'center'} />
-                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.name}</span>
+                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, minWidth: 0, overflowWrap: 'anywhere' }}>{b.name}</span>
                         {b.type && (
                           <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
                         )}
                       </div>
                       <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: freqColor }}>{b.pct}%</div>
                       <div style={{ width: 72, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: survColor }}>{b.survivalPct}%</div>
+                      <div data-testid="breakouts-cell-people" style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: b.people > 0 ? COLORS.text : COLORS.textMuted }}>{b.people > 0 ? b.people : '—'}</div>
                       <div style={{ width: 44, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.text }}>{b.timesPlayed}</div>
                       <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{b.pointsPlayed}/{b.totalPoints}</div>
                     </div>

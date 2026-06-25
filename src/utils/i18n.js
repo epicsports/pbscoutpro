@@ -142,6 +142,7 @@ const T = {
 
     col_rozbieg:         'Rozbieg%',
     col_przezycie:       'Przeżycie%',
+    col_osobopozycje:    'Osobopozycje',
     col_played:          'Zagrań',
     col_played_in:       'W pkt',
     strzelanie_reliability:     (pct) => `Strzelanie: dane dla ${pct}% graczy`,
@@ -2294,6 +2295,7 @@ const T = {
 
     col_rozbieg:         'Breakout%',
     col_przezycie:       'Survival%',
+    col_osobopozycje:    'Players',
     col_played:          'Plays',
     col_played_in:       'In pts',
     strzelanie_reliability:     (pct) => `Shots: data for ${pct}% of players`,
