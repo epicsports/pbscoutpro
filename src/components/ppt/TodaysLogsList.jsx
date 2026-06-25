@@ -274,7 +274,12 @@ function sideLabel(side, t) {
     : t('side_center_label');
 }
 
-function TodayHeroWide({ rows, t }) {
+// SHARED today-summary derivation — single source of truth for both the wide
+// HERO rail (TodayHeroWide) and the compact phone summary card (TodayHeroPhone).
+// All values come from the merged server+pending rows (`rows`, newest-first) the
+// list already shows — never invented. The ring colour is § 27 value-semantic
+// (≥60 → success / ≥40 → accent / else danger). Do NOT fork this math.
+function deriveTodayStats(rows) {
   const total = rows.length;
   const alive = rows.filter(r => r.outcome === 'alive').length;
   const lost = total - alive;
@@ -298,6 +303,12 @@ function TodayHeroWide({ rows, t }) {
     lossCount[r.outcomeDetail] = (lossCount[r.outcomeDetail] || 0) + 1;
   });
   const topLoss = Object.entries(lossCount).sort((a, b) => b[1] - a[1])[0];
+
+  return { total, alive, lost, survPct, survCol, streak, sides, sideTotal, topLoss };
+}
+
+function TodayHeroWide({ rows, t }) {
+  const { total, alive, lost, survPct, survCol, streak, sides, sideTotal, topLoss } = deriveTodayStats(rows);
 
   const Tile = ({ label, value, color }) => (
     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', paddingBottom: 9, borderBottom: `1px solid ${ELEV.hairline}` }}>
@@ -362,6 +373,96 @@ function TodayHeroWide({ rows, t }) {
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.danger, letterSpacing: '.4px', textTransform: 'uppercase' }}>{t('ppt_today_top_loss')}</div>
             <div style={{ fontFamily: FONT, fontSize: 15.5, fontWeight: 800, color: COLORS.text, marginTop: 2 }}>{detailShort(topLoss[0], t)} <span style={{ fontWeight: 700, color: COLORS.textMuted, fontSize: 13 }}>· {t('ppt_today_top_loss_count', topLoss[1])}</span></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Phone (<720) compact day-summary card (prototype TodayPointsPremium).
+// Renders ABOVE the points list on the phone path. Reproduces the wide HERO's
+// analysis in a single compact card: survival ring (value-semantic) + 3 stat
+// rows + streak pill + "where you ran" side split. Consumes the SAME
+// deriveTodayStats() the wide rail uses — no forked math. Amber appears only on
+// the survival ring's mid-band metric (§ 27 value-semantic), never decoration.
+function TodayHeroPhone({ rows, t }) {
+  const { total, alive, lost, survPct, survCol, streak, sides, sideTotal } = deriveTodayStats(rows);
+
+  const StatRow = ({ label, value, color, last }) => (
+    <div style={{
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+      paddingBottom: last ? 0 : 7, marginBottom: last ? 0 : 7,
+      borderBottom: last ? 'none' : `1px solid ${ELEV.hairline}`,
+    }}>
+      <span style={{ fontFamily: FONT, fontSize: 12.5, color: COLORS.textDim }}>{label}</span>
+      <span style={{ fontFamily: FONT, fontSize: 17, fontWeight: 800, color, ...TNUM }}>{value}</span>
+    </div>
+  );
+
+  return (
+    <div style={{
+      background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+      borderRadius: 16, boxShadow: ELEV.shadow1,
+      padding: 16, marginBottom: 14,
+    }}>
+      {/* Ring + 3 stat rows */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{
+          position: 'relative', width: 96, height: 96, flexShrink: 0,
+          borderRadius: '50%', background: `conic-gradient(${survCol} ${survPct}%, ${ELEV.sunken} 0)`,
+        }}>
+          <div style={{
+            position: 'absolute', inset: 8, borderRadius: '50%',
+            background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontFamily: FONT, fontSize: 27, fontWeight: 800, color: survCol, lineHeight: 1, ...TNUM }}>
+              {survPct}<span style={{ fontSize: 13 }}>%</span>
+            </span>
+            <span style={{ fontFamily: FONT, fontSize: 8.5, fontWeight: 800, color: COLORS.textMuted, letterSpacing: TRACKING.label, marginTop: 3, textTransform: 'uppercase' }}>
+              {t('ppt_today_survived')}
+            </span>
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <StatRow label={t('ppt_today_points')} value={total} color={COLORS.text} />
+          <StatRow label={t('ppt_today_survived')} value={alive} color={COLORS.success} />
+          <StatRow label={t('ppt_today_lost')} value={lost} color={lost > 0 ? COLORS.danger : COLORS.textMuted} last />
+        </div>
+      </div>
+
+      {/* Streak pill — only when ≥2 consecutive survivals from the newest end. */}
+      {streak >= 2 && (
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 13,
+          fontFamily: FONT, fontSize: 11.5, fontWeight: 800, color: COLORS.success,
+          background: `${COLORS.success}16`, border: `1px solid ${COLORS.success}55`,
+          borderRadius: 999, padding: '5px 11px',
+        }}>
+          <RdIcon name="impact" size={13} /> {t('ppt_today_streak', streak)}
+        </div>
+      )}
+
+      {/* Where you ran today — proportional side split + legend with counts. */}
+      {sideTotal > 0 && (
+        <div style={{ marginTop: 15, paddingTop: 15, borderTop: `1px solid ${ELEV.hairline}` }}>
+          <div style={{ fontFamily: FONT, fontSize: 10.5, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, marginBottom: 11, textTransform: 'uppercase' }}>
+            {t('ppt_today_run_split')}
+          </div>
+          <div style={{ display: 'flex', height: 10, borderRadius: 999, overflow: 'hidden', background: ELEV.sunken, marginBottom: 11 }}>
+            {sides.map(([k, c]) => <div key={k} style={{ width: `${(c / sideTotal) * 100}%`, background: SIDE_COLOR[k] }} />)}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px 16px' }}>
+            {sides.map(([k, c]) => (
+              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 3, background: SIDE_COLOR[k], flexShrink: 0 }} />
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{sideLabel(k, t)}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.textDim, ...TNUM }}>
+                  {c} <span style={{ fontSize: 10.5, color: COLORS.textMuted, fontWeight: 700 }}>{t('ppt_today_run_unit')}</span>
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -613,6 +714,11 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
                 {t('ppt_logs_empty')}
               </div>
             )}
+
+            {/* Compact day-summary card — phone path, above the points list.
+                Only when there's content (empty/loading shows the message above).
+                Reuses the SAME deriveTodayStats() the wide HERO rail consumes. */}
+            {combined.length > 0 && <TodayHeroPhone rows={combined} t={t} />}
 
             {rowList}
             {statsLink}
