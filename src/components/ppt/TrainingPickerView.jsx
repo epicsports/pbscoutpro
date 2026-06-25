@@ -7,6 +7,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 import { useDevice } from '../../hooks/useDevice';
 import { Btn } from '../ui';
 import { COLORS, ELEV, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TNUM, TRACKING } from '../../utils/theme';
+import { langToLocale } from '../../utils/plural';
 
 /**
  * TrainingPickerView — full-screen list of trainings eligible for PPT
@@ -30,12 +31,12 @@ import { COLORS, ELEV, ZONE_COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TNUM, TRACKI
  *   loading               — hide empty-state while subscriptions settle
  */
 
-function formatDate(iso) {
+function formatDate(iso, lang) {
   if (!iso) return '';
   try {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' });
+    return d.toLocaleDateString(langToLocale(lang), { day: 'numeric', month: 'short' });
   } catch { return iso; }
 }
 
@@ -69,11 +70,11 @@ function Badge({ kind, label }) {
 }
 
 function TrainingCard({ training, kind, onClick, layoutName, pointsCount }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const isLive = kind === 'live';
   const isEnded = kind === 'ended';
   const metaParts = [
-    formatDate(training.date),
+    formatDate(training.date, lang),
     layoutName ? `Layout: ${layoutName}` : t('ppt_picker_meta_no_layout'),
     pointsCount != null ? t('ppt_picker_meta_points', pointsCount) : null,
   ].filter(Boolean).join(' · ');
@@ -137,7 +138,7 @@ function TrainingCard({ training, kind, onClick, layoutName, pointsCount }) {
 // the eyebrow + layout tile are neutral (non-interactive identity). ─────────────
 
 // Next-training HERO — the nearest tappable training (live beats upcoming).
-function NextTrainingHero({ training, kind, teamName, layoutName, onPick, t }) {
+function NextTrainingHero({ training, kind, teamName, layoutName, onPick, t, lang }) {
   const isLive = kind === 'live';
   const accent = isLive ? COLORS.success : COLORS.accent;
   return (
@@ -154,9 +155,9 @@ function NextTrainingHero({ training, kind, teamName, layoutName, onPick, t }) {
           <div style={{ fontFamily: FONT, fontSize: 27, fontWeight: 900, color: COLORS.text, letterSpacing: '-.5px', marginTop: 13, lineHeight: 1.1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {training.name || t('training')}
           </div>
-          {[formatDate(training.date), teamName].filter(Boolean).length > 0 && (
+          {[formatDate(training.date, lang), teamName].filter(Boolean).length > 0 && (
             <div style={{ fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginTop: 7 }}>
-              {[formatDate(training.date), teamName].filter(Boolean).join(' · ')}
+              {[formatDate(training.date, lang), teamName].filter(Boolean).join(' · ')}
             </div>
           )}
           {/* Week's-layout tile — sunken inset, neutral (not amber). No image →
@@ -185,8 +186,8 @@ function NextTrainingHero({ training, kind, teamName, layoutName, onPick, t }) {
 
 // Earlier-training card — ended trainings (non-tappable, parity with phone). NO
 // chevron (whole-card is not navigating → §7 anti-pattern avoided).
-function EarlierTrainingCard({ training, layoutName, t }) {
-  const meta = [formatDate(training.date), layoutName].filter(Boolean).join(' · ');
+function EarlierTrainingCard({ training, layoutName, t, lang }) {
+  const meta = [formatDate(training.date, lang), layoutName].filter(Boolean).join(' · ');
   return (
     <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 15, boxShadow: ELEV.shadow1, padding: '15px 16px', display: 'flex', alignItems: 'center', gap: 13, opacity: 0.72 }}>
       <span style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textDim }}>
@@ -203,7 +204,7 @@ function EarlierTrainingCard({ training, layoutName, t }) {
 
 function TrainingPickerWide({
   playerName, teamName, liveTrainings, upcomingTrainings, endedTrainings,
-  assignedEvents, layoutNameFor, onPickTraining, onPickAssignedEvent, loading, t,
+  assignedEvents, layoutNameFor, onPickTraining, onPickAssignedEvent, loading, t, lang,
 }) {
   const device = useDevice();
   const twoCol = device.width >= 1040; // grid the earlier-list at 2-up on very wide
@@ -233,7 +234,7 @@ function TrainingPickerWide({
         <NextTrainingHero
           training={next.tr} kind={next.kind} teamName={teamName}
           layoutName={layoutNameFor(next.tr.layoutId)}
-          onPick={() => onPickTraining?.(next.tr)} t={t} />
+          onPick={() => onPickTraining?.(next.tr)} t={t} lang={lang} />
       )}
     </div>
   );
@@ -269,7 +270,7 @@ function TrainingPickerWide({
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: twoCol ? '1fr 1fr' : '1fr', gap: 12 }}>
                 {endedTrainings.map(tr => (
-                  <EarlierTrainingCard key={tr.id} training={tr} layoutName={layoutNameFor(tr.layoutId)} t={t} />
+                  <EarlierTrainingCard key={tr.id} training={tr} layoutName={layoutNameFor(tr.layoutId)} t={t} lang={lang} />
                 ))}
               </div>
             </>
@@ -290,7 +291,7 @@ function TrainingPickerWide({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, letterSpacing: '-0.1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ev.eventName}</div>
                     <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500, color: COLORS.textMuted, marginTop: 2 }}>
-                      {[formatDate(ev.eventDate), t('ppt_picker_assigned_count', ev.count)].filter(Boolean).join(' · ')}
+                      {[formatDate(ev.eventDate, lang), t('ppt_picker_assigned_count', ev.count)].filter(Boolean).join(' · ')}
                     </div>
                   </div>
                   <EventTypeBadge type={ev.eventType} />
@@ -324,7 +325,7 @@ export default function TrainingPickerView({
   onPickAssignedEvent,
   loading,
 }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const device = useDevice();
   const wide = device.width >= 720;
   const layoutNameFor = useCallback((id) => {
@@ -354,6 +355,7 @@ export default function TrainingPickerView({
         onPickAssignedEvent={onPickAssignedEvent}
         loading={loading}
         t={t}
+        lang={lang}
       />
     );
   }
@@ -468,7 +470,7 @@ export default function TrainingPickerView({
                     fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500,
                     color: COLORS.textMuted, marginTop: 2,
                   }}>
-                    {[formatDate(ev.eventDate), t('ppt_picker_assigned_count', ev.count)].filter(Boolean).join(' · ')}
+                    {[formatDate(ev.eventDate, lang), t('ppt_picker_assigned_count', ev.count)].filter(Boolean).join(' · ')}
                   </div>
                 </div>
                 <EventTypeBadge type={ev.eventType} />

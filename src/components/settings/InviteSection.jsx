@@ -3,6 +3,7 @@ import * as ds from '../../services/dataService';
 import { sendInviteEmailLink } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { langToLocale } from '../../utils/plural';
 import { Btn } from '../ui';
 
 /**
@@ -16,7 +17,7 @@ import { Btn } from '../ui';
  * @param {string[]} roles - selectable roles (first = default)
  */
 export default function InviteSection({ slug, roles }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [role, setRole] = useState(roles[0]);
   const [link, setLink] = useState(null);
   const [expiresAt, setExpiresAt] = useState(null);
@@ -131,7 +132,7 @@ export default function InviteSection({ slug, roles }) {
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.text, wordBreak: 'break-all' }}>{link}</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE.sm }}>
             <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.textMuted }}>
-              {(t('invite_expires') || 'Expires')} {expiresAt ? new Date(expiresAt).toLocaleDateString() : ''} · {t(`role_${role}`) || role}
+              {(t('invite_expires') || 'Expires')} {expiresAt ? new Date(expiresAt).toLocaleDateString(langToLocale(lang)) : ''} · {t(`role_${role}`) || role}
             </span>
             <Btn variant="default" size="md" onClick={copy}>
               {copied ? (t('invite_copied') || 'Copied!') : (t('invite_copy') || 'Copy')}

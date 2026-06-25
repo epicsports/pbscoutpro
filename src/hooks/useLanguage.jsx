@@ -21,8 +21,12 @@ export function LanguageProvider({ children }) {
   }, []);
 
   const t = useCallback((key, ...args) => {
-    const val = T[lang]?.[key] ?? T.pl?.[key] ?? key;
-    if (typeof val === 'function') return val(...args);
+    const val = T[lang]?.[key] ?? T.en?.[key] ?? key;
+    // Function-valued keys receive their positional args plus the active `lang`
+    // appended as the final argument. Keys with fixed-arity signatures (the vast
+    // majority — `(n) =>`, `(n, matches) =>`) simply ignore the trailing arg;
+    // plural-aware keys read it as their last param to call plural(lang, …).
+    if (typeof val === 'function') return val(...args, lang);
     return val;
   }, [lang]);
 

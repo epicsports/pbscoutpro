@@ -5,6 +5,7 @@ import { addPlayer, updatePlayer } from '../../services/dataService';
 import { normalizePbliInput } from '../../utils/pbliMatching';
 import { NATIONALITIES } from '../../components/PlayerEditModal';
 import { useLanguage } from '../../hooks/useLanguage';
+import { langToLocale } from '../../utils/plural';
 
 // Phase 2.2.c — create/edit modal for global /players/{playerId}.
 // Distinct from src/components/PlayerEditModal (workspace context with
@@ -20,7 +21,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 //                      (parent owns the delete confirmation flow because the
 //                      aliasIds-aware warning needs Modal-level rich content)
 export default function PlayerFormModal({ open, onClose, player, onRequestDelete }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const isEdit = !!player;
 
   // Identity
@@ -143,7 +144,7 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
     if (!ts) return '—';
     try {
       const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-      return d.toLocaleString('pl-PL');
+      return d.toLocaleString(langToLocale(lang));
     } catch { return String(ts); }
   };
 

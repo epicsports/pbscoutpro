@@ -7,8 +7,8 @@
  * crash/render class that pixel-diff + the EN-literal guard cannot see.
  *
  * useLanguage's t() AUTO-INVOKES function values:
- *   const t = (key, ...args) => { const v = T[lang]?.[key] ?? T.pl?.[key] ?? key;
- *                                  return typeof v === 'function' ? v(...args) : v; };
+ *   const t = (key, ...args) => { const v = T[lang]?.[key] ?? T.en?.[key] ?? key;
+ *                                  return typeof v === 'function' ? v(...args, lang) : v; };
  * So the ONLY correct way to pass interpolation args is `t('k', a, b)`. From that
  * follow two rules:
  *

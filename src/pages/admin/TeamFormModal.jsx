@@ -8,6 +8,7 @@ import { addTeam, updateTeam, setParentTeam } from '../../services/dataService';
 import { useLeagues } from '../../hooks/useLeagues';
 import TeamPickerModal from './TeamPickerModal';
 import { useLanguage } from '../../hooks/useLanguage';
+import { langToLocale } from '../../utils/plural';
 
 // Phase 2.3.c — create/edit modal for global /teams/{teamId}.
 // Per DESIGN_DECISIONS § 63.15.2 + § 63.15.2.X + § 63.15.2.X.1.
@@ -28,7 +29,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 //   onRequestRetire    — parent owns retire confirmation modal (children-orphan
 //                        safety lives in AdminTeamsPage)
 export default function TeamFormModal({ open, onClose, team, allTeams, childrenByParent, onRequestRetire }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const isEdit = !!team;
   const leagues = useLeagues();
 
@@ -147,7 +148,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
     if (!ts) return '—';
     try {
       const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-      return d.toLocaleString('pl-PL');
+      return d.toLocaleString(langToLocale(lang));
     } catch { return String(ts); }
   };
 
