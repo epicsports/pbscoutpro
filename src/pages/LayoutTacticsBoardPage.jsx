@@ -88,7 +88,12 @@ export default function LayoutTacticsBoardPage() {
     setSelectedId(tacId);
   };
   const createBlankTactic = async () => {
-    const n = boardTactics.length + libraryTactics.length + 1;
+    // Unique numbering: highest existing "Tactic N" + 1. The old `length + 1`
+    // collided after deletions (delete one of 3 → next is "Tactic 3" again).
+    const usedNums = [...boardTactics, ...libraryTactics]
+      .map(tt => Number(/^Tactic (\d+)$/.exec(tt?.name || '')?.[1]))
+      .filter(Number.isFinite);
+    const n = (usedNums.length ? Math.max(...usedNums) : 0) + 1;
     const ref = await ds.addLayoutTactic(layoutId, { name: `Tactic ${n}`, onBoard: true });
     openEditor(ref.id); // straight into the phased editor
   };
