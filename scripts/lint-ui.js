@@ -136,6 +136,61 @@ function isLikelyUIEnLiteral(val) {
   return false;
 }
 
+/**
+ * REGRESSION DENYLIST (i18n Stage 2, 2026-06-25) — ERROR-level, blocking.
+ *
+ * The WARN-level heuristics in §2/§2b are precision-tuned (warn, don't block) and
+ * historically let ~30 hardcoded user-facing strings leak: some matched an
+ * EN_LITERAL_DOMAIN_WORD heuristic (e.g. "Tournament closed" — "Tournament" is an
+ * allowlisted domain word), others were JSX text broken by a `{interp}` so the
+ * `[^<>{}]` text-node regex never matched ("No matches for {q}"), and the rest were
+ * never errors so precommit stayed green. This denylist re-fails precommit ONLY for
+ * the exact extracted strings if they're reintroduced as BARE literals (no `t(` on
+ * the line) — high precision, zero new false positives on legit non-UI literals.
+ *
+ * Each entry is matched against a STRING-LITERAL or JSX-text occurrence on a line
+ * that does NOT contain a `t(` call. Keep this list in lockstep with the keys added
+ * to src/utils/i18n.js — when a string is genuinely retired, drop its entry.
+ */
+const I18N_REGRESSION_DENYLIST = [
+  // Preloader phase labels (PL) — must come from t('preloader_phase_*')
+  'Pobieranie punktów', 'Pobieranie meczów', 'Liczenie heatmapy',
+  'Liczenie statystyk', 'Liczenie rankingu', 'Renderowanie', 'Ładowanie drużyn',
+  // MatchListPremium leaked literals
+  'Tournament closed', 'Import harmonogramu (CSV)', 'Import schedule (zdjęcie)',
+  "Division is auto-assigned from each team's league mapping",
+  'Search teams by name, ID...', 'failed to add — try again',
+  'No matches for', // JSX text broken by {matchSearch} interpolation
+  // MatchCard tap hints
+  'tap to view', 'tap to scout',
+  // CoachTabContent repair flow. NB: 'No teams match' is scoped to the curly-quote
+  // that followed the {teamSearch} interp ('No teams match “') so it does NOT
+  // catch the legit admin string 'No teams match the current filter.'.
+  'Repairing…', 'Repair scouted divisions', 'No teams match “',
+  'already set', 'team has no division',
+  // PlayerStatsPage CAUSE_META elimination labels (the PL module-eval leak)
+  'Przejście', 'Na przeszkodzie', 'za Karę', 'Nie wiem', 'Inaczej',
+  // PlayerHeroCard stat-line labels
+  'Ostatni', 'Wygrana', 'Przegrana',
+  // Trening fallbacks + ScoutedTeamPage draw + TrainingScoutTab
+  'Training not found',
+];
+// Build matchers. A leaked phrase is a regression when it appears EITHER inside a
+// quote/backtick (string-literal form — how every Stage-2 leak actually shipped)
+// OR as raw JSX text directly after a `>` (the alternative reintroduction shape).
+// Escape regex metacharacters in each phrase, and fence each with letter-boundary
+// guards so a short word (e.g. "Inaczej", "Start", "Ostatni") does NOT match when it
+// is a substring of a code identifier (e.g. `onChangeInaczejText`, `startedAt`).
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// (?<![A-Za-z]) before / (?![A-Za-z]) after: phrase must not abut more letters.
+const DENY_ALT = I18N_REGRESSION_DENYLIST
+  .map(p => '(?<![A-Za-z])' + escapeRe(p) + '(?![A-Za-z])')
+  .join('|');
+const DENYLIST_RE = new RegExp(
+  // quoted: ' " ` … <phrase>   |   JSX text: > … <phrase>
+  '(?:[\'"`][^\'"`]*(?:' + DENY_ALT + '))|(?:>\\s*[^<>{}]*(?:' + DENY_ALT + '))',
+);
+
 function check(file, content, lines) {
   // Normalize to forward slashes for cross-platform path matching (Windows
   // path.relative() returns backslashes; all checks below use forward-slash patterns)
@@ -273,6 +328,21 @@ function check(file, content, lines) {
             }
           }
         }
+      }
+    }
+
+    // ── 2c. i18n regression denylist (ERROR-level, blocking) ──
+    // Exact-string guard for the Stage 2 extracted literals. Fails precommit if
+    // any reappears as a BARE literal (no `t(` on the line). Skips the i18n dict
+    // (where these PL/EN values legitimately live), static data catalogs, and
+    // comments. High precision by construction — it only knows these exact strings.
+    // Also skip JSX block comments ({/* … */}) which the §2 `isComment`
+    // (line-comment / `*` continuation) check doesn't cover.
+    const isJsxComment = trimmed.startsWith('{/*') || trimmed.startsWith('{ /*');
+    if (!isI18nDict && !isDataCatalog && !isComment && !isJsxComment && !line.includes('t(')) {
+      if (DENYLIST_RE.test(line)) {
+        const hit = I18N_REGRESSION_DENYLIST.find(s => line.includes(s)) || '?';
+        ERRORS.push(`${rel}:${ln} — i18n regression: hardcoded "${hit}" — wrap in t('key') (see I18N_REGRESSION_DENYLIST)`);
       }
     }
 
