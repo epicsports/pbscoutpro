@@ -11,7 +11,6 @@ import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import { RailZone, RailToggleList } from '../components/canvas/RailZones';
-import FieldPhaseControl from '../components/canvas/FieldPhaseControl';
 import { FIELD_LAYERS } from '../components/canvas/fieldViewConfig';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
@@ -2342,24 +2341,35 @@ export default function MatchPage() {
       </>
     );
 
-    // ── Field View shell wiring (Match-review; decisions 2026-06-16: replace the §B
-    // phase row with FieldPhaseControl). State→props only; portrait keeps the §B row. ──
-    const mrPhaseControlEl = (
-      <FieldPhaseControl
-        kind="review"
-        phases={capturePhases().map(p => {
-          const key = toPersistedLiteral(p.key);
-          const disabled = key === 'settle' ? !hasSettleStage : key === 'mid' ? !hasMidStage : key === 'endgame' ? !hasEndgameStage : false;
-          return { key, label: phaseLabel(p.key, t), disabled };
-        })}
-        phase={(phasePlaying && canReplay) ? (replayStage || 'break') : phasePin}
-        onPhase={pinPhase}
-        done={{ break: true, settle: hasSettleStage, mid: hasMidStage, endgame: hasEndgameStage }}
-        canReplay={canReplay}
-        replaying={phasePlaying && canReplay}
-        onReplay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
-      />
-    );
+    // ── Field View shell wiring (Match-review; Stage 2b 2026-06-21: the landscape
+    // floating phase control now speaks the keyframe-scrubber language via the COMPACT
+    // FLOAT variant of PointAxisScrubber — same read-side bindings + PHASE_SEGMENTS +
+    // captured-scope gating as the portrait inline scrubber, just self-sized to ride the
+    // field. State→props only; portrait keeps the inline §B scrubber. ──
+    const mrPhaseControlEl = (() => {
+      const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
+      const phaseNodes = PHASE_SEGMENTS.map(st => ({
+        key: st,
+        label: phaseLabel(fromPersistedLiteral(st), t),
+        enabled: st === 'break' ? true
+          : st === 'settle' ? hasSettleStage
+          : st === 'mid' ? hasMidStage
+          : hasEndgameStage,
+      }));
+      const lastEnabled = phaseNodes.filter(p => p.enabled).slice(-1)[0];
+      return (
+        <PointAxisScrubber
+          variant="float"
+          phases={phaseNodes}
+          active={activeSeg}
+          onPick={pinPhase}
+          playing={phasePlaying && canReplay}
+          canPlay={canReplay}
+          onPlay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
+          atEnd={!!lastEnabled && activeSeg === lastEnabled.key}
+        />
+      );
+    })();
     const mkTeamToggle = (team, layer) => ({
       on: hmVisibility[team][layer],
       onToggle: (next) => setHmVisibility(v => ({ ...v, [team]: { ...v[team], [layer]: next } })),
