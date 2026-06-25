@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Canonical LiveMatchTile + training-scout tile (neutral scrimmage crest) (night)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/training-scout-tile`. NEW `LiveMatchTile.jsx` + `MatchCard.jsx` + `TrainingScoutTab.jsx`. CD brief "player flow + training + konsolidacja" #2/#3.
+- **Shared `LiveMatchTile` primitive** extracted (the 3-zone split-tap card frame): `MatchCard` (tournament) renders through it — **behavior byte-identical** (scout/preview routing, W/L, schedule/LIVE/FINAL pills); `TrainingScoutTab` matchups render through it too. ONE component, no fork (CD brief #2).
+- **Neutral scrimmage crest (#3):** training squads are ad-hoc (players from different teams → no team identity) → crest = `COLORS.textMuted` (neutral), **not** `squadColor` (overrides it). Squads distinguished by NAME (`getSquadName`), not color. Matchup scout nav byte-identical.
+- **PROOF:** build + precommit green; **full e2e 115/115** (MatchCard shared → whole gate).
+- **Smoke (Jacek, prod):** training (scout) → "Mecze" → canonical live tile (neutral crests, squad names, NA ŻYWO).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Today's points (phone) — day-summary card (CD brief #1) (night)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/today-summary-card`. `TodaysLogsList.jsx` only (+107/−1). CD brief "3 zmiany" #1.
 - **Phone day-summary card** above the points list (`!wide`): survival ring (conic, value-semantic ≥60 success/≥40 accent/else danger) + survPct% + "PRZEŻYTE"; 3 rows (Punkty dziś/Przeżyte/Stracone); streak pill (≥2 consecutive alive); "GDZIE BIEGAŁEŚ DZIŚ" proportional split bar (dorito/snake/center) + legend.
