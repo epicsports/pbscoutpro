@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Pixel-avatar engine (Stage A+B) — ESM module + PlayerAvatar 'avatar' mode
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/avatar-engine` (2 files). Avatar brief Stage A+B (of A+B+C).
+- **`src/components/avatars.jsx`** (NEW, 538 lines) — prototype `avatars.jsx` ported to ESM, drawing logic byte-identical: `window.PT.COLORS/FONT`→`utils/theme`, `window.UI.useDevice`→`hooks/useDevice`, `localStorage`→`onSave` prop, `window.AVATARS`→named exports (`PixelAvatar, AvatarBuilder, avatarSpec, randomSpec, DEFAULT_SPEC, BACKGROUNDS, …`).
+- **`PlayerAvatar` 'avatar' mode → real `PixelAvatar`** (`seed` = nick/name, `spec` = player.avatarSpec, `teamColor`): deterministic pixel-art everywhere the toggle is 'avatar'. 'photo' mode unchanged. (Phase-1 placeholder colored-initial upgraded to pixel-art.)
+- **`AvatarBuilder` ported but exported-only / NOT mounted** — Stage C mounts it: route `/profile/avatar` + tap-entry from ProfilePage + i18n its Polish chrome + §27 re-review (amber CTA OK, it's interactive) + persistence (`avatarSpec` on `users/{uid}`, onSave→PATCH).
+- **PROOF:** build + precommit green; **full e2e 115/115** (PlayerAvatar = 19 sites).
+- **Smoke (Jacek):** workspace w trybie 'avatar' (PII Phase 1 toggle) → rostery pokazują pixel-art zamiast inicjałów.
+
 ## 2026-06-25 — [FEATURE/Tier-2] Privacy/PII Phase 1 — avatar-vs-photo toggle + remove age (Jacek brief, GO'd)
 **App (auto-deploy, e2e-gated). No rules/data migration.** Merge `feat/pii-phase1` (11 files). Defensive GDPR/pbleagues PII shield.
 - **Per-workspace setting, super-admin only:** `workspaces/{slug}.piiSettings.avatarMode` ('photo'|'avatar', absent→'photo' = backward-compatible). `setWorkspacePiiSettings` reuses the `isAdmin(slug)` write path (same as `setWorkspaceLogo`) → **no Firestore rules change**. Super-admin `SegmentedControl` ("Player avatars: Photo/Avatar") in `WorkspacesAdminPage`.
