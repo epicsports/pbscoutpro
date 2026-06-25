@@ -527,6 +527,15 @@ const T = {
     review_meta_penalties:    'Kary',
     review_meta_empty:        'Brak dodatkowych danych scoutingu',
     review_meta_not_scouted:  'niescoutowany',
+    /* ─── Landscape tablet review (TabletLiveScoringPremium, 2026-06-25) ─── */
+    review_layer_prefix:      'Warstwa',
+    review_pkt_short:         'PKT',
+    review_anim_tag:          '▶ ANIM',
+    review_to_scout:          'do zescoutowania',
+    review_completeness_label:'Kompletność scoutingu',
+    review_anim_point:        (n) => `Animacja punktu ${n}`,
+    review_anim_aggregate:    'Animacja meczu',
+    match_live_label:         'NA ŻYWO',
 
     /* ─── Confirm modals ────────────────────────────────── */
     delete_match:       'Usunąć mecz?',
@@ -2907,6 +2916,15 @@ const T = {
     review_meta_penalties:    'Penalties',
     review_meta_empty:        'No additional scouting data',
     review_meta_not_scouted:  'not scouted',
+    /* ─── Landscape tablet review (TabletLiveScoringPremium, 2026-06-25) ─── */
+    review_layer_prefix:      'Layer',
+    review_pkt_short:         'PT',
+    review_anim_tag:          '▶ ANIM',
+    review_to_scout:          'to be scouted',
+    review_completeness_label:'Scouting completeness',
+    review_anim_point:        (n) => `Point ${n} animation`,
+    review_anim_aggregate:    'Match animation',
+    match_live_label:         'LIVE',
 
     delete_match:       'Delete match?',
     delete_matchup:     'Delete matchup?',

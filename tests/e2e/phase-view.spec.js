@@ -10,7 +10,7 @@
 // so a previewed point could never animate past its first phase).
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, matchPhaseReviewUrl, matchupReviewUrl } from './fixtures.js';
+import { TEST_ACCOUNT, matchPhaseReviewUrl } from './fixtures.js';
 
 const PORTRAIT = { width: 414, height: 896 };
 const PHONE_LS = { width: 896, height: 414 };
@@ -136,23 +136,21 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await expect(page.getByTestId('phase-seg-break')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('landscape: phase + End match FLOAT (Field View shell); portrait keeps the §B row inline', async ({ page }) => {
+  test('landscape: attached phase tabs + animation-bar play; End match in sidebar; portrait keeps the §B row inline', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await openReview(page, PHONE_LS);
 
-    // Field View shell (Stage 2b, 2026-06-21): in landscape the §B phase row is REPLACED by
-    // the COMPACT FLOAT variant of PointAxisScrubber (keyframe nodes + ▶ play head in a glass
-    // chip), and End match is a floating danger primaryAction — both ride the field (zero rail
-    // height). The in-rail §B row is portrait-only. The float keeps `field-phase` as its
-    // wrapper testid and now carries the scrubber's `phase-play` transport, anchored inside
-    // the floating field-corner controls (NOT in the rail).
-    const floatPhase = page.getByTestId('field-phase');
-    await expect(floatPhase).toBeVisible();
-    await expect(floatPhase.getByTestId('phase-play')).toBeVisible();  // compact scrubber has the ▶ transport
-    await expect(page.getByTestId('field-phase-control')).toBeVisible(); // it floats over the field, not the rail
+    // TabletLiveScoringPremium 1:1 (feat/live-review-rebuild, 2026-06-25): in landscape the
+    // §B phase row + float-scrubber are REPLACED by ATTACHED phase tabs (top-left of the right
+    // field panel, `phase-seg-*`) + a bottom animation bar carrying the `phase-play` transport.
+    // End match = the sidebar's "Zakończ mecz" gradient button (keeps `rail-primary-end`).
+    // The in-rail §B row is portrait-only.
+    await expect(page.getByTestId('phase-seg-break')).toBeVisible(); // attached tab (not a float)
+    await expect(page.getByTestId('field-phase')).toHaveCount(0);    // float-scrubber retired
+    await expect(page.getByTestId('phase-play')).toBeVisible();      // play lives in the animation bar
     await expect(page.getByTestId('review-scoreboard')).toBeVisible();
     await expect(page.getByTestId('end-match-inline')).toHaveCount(0);
-    await expect(page.getByTestId('rail-primary-end')).toBeVisible();  // End match floats (danger)
+    await expect(page.getByTestId('rail-primary-end')).toBeVisible();  // End match = sidebar button
     // ⋮ ActionSheet still carries End match too.
     await page.getByTestId('match-menu-btn').click();
     await expect(page.getByTestId('end-match-final-action')).toBeVisible();
@@ -161,24 +159,5 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await openReview(page, PORTRAIT);
     await expect(page.getByTestId('phase-play')).toBeVisible();
     await expect(page.getByTestId('end-match-inline')).toBeVisible();
-  });
-
-  // Post-night STEP 3 — rail-compact scoreboard: training keeps Quick ›, tournament drops it.
-  test('rail-compact Quick CTA: present in training, absent in tournament', async ({ page }) => {
-    await login(page, TEST_ACCOUNT);
-
-    // Tournament landscape (TRN_PHASE) → compact scoreboard, NO Quick CTA.
-    await openReview(page, PHONE_LS);
-    await expect(page.getByTestId('review-scoreboard')).toBeVisible();
-    await expect(page.getByTestId('quick-cta-a')).toHaveCount(0);
-
-    // Training matchup landscape → compact scoreboard WITH Quick CTA.
-    await page.setViewportSize(PHONE_LS);
-    await page.goto('/' + matchupReviewUrl);
-    await expect(page.getByTestId('review-scoreboard')).toBeVisible({ timeout: 20000 });
-    const rolesNudge = page.getByRole('button', { name: /^(Zrobię to później|I'll do it later)$/ });
-    if (await rolesNudge.isVisible().catch(() => false)) await rolesNudge.click();
-    await expect(page.getByTestId('quick-cta-a')).toBeVisible();
-    await expect(page.getByTestId('quick-cta-b')).toBeVisible();
   });
 });

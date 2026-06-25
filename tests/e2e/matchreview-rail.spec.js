@@ -1,7 +1,12 @@
-// e2e — Stage 4.3: MatchPage REVIEW mode landscape = CanvasRailLayout (hero =
-// review heatmap, rail = scoreboard + points column). §116 archetype applied
-// as-is (audit P0). Scout editor view untouched (A4 verified: review is its own
-// return). Portrait unchanged.
+// e2e — MatchPage REVIEW mode landscape = the prototype `TabletLiveScoringPremium`
+// 1:1 (feat/live-review-rebuild, 2026-06-25). The landscape review no longer uses
+// CanvasRailLayout's residual-rail + §116 collapse-strip + float-scrubber. Instead:
+// a FIXED 372px LEFT sidebar (back · LIVE · scoreboard · Warstwa toggle · PointRow
+// list · completeness · Zakończ mecz) + a RIGHT field panel (attached phase tabs ·
+// field hero · bottom animation bar). The OLD assertions (rail-strip-back, hero
+// ≥95% height, rail-overlay panel, field-phase float) targeted the retired shell —
+// the design genuinely moved those elements, so this spec asserts the new structure.
+// Scout editor view untouched. Portrait unchanged.
 //
 // Fixture: TRN_PSTATS / MATCH_PSTATS (base layout WITH fieldImage + one logged
 // point) — the same read-only hero fixture the 4.1/4.2 specs use (viewport-only
@@ -15,8 +20,8 @@ const PHONE_LS = { width: 896, height: 414 };
 const TABLET_LS = { width: 1194, height: 834 };
 const PORTRAIT = { width: 414, height: 896 };
 
-test.describe('Stage 4.3 — MatchPage review landscape rail', () => {
-  test('phone-landscape hero ≥95% + rail-left; tablet collapses; portrait unchanged', async ({ page }) => {
+test.describe('MatchPage review landscape — TabletLiveScoringPremium', () => {
+  test('portrait inline; landscape = fixed 372px sidebar (scoreboard) + right field panel', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
 
     // Fixture sanity: review mode (no ?scout param) renders the heatmap.
@@ -27,17 +32,21 @@ test.describe('Stage 4.3 — MatchPage review landscape rail', () => {
     const pBox = await canvas.boundingBox();
     expect(pBox.height).toBeLessThan(PORTRAIT.height * 0.7); // portrait: inline, points below
 
-    // PHONE-LANDSCAPE: hero fills ≥95% height + sits RIGHT of a left rail.
+    // PHONE-LANDSCAPE: the scoreboard lives in the LEFT sidebar; the field canvas
+    // sits to its RIGHT (sidebar = 372px, so the field starts well past x>300).
     await page.setViewportSize(PHONE_LS);
     await page.waitForTimeout(400);
+    await expect(page.getByTestId('review-scoreboard')).toBeVisible();
+    const sbBox = await page.getByTestId('review-scoreboard').boundingBox();
+    expect(sbBox.x).toBeLessThan(372); // scoreboard in the left sidebar
     const lsBox = await canvas.boundingBox();
-    expect(lsBox.height).toBeGreaterThan(PHONE_LS.height * 0.95);
-    expect(lsBox.x).toBeGreaterThan(150); // rail on the LEFT, hero field on the right
+    expect(lsBox.x).toBeGreaterThan(300); // field panel is to the RIGHT of the sidebar
 
-    // TABLET-LANDSCAPE: the rail collapses to the §116 strip.
+    // TABLET-LANDSCAPE: same structure (NO collapse strip — the sidebar is fixed).
     await page.setViewportSize(TABLET_LS);
     await page.waitForTimeout(400);
-    await expect(page.getByTestId('rail-strip-back')).toBeVisible();
+    await expect(page.getByTestId('review-scoreboard')).toBeVisible();
+    await expect(page.getByTestId('rail-strip-back')).toHaveCount(0); // strip retired
 
     // PORTRAIT again: unchanged stack (inline heatmap, capped height).
     await page.setViewportSize(PORTRAIT);
@@ -46,25 +55,27 @@ test.describe('Stage 4.3 — MatchPage review landscape rail', () => {
     expect(pBox2.height).toBeLessThan(PORTRAIT.height * 0.7);
   });
 
-  // Field View shell (Match-review): the §B phase row → floating FieldPhaseControl
-  // (kind='review'), per-team A|B layer toggles (GAP F), combined strip pins, and the
-  // rail-expand affordance. Review heatmap is view-only → the canvas tap-accuracy guardrail
-  // is covered by rail-collapse.spec.js (same shell collapse path).
-  test('tablet-collapse: review shell — floating phase, per-team A|B layers, pins, expand', async ({ page }) => {
+  // Landscape chrome: attached phase tabs (top-left of the field panel) + the
+  // Warstwa A/B segmented toggle (left sidebar) + the bottom animation bar's
+  // play transport. These replace the retired float-scrubber + collapse pins.
+  test('landscape: attached phase tabs, Warstwa A|B toggle, animation play transport', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.setViewportSize(TABLET_LS);
     await page.goto('/' + url);
-    await expect(page.getByTestId('rail-strip-back')).toBeVisible({ timeout: 20000 });
-    // phaseControl (review kind) floats ON the field — present even when collapsed.
-    await expect(page.getByTestId('field-phase')).toBeVisible();
-    // GAP D — combined layer pins + the expand affordance (pins don't replace it).
-    await expect(page.getByTestId('rail-strip-pin-positions')).toBeVisible();
-    await expect(page.getByTestId('rail-strip-pin-shots')).toBeVisible();
-    await expect(page.getByTestId('rail-strip-expand')).toBeVisible();
-    // GAP F — open the rail → one Positions row with TWO compact A|B toggles (two-team view).
-    await page.getByTestId('rail-strip-expand').click();
-    await expect(page.getByTestId('rail-overlay-panel')).toBeVisible();
-    await expect(page.getByTestId('rail-toggle-positions-a')).toBeVisible();
-    await expect(page.getByTestId('rail-toggle-positions-b')).toBeVisible();
+    await expect(page.getByTestId('review-scoreboard')).toBeVisible({ timeout: 20000 });
+
+    // Attached phase tabs — Break is always present (keyframe #0).
+    await expect(page.getByTestId('phase-seg-break')).toBeVisible();
+    await expect(page.getByTestId('phase-seg-break')).toHaveAttribute('aria-pressed', 'true');
+
+    // Warstwa A / Warstwa B segmented toggle (per-team heatmap layer).
+    await expect(page.getByTestId('review-layer-a')).toBeVisible();
+    await expect(page.getByTestId('review-layer-b')).toBeVisible();
+    await page.getByTestId('review-layer-b').click();
+    await expect(page.getByTestId('review-layer-b')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByTestId('review-layer-a')).toHaveAttribute('aria-pressed', 'false');
+
+    // Bottom animation control bar — the play/pause transport is present.
+    await expect(page.getByTestId('phase-play')).toBeVisible();
   });
 });
