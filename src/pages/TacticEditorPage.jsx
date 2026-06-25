@@ -49,7 +49,7 @@ export default function TacticEditorPage() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <EmptyState icon="⚠️" text={t('tactic_not_found') || 'Tactic not found'} />
-        <Btn variant="accent" onClick={() => navigate(`/layout/${layoutId}/tactics`)}>‹ Board</Btn>
+        <Btn variant="accent" onClick={() => navigate(`/layout/${layoutId}/tactics`)}>‹ {t('tactic_editor_back_board')}</Btn>
       </div>
     );
   }
@@ -107,7 +107,7 @@ function TacticEditorInner({ layout, layoutId, tacticId, tactic }) {
       setTimeout(() => setSavedFlash(false), 1800);
     } catch (e) {
       console.error('Tactic save error:', e);
-      alert('Save failed: ' + (e.message || 'Unknown error'));
+      alert(t('tactic_save_failed', e.message || t('tactic_save_unknown_error')));
     } finally {
       setSaving(false);
     }
@@ -117,8 +117,8 @@ function TacticEditorInner({ layout, layoutId, tacticId, tactic }) {
     <div data-testid="tactic-editor-loaded" style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <PageHeader
         back={{ to: `/layout/${layoutId}/tactics` }}
-        title={tactic.name || 'Tactic'}
-        subtitle={(layout?.name || 'Layout').toUpperCase()}
+        title={tactic.name || t('tactic_title_fallback')}
+        subtitle={(layout?.name || t('tactic_back_layout')).toUpperCase()}
       />
       {/* Phase spine — 5 positional phases, NO outcome node */}
       <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 8px', borderBottom: `1px solid ${COLORS.border}`, background: COLORS.bg, flexShrink: 0 }}>
@@ -204,7 +204,7 @@ function TacticEditorInner({ layout, layoutId, tacticId, tactic }) {
           style={{ flex: 1, padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700,
             ...(savedFlash ? { background: COLORS.success + '20', borderColor: COLORS.success, color: COLORS.success } : {}) }}
           onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving…' : savedFlash ? '✓ Saved' : 'Save tactic'}
+          {saving ? t('tactic_saving') : savedFlash ? t('tactic_saved') : t('tactic_save')}
         </Btn>
       </div>
 

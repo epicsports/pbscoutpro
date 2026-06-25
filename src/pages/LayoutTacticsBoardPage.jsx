@@ -24,9 +24,11 @@ import * as ds from '../services/dataService';
 import { onBoardTactics, offBoardTactics, sortBoardTactics } from '../utils/tacticState';
 import { tacticPreviewProps } from '../utils/tacticDoc';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 export default function LayoutTacticsBoardPage() {
   const { layoutId } = useParams();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { layouts, loading: layoutsLoading } = useLayouts();
   const layout = layouts.find(l => l.id === layoutId);
@@ -159,9 +161,9 @@ export default function LayoutTacticsBoardPage() {
   if (!layoutsLoading && !layout) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <EmptyState icon="⚠️" text="Layout not found" subtitle="This field layout could not be loaded." />
+        <EmptyState icon="⚠️" text={t('layout_tactic_not_found')} subtitle={t('layout_tactic_not_found_sub')} />
         <div style={{ textAlign: 'center', marginTop: 4 }}>
-          <Btn variant="accent" onClick={() => navigate('/layouts')}>‹ Layouts</Btn>
+          <Btn variant="accent" onClick={() => navigate('/layouts')}>{t('layout_tactic_back_layouts')}</Btn>
         </div>
       </div>
     );
@@ -173,8 +175,8 @@ export default function LayoutTacticsBoardPage() {
   const headerEl = !landscape ? (
     <PageHeader
       back={{ to: `/layout/${layoutId}` }}
-      title="Tactics board"
-      subtitle={(layout?.name || 'Layout').toUpperCase()}
+      title={t('layout_tactic_board_title')}
+      subtitle={(layout?.name || t('layout_tactic_layout_fallback')).toUpperCase()}
     />
   ) : null;
 
@@ -210,7 +212,7 @@ export default function LayoutTacticsBoardPage() {
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, textAlign: 'center', padding: 24,
         }}>
-          {boardTactics.length === 0 ? 'No tactics on the board yet — add one below.' : 'Select a tactic to preview it.'}
+          {boardTactics.length === 0 ? t('layout_tactic_field_empty') : t('layout_tactic_field_select')}
         </div>
       )}
     </div>
@@ -224,7 +226,7 @@ export default function LayoutTacticsBoardPage() {
     color: COLORS.text, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', backdropFilter: 'blur(8px)',
   };
   const fieldToolsEl = selectedTactic ? (
-    <div role="button" aria-label="Edit tactic" data-testid="tactics-edit-enter"
+    <div role="button" aria-label={t('layout_tactic_edit_aria')} data-testid="tactics-edit-enter"
       onClick={() => openEditor(selectedTactic.id)}
       style={fieldToolBtn}>
       <Move size={18} strokeWidth={2.25} />
@@ -235,12 +237,12 @@ export default function LayoutTacticsBoardPage() {
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '10px 12px 6px', fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700,
         color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0 }}>
-        On the board · {boardTactics.length}
+        {t('layout_tactic_on_board', boardTactics.length)}
       </div>
       <div data-testid="tactics-board-list" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 8px' }}>
         {boardTactics.length === 0 && (
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, padding: '8px 6px', lineHeight: 1.5 }}>
-            {loading ? 'Loading…' : 'Nothing here yet. Use “+ New tactic” to start, or add one from your library.'}
+            {loading ? t('loading') : t('layout_tactic_empty_board')}
           </div>
         )}
         {orderedIds.map((id) => {
@@ -262,7 +264,7 @@ export default function LayoutTacticsBoardPage() {
                 }}>
                 {/* Drag handle (reorder) — ≥44px (§27). stopPropagation on touchstart so a
                     vertical reorder drag never triggers the horizontal swipe-to-remove. */}
-                <div role="button" aria-label="Reorder" data-testid={`tactic-drag-${id}`}
+                <div role="button" aria-label={t('layout_tactic_reorder_aria')} data-testid={`tactic-drag-${id}`}
                   onPointerDown={(e) => onHandlePointerDown(e, id)}
                   onTouchStart={(e) => e.stopPropagation()}
                   style={{ minWidth: 44, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -274,7 +276,7 @@ export default function LayoutTacticsBoardPage() {
                     cursor: 'pointer', padding: '8px 2px' }}>
                   <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
                     color: active ? COLORS.text : COLORS.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {tactic.name || 'Untitled'}
+                    {tactic.name || t('layout_tactic_untitled')}
                   </span>
                 </div>
               </div>
@@ -285,10 +287,10 @@ export default function LayoutTacticsBoardPage() {
       {/* Pinned footer — + NEW TACTIC */}
       <div style={{ flexShrink: 0, padding: '8px 10px', borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: SPACE.sm, ...safeBottom }}>
         <Btn variant="accent" size="lg" testId="tactics-new" onClick={createBlankTactic}
-          style={{ flex: 1, fontWeight: 700 }}>+ New tactic</Btn>
+          style={{ flex: 1, fontWeight: 700 }}>{t('layout_tactic_new')}</Btn>
         {libraryTactics.length > 0 && (
           <Btn variant="default" size="lg" testId="tactics-library-open" onClick={() => setLibraryOpen(true)}
-            style={{ minWidth: 52, fontWeight: 600 }}>Library</Btn>
+            style={{ minWidth: 52, fontWeight: 600 }}>{t('layout_tactic_library')}</Btn>
         )}
       </div>
     </div>
@@ -297,12 +299,12 @@ export default function LayoutTacticsBoardPage() {
   // Minimized rail = a 56px strip (always visible, one-tap expandable). No overlay.
   const stripBtn = { minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: COLORS.textDim, fontSize: 18 };
   const stripEl = (
-    <div data-testid="tactics-rail-strip" role="button" aria-label="Expand list" onClick={() => setRailOpen(true)}
+    <div data-testid="tactics-rail-strip" role="button" aria-label={t('layout_tactic_expand_aria')} onClick={() => setRailOpen(true)}
       style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 0', gap: 6, borderLeft: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer' }}>
-      <div role="button" aria-label="Back" onClick={(e) => { e.stopPropagation(); navigate(`/layout/${layoutId}`); }} style={{ ...stripBtn, color: COLORS.accent, fontSize: 22 }}>‹</div>
+      <div role="button" aria-label={t('layout_tactic_back_aria')} onClick={(e) => { e.stopPropagation(); navigate(`/layout/${layoutId}`); }} style={{ ...stripBtn, color: COLORS.accent, fontSize: 22 }}>‹</div>
       <div style={{ width: 24, borderTop: `1px solid ${COLORS.border}`, margin: '2px 0' }} />
       <div data-testid="tactics-rail-expand" style={{ ...stripBtn, color: COLORS.accent }}>☰</div>
-      <div style={{ marginTop: 'auto', paddingBottom: 6, textAlign: 'center', lineHeight: 1.1, fontFamily: FONT, fontSize: TOUCH.fontXs - 2, fontWeight: 700, color: COLORS.textMuted }}>{boardTactics.length}<br />plays</div>
+      <div style={{ marginTop: 'auto', paddingBottom: 6, textAlign: 'center', lineHeight: 1.1, fontFamily: FONT, fontSize: TOUCH.fontXs - 2, fontWeight: 700, color: COLORS.textMuted }}>{boardTactics.length}<br />{t('layout_tactic_plays')}</div>
     </div>
   );
   // Field box — fills residual width; overflow:hidden crops the height-first field
@@ -319,10 +321,10 @@ export default function LayoutTacticsBoardPage() {
   );
 
   const libraryModal = (
-    <Modal open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Add from library">
+    <Modal open={libraryOpen} onClose={() => setLibraryOpen(false)} title={t('layout_tactic_library_modal')}>
         {libraryTactics.length === 0 ? (
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: 8 }}>
-            Your library is empty — every tactic is already on the board.
+            {t('layout_tactic_library_empty')}
           </div>
         ) : (
           <div data-testid="tactics-library-list" style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
@@ -331,7 +333,7 @@ export default function LayoutTacticsBoardPage() {
                 style={{ minHeight: 52, display: 'flex', alignItems: 'center', padding: '8px 12px', cursor: 'pointer',
                   background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.md,
                   fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>
-                {tac.name || 'Untitled'}
+                {tac.name || t('layout_tactic_untitled')}
               </div>
             ))}
           </div>
@@ -349,8 +351,8 @@ export default function LayoutTacticsBoardPage() {
           {railOpen ? (
             <div data-testid="tactics-rail" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderLeft: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 10px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
-                <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layout?.name || 'Tactics'}</span>
-                <div role="button" aria-label="Minimize list" data-testid="tactics-rail-minimize" onClick={() => setRailOpen(false)} style={stripBtn}>›</div>
+                <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layout?.name || t('layout_tactic_tactics_fallback')}</span>
+                <div role="button" aria-label={t('layout_tactic_minimize_aria')} data-testid="tactics-rail-minimize" onClick={() => setRailOpen(false)} style={stripBtn}>›</div>
               </div>
               {railEl}
             </div>
