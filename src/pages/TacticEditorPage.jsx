@@ -242,7 +242,7 @@ function TacticEditorInner({ layout, layoutId, tacticId, tactic }) {
   const phaseSelector = (
     <div>
       <SectionLabel>{t('tactic_phase_label')}</SectionLabel>
-      <StageSwitcher stage={eng.captureStage} onChange={eng.switchStage} done={eng.stageDone} stages={stages} />
+      <StageSwitcher stage={eng.captureStage} onChange={eng.switchStage} done={eng.stageDone} stages={stages} wrap />
     </div>
   );
 
