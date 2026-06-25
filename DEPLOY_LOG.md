@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Live-scoring convergence Stage 1 — point-row bars + header wrap (SYNC brief C)
+**App (auto-deploy, e2e-gated). No data/capture path touched.** Merge `feat/live-stage1` (MatchPage.jsx, 1 file). LiveMatchPremium convergence — Stage 1 of 3 (visual-only).
+- **Point rows:** removed the `aBar`/`bBar` side color strips (`:2030`/`:2108` + derivations) — prototype's consolidated head-to-head = crest + winner trophy + completeness dots only.
+- **Header:** team-name title single-line ellipsis → **2-line `-webkit-box` clamp** (fixes "Toulo use…"/"Break o…" truncation from prod screenshots).
+- Pure presentation in the `isReviewView` block — `savePoint`/`makeTeamData`/`buildTimeline`/`useCaptureDraft` untouched. **Full suite 115/115.**
+- **Next:** Stage 2 = `PointAxisScrubber` (phases as timeline keyframes, read-side); Stage 3 = editor chrome (wrap-don't-rewrite, heavily gated). Route: NO `/live` (one-screen already realized by MatchPage's mode model — per Plan-agent).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Privacy/PII Phase 2 — per-workspace surname truncation (privacy feature COMPLETE)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/pii-surnames` (29 files, NEW `playerName.js`). Jacek decisions: scope = everywhere displayed; format = "Jan Kow.".
 - **Setting:** `piiSettings.surnameMode: 'full'|'short'` (default 'full', backward-compatible) — reuses `setWorkspacePiiSettings`. 2nd super-admin `SegmentedControl` "Nazwiska: Pełne/Skrócone" under the avatar toggle in `WorkspacesAdminPage`.
