@@ -1972,6 +1972,59 @@ const T = {
     scout_tab_n_selected:           (n) => `${n} selected`,
     scout_tab_no_eligible_league:   (league) => `No eligible teams for ${league}. Create one in Teams or pick another league.`,
     scout_tab_no_eligible_all:      'All available teams are already in this tournament.',
+
+    /* ─── i18n Stage 2 extraction (2026-06-25) ─────────── */
+    /* Preloader phase labels — SHARED across ScoutedTeamPage / PlayerStatsPage /
+       ScoutRankingPage / MatchListPremium + Preloader.jsx internal fallbacks. */
+    preloader_phase_fetch_points:    'Pobieranie punktów',
+    preloader_phase_fetch_matches:   'Pobieranie meczów',
+    preloader_phase_compute_heatmap: 'Liczenie heatmapy',
+    preloader_phase_compute_stats:   'Liczenie statystyk',
+    preloader_phase_compute_ranking: 'Liczenie rankingu',
+    preloader_phase_render:          'Renderowanie',
+    preloader_phase_load_teams:      'Ładowanie drużyn',
+    preloader_loading:               'Ładowanie',
+    preloader_done:                  'Gotowe',
+    /* MatchListPremium leaked literals */
+    mlp_tournament_closed:           'Turniej zamknięty',
+    mlp_no_matches_for:              (q) => `Brak meczów dla „${q}”.`,
+    mlp_import_csv:                  'Import harmonogramu (CSV)',
+    mlp_import_photo:                'Import harmonogramu (zdjęcie)',
+    mlp_division_auto_hint:          'Dywizja przypisywana automatycznie z mapowania ligi każdej drużyny',
+    mlp_division_auto_fallback:      (div) => ` (fallback: ${div})`,
+    mlp_search_teams_ph:             'Szukaj drużyn po nazwie, ID...',
+    mlp_add_failed_n:                (n) => `${n} ${n === 1 ? 'drużyna' : 'drużyn'} — nie udało się dodać, spróbuj ponownie`,
+    /* MatchCard tap hints */
+    matchcard_tap_view:              'dotknij aby zobaczyć',
+    matchcard_tap_scout:             'dotknij aby scoutować',
+    /* CoachTabContent — repair scouted divisions */
+    coach_repairing:                 'Naprawianie…',
+    coach_repair_divisions:          'Napraw dywizje zascoutowanych',
+    coach_repair_no_filter_match:    (n) => `${n} zascoutowanych wpisów istnieje, ale żaden nie pasuje do bieżącego filtra dywizji — prawdopodobnie brakuje pola dywizji z poprzedniego importu harmonogramu.`,
+    coach_repair_scanned:            'Przeskanowano',
+    coach_repair_updated:            'zaktualizowano',
+    coach_repair_already_set:        'już ustawione',
+    coach_repair_orphan:             'sierota',
+    coach_repair_no_division:        'drużyna bez dywizji',
+    coach_repair_failed:             'nieudane',
+    coach_repair_error:              'Błąd',
+    coach_no_teams_match:            (q) => `Brak drużyn pasujących do „${q}”.`,
+    /* PlayerStatsPage CAUSE_META elimination-reason labels */
+    elim_reason_gunfight:            'Gunfight',
+    elim_reason_przejscie:           'Przejście',
+    elim_reason_faja:                'Faja',
+    elim_reason_na_przeszkodzie:     'Na przeszkodzie',
+    elim_reason_za_kare:             'za Karę',
+    elim_reason_nie_wiem:            'Nie wiem',
+    elim_reason_inaczej:             'Inaczej',
+    /* PlayerHeroCard stat-line labels */
+    hero_strona:                     'Strona',
+    hero_start:                      'Start',
+    hero_ostatni:                    'Ostatni',
+    hero_wygrana:                    'Wygrana',
+    hero_przegrana:                  'Przegrana',
+    /* ScoutedTeamPage draw label */
+    coach_draw_label:                'Rysuj',
     /* DrawToolbar */
     draw_toolbar_undo:              'Undo',
     draw_toolbar_redo:              'Redo',
@@ -3950,6 +4003,59 @@ const T = {
     scout_tab_n_selected:           (n) => `${n} selected`,
     scout_tab_no_eligible_league:   (league) => `No eligible teams for ${league}. Create one in Teams or pick another league.`,
     scout_tab_no_eligible_all:      'All available teams are already in this tournament.',
+
+    /* ─── i18n Stage 2 extraction (2026-06-25) ─────────── */
+    /* Preloader phase labels — SHARED across ScoutedTeamPage / PlayerStatsPage /
+       ScoutRankingPage / MatchListPremium + Preloader.jsx internal fallbacks. */
+    preloader_phase_fetch_points:    'Fetching points',
+    preloader_phase_fetch_matches:   'Fetching matches',
+    preloader_phase_compute_heatmap: 'Computing heatmap',
+    preloader_phase_compute_stats:   'Computing stats',
+    preloader_phase_compute_ranking: 'Computing ranking',
+    preloader_phase_render:          'Rendering',
+    preloader_phase_load_teams:      'Loading teams',
+    preloader_loading:               'Loading',
+    preloader_done:                  'Done',
+    /* MatchListPremium leaked literals */
+    mlp_tournament_closed:           'Tournament closed',
+    mlp_no_matches_for:              (q) => `No matches for “${q}”.`,
+    mlp_import_csv:                  'Import schedule (CSV)',
+    mlp_import_photo:                'Import schedule (photo)',
+    mlp_division_auto_hint:          "Division is auto-assigned from each team's league mapping",
+    mlp_division_auto_fallback:      (div) => ` (fallback: ${div})`,
+    mlp_search_teams_ph:             'Search teams by name, ID...',
+    mlp_add_failed_n:                (n) => `${n} ${n === 1 ? 'team' : 'teams'} failed to add — try again`,
+    /* MatchCard tap hints */
+    matchcard_tap_view:              'tap to view',
+    matchcard_tap_scout:             'tap to scout',
+    /* CoachTabContent — repair scouted divisions */
+    coach_repairing:                 'Repairing…',
+    coach_repair_divisions:          'Repair scouted divisions',
+    coach_repair_no_filter_match:    (n) => `${n} scouted entries exist but none match the current division filter — likely missing the division field from a past schedule import.`,
+    coach_repair_scanned:            'Scanned',
+    coach_repair_updated:            'updated',
+    coach_repair_already_set:        'already set',
+    coach_repair_orphan:             'orphan',
+    coach_repair_no_division:        'team has no division',
+    coach_repair_failed:             'failed',
+    coach_repair_error:              'Error',
+    coach_no_teams_match:            (q) => `No teams match “${q}”.`,
+    /* PlayerStatsPage CAUSE_META elimination-reason labels */
+    elim_reason_gunfight:            'Gunfight',
+    elim_reason_przejscie:           'Breakthrough',
+    elim_reason_faja:                'Faja',
+    elim_reason_na_przeszkodzie:     'On bunker',
+    elim_reason_za_kare:             'Penalty',
+    elim_reason_nie_wiem:            'Unknown',
+    elim_reason_inaczej:             'Other',
+    /* PlayerHeroCard stat-line labels */
+    hero_strona:                     'Side',
+    hero_start:                      'Start',
+    hero_ostatni:                    'Last',
+    hero_wygrana:                    'Win',
+    hero_przegrana:                  'Loss',
+    /* ScoutedTeamPage draw label */
+    coach_draw_label:                'Draw',
     /* DrawToolbar */
     draw_toolbar_undo:              'Undo',
     draw_toolbar_redo:              'Redo',
