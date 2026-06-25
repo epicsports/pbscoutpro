@@ -63,7 +63,7 @@ function formatSchedulePill(m, lang) {
  * another scout at the card level.
  */
 export default function MatchCard({ m, status, tournamentId, getTeamName, getTeam, navigate, readOnly, liveScore }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const sA = liveScore?.a ?? m.scoreA ?? 0;
   const sB = liveScore?.b ?? m.scoreB ?? 0;
   const hasScore = sA > 0 || sB > 0;
@@ -123,7 +123,7 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, getTea
         </div>
       ) : (
         <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
-          {readOnly ? 'tap to view' : 'tap to scout'}
+          {readOnly ? t('matchcard_tap_view') : t('matchcard_tap_scout')}
         </div>
       )}
     </div>

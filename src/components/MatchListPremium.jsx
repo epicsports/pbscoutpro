@@ -195,7 +195,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
       <div style={{ position: 'relative', minHeight: '60vh' }}>
         <Preloader
           progress={loaderP}
-          phases={[{ label: 'Pobieranie meczów', to: 45 }, { label: 'Ładowanie drużyn', to: 85 }, { label: 'Renderowanie', to: 100 }]}
+          phases={[{ label: t('preloader_phase_fetch_matches'), to: 45 }, { label: t('preloader_phase_load_teams'), to: 85 }, { label: t('preloader_phase_render'), to: 100 }]}
           caption="reads · lista meczów"
           onDone={closeLoader}
         />
@@ -337,7 +337,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 6, color: COLORS.textMuted }}><RdIcon name="shield" size={26} /></div>
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.md, fontWeight: 700, color: COLORS.textMuted }}>
-            Tournament closed
+            {t('mlp_tournament_closed')}
           </div>
         </div>
       )}
@@ -351,10 +351,10 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
           scouted[0] && !isClosed && !isViewer ? (
             <span onClick={() => setAddMatchModal(true)}
               style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.accent, cursor: 'pointer' }}>
-              + Add
+              {t('add_short')}
             </span>
           ) : null
-        }>Matches ({filtered.length})</SectionTitle>
+        }>{t('matches_title')} ({filtered.length})</SectionTitle>
 
         {filtered.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
@@ -363,7 +363,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
         )}
         {filtered.length > 0 && matchSearch.trim() && searched.length === 0 && (
           <div style={{ padding: SPACE.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>
-            No matches for “{matchSearch}”.
+            {t('mlp_no_matches_for', matchSearch)}
           </div>
         )}
 
@@ -379,9 +379,9 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
                     OCR-based image import uses client-side Anthropic key (security violation).
                     CSV import is the working manual path. Re-enable requires Cloud Function migration. */}
                 {STATIC_FLAGS.ENABLE_VISION_API && (
-                  <Btn variant="default" onClick={() => setScheduleOpen(true)}>Import schedule (zdjęcie)</Btn>
+                  <Btn variant="default" onClick={() => setScheduleOpen(true)}>{t('mlp_import_photo')}</Btn>
                 )}
-                <Btn variant="default" onClick={() => setScheduleCsvOpen(true)}>Import harmonogramu (CSV)</Btn>
+                <Btn variant="default" onClick={() => setScheduleCsvOpen(true)}>{t('mlp_import_csv')}</Btn>
               </div>
             )}
           </div>
@@ -511,7 +511,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
           <div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('scout_tab_home_team')}</div>
             <Select value={matchTeamA} onChange={setMatchTeamA} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-              <option value="">— select —</option>
+              <option value="">{t('select_ph')}</option>
               {divisionScouted.map(s => {
                 const team = teams.find(x => x.id === s.teamId);
                 return team ? <option key={s.id} value={s.id}>{team.name}</option> : null;
@@ -521,7 +521,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
           <div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: SPACE.xs }}>{t('scout_tab_away_team')}</div>
             <Select value={matchTeamB} onChange={setMatchTeamB} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-              <option value="">— select —</option>
+              <option value="">{t('select_ph')}</option>
               {divisionScouted.filter(s => s.id !== matchTeamA).map(s => {
                 const team = teams.find(x => x.id === s.teamId);
                 return team ? <option key={s.id} value={s.id}>{team.name}</option> : null;
@@ -579,8 +579,8 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
                 fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted,
                 marginBottom: SPACE.sm, letterSpacing: '.2px',
               }}>
-                Division is auto-assigned from each team's league mapping
-                {resolvedDivision !== 'all' && ` (fallback: ${resolvedDivision})`}.
+                {t('mlp_division_auto_hint')}
+                {resolvedDivision !== 'all' && t('mlp_division_auto_fallback', resolvedDivision)}.
               </div>
             )}
             {addErrorCount > 0 && (
@@ -591,14 +591,14 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
                 fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
                 color: COLORS.danger, marginBottom: SPACE.sm,
               }}>
-                {addErrorCount} {addErrorCount === 1 ? 'team' : 'teams'} failed to add — try again
+                {t('mlp_add_failed_n', addErrorCount)}
               </div>
             )}
             {/* § Stage C — shared search + Dywizja (Liga fixed by tournament) */}
             <SearchFilterPanel
               search={addSearch}
               onSearchChange={setAddSearch}
-              searchPlaceholder="Search teams by name, ID..."
+              searchPlaceholder={t('mlp_search_teams_ph')}
               filters={addDivOptions.length ? [{ key: 'dyw', label: 'Dywizja', value: addDiv, onChange: setAddDiv, allLabel: 'wszystkie', options: addDivOptions }] : []}
               style={{ marginBottom: SPACE.sm }}
             />

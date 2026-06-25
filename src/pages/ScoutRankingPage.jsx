@@ -137,7 +137,7 @@ export default function ScoutRankingPage() {
         <div style={{ position: 'relative', minHeight: '60vh' }}>
           <Preloader
             progress={loaderP}
-            phases={[{ label: 'Pobieranie punktów', to: 60 }, { label: 'Liczenie rankingu', to: 100 }]}
+            phases={[{ label: t('preloader_phase_fetch_points'), to: 60 }, { label: t('preloader_phase_compute_ranking'), to: 100 }]}
             caption="reads · ranking scoutów"
             onDone={closeLoader}
           />

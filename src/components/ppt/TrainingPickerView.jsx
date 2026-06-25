@@ -109,7 +109,7 @@ function TrainingCard({ training, kind, onClick, layoutName, pointsCount }) {
           color: COLORS.text, letterSpacing: '-0.1px',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
-          {training.name || 'Trening'}
+          {training.name || t('tab_training')}
         </div>
         {metaParts && (
           <div style={{

@@ -300,7 +300,7 @@ export default function TrainingScoutTab({ trainingId, training }) {
     );
   }
 
-  if (!training) return <EmptyState icon="⏳" text={'Training not found'} />;
+  if (!training) return <EmptyState icon="⏳" text={t('training_not_found')} />;
   const completed = matchups.filter(m => m.status === 'closed' && !m.isFreePlay);
   const isClosed = training.status === 'closed';
   // `current` + liveMatchupIds + liveScores computed above (hooks must

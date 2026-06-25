@@ -148,15 +148,22 @@ function BarRow({ label, labelColor, pct, barColor, right, rightSub }) {
 // per § 27). `break` is no longer a reason — it's a stage; legacy 'break'
 // data normalizes to {reason: null, inferredStage: 'break'} so it never
 // enters this map's domain.
+// Labels externalized to i18n — read at RENDER via `causeLabel(id, t)`, not at
+// module-eval, so they follow the active language. Each cause carries its full
+// i18n key explicitly (no runtime prefix concatenation), keeping the call shape
+// a single argument and the keys greppable.
 const CAUSE_META = {
-  gunfight:        { label: 'Gunfight',         color: '#ef4444' },
-  przejscie:       { label: 'Przejście',        color: '#eab308' },
-  faja:            { label: 'Faja',             color: '#a855f7' },
-  na_przeszkodzie: { label: 'Na przeszkodzie',  color: '#06b6d4' },
-  za_kare:         { label: 'za Karę',          color: '#94a3b8' },
-  nie_wiem:        { label: 'Nie wiem',         color: '#64748b' },
-  inaczej:         { label: 'Inaczej',          color: '#fb7185' },
+  gunfight:        { color: '#ef4444', i18nKey: 'elim_reason_gunfight' },
+  przejscie:       { color: '#eab308', i18nKey: 'elim_reason_przejscie' },
+  faja:            { color: '#a855f7', i18nKey: 'elim_reason_faja' },
+  na_przeszkodzie: { color: '#06b6d4', i18nKey: 'elim_reason_na_przeszkodzie' },
+  za_kare:         { color: '#94a3b8', i18nKey: 'elim_reason_za_kare' },
+  nie_wiem:        { color: '#64748b', i18nKey: 'elim_reason_nie_wiem' },
+  inaczej:         { color: '#fb7185', i18nKey: 'elim_reason_inaczej' },
 };
+// Render-time label resolver: known cause → its i18n label; unknown id → the id
+// itself (mirrors the old `|| { label: id }` fallback for non-canonical causes).
+const causeLabel = (id, t) => (CAUSE_META[id] ? t(CAUSE_META[id].i18nKey) : id);
 
 // § 59 redesign: survivalColor + ShotBar removed.
 //   survivalColor → reuse `winRateColor` from src/utils/colorScale.js
@@ -1027,7 +1034,7 @@ export default function PlayerStatsPage() {
           <div style={{ position: 'relative', minHeight: '46vh' }}>
             <Preloader
               progress={loaderP}
-              phases={[{ label: 'Pobieranie punktów', to: 38 }, { label: 'Liczenie statystyk', to: 80 }, { label: 'Renderowanie', to: 100 }]}
+              phases={[{ label: t('preloader_phase_fetch_points'), to: 38 }, { label: t('preloader_phase_compute_stats'), to: 80 }, { label: t('preloader_phase_render'), to: 100 }]}
               caption="reads · statystyki zawodnika"
               onDone={closeLoader}
             />
@@ -1206,7 +1213,7 @@ export default function PlayerStatsPage() {
                 <RdDonut
                   palette={Object.fromEntries(stats.causes.map(({ id }) => [id, (CAUSE_META[id] || { color: COLORS.textDim }).color]))}
                   items={stats.causes.map(({ id, count, pct }) => ({
-                    side: id, k: (CAUSE_META[id] || { label: id }).label, pct, n: count,
+                    side: id, k: causeLabel(id, t), pct, n: count,
                   }))}
                 />
               </div>
@@ -1415,7 +1422,7 @@ export default function PlayerStatsPage() {
           <WidePanel t={t} source="scout+self" icon="impact" title={t('stats_powod_spadania')}>
             <RdDonut
               palette={Object.fromEntries(stats.causes.map(({ id }) => [id, (CAUSE_META[id] || { color: COLORS.textDim }).color]))}
-              items={stats.causes.map(({ id, count, pct }) => ({ side: id, k: (CAUSE_META[id] || { label: id }).label, pct, n: count }))}
+              items={stats.causes.map(({ id, count, pct }) => ({ side: id, k: causeLabel(id, t), pct, n: count }))}
             />
           </WidePanel>
         )}
