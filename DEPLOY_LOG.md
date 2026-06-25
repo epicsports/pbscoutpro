@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-25 — [BUGFIX+RULES/Tier-1] Avatar save broken — firestore self-update whitelist (night)
+**App (auto-deploy) + `firestore:rules` DEPLOY (separate, done via SA key).** Merge `fix/avatar-save-rule` (3 files) + `firebase deploy --only firestore:rules`.
+- **Root cause:** `firestore.rules` `users/{uid}` self-update `allow update` had `affectedKeys().hasOnly(['displayName','email','linkSkippedAt'])`. `setUserAvatarSpec` writes `{avatarSpec, updatedAt}` → **silent permission-denied** → the pixel-avatar builder shipped (Stage C) but avatars NEVER saved. (The rule's own comment warned: "missing one results in silent permission-denied at runtime.")
+- **Fix:** added `'avatarSpec'`+`'updatedAt'` to the `hasOnly` list — **additive, non-tenant-isolation** (self-write to own `users/{uid}`; `uid == request.auth.uid`). Authorized by the avatar GO + the bug.
+- **Regression-proofed:** `data-testid="avatar-save"` on the builder Save + NEW `tests/e2e/avatar-save.spec.js` (login → /profile/avatar → Save → builder unmounts = write allowed). This was the e2e gap that let the silent denial ship.
+- **PROOF:** build + precommit green; **full e2e 116/116** (115 + the new spec). **Rules: `compiled successfully` + `released to cloud.firestore` (prod).**
+- **Smoke (Jacek):** Profil → awatar (ołówek) → kreator → Zapisz → reopen → spec persists.
+
 ## 2026-06-25 — [FEATURE/Tier-2] Live-scoring Stage 2b — landscape phase scrubber (float variant) (night)
 **App (auto-deploy, e2e-gated). No data/capture path.** Merge `feat/live-stage2b` (3 files). Fixes Jacek's IMG_0143 (landscape detached phase tabs).
 - **`PointAxisScrubber` `variant="float"`** — compact glass chip (44px play + clamped keyframe mini-track + active-phase label) for the landscape Field-View shell, replacing the floating `FieldPhaseControl` detached tabs. Same read-side bindings + captured-scope gating as the portrait inline scrubber; rides the field top-right; End-match still floats.
