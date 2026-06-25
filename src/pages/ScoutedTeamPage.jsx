@@ -392,6 +392,20 @@ export default function ScoutedTeamPage() {
     if (!filterMatchId) return allHeatmapPoints;
     return allHeatmapPoints.filter(pt => pt.matchId === filterMatchId);
   }, [allHeatmapPoints, filterMatchId]);
+
+  // Selected match (when a match scope is active) + its opponent team — hoisted to
+  // component scope so both the scope-pills and the report column (score bar) reuse
+  // the SAME resolution (no divergence). Null in the aggregate scopes.
+  const selectedMatch = isMatchScope
+    ? teamMatches.find(m => m.id === matchIdParam) || null
+    : null;
+  const selectedOppEntry = selectedMatch
+    ? scouted.find(s =>
+        s.id === (selectedMatch.teamA === scoutedId ? selectedMatch.teamB : selectedMatch.teamA))
+    : null;
+  const selectedOppTeam = selectedOppEntry
+    ? teams.find(tm => tm.id === selectedOppEntry.teamId)
+    : null;
   // § Stage 6-lite — replay is playable only when ≥1 point carries Settle/Mid
   // keyframes (timeline[] holds only those; Break is keyframe #0). One stage
   // keyframe + Break = ≥2 keyframes to animate.
@@ -1038,16 +1052,6 @@ export default function ScoutedTeamPage() {
           : [];
         const showLayoutPill = currentLayoutId && layoutTs.length > 1;
 
-        const selectedMatch = isMatchScope
-          ? teamMatches.find(m => m.id === matchIdParam)
-          : null;
-        const selectedOppEntry = selectedMatch
-          ? scouted.find(s =>
-              s.id === (selectedMatch.teamA === scoutedId ? selectedMatch.teamB : selectedMatch.teamA))
-          : null;
-        const selectedOppTeam = selectedOppEntry
-          ? teams.find(tm => tm.id === selectedOppEntry.teamId)
-          : null;
         const matchPillLabel = isMatchScope
           ? `vs ${selectedOppTeam?.name || '?'}`
           : t('scope_match_picker');
@@ -1105,11 +1109,74 @@ export default function ScoutedTeamPage() {
   // the column is content-height (flex:0 0 auto) and the RAIL scrolls as one unit
   // (zones + column) → expanding any zone grows the rail's scroll, never steals the
   // report column's height (the expand→squeeze regression is gone structurally).
+  // Match score bar (§ sub-stage 1) — a prominent header strip rendered at the top
+  // of the report column ONLY when a single match is scoped (isMatchScope). Shows
+  // {scoutedTeam} {myScore} : {oppScore} {opponent} with W/L/draw color (the SAME
+  // won/lost/resultColor logic as the Matches list rows), crests via TeamBadge, and
+  // the match date/status. Additive — nothing renders in the aggregate scopes.
+  const matchScoreBarEl = (() => {
+    if (!isMatchScope || !selectedMatch) return null;
+    const m = selectedMatch;
+    const isA = m.teamA === scoutedId;
+    const sA = m.scoreA || 0, sB = m.scoreB || 0;
+    const myScore = isA ? sA : sB;
+    const oppScore = isA ? sB : sA;
+    const isFinal = m.status === 'closed';
+    const hasScore = sA > 0 || sB > 0;
+    const won = isFinal && hasScore && myScore > oppScore;
+    const lost = isFinal && hasScore && myScore < oppScore;
+    const isDraw = isFinal && hasScore && myScore === oppScore;
+    const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.text;
+    const statusLabel = isFinal
+      ? (won ? 'W' : lost ? 'L' : isDraw ? 'D' : null)
+      : null;
+    const dateLabel = m.date || (isFinal ? null : t('match_card_scheduled'));
+    return (
+      <div data-testid="scouted-score-bar" style={{
+        display: 'flex', alignItems: 'center', gap: SPACE.md,
+        padding: '14px 16px', margin: '12px 16px 4px',
+        background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
+        borderRadius: RADIUS.lg,
+      }}>
+        {/* scouted (this) team */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }}>
+            {team?.name || 'Team'}
+          </span>
+          {team && <TeamBadge team={team} size={26} />}
+        </div>
+        {/* score + status */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontFamily: FONT, fontSize: 28, fontWeight: 900, letterSpacing: '-.3px', color: hasScore ? resultColor : COLORS.textMuted, lineHeight: 1 }}>
+            {hasScore ? `${myScore} : ${oppScore}` : '— : —'}
+          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+            {statusLabel && <ResultBadge result={statusLabel} />}
+            {dateLabel && (
+              <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.textMuted }}>
+                {dateLabel}
+              </span>
+            )}
+          </div>
+        </div>
+        {/* opponent team */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {selectedOppTeam && <TeamBadge team={selectedOppTeam} size={26} />}
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {selectedOppTeam?.name || '?'}
+          </span>
+        </div>
+      </div>
+    );
+  })();
+
   const renderColumn = (scroll) => (
       // maxWidth in the landscape rail keeps the report at a comfortable measure — a
       // wide (report-first) rail must not stretch the table name columns (flex:1)
       // into a sea of empty space (§118.1). Portrait is already page-capped.
       <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ ...(scroll ? { flex: 1, overflowY: 'auto' } : { flex: '0 0 auto', maxWidth: 560 }), display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
+        {/* Match score bar — match-scoped only (sub-stage 1) */}
+        {matchScoreBarEl}
         {/* Data confidence banner — contextual qualifier */}
         {heatmapPoints.length > 0 && !confidenceDismissed && (
           <div style={{ position: 'relative' }}>
@@ -2115,9 +2182,12 @@ export default function ScoutedTeamPage() {
           )}
         </div>
 
-        {/* Matches — below fold */}
-        {showAdditional && (
-        <CollapsibleSection title={t('section_matches', teamMatches.length)} testId="sec-matches">
+        {/* Matches — below fold in PORTRAIT (gated by the show-more toggle, default
+            closed, byte-identical to before). In LANDSCAPE this is the master pane of
+            the master-detail flow, so it's surfaced unconditionally and opens by
+            default (the list drives the heatmap/score-bar scope). */}
+        {(landscape || showAdditional) && (
+        <CollapsibleSection title={t('section_matches', teamMatches.length)} testId="sec-matches" defaultOpen={landscape}>
 
           {!teamMatches.length && <EmptyState icon="📋" text={t('b13_add_match_or_schedule')} />}
 
@@ -2136,13 +2206,24 @@ export default function ScoutedTeamPage() {
             const isDraw = isFinal && hasScore && myScore === oppScore;
             const isScheduled = !hasScore && !isFinal;
             const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.text;
+            // Sub-stage 2 — master-detail in LANDSCAPE: the row is the master pane.
+            // Click → select the match scope (heatmap + score-bar update on the right)
+            // instead of navigating away; the selected row is accent-highlighted; an
+            // explicit "open match" affordance keeps the full match page reachable.
+            // PORTRAIT is unchanged — the whole row navigates as today.
+            const isSelectedRow = landscape && isMatchScope && matchIdParam === m.id;
+            const openMatch = () => navigate(`/tournament/${tournamentId}/match/${m.id}`);
+            const rowClick = landscape
+              ? () => setSearchParams({ scope: 'match', mid: m.id })
+              : openMatch;
             return (
-              <div key={m.id} onClick={() => navigate(`/tournament/${tournamentId}/match/${m.id}`)}
+              <div key={m.id} onClick={rowClick}
+                aria-current={isSelectedRow ? 'true' : undefined}
                 style={{
                   display: 'flex', alignItems: 'center', gap: SPACE.sm,
                   padding: '14px 16px', borderRadius: RADIUS.lg,
-                  background: COLORS.surfaceDark,
-                  border: `1px ${isScheduled ? 'dashed' : 'solid'} ${COLORS.border}`,
+                  background: isSelectedRow ? COLORS.accentA10 : COLORS.surfaceDark,
+                  border: `1px ${isScheduled ? 'dashed' : 'solid'} ${isSelectedRow ? COLORS.accent : COLORS.border}`,
                   marginBottom: SPACE.sm, cursor: 'pointer',
                 }}>
                 <div style={{ flex: 1, minWidth: 0, opacity: isScheduled ? 0.55 : 1 }}>
@@ -2160,6 +2241,20 @@ export default function ScoutedTeamPage() {
                   </div>
                 ) : (
                   <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
+                )}
+                {/* Open-match affordance — landscape only; portrait keeps the
+                    whole-row-navigates behaviour so no second control competes. */}
+                {landscape && (
+                  <div role="button" aria-label={t('open_match')} data-testid="open-match-btn"
+                    onClick={(e) => { e.stopPropagation(); openMatch(); }}
+                    style={{
+                      minWidth: 44, minHeight: 44, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      borderRadius: RADIUS.md, color: COLORS.textDim,
+                      cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                    }}>
+                    <RdIcon name="door" size={16} />
+                  </div>
                 )}
               </div>
             );
