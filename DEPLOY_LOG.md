@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-25 — [INFRA/Tier-2] i18n Stage 2 — string extraction + lint hardening (night)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/i18n-strings` (14 files). pl/en output UNCHANGED (same strings, now via `t()`).
+- **39 new keys** (pl+en) extracting ~30 hardcoded literals across 9 files: Preloader phases (shared) · MatchListPremium (Tournament closed/+Add/No matches/CSV import/select/search) · MatchCard tap-hints · CoachTab repair flow · PlayerStats `CAUSE_META` (7 elim labels, render-time `t()`) · PlayerHeroCard stat labels · "Trening" fallbacks · ScoutedTeam "Rysuj" · TrainingScoutTab.
+- **`lint-ui.js` HARDENED:** added an ERROR-level i18n-regression denylist — these literals now **fail precommit** if reintroduced (quoted or JSX-text form). Previously only WARNed; "Tournament closed" was masked by the "Tournament" domain-word allowlist. False-positive guards (letter-boundary, skips dict/catalogs/comments/`t()`-lines).
+- **PROOF:** build + precommit (incl. hardened lint + i18n guards, 1500 keys defined) green; **full e2e 115/115**.
+- **i18n SANITATION COMPLETE (Stages 1+2):** audit parts 1-4 closed. Adding a new language ≈ now mostly just its dict (`T.xx`). Out-of-scope leaks left (MatchListPremium section labels, Preloader brand captions) — noted, low priority.
+
 ## 2026-06-25 — [INFRA/Tier-2] i18n Stage 1 — multi-language foundations (CD-accepted audit) (night)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/i18n-foundations` (14 files, NEW `plural.js`). pl/en output UNCHANGED — these are fallback/locale fixes for future languages.
 - **Fallback `lang → en → key`** (`useLanguage:24`, was `→ pl`) — a missing translation in any language now falls to English, not Polish.
