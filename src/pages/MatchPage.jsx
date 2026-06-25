@@ -2467,8 +2467,11 @@ export default function MatchPage() {
         }
       >
         {/* § Stage 2a — merged top context bar: start-side pill (left) + the "E"
-            stage-switcher (right) in ONE row (vertical v1 rejected). */}
-        <div style={{ width: '100%', marginTop: 4, paddingLeft: 32, paddingRight: 12, paddingBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            stage-switcher (right) in ONE row (vertical v1 rejected).
+            Stage 3 reskin (style-only): premium sunken row container with a
+            hairline divider so the context bar reads as a distinct recessed
+            band under the header. */}
+        <div style={{ width: '100%', marginTop: 0, padding: '8px 12px 8px 16px', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.sunken, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <span onClick={async () => {
               // Manual flip is LOCAL-ONLY (2026-04-25 Path X). Same rationale
               // as the savePoint auto-swap branch above — the previous shared
@@ -2487,39 +2490,91 @@ export default function MatchPage() {
               }));
             }}
             style={{
-              fontSize: 12, padding: '4px 12px', borderRadius: 6,
-              background: COLORS.surfaceDark, border: `1px solid ${COLORS.border}`,
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontFamily: FONT,
+              fontSize: 12, padding: '7px 12px', borderRadius: 9, minHeight: 44, boxSizing: 'border-box',
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontFamily: FONT, boxShadow: ELEV.innerTop,
             }}>
-            <span style={{ color: COLORS.textDim }}>{t('match_from_label')}</span>
-            <span style={{ fontWeight: 700, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span>
-            <span style={{ color: COLORS.textMuted }}>⇄</span>
+            <span style={{ color: COLORS.textDim, fontWeight: 600, letterSpacing: '.3px' }}>{t('match_from_label')}</span>
+            <span style={{ fontWeight: 800, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span>
+            <span style={{ color: COLORS.accent, display: 'inline-flex' }}><RdIcon name="swap" size={13} /></span>
           </span>
           <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
         </div>
       </PageHeader>
         );
       })()}
-      {/* Landscape floating controls */}
-      {immersive && (
-        <div style={{ position: 'fixed', top: 12, left: 12, display: 'flex', gap: 8, zIndex: 50 }}>
-          <Btn variant="default" size="sm" onClick={() => {
-            // B1 / § 82 — see paired comment on the portrait Back handler above.
-            exitEditMode();
-            navigate(reviewUrl);
-          }} style={{ background: COLORS.surface + 'dd', backdropFilter: 'blur(8px)', padding: '8px 12px' }}>‹ Back</Btn>
+      {/* Landscape chrome — Stage 3 reskin (chrome-only): the prototype's tablet
+          split (sidebar + field). The field stays full-bleed (canvas sizing
+          untouched — see InteractiveCanvas below); the sidebar + control bar are
+          fixed-position premium chrome overlaid on the left edge, exactly as the
+          previous floating Back/Save controls were overlays. Save trigger reuses
+          the existing onClick verbatim; Back reuses the existing exit handler. */}
+      {immersive && (() => {
+        const scoreStr = score ? `${score.a}:${score.b}` : '0:0';
+        const initials = (nm) => (nm || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 3).toUpperCase() || '?';
+        const ScoreSide = ({ team, color }) => (
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+            <div style={{
+              width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: `${color}22`, border: `1px solid ${color}55`, boxShadow: ELEV.innerTop,
+              fontFamily: FONT, fontSize: 12, fontWeight: 800, color,
+            }}>{initials(team?.name)}</div>
+            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textDim, textAlign: 'center', lineHeight: 1.1, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name || '—'}</span>
+          </div>
+        );
+        return (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, bottom: 0, width: 176, zIndex: 50,
+          display: 'flex', flexDirection: 'column',
+          background: ELEV.sunken, borderRight: `1px solid ${ELEV.hairlineStrong}`,
+          boxShadow: ELEV.shadow2,
+          paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
+          paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
+        }}>
+          {/* header — back + LIVE pill */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px 10px' }}>
+            <div onClick={() => {
+              // B1 / § 82 — see paired comment on the portrait Back handler above.
+              exitEditMode();
+              navigate(reviewUrl);
+            }} style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, color: COLORS.accent, cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span style={{
+              fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: '.5px', padding: '4px 8px', borderRadius: RADIUS.sm,
+              background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
+              color: match?.status === 'closed' ? COLORS.success : COLORS.black,
+              boxShadow: match?.status === 'closed' ? 'none' : COLORS.accentGlow,
+            }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</span>
+          </div>
+          {/* mini scoreboard */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px 12px', borderBottom: `1px solid ${ELEV.hairline}`, marginBottom: 12 }}>
+            <ScoreSide team={teamA} color={TEAM_COLORS.A} />
+            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: COLORS.text, flexShrink: 0, letterSpacing: '-.5px', ...TNUM }}>{scoreStr}</span>
+            <ScoreSide team={teamB} color={TEAM_COLORS.B} />
+          </div>
+          {/* spacer — field carries the live capture; rail stays minimal chrome */}
+          <div style={{ flex: 1, minHeight: 0 }} />
+          {/* Save CTA — pinned bottom */}
+          <div style={{ padding: '0 12px' }}>
+            <Btn variant="accent" onClick={() => setSaveSheetOpen(true)}
+              style={{
+                width: '100%', justifyContent: 'center', minHeight: 48, fontSize: FONT_SIZE.base, fontWeight: 800,
+                borderRadius: RADIUS.lg, background: COLORS.accentGradient, color: COLORS.black, border: 'none',
+                boxShadow: `${ELEV.innerTop}, ${COLORS.accentGlow}`,
+              }}>
+              ✓ Save point
+            </Btn>
+          </div>
         </div>
-      )}
-      {immersive && (
-        <div style={{ position: 'fixed', bottom: 12, right: 12, display: 'flex', gap: 8, zIndex: 50 }}>
-          <Btn variant="accent" size="sm" onClick={() => setSaveSheetOpen(true)}
-            style={{ padding: '10px 20px', fontSize: FONT_SIZE.sm, fontWeight: 700, backdropFilter: 'blur(8px)' }}>
-            ✓ Save
-          </Btn>
-        </div>
-      )}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        );
+      })()}
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingLeft: immersive ? 176 : 0 }}>
 
         {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
         <div style={{ position: 'relative' }}>
@@ -2695,14 +2750,20 @@ export default function MatchPage() {
         <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} heroPlayerIds={heroPlayerIds} />
       )}
 
-      {/* ═══ BOTTOM BAR ═══ */}
+      {/* ═══ BOTTOM BAR ═══ (Stage 3 reskin: style-only — premium control bar
+          backing the Save trigger; onClick + label untouched) */}
       {!immersive && (
           <div style={{
             display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px',
-            background: COLORS.surface, borderTop: `1px solid ${COLORS.border}`,
+            background: ELEV.surface, borderTop: `1px solid ${ELEV.hairlineStrong}`,
+            boxShadow: ELEV.innerTop,
             paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
           }}>
-            <Btn variant="accent" style={{ width: '100%', padding: '14px 0', fontSize: FONT_SIZE.base, fontWeight: 700 }}
+            <Btn variant="accent" style={{
+              width: '100%', padding: '14px 0', minHeight: 52, fontSize: FONT_SIZE.base, fontWeight: 800,
+              borderRadius: RADIUS.lg, background: COLORS.accentGradient, color: COLORS.black, border: 'none',
+              boxShadow: `${ELEV.innerTop}, ${COLORS.accentGlow}`,
+            }}
               onClick={quickShotPlayer != null ? () => setQuickShotPlayer(null) : () => setSaveSheetOpen(true)}>
               {quickShotPlayer != null ? '✓ Done' : '✓ Save point'}
             </Btn>
