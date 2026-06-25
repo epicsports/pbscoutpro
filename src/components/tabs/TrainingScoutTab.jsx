@@ -7,8 +7,10 @@ import { Btn, SectionLabel, EmptyState, Modal, Select, ConfirmModal } from '../u
 import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFirestore';
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';
-import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH } from '../../utils/theme';
-import { SQUAD_MAP as SQUAD_META, getSquadName } from '../../utils/squads';
+import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, TNUM } from '../../utils/theme';
+import { SQUAD_MAP as SQUAD_META, getSquadName, squadColor } from '../../utils/squads';
+import Crest from '../Crest';
+import LiveMatchTile from '../LiveMatchTile';
 import { createEmptyPointData, createPointData } from '../../utils/pointFactory';
 import { makeMeta } from '../../utils/observationMeta';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -438,12 +440,21 @@ export default function TrainingScoutTab({ trainingId, training }) {
   );
 }
 
-// ─── Match card — same visual language as tournament MatchCard ───
+// ─── Match card — the canonical split-tap live tile (shared LiveMatchTile) ───
+// Renders through the SAME LiveMatchTile primitive as the tournament MatchCard,
+// so the scout's training "Mecze" tiles match the tournament tiles exactly.
+// Squad sides carry a Crest (squad color + name initials) instead of a team
+// logo; the tap routing stays the training matchup-scout callbacks (home/away/
+// both → setQuickLogMatchupId in the parent), NOT tournament `?scout=` nav.
 function MatchupCard({ matchup, training, squadRoster, liveScore, onOpen, onOpenHome, onOpenAway, onOpenBoth, active }) {
   const { t } = useLanguage();
-  // § 53: name via getSquadName (training-aware), color via SQUAD_META (fixed per key).
-  const home = { name: getSquadName(training, matchup.homeSquad), color: SQUAD_META[matchup.homeSquad]?.color || COLORS.textMuted };
-  const away = { name: getSquadName(training, matchup.awaySquad), color: SQUAD_META[matchup.awaySquad]?.color || COLORS.textMuted };
+  // § 53: name via getSquadName (training-aware), color via squadColor (fixed per key).
+  const homeName = getSquadName(training, matchup.homeSquad);
+  const awayName = getSquadName(training, matchup.awaySquad);
+  // Crest takes { color, short } — color = squad identity color (never amber),
+  // short = 2-letter initials derived from the (custom-aware) squad name.
+  const homeTeam = { color: squadColor(matchup.homeSquad), short: homeName.slice(0, 2).toUpperCase() };
+  const awayTeam = { color: squadColor(matchup.awaySquad), short: awayName.slice(0, 2).toUpperCase() };
   // Hotfix #6 Bug 1: prefer live score (computed via useLiveMatchScores in
   // parent) over stored matchup.scoreA/B which is 0:0 during LIVE play
   // per Brief 9 Bug 2 Option A. Closed matchups skip liveScore in parent
@@ -456,67 +467,53 @@ function MatchupCard({ matchup, training, squadRoster, liveScore, onOpen, onOpen
   const handleRight = (e) => { e.stopPropagation(); active ? onOpenAway?.() : onOpen?.(); };
   const handleCenter = (e) => { e.stopPropagation(); active ? onOpenBoth?.() : onOpen?.(); };
 
-  return (
-    <div style={{
-      display: 'flex', marginBottom: SPACE.xs,
-      background: COLORS.surfaceDark,
-      border: `1px solid ${active ? `${COLORS.accent}15` : COLORS.surfaceLight}`,
-      borderRadius: 12, overflow: 'hidden',
-      opacity: active ? 1 : 0.5, minHeight: 62,
-    }}>
-      {/* Home */}
-      <div onClick={handleLeft} style={{
-        flex: 1, minWidth: 0, padding: '12px 14px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+  const SquadZone = ({ name, team, align }) => (
+    <div style={{ textAlign: align }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 7, minWidth: 0,
+        justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
       }}>
-        <div style={{
+        {align !== 'right' && <Crest team={team} size={22} />}
+        <span style={{
           fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{home.name}</div>
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
-          {active ? t('tap_to_scout') : ''}
-        </div>
+        }}>{name}</span>
+        {align === 'right' && <Crest team={team} size={22} />}
       </div>
-      <div style={{ width: 1, background: COLORS.surfaceLight }} />
-      {/* Score center */}
-      <div onClick={handleCenter} style={{
-        flex: '0 0 auto', minWidth: 82, padding: '10px 12px',
-        background: COLORS.surfaceDark, cursor: 'pointer',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        WebkitTapHighlightColor: 'transparent',
-      }}>
-        {hasScore ? (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1 }}>
-            {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
-          </div>
-        ) : (
-          <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.borderLight, lineHeight: 1 }}>
-            —<span style={{ color: COLORS.textMuted }}>:</span>—
-          </div>
-        )}
-        <div style={{
-          fontFamily: FONT, fontSize: 10, fontWeight: 700, marginTop: 4, letterSpacing: '.5px',
-          color: active ? COLORS.accent : COLORS.textMuted,
-        }}>
-          {active ? 'LIVE' : 'FINAL'}
-        </div>
-      </div>
-      <div style={{ width: 1, background: COLORS.surfaceLight }} />
-      {/* Away */}
-      <div onClick={handleRight} style={{
-        flex: 1, minWidth: 0, padding: '12px 14px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'flex-end',
-        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-      }}>
-        <div style={{
-          fontFamily: FONT, fontSize: 15, fontWeight: 600, color: COLORS.text,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{away.name}</div>
-        <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
-          {active ? t('tap_to_scout') : ''}
-        </div>
+      <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 500, color: COLORS.textMuted, marginTop: 3 }}>
+        {active ? t('tap_to_scout') : ''}
       </div>
     </div>
+  );
+
+  return (
+    <LiveMatchTile
+      live={active}
+      dimmed={!active}
+      onLeft={handleLeft}
+      onCenter={handleCenter}
+      onRight={handleRight}
+      left={<SquadZone name={homeName} team={homeTeam} align="left" />}
+      right={<SquadZone name={awayName} team={awayTeam} align="right" />}
+      center={(
+        <>
+          {hasScore ? (
+            <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1, ...TNUM }}>
+              {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
+            </div>
+          ) : (
+            <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.borderLight, lineHeight: 1, ...TNUM }}>
+              —<span style={{ color: COLORS.textMuted }}>:</span>—
+            </div>
+          )}
+          <div style={{
+            fontFamily: FONT, fontSize: 10, fontWeight: 700, marginTop: 4, letterSpacing: '.5px',
+            color: active ? COLORS.accent : COLORS.textMuted,
+          }}>
+            {active ? 'LIVE' : 'FINAL'}
+          </div>
+        </>
+      )}
+    />
   );
 }

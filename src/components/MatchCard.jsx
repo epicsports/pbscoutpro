@@ -1,7 +1,8 @@
 import React from 'react';
-import { COLORS, FONT, SPACE, ELEV, TNUM } from '../utils/theme';
+import { COLORS, FONT, TNUM } from '../utils/theme';
 import { dayShort } from '../utils/divisionAliases';
 import TeamBadge from './TeamBadge';
+import LiveMatchTile from './LiveMatchTile';
 
 // Schedule pill format helper (Brief 2026-05-13 Stage 3).
 // Output examples:
@@ -91,15 +92,12 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, getTea
     navigate(`/tournament/${tournamentId}/match/${m.id}`);
   };
 
-  const TeamZone = ({ scoutedId, teamName, team, won, lost, align }) => (
-    <div onClick={handleScout(scoutedId)}
-      style={{
-        flex: 1, minWidth: 0,
-        padding: '12px 14px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'center',
-        cursor: 'pointer',
-        textAlign: align,
-      }}>
+  // Zone BODY only — the tap wrapper (flex:1 · padding · column · cursor) now
+  // lives in the shared LiveMatchTile primitive. `textAlign:align` is kept on
+  // this body wrapper so the right side's sub-line stays right-aligned exactly
+  // as before (the primitive's zone is alignment-agnostic).
+  const TeamZoneBody = ({ teamName, team, won, lost, align }) => (
+    <div style={{ textAlign: align }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 7, minWidth: 0,
         justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
@@ -130,28 +128,17 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, getTea
   );
 
   return (
-    <div style={{
-      display: 'flex',
-      marginBottom: SPACE.xs,
-      background: ELEV.surface,
-      border: `1px solid ${isLive ? `${COLORS.accent}40` : ELEV.hairline}`,
-      borderRadius: 14,
-      overflow: 'hidden',
-      opacity: isCompleted ? 0.55 : 1,
-      minHeight: 62,
-      boxShadow: ELEV.shadow1,
-    }}>
-      <TeamZone scoutedId={m.teamA} teamName={tA} team={teamA} won={winnerA} lost={winnerB} align="left" />
-      <div style={{ width: 1, background: ELEV.hairline }} />
-      <div onClick={handleReview}
-        style={{
-          flex: '0 0 auto', minWidth: 82,
-          padding: '10px 12px',
-          background: ELEV.sunken,
-          cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        }}>
-        {hasScore ? (
+    <LiveMatchTile
+      live={isLive}
+      dimmed={isCompleted}
+      onLeft={handleScout(m.teamA)}
+      onCenter={handleReview}
+      onRight={handleScout(m.teamB)}
+      left={<TeamZoneBody teamName={tA} team={teamA} won={winnerA} lost={winnerB} align="left" />}
+      right={<TeamZoneBody teamName={tB} team={teamB} won={winnerB} lost={winnerA} align="right" />}
+      center={(
+        <>
+          {hasScore ? (
           <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: COLORS.text, lineHeight: 1, ...TNUM }}>
             {sA}<span style={{ color: COLORS.textMuted }}>:</span>{sB}
           </div>
@@ -190,9 +177,8 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, getTea
           }
           return null;
         })()}
-      </div>
-      <div style={{ width: 1, background: ELEV.hairline }} />
-      <TeamZone scoutedId={m.teamB} teamName={tB} team={teamB} won={winnerB} lost={winnerA} align="right" />
-    </div>
+        </>
+      )}
+    />
   );
 }
