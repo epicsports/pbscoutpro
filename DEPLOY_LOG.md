@@ -1,5 +1,16 @@
 # Deploy Log
 
+## 2026-06-25 — [REDESIGN/Tier-2] Live-scoring review → TabletLiveScoringPremium 1:1 (Jacek design-sync, night)
+**App (auto-deploy, e2e-gated). No data/capture path.** Merge `feat/live-review-rebuild` (4 files). Rebuilt the LANDSCAPE review to the prototype after Jacek showed it was "mega inny" (the audit/Plan-agent had falsely claimed alignment — they compared code without the visual ground-truth).
+- **372px LEFT sidebar** (prototype `TabletLiveScoringPremium`): Back + NA ŻYWO + point-tag · scoreboard (TeamBadge46 + name | 40px score | …) · **Warstwa A/B** layer toggle · "Punkty" · **detailed PointRows** (PKT block + 2 stacked SideZones: TeamBadge22 + short + ✓/`scout: {name}` + pencil, winner-color left-border, select-for-anim) · **Kompletność** bars · Zakończ mecz. **RIGHT panel:** attached phase tabs top-left + bottom **animation scrubber** ("Animacja punktu N").
+- **Replaces the Stage-2b float-chip** (a mis-fire — the prototype wants attached tabs). CanvasRailLayout review path retired.
+- **Real prod data ONLY** (no fabrication): `scoutShortName`/`outcome`→winColor/`hmVisibility`→Warstwa/`phasePin`→tabs/`replayStage`→anim/real per-team scouted %. Field = real `HeatmapCanvas` (kept), scrubber = discrete node-snap (timeline[] is keyframe-not-continuous).
+- **READ-SIDE: zero capture/save-path changes** (verified line-by-line: no savePoint/makeTeamData/buildTimeline/useCaptureDraft/InteractiveCanvas-prop edits).
+- **Caught + fixed a regression:** the rebuild dropped the **training Quick-CTA** in landscape → restored (conditional on isTraining) + regression test ("don't break anything").
+- **PROOF:** build + precommit green; **full e2e 116/116** incl. capture suite (capture-parity/concurrent-merge/offline-sync) + updated review specs (phase-view/matchreview-rail, truthful).
+- **Smoke (Jacek, landscape):** review = left sidebar (scoreboard/Warstwa/PointRows/completeness) + field with top phase tabs + bottom point-animation scrubber — matches IMG_0151.
+- **Methodology fix:** stop trusting the name-search audit; compare prototype screenshot ↔ prod structurally, prototype = spec. Next: match list (HeroLive+Fixture), then the rest.
+
 ## 2026-06-25 — [BUGFIX+RULES/Tier-1] Avatar save broken — firestore self-update whitelist (night)
 **App (auto-deploy) + `firestore:rules` DEPLOY (separate, done via SA key).** Merge `fix/avatar-save-rule` (3 files) + `firebase deploy --only firestore:rules`.
 - **Root cause:** `firestore.rules` `users/{uid}` self-update `allow update` had `affectedKeys().hasOnly(['displayName','email','linkSkippedAt'])`. `setUserAvatarSpec` writes `{avatarSpec, updatedAt}` → **silent permission-denied** → the pixel-avatar builder shipped (Stage C) but avatars NEVER saved. (The rule's own comment warned: "missing one results in silent permission-denied at runtime.")
