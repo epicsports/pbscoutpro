@@ -2197,6 +2197,11 @@ const T = {
     /* MatchCard tap hints */
     matchcard_tap_view:              'dotknij aby zobaczyć',
     matchcard_tap_scout:             'dotknij aby scoutować',
+    /* MatchCard — redesigned hero/fixture card (1:1 prototype) */
+    matchcard_scout_cta:             'Scoutuj →',
+    matchcard_preview:               'Podgląd meczu',
+    matchcard_field:                 (f) => `POLE ${f}`,
+    matchcard_final:                 'FINAŁ',
     /* CoachTabContent — repair scouted divisions */
     coach_repairing:                 'Naprawianie…',
     coach_repair_divisions:          'Napraw dywizje zascoutowanych',
@@ -4427,6 +4432,11 @@ const T = {
     /* MatchCard tap hints */
     matchcard_tap_view:              'tap to view',
     matchcard_tap_scout:             'tap to scout',
+    /* MatchCard — redesigned hero/fixture card (1:1 prototype) */
+    matchcard_scout_cta:             'Scout →',
+    matchcard_preview:               'Match preview',
+    matchcard_field:                 (f) => `FIELD ${f}`,
+    matchcard_final:                 'FINAL',
     /* CoachTabContent — repair scouted divisions */
     coach_repairing:                 'Repairing…',
     coach_repair_divisions:          'Repair scouted divisions',
