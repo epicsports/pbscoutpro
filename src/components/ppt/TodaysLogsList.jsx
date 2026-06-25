@@ -68,6 +68,36 @@ function detailShort(slug, t) {
 // "you-have-to-know-the-layout-convention" stacked render with a 2-col
 // grid: labels left (uppercase 8px), values right. `shotsText` helper at
 // L57-61 untouched — null→skip and []→none paths still self-describe.
+// Normalize for side-vs-bunker dedup compare (CD #1: hide "· strona X" when the
+// side name just repeats the bunker name, e.g. bunker "Snake" on side Snake).
+function normName(s) {
+  return (s || '').toString().trim().toLowerCase();
+}
+
+// CD redesign (2026-06): VERTICAL label→value layout. Values (long outcomes,
+// shot chains, fall reasons) WRAP instead of horizontal-squeeze/ellipsis. Card
+// header = "Punkt #N" + a status pill (dot + outcome, semantic color, wraps).
+// label→value rows: fixed 70px uppercase label gutter, value flex+break-word.
+// UPADEK row renders only when an outcomeDetail exists. Side label hidden when
+// it duplicates the bunker name.
+function LabelRow({ label, children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
+      <div style={{
+        width: 70, flexShrink: 0, paddingTop: 1,
+        fontFamily: FONT, fontSize: 8.5, fontWeight: 700,
+        letterSpacing: 0.5, textTransform: 'uppercase',
+        color: COLORS.textMuted, lineHeight: 1.3,
+      }}>{label}</div>
+      <div style={{
+        flex: 1, minWidth: 0,
+        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
+        color: COLORS.text, lineHeight: 1.35, wordBreak: 'break-word',
+      }}>{children}</div>
+    </div>
+  );
+}
+
 export function LogRow({ row, ordinal, isPending, eventLabel, onMenu }) {
   const { t } = useLanguage();
   const breakout = row.breakout || {};
@@ -81,27 +111,25 @@ export function LogRow({ row, ordinal, isPending, eventLabel, onMenu }) {
   const showEyebrow = eventLabel !== undefined;
   const isOrphanEvent = eventLabel === null;
 
+  // Side name for the ROZBIEG row — hidden when it just repeats the bunker name.
+  const sideName = breakout.side ? sideLabel(breakout.side, t) : '';
+  const showSideName = !!sideName && normName(sideName) !== normName(breakout.bunker);
+  const fallText = row.outcomeDetail ? detailShort(row.outcomeDetail, t) : '';
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
+      display: 'flex', alignItems: 'flex-start', gap: 10,
       padding: '12px 14px', marginBottom: 8,
       background: COLORS.surfaceDark,
       border: `1px solid ${COLORS.border}`,
       borderRadius: RADIUS.lg,
       opacity: isPending ? 0.85 : 1,
     }}>
-      <div style={{
-        width: 28, textAlign: 'right',
-        fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-        color: COLORS.textMuted, flexShrink: 0,
-      }}>
-        #{ordinal}
-      </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         {showEyebrow && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 5,
-            marginBottom: 7,
+            marginBottom: 8,
             fontFamily: FONT,
             // Non-orphan: uppercase eyebrow per § 27 secondary-label spec.
             // Orphan: italic body-case (no uppercase) so it reads as a
@@ -127,66 +155,74 @@ export function LogRow({ row, ordinal, isPending, eventLabel, onMenu }) {
             )}
           </div>
         )}
+
+        {/* Card header — ordinal + status pill (dot + outcome, wraps). */}
         <div style={{
-          display: 'grid', gridTemplateColumns: 'auto 1fr',
-          columnGap: 10, rowGap: 4, alignItems: 'center',
-          minWidth: 0,
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          gap: 10, marginBottom: 10, minWidth: 0,
         }}>
-          {/* Row 1 — Rozbieg label + breakout content (verbatim from pre-B10). */}
-          <div style={{
-            fontFamily: FONT, fontSize: 8, fontWeight: 700,
-            letterSpacing: 0.5, textTransform: 'uppercase',
-            color: COLORS.textMuted, whiteSpace: 'nowrap',
-          }}>
-            {t('logrow_breakout')}
-          </div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600,
-            color: COLORS.text, minWidth: 0,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {breakout.side && <SideTag side={breakout.side} />}
-            <span>{breakout.bunker || '—'}</span>
-            <span style={{ color: COLORS.textMuted }}> · </span>
-            <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>
-              {variantLabel(breakout.variant, t)}
-            </span>
-          </div>
-          {/* Row 2 — Strzały label + shotsText + outcomeDetail (verbatim from pre-B10). */}
-          <div style={{
-            fontFamily: FONT, fontSize: 8, fontWeight: 700,
-            letterSpacing: 0.5, textTransform: 'uppercase',
-            color: COLORS.textMuted, whiteSpace: 'nowrap',
-          }}>
-            {t('logrow_shots')}
-          </div>
-          <div style={{
-            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500,
-            color: COLORS.textMuted, minWidth: 0,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {shotsText}
-            {row.outcomeDetail && ` · ${detailShort(row.outcomeDetail, t)}`}
+          <span style={{
+            fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800,
+            color: COLORS.text, flexShrink: 0,
+          }}>{t('logrow_point_n', ordinal)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {isPending && (
+              <Cloud size={14} strokeWidth={2} color={COLORS.accent} style={{ flexShrink: 0 }} />
+            )}
+            {outcome && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                maxWidth: '64%',
+                padding: '3px 9px', borderRadius: RADIUS.sm,
+                background: `${outcomeColor}18`,
+                border: `1px solid ${outcomeColor}40`,
+                color: outcomeColor,
+                fontFamily: FONT, fontSize: 10, fontWeight: 800,
+                textTransform: 'uppercase', letterSpacing: 0.4,
+                lineHeight: 1.25,
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: outcomeColor, flexShrink: 0,
+                }} />
+                <span style={{ wordBreak: 'break-word' }}>{outcomeChipLabel(outcome, t)}</span>
+              </span>
+            )}
           </div>
         </div>
+
+        {/* label→value rows — vertical, wrapping. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+          <LabelRow label={t('logrow_breakout')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {breakout.side && <SideTag side={breakout.side} />}
+              <span style={{ fontWeight: 600 }}>{breakout.bunker || '—'}</span>
+              {showSideName && (
+                <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>
+                  · {t('logrow_side_prefix', sideName)}
+                </span>
+              )}
+            </span>
+          </LabelRow>
+
+          <LabelRow label={t('logrow_play')}>
+            <span style={{ color: COLORS.textDim, fontWeight: 500 }}>
+              {variantLabel(breakout.variant, t)}
+            </span>
+          </LabelRow>
+
+          <LabelRow label={t('logrow_shots')}>
+            <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{shotsText}</span>
+          </LabelRow>
+
+          {fallText && (
+            <LabelRow label={t('logrow_fall')}>
+              <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{fallText}</span>
+            </LabelRow>
+          )}
+        </div>
       </div>
-      {isPending && (
-        <Cloud size={14} strokeWidth={2} color={COLORS.accent} style={{ flexShrink: 0 }} />
-      )}
-      {outcome && (
-        <span style={{
-          padding: '3px 8px', borderRadius: RADIUS.sm,
-          background: `${outcomeColor}18`,
-          border: `1px solid ${outcomeColor}40`,
-          color: outcomeColor,
-          fontFamily: FONT, fontSize: 10, fontWeight: 800,
-          textTransform: 'uppercase', letterSpacing: 0.4,
-          flexShrink: 0,
-        }}>
-          {outcomeChipLabel(outcome, t)}
-        </span>
-      )}
+
       {/* § self-log point delete — §7 ⋮ idiom. Rendered only for deletable rows
           (gated by the parent: linked + persisted + NOT propagated). */}
       {onMenu && (
@@ -227,7 +263,15 @@ function Toast({ message, onDismiss }) {
 // Single-sourced HERE for this view; the exported LogRow stays intact for the
 // PlayerStatsPage "Samoocena" section (different context). Same row data
 // (breakout / shots / outcome / delete-⋮ / pending), premium ELEV chrome.
-const PLLABEL = { fontFamily: FONT, fontSize: 10.5, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '1px', textTransform: 'uppercase', flexShrink: 0 };
+//
+// CD redesign (2026-06): adopts the LogRow vertical label→value layout (read
+// LogRow :101 as the reference) — values WRAP instead of horizontal-squeeze /
+// ellipsis. Header = "Punkt #N" + status pill (dot + outcome, semantic colour,
+// wraps). Rows via the shared LabelRow helper. UPADEK row only when an
+// outcomeDetail exists; side label hidden when it duplicates the bunker name.
+// PRESERVES the premium extras vs LogRow: ELEV chrome (surface/hairline/shadow,
+// NOT downgraded to surfaceDark), the `wide` variant, pending opacity + cloud,
+// and the ⋮ onMenu delete affordance.
 function PremiumLogCard({ row, ordinal, isPending, onMenu, t, wide }) {
   const breakout = row.breakout || {};
   const outcome = row.outcome;
@@ -237,23 +281,88 @@ function PremiumLogCard({ row, ordinal, isPending, onMenu, t, wide }) {
     : (row.shots || []).length === 0
       ? t('ppt_shots_none')
       : row.shots.map(s => s.bunker).join(' → ');
+
+  // Side name for the ROZBIEG row — hidden when it just repeats the bunker name.
+  const sideName = breakout.side ? sideLabel(breakout.side, t) : '';
+  const showSideName = !!sideName && normName(sideName) !== normName(breakout.bunker);
+  const fallText = row.outcomeDetail ? detailShort(row.outcomeDetail, t) : '';
+
   return (
-    <div style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, borderRadius: 15, boxShadow: ELEV.shadow1, padding: wide ? '17px 18px' : '15px 14px', display: 'flex', alignItems: 'center', gap: wide ? 16 : 12, opacity: isPending ? 0.85 : 1, marginBottom: 11 }}>
-      <span style={{ fontFamily: FONT, fontSize: wide ? 17 : 15, fontWeight: 800, color: COLORS.textMuted, minWidth: wide ? 30 : 26, flexShrink: 0, textAlign: 'right', ...TNUM }}>#{ordinal}</span>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: wide ? 9 : 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: wide ? 10 : 8, minWidth: 0 }}>
-          <span style={{ ...PLLABEL, minWidth: wide ? 58 : 54 }}>{t('logrow_breakout')}</span>
-          {breakout.side && <SideTag side={breakout.side} />}
-          <b style={{ fontFamily: FONT, fontSize: wide ? 17 : 16, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{breakout.bunker || '—'}</b>
-          {breakout.variant && <span style={{ fontFamily: FONT, fontSize: wide ? 14 : 13.5, color: COLORS.textMuted, whiteSpace: 'nowrap' }}>· {variantLabel(breakout.variant, t)}</span>}
+    <div style={{
+      background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
+      borderRadius: 15, boxShadow: ELEV.shadow1,
+      padding: wide ? '17px 18px' : '15px 14px',
+      display: 'flex', alignItems: 'flex-start', gap: 10,
+      opacity: isPending ? 0.85 : 1, marginBottom: 11,
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Card header — ordinal + status pill (dot + outcome, wraps). */}
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          gap: 10, marginBottom: wide ? 12 : 10, minWidth: 0,
+        }}>
+          <span style={{
+            fontFamily: FONT, fontSize: wide ? 16 : FONT_SIZE.sm, fontWeight: 800,
+            color: COLORS.text, flexShrink: 0,
+          }}>{t('logrow_point_n', ordinal)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            {isPending && (
+              <Cloud size={14} strokeWidth={2} color={COLORS.accent} style={{ flexShrink: 0 }} />
+            )}
+            {outcome && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                maxWidth: '64%',
+                padding: '3px 9px', borderRadius: RADIUS.sm,
+                background: `${oc}18`,
+                border: `1px solid ${oc}40`,
+                color: oc,
+                fontFamily: FONT, fontSize: 10, fontWeight: 800,
+                textTransform: 'uppercase', letterSpacing: 0.4,
+                lineHeight: 1.25,
+              }}>
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: oc, flexShrink: 0,
+                }} />
+                <span style={{ wordBreak: 'break-word' }}>{outcomeChipLabel(outcome, t)}</span>
+              </span>
+            )}
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: wide ? 10 : 8, minWidth: 0 }}>
-          <span style={{ ...PLLABEL, minWidth: wide ? 58 : 54 }}>{t('logrow_shots')}</span>
-          <span style={{ fontFamily: FONT, fontSize: wide ? 15 : 14, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{shotsText}{row.outcomeDetail && ` · ${detailShort(row.outcomeDetail, t)}`}</span>
+
+        {/* label→value rows — vertical, wrapping. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+          <LabelRow label={t('logrow_breakout')}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              {breakout.side && <SideTag side={breakout.side} />}
+              <span style={{ fontWeight: 600 }}>{breakout.bunker || '—'}</span>
+              {showSideName && (
+                <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>
+                  · {t('logrow_side_prefix', sideName)}
+                </span>
+              )}
+            </span>
+          </LabelRow>
+
+          <LabelRow label={t('logrow_play')}>
+            <span style={{ color: COLORS.textDim, fontWeight: 500 }}>
+              {variantLabel(breakout.variant, t)}
+            </span>
+          </LabelRow>
+
+          <LabelRow label={t('logrow_shots')}>
+            <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{shotsText}</span>
+          </LabelRow>
+
+          {fallText && (
+            <LabelRow label={t('logrow_fall')}>
+              <span style={{ color: COLORS.textDim, fontWeight: 500 }}>{fallText}</span>
+            </LabelRow>
+          )}
         </div>
       </div>
-      {isPending && <Cloud size={14} strokeWidth={2} color={COLORS.accent} style={{ flexShrink: 0 }} />}
-      {outcome && <span style={{ fontFamily: FONT, fontSize: wide ? 12.5 : 12, fontWeight: 800, color: oc, border: `1px solid ${oc}66`, background: `${oc}16`, borderRadius: wide ? 9 : 8, padding: wide ? '7px 13px' : '6px 11px', flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.4 }}>{outcomeChipLabel(outcome, t)}</span>}
+
       {onMenu && <MoreBtn onClick={(e) => { e.stopPropagation(); onMenu(); }} />}
     </div>
   );

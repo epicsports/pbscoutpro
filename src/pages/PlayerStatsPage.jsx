@@ -1155,7 +1155,7 @@ export default function PlayerStatsPage() {
               <div>
                 <SectionHeader t={t} source="scout+self" icon="compass" title={t('stats_zazwyczaj_gra_po_stronie')} />
                 <RdSplitBar
-                  names={{ snake: 'Snake', center: 'Centrum', dorito: 'Dorito' }}
+                  names={{ snake: 'Snake', center: t('side_center_label'), dorito: 'Dorito' }}
                   unit="pkt"
                   items={[
                     { side: 'snake',  pct: Math.round((sides.Snake  / sides.total) * 100), n: sides.Snake },
@@ -1188,7 +1188,7 @@ export default function PlayerStatsPage() {
                 <SectionHeader t={t} source="scout+self" icon="target" title={t('stats_na_breaku_strzela')} />
                 <RdStack items={[
                   { side: 'snake',  k: 'Snake',   pct: stats.breakShots.snake },
-                  { side: 'center', k: 'Centrum', pct: stats.breakShots.center },
+                  { side: 'center', k: t('side_center_label'), pct: stats.breakShots.center },
                   { side: 'dorito', k: 'Dorito',  pct: stats.breakShots.dorito },
                 ]} />
               </div>
@@ -1200,7 +1200,7 @@ export default function PlayerStatsPage() {
                 <SectionHeader t={t} source="scout-only" icon="footsteps" title={t('stats_na_pierwszej_przeszkodzie')} />
                 <RdStack items={[
                   { side: 'snake',  k: 'Snake',   pct: stats.obstacleShots.snake },
-                  { side: 'center', k: 'Centrum', pct: stats.obstacleShots.center },
+                  { side: 'center', k: t('side_center_label'), pct: stats.obstacleShots.center },
                   { side: 'dorito', k: 'Dorito',  pct: stats.obstacleShots.dorito },
                 ]} />
               </div>
@@ -1407,7 +1407,7 @@ export default function PlayerStatsPage() {
         {sides.total > 0 && (
           <WidePanel t={t} source="scout+self" icon="compass" title={t('stats_zazwyczaj_gra_po_stronie')}>
             <RdSplitBar
-              names={{ snake: 'Snake', center: 'Centrum', dorito: 'Dorito' }}
+              names={{ snake: 'Snake', center: t('side_center_label'), dorito: 'Dorito' }}
               unit="pkt"
               items={[
                 { side: 'snake',  pct: Math.round((sides.Snake  / sides.total) * 100), n: sides.Snake },
@@ -1431,7 +1431,7 @@ export default function PlayerStatsPage() {
           <WidePanel t={t} source="scout+self" icon="target" title={t('stats_na_breaku_strzela')}>
             <RdStack items={[
               { side: 'snake',  k: 'Snake',   pct: stats.breakShots.snake },
-              { side: 'center', k: 'Centrum', pct: stats.breakShots.center },
+              { side: 'center', k: t('side_center_label'), pct: stats.breakShots.center },
               { side: 'dorito', k: 'Dorito',  pct: stats.breakShots.dorito },
             ]} />
           </WidePanel>
@@ -1441,7 +1441,7 @@ export default function PlayerStatsPage() {
           <WidePanel t={t} source="scout-only" icon="footsteps" title={t('stats_na_pierwszej_przeszkodzie')}>
             <RdStack items={[
               { side: 'snake',  k: 'Snake',   pct: stats.obstacleShots.snake },
-              { side: 'center', k: 'Centrum', pct: stats.obstacleShots.center },
+              { side: 'center', k: t('side_center_label'), pct: stats.obstacleShots.center },
               { side: 'dorito', k: 'Dorito',  pct: stats.obstacleShots.dorito },
             ]} />
           </WidePanel>

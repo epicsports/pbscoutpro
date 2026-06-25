@@ -389,7 +389,7 @@ const T = {
     side_zone_only:    '(tylko strefy, brak dokładnych danych)',
     side_dorito_label: 'Dorito',
     side_snake_label:  'Snake',
-    side_center_label: 'Centrum',
+    side_center_label: 'Środek',
 
     /* Side-tendency classification */
     side_class_base_label:        'Grają blisko bazy',
@@ -1331,6 +1331,10 @@ const T = {
     /* ─── B10 LogRow eyebrow + label gutter ─────────── */
     logrow_breakout:             'Rozbieg',
     logrow_shots:                'Strzały',
+    logrow_play:                 'Zagranie',
+    logrow_fall:                 'Upadek',
+    logrow_point_n:              (n) => `Punkt #${n}`,
+    logrow_side_prefix:          (side) => `strona ${side || ''}`.trim(),
     logrow_event_prefix:         'Trening',
     logrow_no_event:             'Bez treningu',
 
@@ -3361,6 +3365,10 @@ const T = {
     /* ─── B10 LogRow eyebrow + label gutter ─────────── */
     logrow_breakout:               'Breakout',
     logrow_shots:                  'Shots',
+    logrow_play:                   'Play',
+    logrow_fall:                   'Fall',
+    logrow_point_n:                (n) => `Point #${n}`,
+    logrow_side_prefix:            (side) => `${side || ''} side`.trim(),
     logrow_event_prefix:           'Training',
     logrow_no_event:               'No training',
 

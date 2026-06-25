@@ -129,9 +129,9 @@ export default function PlayerHeroCard({ player, playerTeam, isHero, stats, matc
   const tc = playerTeam?.color || COLORS.accent;
   const hs = aggregateBySide(stats.positions);
   const sideMeta = [
-    { k: 'Snake',  label: t('zone_snake'),  n: hs.Snake,  color: ZONE_COLORS.snake },
-    { k: 'Center', label: t('zone_center'), n: hs.Center, color: ZONE_COLORS.center },
-    { k: 'Dorito', label: t('zone_dorito'), n: hs.Dorito, color: ZONE_COLORS.dorito },
+    { k: 'Snake',  label: t('side_snake_label'),  n: hs.Snake,  color: ZONE_COLORS.snake },
+    { k: 'Center', label: t('side_center_label'), n: hs.Center, color: ZONE_COLORS.center },
+    { k: 'Dorito', label: t('side_dorito_label'), n: hs.Dorito, color: ZONE_COLORS.dorito },
   ].sort((a, b) => b.n - a.n);
   const topSide = sideMeta[0];
   const topSidePct = hs.total > 0 && topSide.n > 0 ? Math.round((topSide.n / hs.total) * 100) : null;

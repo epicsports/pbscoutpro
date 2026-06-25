@@ -46,3 +46,6 @@ ds-bundle/
 data-export/
 design-review/
 scripts/diag/catalog-csv-export.cjs
+TeamLogos/
+scraper/
+scripts/diag/find-missing-i18n.cjs
