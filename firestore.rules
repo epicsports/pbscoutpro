@@ -185,7 +185,7 @@ service cloud.firestore {
       allow update: if request.auth != null
                     && request.auth.uid == uid
                     && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['displayName', 'email', 'linkSkippedAt']);
+                       .hasOnly(['displayName', 'email', 'linkSkippedAt', 'avatarSpec', 'updatedAt']);
       // Admin soft-disable (§ 50.5) — super_admin only (globalRole or the
       // bootstrap allowlist, via isSuperAdmin — § 66.2 / § 67), scoped to
       // the disabled-flag fields.

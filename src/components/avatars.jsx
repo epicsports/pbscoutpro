@@ -488,7 +488,7 @@ function AvatarBuilder({ initialSpec, onBack = () => {}, onSave, teamColor = '#3
 
   const saveBar = (
     <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: `1px solid ${AVc.border}`, background: AVc.bg }}>
-      <div onClick={() => { onSave?.(spec); }} role="button"
+      <div onClick={() => { onSave?.(spec); }} role="button" data-testid="avatar-save"
         style={{ background: ACCENT, color: '#1a1206', borderRadius: 12, minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: AVf, fontSize: 17, fontWeight: 800, cursor: 'pointer' }}>
         {t('avatar_save')}
       </div>
