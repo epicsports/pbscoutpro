@@ -148,15 +148,20 @@ function BarRow({ label, labelColor, pct, barColor, right, rightSub }) {
 // per § 27). `break` is no longer a reason — it's a stage; legacy 'break'
 // data normalizes to {reason: null, inferredStage: 'break'} so it never
 // enters this map's domain.
+// Labels externalized to i18n (`elim_reason_{id}`) — read at RENDER via
+// `causeLabel(id, t)`, not at module-eval, so they follow the active language.
 const CAUSE_META = {
-  gunfight:        { label: 'Gunfight',         color: '#ef4444' },
-  przejscie:       { label: 'Przejście',        color: '#eab308' },
-  faja:            { label: 'Faja',             color: '#a855f7' },
-  na_przeszkodzie: { label: 'Na przeszkodzie',  color: '#06b6d4' },
-  za_kare:         { label: 'za Karę',          color: '#94a3b8' },
-  nie_wiem:        { label: 'Nie wiem',         color: '#64748b' },
-  inaczej:         { label: 'Inaczej',          color: '#fb7185' },
+  gunfight:        { color: '#ef4444' },
+  przejscie:       { color: '#eab308' },
+  faja:            { color: '#a855f7' },
+  na_przeszkodzie: { color: '#06b6d4' },
+  za_kare:         { color: '#94a3b8' },
+  nie_wiem:        { color: '#64748b' },
+  inaczej:         { color: '#fb7185' },
 };
+// Render-time label resolver: known cause → its i18n label; unknown id → the id
+// itself (mirrors the old `|| { label: id }` fallback for non-canonical causes).
+const causeLabel = (id, t) => (CAUSE_META[id] ? t('elim_reason_' + id) : id);
 
 // § 59 redesign: survivalColor + ShotBar removed.
 //   survivalColor → reuse `winRateColor` from src/utils/colorScale.js
@@ -1206,7 +1211,7 @@ export default function PlayerStatsPage() {
                 <RdDonut
                   palette={Object.fromEntries(stats.causes.map(({ id }) => [id, (CAUSE_META[id] || { color: COLORS.textDim }).color]))}
                   items={stats.causes.map(({ id, count, pct }) => ({
-                    side: id, k: (CAUSE_META[id] || { label: id }).label, pct, n: count,
+                    side: id, k: causeLabel(id, t), pct, n: count,
                   }))}
                 />
               </div>
@@ -1415,7 +1420,7 @@ export default function PlayerStatsPage() {
           <WidePanel t={t} source="scout+self" icon="impact" title={t('stats_powod_spadania')}>
             <RdDonut
               palette={Object.fromEntries(stats.causes.map(({ id }) => [id, (CAUSE_META[id] || { color: COLORS.textDim }).color]))}
-              items={stats.causes.map(({ id, count, pct }) => ({ side: id, k: (CAUSE_META[id] || { label: id }).label, pct, n: count }))}
+              items={stats.causes.map(({ id, count, pct }) => ({ side: id, k: causeLabel(id, t), pct, n: count }))}
             />
           </WidePanel>
         )}
