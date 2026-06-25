@@ -1713,6 +1713,10 @@ const T = {
     scouted_heatmap_expand:   'Dotknij, aby powiększyć heatmapę',
     scouted_by:               (name) => ` · Scouting: ${name}`,
     scouted_no_mid:           'Brak fazy Mid w danych',
+    /* ScoutedTeamPage — point axis (match scope: scrub a single point) */
+    scouted_point_axis:       'Oś punktu',
+    scouted_point_all:        'Cały mecz',
+    scouted_point_n:          (n) => `Pkt ${n}`,
     /* ScoutedTeamPage — layer/stage rail labels */
     scouted_layer_stage:      'Faza',
     scouted_layer_layers:     'Warstwy',
@@ -3685,6 +3689,10 @@ const T = {
     scouted_heatmap_expand:   'Tap to expand heatmap',
     scouted_by:               (name) => ` · Scouted by ${name}`,
     scouted_no_mid:           'No Mid stage captured yet',
+    /* ScoutedTeamPage — point axis (match scope: scrub a single point) */
+    scouted_point_axis:       'Point axis',
+    scouted_point_all:        'Whole match',
+    scouted_point_n:          (n) => `Pt ${n}`,
     /* ScoutedTeamPage — layer/stage rail labels */
     scouted_layer_stage:      'Stage',
     scouted_layer_layers:     'Layers',

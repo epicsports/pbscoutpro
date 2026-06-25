@@ -263,6 +263,10 @@ export default function ScoutedTeamPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const scopeParam = searchParams.get('scope') || 'tournament';
   const matchIdParam = searchParams.get('mid') || null;
+  // § sub-stage 3 — POINT axis selection (match scope only). URL-driven (`pid`)
+  // like scope/mid so back/forward + the landscape rail stay consistent. Null =
+  // the whole-match aggregate (the prior behaviour); a value = scrub to one point.
+  const pointIdParam = searchParams.get('pid') || null;
   const isLayoutScope = scopeParam === 'layout';
   const isLastMatchScope = scopeParam === 'lastMatch';
   const isMatchScope = scopeParam === 'match' && !!matchIdParam;
@@ -393,6 +397,32 @@ export default function ScoutedTeamPage() {
     return allHeatmapPoints.filter(pt => pt.matchId === filterMatchId);
   }, [allHeatmapPoints, filterMatchId]);
 
+  // § sub-stage 3 — the match's points in chronological order, for the POINT axis.
+  // Match scope only; `heatmapPoints` is already filtered to the selected match.
+  // (`order` carried through the canonical mapper; falls back to index parity.)
+  const matchPointsOrdered = useMemo(() => {
+    if (!isMatchScope) return [];
+    return heatmapPoints
+      .slice()
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [heatmapPoints, isMatchScope]);
+
+  // The selected point id is only meaningful in match scope AND when it resolves to
+  // a real point in the current set (guards a stale `pid` after a scope/match switch).
+  const selectedPointId = isMatchScope && matchPointsOrdered.some(p => p.id === pointIdParam)
+    ? pointIdParam
+    : null;
+
+  // § sub-stage 3 — points fed to the FIELD (HeatmapCanvas). When a single point is
+  // selected on the axis, the field shows JUST that point (filter to pt.id === K → a
+  // 1-element array). Otherwise the whole-scope aggregate (unchanged). ONLY the field
+  // narrows — the report tables (ROZBICIE/STRZELANIE/etc.) stay on the match aggregate
+  // so they remain meaningful (a per-point breakdown would be trivially empty).
+  const heatmapDisplayPoints = useMemo(() => {
+    if (!selectedPointId) return heatmapPoints;
+    return heatmapPoints.filter(pt => pt.id === selectedPointId);
+  }, [heatmapPoints, selectedPointId]);
+
   // Selected match (when a match scope is active) + its opponent team — hoisted to
   // component scope so both the scope-pills and the report column (score bar) reuse
   // the SAME resolution (no divergence). Null in the aggregate scopes.
@@ -408,10 +438,11 @@ export default function ScoutedTeamPage() {
     : null;
   // § Stage 6-lite — replay is playable only when ≥1 point carries Settle/Mid
   // keyframes (timeline[] holds only those; Break is keyframe #0). One stage
-  // keyframe + Break = ≥2 keyframes to animate.
+  // keyframe + Break = ≥2 keyframes to animate. Tracks the DISPLAYED set so a
+  // single selected point's replay availability is honoured (sub-stage 3).
   const canReplay = useMemo(
-    () => heatmapPoints.some(p => Array.isArray(p.timeline) && p.timeline.length > 0),
-    [heatmapPoints]
+    () => heatmapDisplayPoints.some(p => Array.isArray(p.timeline) && p.timeline.length > 0),
+    [heatmapDisplayPoints]
   );
   // § Stage 2 — Mid is the only gated MODE segment. Break + Settle are always
   // available (every point has a settled/post-break view via kf#0); Mid only
@@ -607,6 +638,11 @@ export default function ScoutedTeamPage() {
         zoneObstacleShots: ds.quickShotsFromFirestore(zoneObstacleSrc),
         opponentEliminations: oppMirrored?.eliminations || oppData?.eliminations || [],
         opponentPlayers: oppMirrored?.players || oppData?.players || [],
+        // Canonical point id (Firestore doc id) — carried so the match-scope POINT
+        // axis can filter `heatmapPoints` to a SINGLE point (pt.id === K). Was
+        // previously dropped by the mapper; additive, no other consumer relies on it.
+        id: pt.id,
+        order: pt.order,
         matchId: pt.matchId,
         scoutedBy: data.scoutedBy || null,
         outcome,
@@ -815,7 +851,7 @@ export default function ScoutedTeamPage() {
   const heatmapCanvasEl = (
     <HeatmapCanvas
       fieldImage={field.fieldImage}
-      points={heatmapPoints}
+      points={heatmapDisplayPoints}
       rosterPlayers={roster}
       bunkers={field.bunkers || []}
       dangerZone={field.dangerZone}
@@ -904,10 +940,80 @@ export default function ScoutedTeamPage() {
     </div>
   );
 
+  // § sub-stage 3 — POINT axis ("Oś punktu"). Match scope only: a horizontal
+  // scrubber of the SELECTED match's points, in chronological order. Selecting a
+  // stop filters the field (HeatmapCanvas) to that ONE point (pt.id === K) via the
+  // canonical source (kf#0 homeData/awayData + additive timeline[] — no reinvented
+  // timeline); the leading "Whole match" stop clears back to the aggregate. This
+  // REPLACES the per-match phase-aggregate field read with a per-point read; the
+  // Stage segment below still governs the report tables (and the WITHIN-point phase
+  // when one point is shown). Chosen form = horizontal scrubber (prototype "OŚ
+  // PUNKTU") over reusing MatchPage's split-tap head-to-head row, which is bound to
+  // MatchPage's bidirectional live-scoring state + both teams — this page is
+  // one-side/read-only, so the scrubber is the clean, faithful fit and mirrors the
+  // page's own segmented-axis idiom. Aggregate scopes never render it.
+  const selectPoint = (id) => {
+    const next = { scope: 'match', mid: matchIdParam };
+    if (id) next.pid = id;
+    setSearchParams(next);
+  };
+  const pointAxisEl = (isMatchScope && matchPointsOrdered.length > 0) ? (
+    <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
+      <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>{t('scouted_point_axis')}</div>
+      <div role="tablist" aria-label={t('scouted_point_axis')} data-testid="scouted-point-axis"
+        style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, alignItems: 'stretch' }}>
+        {/* "Whole match" stop — clears the point filter back to the aggregate. */}
+        {(() => {
+          const active = !selectedPointId;
+          return (
+            <div role="tab" aria-selected={active} data-testid="point-axis-all"
+              onClick={() => selectPoint(null)}
+              style={{
+                flexShrink: 0, minHeight: TOUCH.minTarget, padding: '0 14px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: RADIUS.full, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: active ? 800 : 700,
+                background: active ? COLORS.accentA12 : COLORS.surface,
+                color: active ? COLORS.accent : COLORS.textMuted,
+                border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                whiteSpace: 'nowrap',
+              }}>{t('scouted_point_all')}</div>
+          );
+        })()}
+        {matchPointsOrdered.map((pt, i) => {
+          const active = selectedPointId === pt.id;
+          // outcome carried by the canonical mapper: 'win' | 'loss' | null (this
+          // scouted team's result). Identity dot — success/danger, NEVER amber (§27).
+          const dotColor = pt.outcome === 'win' ? COLORS.success
+            : pt.outcome === 'loss' ? COLORS.danger : COLORS.borderLight;
+          return (
+            <div key={pt.id} role="tab" aria-selected={active}
+              data-testid={`point-axis-${pt.id}`}
+              onClick={() => selectPoint(pt.id)}
+              style={{
+                flexShrink: 0, minHeight: TOUCH.minTarget, minWidth: 44, padding: '0 12px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                borderRadius: RADIUS.full, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+                fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: active ? 800 : 700,
+                background: active ? COLORS.accentA12 : COLORS.surface,
+                color: active ? COLORS.accent : COLORS.text,
+                border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
+                whiteSpace: 'nowrap',
+              }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+              {t('scouted_point_n', i + 1)}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  ) : null;
+
   // Below-canvas view controls — shared between the portrait expanded region
   // and the landscape rail (where they keep the section's original position).
   const heatmapControlsEl = (
     <>
+      {pointAxisEl}
       {/* § Stage 2 — coach 3-way axis (Break/Settle/Mid) GOVERNS the view:
           positions, the intrinsic zone choropleth, and the luf connectors all
           resolve to the active stage. Surface-fill segmented bar (coach idiom).
@@ -1351,7 +1457,7 @@ export default function ScoutedTeamPage() {
                   }}>
                   <HeatmapCanvas
                     fieldImage={field.fieldImage}
-                    points={heatmapPoints}
+                    points={heatmapDisplayPoints}
                     rosterPlayers={roster}
                     bunkers={field.bunkers || []}
                     dangerZone={field.dangerZone}
@@ -2403,6 +2509,15 @@ export default function ScoutedTeamPage() {
   const fvControlZonesEl = (
     <>
       <RailZone label="Scope" collapsible testId="rail-scope-toggle">{scopePillsEl}</RailZone>
+      {/* § sub-stage 3 — POINT axis as a rail zone (match scope only). Same scrubber
+          definition as the portrait controls (one source) — selecting a stop filters
+          the HERO field to that single point. */}
+      {pointAxisEl && (
+        <RailZone label={t('scouted_point_axis')} collapsible testId="rail-point-axis-toggle"
+          headerExtra={selectedPointId ? <span style={railCountPill}>{matchPointsOrdered.findIndex(p => p.id === selectedPointId) + 1}</span> : null}>
+          {pointAxisEl}
+        </RailZone>
+      )}
       <RailZone label={t('scouted_layer_layers')} collapsible defaultCollapsed testId="rail-layers-toggle"
         headerExtra={fvLayersActive > 0 ? <span style={railCountPill}>{fvLayersActive}</span> : null}>
         <RailToggleList items={fvLayerItems} />
