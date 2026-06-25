@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Pixel-avatar builder (Stage C) — route + persistence + profile entry + i18n (avatar feature COMPLETE)
+**App (auto-deploy, e2e-gated). No rules change** (self-write to own user doc). Merge `feat/avatar-builder` (6 files, NEW `AvatarBuilderPage.jsx`). Avatar brief Stage C — completes A+B+C.
+- **Persistence:** `setUserAvatarSpec(uid, avatarSpec)` → `users/{uid}.avatarSpec` (mirrors `setUserGlobalRole`; uid from `useWorkspace().user?.uid`). Read via `useWorkspace().userProfile.avatarSpec` (live `/users/{uid}` snapshot — NOT the Auth object).
+- **Builder mounted:** route `/profile/avatar` → `AvatarBuilderPage` (`initialSpec = userProfile.avatarSpec || DEFAULT_SPEC`, `teamColor` = linked player's team else accent, `onSave` persists + `navigate('/profile')`).
+- **Profile entry + render:** ProfilePage identity avatars (phone 72 + wide 104) render `PixelAvatar(userProfile.avatarSpec)` + a 44px amber pencil → builder.
+- **i18n:** ~150 `avatar_*` keys (pl+en) — 10 panels, 6 sections, all option labels (gender/age/face/hair/facial/headwear/chain/earring/eyewear/top/bg), Save/randomize. Enum VALUES kept as data.
+- **PROOF:** build + precommit (lint-ui 0 errors, 1509 i18n keys all defined) green; **full e2e 115/115**.
+- **Smoke (Jacek):** Profil → tap awatar (ołówek) → kreator (10 paneli) → Zapisz → wraca na profil; w workspace na trybie 'avatar' widać go w rosterach.
+- **Privacy/avatar queue:** only Phase 2 left (surname truncation, separate toggle, central `displayPlayerName`).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Pixel-avatar engine (Stage A+B) — ESM module + PlayerAvatar 'avatar' mode
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/avatar-engine` (2 files). Avatar brief Stage A+B (of A+B+C).
 - **`src/components/avatars.jsx`** (NEW, 538 lines) — prototype `avatars.jsx` ported to ESM, drawing logic byte-identical: `window.PT.COLORS/FONT`→`utils/theme`, `window.UI.useDevice`→`hooks/useDevice`, `localStorage`→`onSave` prop, `window.AVATARS`→named exports (`PixelAvatar, AvatarBuilder, avatarSpec, randomSpec, DEFAULT_SPEC, BACKGROUNDS, …`).
