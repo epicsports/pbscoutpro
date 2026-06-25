@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Privacy/PII Phase 1 — avatar-vs-photo toggle + remove age (Jacek brief, GO'd)
+**App (auto-deploy, e2e-gated). No rules/data migration.** Merge `feat/pii-phase1` (11 files). Defensive GDPR/pbleagues PII shield.
+- **Per-workspace setting, super-admin only:** `workspaces/{slug}.piiSettings.avatarMode` ('photo'|'avatar', absent→'photo' = backward-compatible). `setWorkspacePiiSettings` reuses the `isAdmin(slug)` write path (same as `setWorkspaceLogo`) → **no Firestore rules change**. Super-admin `SegmentedControl` ("Player avatars: Photo/Avatar") in `WorkspacesAdminPage`.
+- **`PlayerAvatar`** (1 component → 19 sites) reads `avatarMode` via `useWorkspace()` (defensive default 'photo'): 'avatar' forces `photoURL=null` → deterministic colored initial/seed. (Full pixel-art `PixelAvatar` later — pending the 510-line `avatars.jsx` source, not yet delivered.)
+- **Age REMOVED from UI entirely** ("wywalamy"): PlayerEditModal, admin PlayerFormModal, ProfilePage (hero+edit), MergePlayersModal, CSVImport (mapping+writes), PlayersPage + TeamDetailPage (roster meta). Stored `age` field left intact (no migration). 6 orphaned i18n keys dropped.
+- **PROOF:** build + precommit green; **full e2e 115/115**. (New super-admin toggle has no spec — write path proven via setWorkspaceLogo.)
+- **Smoke (Jacek):** super-admin → Workspaces → pick ws → toggle Foto/Avatar → rosters show initials; age gone from edit/profile/import.
+- **Privacy queue:** Phase 2 = surname truncation (separate toggle, needs central `displayPlayerName`); pixel-art avatar awaits the source file.
+
 ## 2026-06-25 — [FEATURE/Tier-2] Today-points vertical point-card redesign + Centrum→Środek (night)
 **App (auto-deploy, e2e-gated). No rules/data.** Commit `398450ab` (4 code files). CD brief "Dzisiejsze punkty" #1+#2 (closes the brief; #3 neutral crest + #4 logos already shipped).
 - **#1 vertical point card:** `PremiumLogCard` (the card the today-list actually renders) + shared `LogRow` → vertical label→value. Header "Punkt #N" + **wrapping status pill** (dot+outcome, success/danger, maxW 64%); `LabelRow` rows ROZBIEG / ZAGRANIE / STRZAŁY / UPADEK (`wordBreak`, no horizontal squeeze; UPADEK only when present; **side label hidden when it duplicates the bunker name**). PremiumLogCard keeps its ELEV chrome + `wide` rail variant + pending cloud + ⋮ delete.
