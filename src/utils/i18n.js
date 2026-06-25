@@ -1,10 +1,12 @@
 /**
  * PbScoutPro translations.
- * Default language: 'pl'. Fallback: key string itself (never blank).
+ * Default language: 'pl'. Fallback chain: lang → en → key string (never blank).
  *
  * Dynamic strings use a function: T.pl.points_n(5) → "5 pkt"
  * Static strings use a plain value: T.pl.save → "Zapisz"
  */
+
+import { plural } from './plural';
 
 export const LANGUAGES = ['pl', 'en'];
 export const DEFAULT_LANG = 'pl';
@@ -128,7 +130,7 @@ const T = {
     notes_delete_confirm:  'Usunąć notatkę?',
     notes_new:             'NOWE',
     notes_modal_title:     (teamName) => `Nowe notatki o ${teamName}`,
-    notes_modal_subtitle:  (n) => `${n} ${n === 1 ? 'notatka' : 'notatki'} do przeczytania przed meczem`,
+    notes_modal_subtitle:  (n, lang) => `${n} ${plural(lang, n, { one: 'notatka', few: 'notatki', many: 'notatek', other: 'notatek' })} do przeczytania przed meczem`,
     notes_mark_all_seen:   'Oznacz wszystkie jako przeczytane',
     later:                 'Później',
     time_now:              'teraz',
@@ -208,7 +210,7 @@ const T = {
     members_empty:              'Brak aktywnych członków.',
     members_recent_joined_badge:'Nowy',
     members_admin_workspace_badge:'Admin workspace’u',
-    members_new_this_week:      (n) => `${n} ${n === 1 ? 'nowy' : 'nowych'} w tym tygodniu`,
+    members_new_this_week:      (n, lang) => `${n} ${plural(lang, n, { one: 'nowy', few: 'nowych', many: 'nowych', other: 'nowych' })} w tym tygodniu`,
     workspace_enter_error_title:'Nie udało się wejść do workspace\'a',
     permission_check_failed_title: 'Nie udało się sprawdzić uprawnień',
     permission_check_failed_body:  'Nie mogliśmy potwierdzić Twoich uprawnień. Odśwież stronę — jeśli to nie pomoże, skontaktuj się z adminem.',
@@ -1009,8 +1011,8 @@ const T = {
     hitability_del_target:        (l) => `Usuń cel ${l}`,
     hitability_del_title:         'Usunąć?',
     hitability_del_confirm:       'Usuń',
-    hitability_del_pos_msg:       (name, c) => `${name} ma ${c} ${c === 1 ? 'trafienie' : 'trafień'} — usunięcie skasuje je wraz z połączeniami.`,
-    hitability_del_target_msg:    (name, c) => `${name} ma ${c} ${c === 1 ? 'trafienie' : 'trafień'} — usunięcie skasuje je wraz z połączeniami.`,
+    hitability_del_pos_msg:       (name, c, lang) => `${name} ma ${c} ${plural(lang, c, { one: 'trafienie', few: 'trafienia', many: 'trafień', other: 'trafień' })} — usunięcie skasuje je wraz z połączeniami.`,
+    hitability_del_target_msg:    (name, c, lang) => `${name} ma ${c} ${plural(lang, c, { one: 'trafienie', few: 'trafienia', many: 'trafień', other: 'trafień' })} — usunięcie skasuje je wraz z połączeniami.`,
     hitability_hint_edit:         'Przytrzymaj marker lub tapnij wiersz na liście, aby edytować.',
     hitability_name_label:        'Nazwa (alias)',
     hitability_color_label:       'Kolor pary',
@@ -1515,7 +1517,7 @@ const T = {
     team_form_audit_reason:           'Powód',
     team_form_audit_canonical:        'Kanoniczny zamiennik',
     team_form_change_btn:             'Zmień ▾',
-    team_form_child_count:            (n) => `${n} ${n === 1 ? 'podrzędna' : 'podrzędnych'}`,
+    team_form_child_count:            (n, lang) => `${n} ${plural(lang, n, { one: 'podrzędna', few: 'podrzędne', many: 'podrzędnych', other: 'podrzędnych' })}`,
     /* WorkspacesAdminPage */
     wsadmin_title:                    'Workspace\'y',
     wsadmin_subtitle:                 'SUPER ADMIN',
@@ -2281,7 +2283,7 @@ const T = {
     notes_delete_confirm:  'Delete note?',
     notes_new:             'NEW',
     notes_modal_title:     (teamName) => `New notes about ${teamName}`,
-    notes_modal_subtitle:  (n) => `${n} ${n === 1 ? 'note' : 'notes'} to read before match`,
+    notes_modal_subtitle:  (n, lang) => `${n} ${plural(lang, n, { one: 'note', other: 'notes' })} to read before match`,
     notes_mark_all_seen:   'Mark all as read',
     later:                 'Later',
     time_now:              'now',

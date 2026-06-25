@@ -283,9 +283,11 @@ export function computeLateBreakRate(points) {
 
 import T from './i18n';
 
+// Mirrors useLanguage's t(): en fallback + lang appended as the final arg to
+// function-valued keys (so plural-aware interpolators can call plural(lang, …)).
 const makeTr = (lang) => (key, ...args) => {
-  const val = T[lang]?.[key] ?? T.pl?.[key] ?? key;
-  return typeof val === 'function' ? val(...args) : val;
+  const val = T[lang]?.[key] ?? T.en?.[key] ?? key;
+  return typeof val === 'function' ? val(...args, lang) : val;
 };
 
 export function generateInsights(stats, points, field, _roster, lang = 'pl') {

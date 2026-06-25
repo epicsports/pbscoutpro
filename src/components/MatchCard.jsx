@@ -1,6 +1,7 @@
 import React from 'react';
 import { COLORS, FONT, TNUM } from '../utils/theme';
 import { dayShort } from '../utils/divisionAliases';
+import { useLanguage } from '../hooks/useLanguage';
 import TeamBadge from './TeamBadge';
 import LiveMatchTile from './LiveMatchTile';
 
@@ -11,7 +12,7 @@ import LiveMatchTile from './LiveMatchTile';
 //   14:20                 (no scheduledAt — fall back to legacy m.time)
 //   2026-05-14 14:20      (very old match — legacy m.date + m.time, no field)
 //   ''                    (nothing usable — caller hides pill)
-function formatSchedulePill(m) {
+function formatSchedulePill(m, lang) {
   const parts = [];
   if (m?.scheduledAt) {
     // scheduledAt may be a Firestore Timestamp (.toDate) OR a JS Date
@@ -22,7 +23,7 @@ function formatSchedulePill(m) {
     if (!Number.isNaN(d.getTime())) {
       const hh = String(d.getHours()).padStart(2, '0');
       const mm = String(d.getMinutes()).padStart(2, '0');
-      parts.push(`${dayShort(d, 'pl')} ${hh}:${mm}`);
+      parts.push(`${dayShort(d, lang)} ${hh}:${mm}`);
     }
   }
   if (!parts.length) {
@@ -62,6 +63,7 @@ function formatSchedulePill(m) {
  * another scout at the card level.
  */
 export default function MatchCard({ m, status, tournamentId, getTeamName, getTeam, navigate, readOnly, liveScore }) {
+  const { lang } = useLanguage();
   const sA = liveScore?.a ?? m.scoreA ?? 0;
   const sB = liveScore?.b ?? m.scoreB ?? 0;
   const hasScore = sA > 0 || sB > 0;
@@ -153,7 +155,7 @@ export default function MatchCard({ m, status, tournamentId, getTeamName, getTea
             Completed  → 'FINAL' + (if field present) ' · {field}'
             Per-game W/L badges already render on each TeamZone, not here. */}
         {(() => {
-          const schedule = formatSchedulePill(m);
+          const schedule = formatSchedulePill(m, lang);
           if (isLive) {
             return (
               <div style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.accent, marginTop: 4, letterSpacing: '.5px' }}>

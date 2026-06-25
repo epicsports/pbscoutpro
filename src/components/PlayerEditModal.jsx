@@ -19,6 +19,7 @@ import { COLORS, FONT, TOUCH, ELEV, BUNKER_TYPES } from '../utils/theme';
 import { normalizePbliInput } from '../utils/pbliMatching';
 import { playerTeams, withTeamAdded, withTeamRemoved } from '../utils/playerTeams';
 import { useLanguage } from '../hooks/useLanguage';
+import { langToLocale } from '../utils/plural';
 
 export const NATIONALITIES = [
   { code: 'PL', flag: '🇵🇱', name: 'Polska' },
@@ -61,7 +62,7 @@ export const NATIONALITIES = [
 ];
 
 export default function PlayerEditModal({ player, defaultTeamId = '', teams = [], onSave, onCancel, open }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const device = useDevice();
   const wide = device.width >= 720; // tablet/desktop → 2-col centered panel
   const isEdit = !!player;
@@ -147,7 +148,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
   };
 
   const formatDate = (iso) => {
-    try { return new Date(iso).toLocaleDateString('pl-PL'); } catch { return iso; }
+    try { return new Date(iso).toLocaleDateString(langToLocale(lang)); } catch { return iso; }
   };
   const getTeamName = (tid) => teams.find(t => t.id === tid)?.name || '—';
 

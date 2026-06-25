@@ -3,6 +3,7 @@ import { StickyNote, ChevronRight } from 'lucide-react';
 import { COLORS, FONT } from '../utils/theme';
 import { Modal, ActionSheet, Btn } from './ui';
 import { useLanguage } from '../hooks/useLanguage';
+import { langToLocale } from '../utils/plural';
 
 // Permission: coach/admin see all notes; anyone else (viewer) sees own only.
 export function filterVisibleNotes(notes, userId, role) {
@@ -12,7 +13,7 @@ export function filterVisibleNotes(notes, userId, role) {
 
 // Relative time formatter (Firestore Timestamp | millis | null)
 function useTimeAgo() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   return (ts) => {
     if (!ts) return '';
     const time = ts.toMillis ? ts.toMillis() : ts;
@@ -23,7 +24,7 @@ function useTimeAgo() {
     if (hrs < 24) return t('time_hr_ago', hrs);
     const days = Math.floor(hrs / 24);
     if (days < 7) return t('time_day_ago', days);
-    return new Date(time).toLocaleDateString();
+    return new Date(time).toLocaleDateString(langToLocale(lang));
   };
 }
 

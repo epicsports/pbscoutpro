@@ -10,6 +10,7 @@ import LinkProfileModal from '../components/settings/LinkProfileModal';
 import PlayerAvatar from '../components/PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
+import { langToLocale } from '../utils/plural';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
@@ -34,7 +35,7 @@ import * as ds from '../services/dataService';
 export default function UserDetailPage() {
   const { uid } = useParams();
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const { workspace, user: currentUser } = useWorkspace();
   const { players } = usePlayers();
   const { teams } = useActiveTeams();
@@ -242,7 +243,7 @@ export default function UserDetailPage() {
           <Divider />
           <Row label={t('user_uid_label') || 'UID'} value={uid} mono />
           {profile?.createdAt && (
-            <Row label={t('user_joined_label') || 'Dołączył'} value={fmtTs(profile.createdAt)} />
+            <Row label={t('user_joined_label') || 'Dołączył'} value={fmtTs(profile.createdAt, lang)} />
           )}
         </Section>
 
@@ -481,11 +482,11 @@ function GlobalRoleOption({ label, description, selected, first, disabled, onCli
   );
 }
 
-function fmtTs(ts) {
+function fmtTs(ts, lang) {
   if (!ts) return '—';
   try {
     const d = ts.toDate ? ts.toDate() : (ts instanceof Date ? ts : new Date(ts));
-    return d.toLocaleString();
+    return d.toLocaleString(langToLocale(lang));
   } catch { return '—'; }
 }
 

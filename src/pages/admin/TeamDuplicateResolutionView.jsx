@@ -4,6 +4,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { playerOnTeam } from '../../utils/playerTeams';
 import { retireTeam, setParentTeam } from '../../services/dataService';
 import { useLanguage } from '../../hooks/useLanguage';
+import { langToLocale } from '../../utils/plural';
 
 // Phase 2.3.c — Duplicate resolution view (inline modal).
 // Side-by-side comparison of teams sharing an externalId; admin picks
@@ -29,7 +30,7 @@ import { useLanguage } from '../../hooks/useLanguage';
 //   allPlayers       — full /players/ array for ref-count
 //   childrenByParent — pre-computed map
 export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, allTeams, allPlayers, childrenByParent }) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const refCounts = useMemo(() => {
     const counts = {};
     for (const t of dupTeams) {
@@ -124,7 +125,7 @@ export default function TeamDuplicateResolutionView({ open, onClose, dupTeams, a
     if (!ts) return '—';
     try {
       const d = typeof ts.toDate === 'function' ? ts.toDate() : new Date(ts);
-      return d.toLocaleDateString('pl-PL');
+      return d.toLocaleDateString(langToLocale(lang));
     } catch { return '—'; }
   };
 
