@@ -232,29 +232,29 @@ export default function CoachTabContent({ tournamentId }) {
             borderRadius: RADIUS.lg,
           }}>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, marginBottom: SPACE.sm }}>
-              {scouted.length} scouted entries exist but none match the current division filter — likely missing the division field from a past schedule import.
+              {t('coach_repair_no_filter_match', scouted.length)}
             </div>
             <Btn variant="accent" onClick={runRepair} disabled={repairing} style={{ width: '100%' }}>
-              {repairing ? 'Repairing…' : 'Repair scouted divisions'}
+              {repairing ? t('coach_repairing') : t('coach_repair_divisions')}
             </Btn>
             {repairResult && !repairResult.error && (
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginTop: SPACE.sm }}>
-                Scanned {repairResult.scanned} · updated {repairResult.updated} · already set {repairResult.alreadySet}
-                {repairResult.skippedNoTeam ? ` · orphan ${repairResult.skippedNoTeam}` : ''}
-                {repairResult.skippedNoDivision ? ` · team has no division ${repairResult.skippedNoDivision}` : ''}
-                {repairResult.failures?.length ? ` · failed ${repairResult.failures.length}` : ''}
+                {t('coach_repair_scanned')} {repairResult.scanned} · {t('coach_repair_updated')} {repairResult.updated} · {t('coach_repair_already_set')} {repairResult.alreadySet}
+                {repairResult.skippedNoTeam ? ` · ${t('coach_repair_orphan')} ${repairResult.skippedNoTeam}` : ''}
+                {repairResult.skippedNoDivision ? ` · ${t('coach_repair_no_division')} ${repairResult.skippedNoDivision}` : ''}
+                {repairResult.failures?.length ? ` · ${t('coach_repair_failed')} ${repairResult.failures.length}` : ''}
               </div>
             )}
             {repairResult?.error && (
               <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger, marginTop: SPACE.sm }}>
-                Error: {repairResult.error}
+                {t('coach_repair_error')}: {repairResult.error}
               </div>
             )}
           </div>
         )}
         {!loading && divisionScouted.length > 0 && visibleScouted.length === 0 && hiddenScouted.length === 0 && teamSearch.trim() && (
           <div style={{ padding: SPACE.md, fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted }}>
-            No teams match “{teamSearch}”.
+            {t('coach_no_teams_match', teamSearch)}
           </div>
         )}
 
