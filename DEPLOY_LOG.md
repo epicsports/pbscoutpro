@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] ScoutedTeamPage master-detail — score bar + match-list (sub-stages 1+2) (night)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/scoutedteam-master-detail`. `ScoutedTeamPage.jsx` + `i18n.js` (1 key). The first 2 of 3 sub-stages of the ANALIZA PRZECIWNIKA landscape feature.
+- **Score bar (sub-stage 1):** when `isMatchScope`, a prominent hero score bar (real `scoreA`/`scoreB` + both crests/names + W/L/D color via the existing `won`/`lost`/`resultColor`) at the top of the report column. Renders only when a match is scoped (nothing in aggregate scopes).
+- **Match-list master-detail (sub-stage 2):** in **landscape**, Matches-row click → `setSearchParams({scope:'match', mid})` (drives the heatmap + score bar) instead of navigating; selected row accent-highlighted; per-row **open-match** door affordance keeps the full match page reachable. Section surfaced + `defaultOpen` in landscape (master pane). **Portrait byte-identical** (rows still navigate).
+- **Untouched (verified diff = 0 hits):** the replay axis / coach-3-way-axis / Stage6-lite / **`buildTimeline` / `timeline[]` / heatmap MAPPING** / `filterMatchId` scoping / scope-pills. Capture-parity unaffected.
+- **PROOF:** build + precommit green; **`scoutedteam-rail` + `scouted-team-loader` e2e 6/6**.
+- **Smoke (Jacek, prod):** opponent analysis (landscape) → tap a match in the list → heatmap scopes + score bar shows; open-match door still works.
+- **🔵 Sub-stage 3 NEXT (data-critical, careful):** rework the point-axis **phases → single points of the selected match** — reuse MatchPage's point-replay + the **canonical timeline source** (`point.homeData/awayData` kf#0 + additive `timeline[]` via `pointPhases.js`/`buildTimeline`; consistent app-wide — Jacek's reminder). Changes the heatmap from match-aggregate → per-point-scrub → capture-parity + scoutedteam-rail as guards.
+
 ## 2026-06-24 — [NIGHT-BATCH/Tier-2] Responsive WIDE-PASS (CD handoff `_CC_BRIEF_wide_pass.md`) — autonomous night run
 **App (auto-deploy, e2e-gated). No rules/data.** Per-screen `*Wide` variants, each **additive (phone byte-identical)**, build+precommit green, merged autonomously (night-mode GO). Wide path has **no e2e** → **Jacek smokes prod (tablet/desktop)**. Source = handoff `prototype/`. Field block PAUSED behind this (§8 order).
 - **`LayoutsListWide`** (`LayoutsPage`) — full-bleed `auto-fill minmax(320px)` grid of field-thumbnail cards + sticky search + dynamic league chips (from real `useLayouts`) + count + empty/no-results. Phone unchanged. §27 PASS. *Note: search uses RdIcon `compass` (no magnifier glyph — add `search` to RdIcon later); tactic-count meta omitted (not on doc).*
