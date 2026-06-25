@@ -13,6 +13,7 @@
 import React, { useState } from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { useDevice } from '../hooks/useDevice';
+import { useLanguage } from '../hooks/useLanguage';
 
 const AVc = COLORS;
 const AVf = FONT;
@@ -327,7 +328,19 @@ const BACKGROUNDS = {
   vapor:     { label: 'Vaporwave', mood: '#ff6ad5', amt: .16, draw() { const o = []; band(o,0,12,'#3a1f6e'); band(o,0,4,'#7a2f9e'); o.push(...sunDisc(12,9,4,'#ff6ad5','#ffd36b')); o.push(span(6,18,8,'#3a1f6e'),span(6,18,10,'#3a1f6e')); band(o,13,23,'#1a1030'); for (let y = 14; y <= 23; y += 2) o.push(span(0,23,y,'#ff6ad5')); for (let x = 0; x < 24; x += 4) for (let y = 13; y <= 23; y++) o.push(px(x,y,'#ff6ad5')); return o; } },
 };
 const BG_KEYS = Object.keys(BACKGROUNDS);
-const BG_LABELS = Object.fromEntries(BG_KEYS.map(k => [k, BACKGROUNDS[k].label]));
+// i18n keys for the background option labels (the builder resolves these via
+// t()). The `label` strings inside BACKGROUNDS stay as the data fallback but
+// are NOT rendered directly any more.
+const BG_LABEL_KEYS = {
+  none: 'avatar_bg_none', beach: 'avatar_bg_beach', sunset: 'avatar_bg_sunset',
+  mountains: 'avatar_bg_mountains', tokyo: 'avatar_bg_tokyo', city: 'avatar_bg_city',
+  nightcity: 'avatar_bg_nightcity', forest: 'avatar_bg_forest', desert: 'avatar_bg_desert',
+  snow: 'avatar_bg_snow', space: 'avatar_bg_space', aurora: 'avatar_bg_aurora',
+  ocean: 'avatar_bg_ocean', volcano: 'avatar_bg_volcano', canyon: 'avatar_bg_canyon',
+  savanna: 'avatar_bg_savanna', rain: 'avatar_bg_rain', pitch: 'avatar_bg_pitch',
+  arena: 'avatar_bg_arena', galaxy: 'avatar_bg_galaxy', clouds: 'avatar_bg_clouds',
+  vapor: 'avatar_bg_vapor',
+};
 function tintHex(hex, mood, amt) { if (!mood || !amt || !hex || hex[0] !== '#') return hex; const n = parseInt(hex.slice(1), 16), m = parseInt(mood.slice(1), 16); let r = (n>>16)&255, g = (n>>8)&255, b = n&255; const R = (m>>16)&255, G = (m>>8)&255, B = m&255; r = Math.round(r + (R-r)*amt); g = Math.round(g + (G-g)*amt); b = Math.round(b + (B-b)*amt); return '#' + ((1<<24) + (r<<16) + (g<<8) + b).toString(16).slice(1); }
 function PixelAvatar({ seed, spec, size = 48, gender: g, style: st, age: ag, ring, teamColor }) {
   const finalSpec = spec || (() => {
@@ -365,29 +378,30 @@ function PixelAvatar({ seed, spec, size = 48, gender: g, style: st, age: ag, rin
 }
 
 // ─── Avatar builder (user-facing creator) ─────────────────────────────────
-// Panels pair a shape axis with its color axis ("wygląd + kolor") so colour
+// Panels pair a shape axis with its color axis ("look + colour") so colour
 // lives next to the part it tints — no separate colour tabs.
-// NOTE Stage C: this builder is EXPORTED ONLY and is not mounted on any route
-// this stage. Its chrome carries Polish labels inline (ported 1:1 from the
-// prototype). Before wiring it to a route, route all user-facing text through
-// the i18n helper and any raw controls through ui.jsx (see brief Stage C).
+// Stage C: this builder is MOUNTED (route /profile/avatar via AvatarBuilderPage).
+// All visible chrome is i18n'd — panel names via `labelKey`, section captions
+// via `secKey`, and every option label via `lbl[opt]` → `t(key)`. Enum VALUES
+// (DEFAULT_SPEC / *_KEYS) stay as-is (data, not display).
 const PANELS = [
-  { id: 'gender', label: 'Płeć', shape: { key: 'gender', opts: GENDER_KEYS, lbl: { f: 'Kobieta', m: 'Mężczyzna', x: 'Neutralna' } } },
-  { id: 'age', label: 'Wiek', shape: { key: 'age', opts: AGE_KEYS, lbl: { 0: 'Młody', 1: 'Dorosły', 2: 'Starszy' } } },
-  { id: 'skin', label: 'Skóra', color: { key: 'skin', pal: SKIN_PALETTE } },
-  { id: 'face', label: 'Twarz', shape: { key: 'face', opts: FACE_KEYS, lbl: { round: 'Okrągła', oval: 'Owalna', narrow: 'Szczupła', wide: 'Szeroka', square: 'Kwadrat', heart: 'Serce', diamond: 'Romb' } } },
-  { id: 'hair', label: 'Włosy', shape: { key: 'hair', opts: HAIR_KEYS, lbl: { none: 'Łysy', buzz: 'Jeż', crop: 'Krótkie', sidepart: 'Przedz.', spiky: 'Kolce', quiff: 'Grzywa', mohawk: 'Irokez', balding: 'Zakola', fringe: 'Grzywka', undercut: 'Undercut', cornrows: 'Warkoczyki', dreads: 'Dredy', topknot: 'Kok góra', bob: 'Bob', lob: 'Długi bob', long: 'Długie', wavy: 'Falowane', curly: 'Kręcone', hime: 'Hime', halfup: 'Półupięte', ponytail: 'Kucyk', pigtails: 'Kucyki', braid: 'Warkocz', braids: 'Warkocze', spacebuns: 'Koczki', bun: 'Kok', updo: 'Upięcie', afro: 'Afro' } }, color: { key: 'hairColor', pal: HAIR_PALETTE } },
-  { id: 'facial', label: 'Zarost', shape: { key: 'facial', opts: FACIAL_KEYS, lbl: { none: 'Brak', stubble: 'Zarost', mustache: 'Wąsy', goatee: 'Bródka', beard: 'Broda', soulpatch: 'Muszka', fullbeard: 'Bujna', chinstrap: 'Bokobr.' } } },
-  { id: 'headwear', label: 'Nakrycie', shape: { key: 'headwear', opts: HEADWEAR_KEYS, lbl: { none: 'Brak', headband: 'Opaska', cap: 'Czapka', capback: 'Czapka tył', beanie: 'Zimowa', bandana: 'Bandana', paisley: 'Paisley', camo: 'Moro', skull: 'Czaszka', flame: 'Płomienie', check: 'Krata' } }, color: { key: 'headwearColor', pal: HEADWEAR_PALETTE } },
-  { id: 'acc', label: 'Akcesoria', shape: { key: 'chain', opts: CHAIN_KEYS, sec: 'Na szyję', lbl: { none: 'Brak', gold: 'Złoty', silver: 'Srebrny', choker: 'Choker' } }, shape2: { key: 'earring', opts: EARRING_KEYS, sec: 'Kolczyki', lbl: { none: 'Brak', stud: 'Wpinka', hoop: 'Kółko', double: 'Para' } }, shape3: { key: 'eyewear', opts: EYEWEAR_KEYS, sec: 'Okulary', lbl: { none: 'Brak', glasses: 'Okulary', sunglasses: 'Słoneczne', goggles: 'Gogle', eyeblack: 'Eye-black' } } },
-  { id: 'top', label: 'Bluza', shape: { key: 'top', opts: TOP_KEYS, lbl: { crew: 'Crew', vneck: 'V-neck', scoop: 'Dekolt U', polo: 'Polo', buttonup: 'Koszula', hoodie: 'Z kapturem', zip: 'Zip', bomber: 'Bomber', raglan: 'Raglan', jersey: 'Jersey', tank: 'Tank', stripe: 'Pasek', turtle: 'Golf', varsity: 'Varsity', puffer: 'Puchowa', paintball: 'Paintball', panel: 'Panel', mesh: 'Siatka' } }, color: { key: 'topColor', pal: TOP_PALETTE } },
-  { id: 'bg', label: 'Tło', shape: { key: 'bg', opts: BG_KEYS, lbl: BG_LABELS } },
+  { id: 'gender', labelKey: 'avatar_panel_gender', shape: { key: 'gender', opts: GENDER_KEYS, lbl: { f: 'avatar_gender_f', m: 'avatar_gender_m', x: 'avatar_gender_x' } } },
+  { id: 'age', labelKey: 'avatar_panel_age', shape: { key: 'age', opts: AGE_KEYS, lbl: { 0: 'avatar_age_young', 1: 'avatar_age_adult', 2: 'avatar_age_older' } } },
+  { id: 'skin', labelKey: 'avatar_panel_skin', color: { key: 'skin', pal: SKIN_PALETTE } },
+  { id: 'face', labelKey: 'avatar_panel_face', shape: { key: 'face', opts: FACE_KEYS, lbl: { round: 'avatar_face_round', oval: 'avatar_face_oval', narrow: 'avatar_face_narrow', wide: 'avatar_face_wide', square: 'avatar_face_square', heart: 'avatar_face_heart', diamond: 'avatar_face_diamond' } } },
+  { id: 'hair', labelKey: 'avatar_panel_hair', shape: { key: 'hair', opts: HAIR_KEYS, lbl: { none: 'avatar_hair_none', buzz: 'avatar_hair_buzz', crop: 'avatar_hair_crop', sidepart: 'avatar_hair_sidepart', spiky: 'avatar_hair_spiky', quiff: 'avatar_hair_quiff', mohawk: 'avatar_hair_mohawk', balding: 'avatar_hair_balding', fringe: 'avatar_hair_fringe', undercut: 'avatar_hair_undercut', cornrows: 'avatar_hair_cornrows', dreads: 'avatar_hair_dreads', topknot: 'avatar_hair_topknot', bob: 'avatar_hair_bob', lob: 'avatar_hair_lob', long: 'avatar_hair_long', wavy: 'avatar_hair_wavy', curly: 'avatar_hair_curly', hime: 'avatar_hair_hime', halfup: 'avatar_hair_halfup', ponytail: 'avatar_hair_ponytail', pigtails: 'avatar_hair_pigtails', braid: 'avatar_hair_braid', braids: 'avatar_hair_braids', spacebuns: 'avatar_hair_spacebuns', bun: 'avatar_hair_bun', updo: 'avatar_hair_updo', afro: 'avatar_hair_afro' } }, color: { key: 'hairColor', pal: HAIR_PALETTE } },
+  { id: 'facial', labelKey: 'avatar_panel_facial', shape: { key: 'facial', opts: FACIAL_KEYS, lbl: { none: 'avatar_facial_none', stubble: 'avatar_facial_stubble', mustache: 'avatar_facial_mustache', goatee: 'avatar_facial_goatee', beard: 'avatar_facial_beard', soulpatch: 'avatar_facial_soulpatch', fullbeard: 'avatar_facial_fullbeard', chinstrap: 'avatar_facial_chinstrap' } } },
+  { id: 'headwear', labelKey: 'avatar_panel_headwear', shape: { key: 'headwear', opts: HEADWEAR_KEYS, lbl: { none: 'avatar_headwear_none', headband: 'avatar_headwear_headband', cap: 'avatar_headwear_cap', capback: 'avatar_headwear_capback', beanie: 'avatar_headwear_beanie', bandana: 'avatar_headwear_bandana', paisley: 'avatar_headwear_paisley', camo: 'avatar_headwear_camo', skull: 'avatar_headwear_skull', flame: 'avatar_headwear_flame', check: 'avatar_headwear_check' } }, color: { key: 'headwearColor', pal: HEADWEAR_PALETTE } },
+  { id: 'acc', labelKey: 'avatar_panel_acc', shape: { key: 'chain', opts: CHAIN_KEYS, secKey: 'avatar_sec_chain', lbl: { none: 'avatar_chain_none', gold: 'avatar_chain_gold', silver: 'avatar_chain_silver', choker: 'avatar_chain_choker' } }, shape2: { key: 'earring', opts: EARRING_KEYS, secKey: 'avatar_sec_earring', lbl: { none: 'avatar_earring_none', stud: 'avatar_earring_stud', hoop: 'avatar_earring_hoop', double: 'avatar_earring_double' } }, shape3: { key: 'eyewear', opts: EYEWEAR_KEYS, secKey: 'avatar_sec_eyewear', lbl: { none: 'avatar_eyewear_none', glasses: 'avatar_eyewear_glasses', sunglasses: 'avatar_eyewear_sunglasses', goggles: 'avatar_eyewear_goggles', eyeblack: 'avatar_eyewear_eyeblack' } } },
+  { id: 'top', labelKey: 'avatar_panel_top', shape: { key: 'top', opts: TOP_KEYS, lbl: { crew: 'avatar_top_crew', vneck: 'avatar_top_vneck', scoop: 'avatar_top_scoop', polo: 'avatar_top_polo', buttonup: 'avatar_top_buttonup', hoodie: 'avatar_top_hoodie', zip: 'avatar_top_zip', bomber: 'avatar_top_bomber', raglan: 'avatar_top_raglan', jersey: 'avatar_top_jersey', tank: 'avatar_top_tank', stripe: 'avatar_top_stripe', turtle: 'avatar_top_turtle', varsity: 'avatar_top_varsity', puffer: 'avatar_top_puffer', paintball: 'avatar_top_paintball', panel: 'avatar_top_panel', mesh: 'avatar_top_mesh' } }, color: { key: 'topColor', pal: TOP_PALETTE } },
+  { id: 'bg', labelKey: 'avatar_panel_bg', shape: { key: 'bg', opts: BG_KEYS, lbl: BG_LABEL_KEYS } },
 ];
 
 // AvatarBuilder({ initialSpec, onBack, onSave, teamColor }) — seeded from initialSpec
 // (no localStorage). "Save" calls onSave?.(spec) then onBack(). Exported-only this stage.
 function AvatarBuilder({ initialSpec, onBack = () => {}, onSave, teamColor = '#3b82f6' }) {
   const { isMobile } = useDevice();
+  const { t } = useLanguage();
   const [spec, setSpec] = useState(() => ({ ...DEFAULT_SPEC, ...(initialSpec || {}) }));
   const [panelId, setPanel] = useState('hair');
   const set = (k, v) => setSpec(s => ({ ...s, [k]: v }));
@@ -411,7 +425,7 @@ function AvatarBuilder({ initialSpec, onBack = () => {}, onSave, teamColor = '#3
             style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 6px', borderRadius: 12, background: on ? `${ACCENT}1a` : AVc.surfaceDark, border: `1.5px solid ${on ? ACCENT : AVc.border}`, transition: 'all .12s' }}>
             <PixelAvatar spec={{ ...spec, [sh.key]: opt }} size={50} teamColor={teamColor} />
             <span style={{ fontFamily: AVf, fontSize: 11.5, fontWeight: on ? 800 : 600, color: on ? AVc.text : AVc.textMuted, textAlign: 'center', lineHeight: 1.15, wordBreak: 'break-word' }}>
-              {sh.lbl ? sh.lbl[opt] : opt}
+              {sh.lbl ? t(sh.lbl[opt]) : opt}
             </span>
           </div>
         );
@@ -425,7 +439,7 @@ function AvatarBuilder({ initialSpec, onBack = () => {}, onSave, teamColor = '#3
         const on = spec[col.key] === opt;
         const hex = opt === 'team' ? teamColor : opt;
         return (
-          <div key={opt} onClick={() => set(col.key, opt)} title={opt === 'team' ? 'Drużyna' : opt}
+          <div key={opt} onClick={() => set(col.key, opt)} title={opt === 'team' ? t('avatar_color_team') : opt}
             style={{ position: 'relative', width: 36, height: 36, borderRadius: 10, cursor: 'pointer', background: hex, transition: 'box-shadow .12s', boxShadow: on ? `0 0 0 3px ${AVc.bg}, 0 0 0 5px ${hex}` : 'inset 0 0 0 1px rgba(255,255,255,.18)' }}>
             {opt === 'team' && <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: AVf, fontSize: 12, fontWeight: 900, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,.55)' }}>T</span>}
           </div>
@@ -437,10 +451,10 @@ function AvatarBuilder({ initialSpec, onBack = () => {}, onSave, teamColor = '#3
   const paired = P.shape && (P.color || P.shape2 || P.shape3);
   const content = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      {P.shape && <div>{(paired || P.shape.sec) && secLabel(P.shape.sec || 'Wygląd')}{shapeGrid(P.shape)}</div>}
-      {P.shape2 && <div>{secLabel(P.shape2.sec || 'Więcej')}{shapeGrid(P.shape2)}</div>}
-      {P.shape3 && <div>{secLabel(P.shape3.sec || 'Więcej')}{shapeGrid(P.shape3)}</div>}
-      {P.color && <div>{paired && secLabel(P.color.sec || 'Kolor')}{colorRow(P.color)}</div>}
+      {P.shape && <div>{(paired || P.shape.secKey) && secLabel(P.shape.secKey ? t(P.shape.secKey) : t('avatar_sec_look'))}{shapeGrid(P.shape)}</div>}
+      {P.shape2 && <div>{secLabel(P.shape2.secKey ? t(P.shape2.secKey) : t('avatar_sec_more'))}{shapeGrid(P.shape2)}</div>}
+      {P.shape3 && <div>{secLabel(P.shape3.secKey ? t(P.shape3.secKey) : t('avatar_sec_more'))}{shapeGrid(P.shape3)}</div>}
+      {P.color && <div>{paired && secLabel(t('avatar_sec_color'))}{colorRow(P.color)}</div>}
     </div>
   );
 
@@ -450,8 +464,8 @@ function AvatarBuilder({ initialSpec, onBack = () => {}, onSave, teamColor = '#3
         const on = panelId === p.id;
         return (
           <div key={p.id} onClick={() => setPanel(p.id)}
-            style={{ flexShrink: 0, cursor: 'pointer', padding: '9px 14px', borderRadius: 999, background: on ? ACCENT : AVc.surfaceDark, color: on ? '#1a1206' : AVc.textDim, border: `1px solid ${on ? ACCENT : AVc.border}`, fontFamily: AVf, fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap' }}>
-            {p.label}
+            style={{ flexShrink: 0, cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center', padding: '9px 14px', borderRadius: 999, background: on ? ACCENT : AVc.surfaceDark, color: on ? '#1a1206' : AVc.textDim, border: `1px solid ${on ? ACCENT : AVc.border}`, fontFamily: AVf, fontSize: 13, fontWeight: 800, whiteSpace: 'nowrap' }}>
+            {t(p.labelKey)}
           </div>
         );
       })}
@@ -460,23 +474,23 @@ function AvatarBuilder({ initialSpec, onBack = () => {}, onSave, teamColor = '#3
 
   const header = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderBottom: `1px solid ${AVc.border}`, flexShrink: 0 }}>
-      <div onClick={onBack} style={{ color: ACCENT, fontSize: 26, fontWeight: 800, cursor: 'pointer', lineHeight: 1 }}>‹</div>
+      <div onClick={onBack} role="button" aria-label={t('back')} style={{ color: ACCENT, fontSize: 26, fontWeight: 800, cursor: 'pointer', lineHeight: 1, minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>‹</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: AVf, fontSize: 19, fontWeight: 800, color: AVc.text }}>Twój awatar</div>
-        <div style={{ fontFamily: AVmono, fontSize: 10.5, letterSpacing: '1.5px', color: AVc.textMuted }}>PIXEL · 1-BIT</div>
+        <div style={{ fontFamily: AVf, fontSize: 19, fontWeight: 800, color: AVc.text }}>{t('avatar_title')}</div>
+        <div style={{ fontFamily: AVmono, fontSize: 10.5, letterSpacing: '1.5px', color: AVc.textMuted }}>{t('avatar_subtitle')}</div>
       </div>
       <div onClick={() => setSpec(randomSpec())}
-        style={{ cursor: 'pointer', padding: '8px 14px', borderRadius: 10, background: AVc.surfaceDark, border: `1px solid ${AVc.border}`, fontFamily: AVf, fontSize: 13, fontWeight: 800, color: AVc.textDim }}>
-        ⟲ Losuj
+        style={{ cursor: 'pointer', minHeight: 44, display: 'flex', alignItems: 'center', padding: '8px 14px', borderRadius: 10, background: AVc.surfaceDark, border: `1px solid ${AVc.border}`, fontFamily: AVf, fontSize: 13, fontWeight: 800, color: AVc.textDim }}>
+        ⟲ {t('avatar_randomize')}
       </div>
     </div>
   );
 
   const saveBar = (
     <div style={{ flexShrink: 0, padding: '12px 16px', borderTop: `1px solid ${AVc.border}`, background: AVc.bg }}>
-      <div onClick={() => { onSave?.(spec); onBack(); }}
+      <div onClick={() => { onSave?.(spec); }} role="button"
         style={{ background: ACCENT, color: '#1a1206', borderRadius: 12, minHeight: 54, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: AVf, fontSize: 17, fontWeight: 800, cursor: 'pointer' }}>
-        Zapisz awatar
+        {t('avatar_save')}
       </div>
     </div>
   );

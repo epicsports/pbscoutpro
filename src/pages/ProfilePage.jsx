@@ -22,6 +22,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, TNUM } f
 import { ASSIGNABLE_ROLES } from '../utils/roleUtils';
 import { useDevice } from '../hooks/useDevice';
 import RdIcon from '../components/RdIcon';
+import { PixelAvatar } from '../components/avatars';
 
 /**
  * ProfilePage — account settings for the logged-in Firebase user.
@@ -52,7 +53,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const user = auth.currentUser;
-  const { linkedPlayer, roles, workspace } = useWorkspace();
+  const { linkedPlayer, roles, workspace, userProfile } = useWorkspace();
   const { teams } = useActiveTeams();
   const { players } = usePlayers();
   // Self-claim picker shows the FULL global player catalog (Jacek 2026-06-14):
@@ -213,9 +214,15 @@ export default function ProfilePage() {
     setPlayerSaving(false);
   };
 
-  const linkedTeamName = linkedPlayer?.teamId
-    ? (teams || []).find(tm => tm.id === linkedPlayer.teamId)?.name
+  const linkedTeam = linkedPlayer?.teamId
+    ? (teams || []).find(tm => tm.id === linkedPlayer.teamId)
     : null;
+  const linkedTeamName = linkedTeam?.name || null;
+  // Team color resolves the avatar's "team" garment/headwear swatch; falls back
+  // to the accent when the user isn't linked to a team.
+  const avatarTeamColor = linkedTeam?.color || COLORS.accent;
+  const avatarSpec = userProfile?.avatarSpec || null;
+  const avatarSeed = user.displayName || user.email || '?';
 
   useEffect(() => {
     if (!linkToast) return;
@@ -309,14 +316,13 @@ export default function ProfilePage() {
             <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
               <div style={{ position: 'relative', marginBottom: 16 }}>
                 <div style={{ width: 104, height: 104, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `radial-gradient(circle at 50% 38%, ${tc}40, ${ELEV.sunken})`, border: `2.5px solid ${tc}88`, boxShadow: `0 6px 22px ${tc}33, ${ELEV.innerTop}`, overflow: 'hidden', fontFamily: FONT, fontSize: 38, fontWeight: 800, color: COLORS.text }}>
-                  {user.photoURL ? (
-                    <img src={user.photoURL} alt="avatar"
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    (user.displayName || user.email || '?').charAt(0).toUpperCase()
-                  )}
+                  <PixelAvatar spec={avatarSpec || undefined} seed={avatarSeed} teamColor={avatarTeamColor} size={104} />
                 </div>
+                {/* Edit avatar — pencil affordance (≥44px), opens the builder */}
+                <button type="button" onClick={() => navigate('/profile/avatar')} aria-label={t('avatar_edit') || 'Edit avatar'}
+                  style={{ position: 'absolute', bottom: -6, right: -6, width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accent, color: '#1a1206', border: `2px solid ${ELEV.surface}`, boxShadow: ELEV.shadow1, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+                  <RdIcon name="pencil" size={18} />
+                </button>
                 {/* number badge — only when a number exists */}
                 {number && (
                   <span style={{ position: 'absolute', bottom: -4, left: '50%', transform: 'translateX(-50%)', background: tc, color: '#1a1206', fontFamily: FONT, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: '3px 13px', border: `2px solid ${ELEV.surface}`, ...TNUM }}>#{number.replace(/^#/, '')}</span>
@@ -489,21 +495,21 @@ export default function ProfilePage() {
           padding: SPACE.md, borderRadius: RADIUS.lg,
           background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1,
         }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: ELEV.sunken, boxShadow: ELEV.innerTop,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 28, fontFamily: FONT, fontWeight: 800, color: COLORS.textDim,
-            overflow: 'hidden', flexShrink: 0,
-            border: `1px solid ${ELEV.hairlineStrong}`,
-          }}>
-            {user.photoURL ? (
-              <img src={user.photoURL} alt="avatar"
-                onError={(e) => { e.target.style.display = 'none'; }}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              (user.displayName || user.email || '?').charAt(0).toUpperCase()
-            )}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <div style={{
+              width: 72, height: 72, borderRadius: '50%',
+              background: ELEV.sunken, boxShadow: ELEV.innerTop,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              overflow: 'hidden',
+              border: `1px solid ${ELEV.hairlineStrong}`,
+            }}>
+              <PixelAvatar spec={avatarSpec || undefined} seed={avatarSeed} teamColor={avatarTeamColor} size={72} />
+            </div>
+            {/* Edit avatar — pencil affordance (≥44px), opens the builder */}
+            <button type="button" onClick={() => navigate('/profile/avatar')} aria-label={t('avatar_edit') || 'Edit avatar'}
+              style={{ position: 'absolute', bottom: -8, right: -8, width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accent, color: '#1a1206', border: `2px solid ${COLORS.bg}`, boxShadow: ELEV.shadow1, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+              <RdIcon name="pencil" size={17} />
+            </button>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{

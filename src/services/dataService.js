@@ -2927,6 +2927,16 @@ export async function setUserGlobalRole(uid, role) {
   return updateDoc(doc(db, 'users', uid), { globalRole: role });
 }
 
+// Persist the user's custom avatar spec on their own /users/{uid} doc
+// (Avatar builder, Stage C). Self-write to the caller's own user doc — no
+// rules change expected (the /users/{uid} self-update rule already permits
+// the owner to write their profile). The spec is read back via
+// useWorkspace().userProfile.avatarSpec (the live onSnapshot subscription)
+// and rendered by PixelAvatar/PlayerAvatar.
+export async function setUserAvatarSpec(uid, avatarSpec) {
+  return updateDoc(doc(db, 'users', uid), { avatarSpec, updatedAt: serverTimestamp() });
+}
+
 export async function transferAdmin(wsSlug, fromUid, toUid) {
   const wsRef = doc(db, wsPath(wsSlug));
   return runTransaction(db, async (tx) => {
