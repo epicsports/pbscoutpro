@@ -148,20 +148,22 @@ function BarRow({ label, labelColor, pct, barColor, right, rightSub }) {
 // per § 27). `break` is no longer a reason — it's a stage; legacy 'break'
 // data normalizes to {reason: null, inferredStage: 'break'} so it never
 // enters this map's domain.
-// Labels externalized to i18n (`elim_reason_{id}`) — read at RENDER via
-// `causeLabel(id, t)`, not at module-eval, so they follow the active language.
+// Labels externalized to i18n — read at RENDER via `causeLabel(id, t)`, not at
+// module-eval, so they follow the active language. Each cause carries its full
+// i18n key explicitly (no runtime prefix concatenation), keeping the call shape
+// a single argument and the keys greppable.
 const CAUSE_META = {
-  gunfight:        { color: '#ef4444' },
-  przejscie:       { color: '#eab308' },
-  faja:            { color: '#a855f7' },
-  na_przeszkodzie: { color: '#06b6d4' },
-  za_kare:         { color: '#94a3b8' },
-  nie_wiem:        { color: '#64748b' },
-  inaczej:         { color: '#fb7185' },
+  gunfight:        { color: '#ef4444', i18nKey: 'elim_reason_gunfight' },
+  przejscie:       { color: '#eab308', i18nKey: 'elim_reason_przejscie' },
+  faja:            { color: '#a855f7', i18nKey: 'elim_reason_faja' },
+  na_przeszkodzie: { color: '#06b6d4', i18nKey: 'elim_reason_na_przeszkodzie' },
+  za_kare:         { color: '#94a3b8', i18nKey: 'elim_reason_za_kare' },
+  nie_wiem:        { color: '#64748b', i18nKey: 'elim_reason_nie_wiem' },
+  inaczej:         { color: '#fb7185', i18nKey: 'elim_reason_inaczej' },
 };
 // Render-time label resolver: known cause → its i18n label; unknown id → the id
 // itself (mirrors the old `|| { label: id }` fallback for non-canonical causes).
-const causeLabel = (id, t) => (CAUSE_META[id] ? t('elim_reason_' + id) : id);
+const causeLabel = (id, t) => (CAUSE_META[id] ? t(CAUSE_META[id].i18nKey) : id);
 
 // § 59 redesign: survivalColor + ShotBar removed.
 //   survivalColor → reuse `winRateColor` from src/utils/colorScale.js
