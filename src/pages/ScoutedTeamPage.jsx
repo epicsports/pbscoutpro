@@ -1399,7 +1399,7 @@ export default function ScoutedTeamPage() {
           <div style={{ position: 'relative', minHeight: 260 }}>
             <Preloader
               progress={heatLoaderP}
-              phases={[{ label: 'Pobieranie punktów', to: 38 }, { label: 'Liczenie heatmapy', to: 80 }, { label: 'Renderowanie', to: 100 }]}
+              phases={[{ label: t('preloader_phase_fetch_points'), to: 38 }, { label: t('preloader_phase_compute_heatmap'), to: 80 }, { label: t('preloader_phase_render'), to: 100 }]}
               caption="reads · analiza przeciwnika"
               onDone={closeHeatLoader}
             />

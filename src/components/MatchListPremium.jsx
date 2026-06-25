@@ -195,7 +195,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
       <div style={{ position: 'relative', minHeight: '60vh' }}>
         <Preloader
           progress={loaderP}
-          phases={[{ label: 'Pobieranie meczów', to: 45 }, { label: 'Ładowanie drużyn', to: 85 }, { label: 'Renderowanie', to: 100 }]}
+          phases={[{ label: t('preloader_phase_fetch_matches'), to: 45 }, { label: t('preloader_phase_load_teams'), to: 85 }, { label: t('preloader_phase_render'), to: 100 }]}
           caption="reads · lista meczów"
           onDone={closeLoader}
         />

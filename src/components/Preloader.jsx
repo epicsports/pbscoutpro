@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { COLORS, ELEV } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * Preloader — premium determinate loader for heavy screens (North Star redesign).
@@ -48,7 +49,8 @@ export default function Preloader({
   loop = false,
   caption = 'reads · paintball intelligence',
 }) {
-  const phaseList = (phases && phases.length) ? phases : [{ label: 'Ładowanie', to: 100 }];
+  const { t } = useLanguage();
+  const phaseList = (phases && phases.length) ? phases : [{ label: t('preloader_loading'), to: 100 }];
   const driven = typeof progress === 'number'; // real-progress mode vs time fallback
   const [p, setP] = useState(driven ? Math.round(clamp(progress)) : 0);
   const held = useRef(false);
@@ -143,7 +145,7 @@ export default function Preloader({
         {/* ── phase label + tabular % ── */}
         <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 9 }}>
           <span style={{ fontFamily: MONO, fontSize: 11.5, fontWeight: 700, letterSpacing: '2px', color: complete ? accent : COLORS.textDim, textTransform: 'uppercase', transition: 'color .2s' }}>
-            {complete ? 'Gotowe' : (phase.label || 'Ładowanie')}
+            {complete ? t('preloader_done') : (phase.label || t('preloader_loading'))}
           </span>
           <span style={{ fontFamily: MONO, fontSize: 17, fontWeight: 700, color: accent, fontVariantNumeric: 'tabular-nums' }}>
             {String(p).padStart(2, '0')}<span style={{ fontSize: 11, opacity: 0.6 }}>%</span>
