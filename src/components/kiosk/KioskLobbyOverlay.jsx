@@ -12,6 +12,7 @@ import { SQUAD_MAP } from '../../utils/squads';
 import KioskWizardHost from './KioskWizardHost';
 import PlayerTile from './PlayerTile';
 import OlderPointsSection from './OlderPointsSection';
+import { useDisplayName } from '../../utils/playerName';
 
 /**
  * KioskLobbyOverlay — § 55.2 + § 55.3 lobby UI mounted as full-screen
@@ -62,6 +63,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
   const { points: matchupPoints } = useTrainingPoints(kiosk.trainingId, kiosk.matchupId);
   const { players, playersById } = usePlayers();
   const { layouts } = useLayouts();
+  const dn = useDisplayName();
 
   // Brief D Item (d): post-save toast with deep-link to PlayerStatsPage
   // training scope. After a player saves their KIOSK self-log, show a
@@ -240,7 +242,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
     const justSavedPlayer = playersById[kiosk.activePlayerId];
     setSavedToast({
       playerId: kiosk.activePlayerId,
-      nickname: justSavedPlayer?.nickname || justSavedPlayer?.name || '?',
+      nickname: justSavedPlayer ? dn(justSavedPlayer) : '?',
     });
 
     // 4. Clear active player → unmount wizard → lobby ✓ updates via snapshot

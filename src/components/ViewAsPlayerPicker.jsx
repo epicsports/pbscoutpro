@@ -3,6 +3,7 @@ import EntityPickerModal from './EntityPickerModal';
 import { useLanguage } from '../hooks/useLanguage';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
+import { useDisplayName } from '../utils/playerName';
 
 /**
  * ViewAsPlayerPicker — picks which roster player to impersonate when
@@ -15,6 +16,7 @@ import { COLORS, FONT, FONT_SIZE, SPACE } from '../utils/theme';
  */
 export default function ViewAsPlayerPicker({ open, onClose, onPick }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const { players } = usePlayers();
   const { teams } = useActiveTeams();
 
@@ -46,7 +48,7 @@ export default function ViewAsPlayerPicker({ open, onClose, onPick }) {
         <div style={{
           fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.text,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>{p.name || '—'}</div>
+        }}>{dn(p) || '—'}</div>
         <div style={{
           fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, marginTop: 2,
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',

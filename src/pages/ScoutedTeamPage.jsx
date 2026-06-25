@@ -22,6 +22,7 @@ import { useScreenLoader } from '../hooks/useScreenLoader';
 import { useField } from '../hooks/useField';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
+import { useDisplayName } from '../utils/playerName';
 import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Skull, X, ChevronDown } from 'lucide-react';
 import { resolveZones } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
@@ -237,6 +238,7 @@ export default function ScoutedTeamPage() {
   const device = useDevice();
   const R = responsive(device.type);
   const { t, lang } = useLanguage();
+  const dn = useDisplayName();
     const { tournamentId, scoutedId } = useParams();
   const navigate = useNavigate();
   const { tournaments, loading: tournamentsLoading } = useTournaments();
@@ -1113,7 +1115,7 @@ export default function ScoutedTeamPage() {
             <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>{t('scouted_layer_isolate')}</span>
             {hmSelectedPlayer && !hmIsolateOpen && (() => {
               const sp = roster.find(p => p.id === hmSelectedPlayer);
-              return sp ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{sp.name || `#${sp.number}`}</span> : null;
+              return sp ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{(sp.name || sp.nickname) ? dn(sp) : `#${sp.number}`}</span> : null;
             })()}
             <span style={{ marginLeft: 'auto', fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, transition: 'transform 0.15s', transform: hmIsolateOpen ? 'rotate(90deg)' : 'none' }}>›</span>
           </div>
@@ -1129,7 +1131,7 @@ export default function ScoutedTeamPage() {
                     border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
                   }}>
                     <PlayerAvatar player={p} size={20} />
-                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: active ? COLORS.accent : COLORS.text, whiteSpace: 'nowrap' }}>{p.name || `#${p.number}`}</span>
+                    <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: active ? COLORS.accent : COLORS.text, whiteSpace: 'nowrap' }}>{(p.name || p.nickname) ? dn(p) : `#${p.number}`}</span>
                   </div>
                 );
               })}
@@ -1729,7 +1731,7 @@ export default function ScoutedTeamPage() {
             padding: '3px 8px 3px 3px', background: COLORS.surface,
             border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.full,
           };
-          const nameOf = (p) => p ? (p.name || p.nickname || `#${p.number || ''}`) : t('callout_unknown_player');
+          const nameOf = (p) => p ? ((p.name || p.nickname) ? dn(p) : `#${p.number || ''}`) : t('callout_unknown_player');
           const playerChip = (pid, count) => {
             const p = playersById[pid];
             return (
@@ -1847,7 +1849,7 @@ export default function ScoutedTeamPage() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {h.number ? `#${h.number} ` : ''}{h.name}
+                          {h.number ? `#${h.number} ` : ''}{dn(playersById[h.playerId] || { name: h.fullName, nickname: h.name !== h.fullName ? h.name : undefined })}
                         </div>
                         <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
                           <span>{h.wins}–{h.losses}</span>
@@ -2003,7 +2005,7 @@ export default function ScoutedTeamPage() {
                   <Row label={t('signal_targeted')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
-                        {mostEliminated.number ? `#${mostEliminated.number} ` : ''}{mostEliminated.name || `Slot ${mostEliminated.slot + 1}`}
+                        {mostEliminated.number ? `#${mostEliminated.number} ` : ''}{mostEliminated.name ? (playersById[mostEliminated.playerId] ? dn(playersById[mostEliminated.playerId]) : mostEliminated.name) : `Slot ${mostEliminated.slot + 1}`}
                       </span>
                       <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.danger }}>{mostEliminated.pct}%</span>
                       <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted }}>{t('scouted_eliminated_label')}</span>
@@ -2227,7 +2229,7 @@ export default function ScoutedTeamPage() {
                         onClick={() => handleAddToRoster(p.id)}>
                         <PlayerAvatar player={p} size={28} />
                         <span style={{ fontFamily: FONT, fontWeight: 800, color: COLORS.accent, fontSize: TOUCH.fontSm }}>#{p.number}</span>
-                        <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>{p.nickname || p.name}</span>
+                        <span style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1 }}>{dn(p)}</span>
                         <Icons.Plus />
                       </div>
                     ))}
@@ -2245,7 +2247,7 @@ export default function ScoutedTeamPage() {
                     <span
                       onClick={() => navigate(`/player/${p.id}/stats?scope=tournament&tid=${tournamentId}`)}
                       style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text, flex: 1, cursor: 'pointer', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.name} {p.nickname && <span style={{ color: COLORS.textDim }}>„{p.nickname}"</span>}
+                      {dn({ name: p.name })} {p.nickname && <span style={{ color: COLORS.textDim }}>„{p.nickname}"</span>}
                     </span>
                     {/* Tournament HERO toggle (§ 25) */}
                     <div
@@ -2495,7 +2497,7 @@ export default function ScoutedTeamPage() {
     { key: 'notes', icon: FIELD_LAYERS.notes.icon, label: t('scouted_layer_notes'), on: hmShowAnnotations, onToggle: () => setHmShowAnnotations(v => !v), disabled: replaying },
   ];
   const fvIsolateItems = roster.map(p => ({
-    key: p.id, label: p.name || `#${p.number}`,
+    key: p.id, label: (p.name || p.nickname) ? dn(p) : `#${p.number}`,
     avatar: p.number != null ? String(p.number) : '•', accent: p.playerColor || undefined,
     active: hmSelectedPlayer === p.id,
     onSelect: () => setHmSelectedPlayer(hmSelectedPlayer === p.id ? null : p.id),
@@ -2527,7 +2529,7 @@ export default function ScoutedTeamPage() {
       {roster.length > 0 && (
         <RailZone label={t('scouted_layer_isolate')} last collapsible defaultCollapsed
           testId="rail-isolate-toggle"
-          headerExtra={fvIsolateActive ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{fvIsolateActive.name || `#${fvIsolateActive.number}`}</span> : null}>
+          headerExtra={fvIsolateActive ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{(fvIsolateActive.name || fvIsolateActive.nickname) ? dn(fvIsolateActive) : `#${fvIsolateActive.number}`}</span> : null}>
           <RailItemList items={fvIsolateItems} />
         </RailZone>
       )}

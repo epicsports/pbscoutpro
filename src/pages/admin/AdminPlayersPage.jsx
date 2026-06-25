@@ -17,6 +17,7 @@ import MergePlayersModal from '../../components/MergePlayersModal';
 import PlayerMultiSelectBar, { SelectCheckbox } from '../../components/PlayerMultiSelectBar';
 import PlayerFormModal from './PlayerFormModal';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDisplayName } from '../../utils/playerName';
 
 // Phase 2.2.c — Super admin CRUD for global /players/ collection (934 docs).
 // Per DESIGN_DECISIONS § 63.15.3 + MULTI_TENANT_MIGRATION_PLAN.md Phase 2 Step 2c.
@@ -39,6 +40,7 @@ const tsMs = (t) => {
 
 export default function AdminPlayersPage() {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const { effectiveIsAdmin } = useViewAs();
   const { players, loading } = usePlayers();
   const { teams } = useActiveTeams();
@@ -256,9 +258,15 @@ export default function AdminPlayersPage() {
               if (p.originWorkspace) subtitleParts.push(p.originWorkspace);
               if (p.hero) subtitleParts.push('HERO');
               if (aliasCount > 0) subtitleParts.push(`${aliasCount} alias${aliasCount === 1 ? '' : 'es'}`);
+              // PII-aware display. dn(p) returns the nickname unchanged or the
+              // truncated real name; the parenthetical full name is ALSO routed
+              // through dn (as a name-only player) so short mode doesn't leak the
+              // surname there either.
+              const dnName = dn(p);
+              const dnNamePart = dn({ name: p.name });
               const displayName = p.nickname
-                ? `${p.nickname}${p.name && p.name !== p.nickname ? ` (${p.name})` : ''}`
-                : (p.name || '—');
+                ? `${dnName}${p.name && p.name !== p.nickname ? ` (${dnNamePart})` : ''}`
+                : (p.name ? dnNamePart : '—');
               const isSelected = selectedIds.has(p.id);
               return (
                 <Card
@@ -299,7 +307,7 @@ export default function AdminPlayersPage() {
       <ActionSheet
         open={!!actionFor}
         onClose={() => setActionFor(null)}
-        title={actionFor?.nickname || actionFor?.name}
+        title={actionFor ? dn(actionFor) : ''}
         actions={actionFor ? [
           { label: t('edit'), onPress: () => { setEditing(actionFor); setActionFor(null); } },
           { label: t('delete'), danger: true, onPress: () => { setDeleteFor(actionFor); setActionFor(null); } },
@@ -310,7 +318,7 @@ export default function AdminPlayersPage() {
       <Modal
         open={!!deleteFor}
         onClose={() => { if (!pending) { setDeleteFor(null); setDeleteError(null); } }}
-        title={hasAliases ? `⚠ Delete ${deleteFor?.nickname || deleteFor?.name}?` : `Delete ${deleteFor?.nickname || deleteFor?.name}?`}
+        title={hasAliases ? `⚠ Delete ${deleteFor ? dn(deleteFor) : ''}?` : `Delete ${deleteFor ? dn(deleteFor) : ''}?`}
         footer={<>
           <Btn variant="default" onClick={() => { setDeleteFor(null); setDeleteError(null); }} disabled={pending}>{t('cancel')}</Btn>
           <Btn variant="danger" onClick={handleDelete} disabled={pending}>

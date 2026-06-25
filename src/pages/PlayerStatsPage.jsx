@@ -40,6 +40,7 @@ import {
 } from '../utils/playerStats';
 import { winRateColor, plusMinusColor } from '../utils/colorScale';
 import { useLanguage } from '../hooks/useLanguage';
+import { useDisplayName } from '../utils/playerName';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
 import { getSelfReportsForPlayer } from '../services/playerPerformanceTrackerService';
@@ -319,6 +320,7 @@ export default function PlayerStatsPage() {
   const device = useDevice();
   const R = responsive(device.type);
   const { t } = useLanguage();
+  const dn = useDisplayName();
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   // Brief E Gap 5 — read raw scope param (null when absent) so the
@@ -884,7 +886,7 @@ export default function PlayerStatsPage() {
   const pageHeaderEl = (
     <PageHeader
       back={{ to: backTo }}
-      title={player.name || 'Player'}
+      title={dn(player) || 'Player'}
       subtitle={t('player_stats').toUpperCase()}
     />
   );

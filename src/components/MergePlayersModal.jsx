@@ -4,6 +4,7 @@ import PlayerAvatar from './PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { playerTeams } from '../utils/playerTeams';
 import { useLanguage } from '../hooks/useLanguage';
+import { useDisplayName } from '../utils/playerName';
 
 // Shared by PlayersPage (workspace) + AdminPlayersPage (global).
 // Mirrors TeamDuplicateResolutionView pattern:
@@ -52,6 +53,7 @@ function scorePlayer(p) {
 
 export default function MergePlayersModal({ open, onClose, players, teams = [], onConfirm }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const list = useMemo(() => Array.isArray(players) ? players.filter(Boolean) : [], [players]);
   const scored = useMemo(
     () => [...list].map(p => ({ p, score: scorePlayer(p) })).sort((a, b) => b.score - a.score),
@@ -190,11 +192,11 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
                   <PlayerAvatar player={p} size={32} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.nickname || p.name || '—'}
+                      {dn(p)}
                     </div>
                     {p.nickname && p.name && p.nickname !== p.name && (
                       <div style={{ fontSize: 10, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {p.name}
+                        {dn({ name: p.name })}
                       </div>
                     )}
                   </div>
@@ -267,7 +269,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
                         fontFamily: FONT, fontSize: 11, color: COLORS.textMuted, minWidth: 80,
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                       }}>
-                        {player?.nickname || player?.name || '—'}
+                        {player ? dn(player) : '—'}
                       </span>
                       <span style={{
                         flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: 600,

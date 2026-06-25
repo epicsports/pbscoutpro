@@ -3,6 +3,7 @@ import { Modal, Btn, Input } from '../ui';
 import PlayerAvatar from '../PlayerAvatar';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDisplayName } from '../../utils/playerName';
 import { useUserProfiles } from '../../hooks/useUserNames';
 import { useActiveTeams } from '../../hooks/useFirestore';
 import { matchPlayers } from '../../utils/pbliMatching';
@@ -169,7 +170,8 @@ export default function LinkProfileModal({
  * when names collide or substring matches return adjacent players.
  */
 function ConfirmCard({ player, teamName, onConfirm, onBack, busy, t }) {
-  const name = player.nickname || player.name || 'Player';
+  const dn = useDisplayName();
+  const name = dn(player) || 'Player';
   const number = player.number ? `#${player.number}` : '';
   const pbli = player.pbliIdFull || player.pbliId
     ? `PBLI: ${String(player.pbliIdFull || player.pbliId).replace(/^#?/, '')}`
@@ -264,7 +266,8 @@ function NoMatchFallback({ onSkip, onRetry, busy, t }) {
 }
 
 function PlayerOption({ player, current, conflictLabel, disabled, onSelect, t }) {
-  const name = player.nickname || player.name || 'Player';
+  const dn = useDisplayName();
+  const name = dn(player) || 'Player';
   const number = player.number ? `#${player.number}` : '';
   const pbli = player.pbliId ? `PBLI #${String(player.pbliId).replace(/^#?/, '')}` : '';
   const subBits = [pbli, conflictLabel ? `${t('link_profile_already_taken') || 'Already linked'}: ${conflictLabel}` : null]

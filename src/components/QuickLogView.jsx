@@ -9,6 +9,7 @@ import { ZONES } from '../utils/zones';
 import { winRateColor } from '../utils/colorScale';
 import { useLanguage } from '../hooks/useLanguage';
 import { useQuickLogSetter } from '../contexts/QuickLogContext';
+import { useDisplayName } from '../utils/playerName';
 
 /**
  * QuickLogView — fast point logging without canvas.
@@ -89,6 +90,7 @@ export default function QuickLogView({
   freePlay = false, // § 70 Stage 1b — squad-less free-play mode (default off)
 }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const isTablet = useIsTablet();
   const [menuOpen, setMenuOpen] = useState(false);
   // § 58.7 (hotfix v2): tell AppShell to hide the tournament context bar
@@ -294,7 +296,12 @@ export default function QuickLogView({
       const lookupPool = (allPlayers && allPlayers.length) ? allPlayers : allRoster;
       const names = assignments.filter(Boolean).map(pid => {
         const p = lookupPool.find(r => r.id === pid);
-        return p?.nickname || p?.name?.split(' ').pop() || '?';
+        // History row is compact (nickname or last-name). When short mode
+        // mangled the surname, prefer the PII-aware label so no full surname
+        // leaks; otherwise keep the existing compact last-name.
+        const piiName = dn(p);
+        const rawName = p?.nickname || p?.name || '?';
+        return piiName !== rawName ? piiName : (p?.nickname || p?.name?.split(' ').pop() || '?');
       });
       const isWin = (activeTeam === 'A' && pt.outcome === 'win_a') || (activeTeam === 'B' && pt.outcome === 'win_b');
       const isLoss = (activeTeam === 'A' && pt.outcome === 'win_b') || (activeTeam === 'B' && pt.outcome === 'win_a');
@@ -542,7 +549,7 @@ export default function QuickLogView({
                       color: COLORS.text, minWidth: 0,
                       whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                     }}>
-                      {p?.nickname || p?.name || '?'}
+                      {dn(p)}
                     </span>
                     {/* squad color dot — small, decorative, paired with name */}
                     <span style={{
@@ -683,7 +690,7 @@ export default function QuickLogView({
                     color: COLORS.text,
                     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                   }}>
-                    {p?.nickname || p?.name || '?'}
+                    {dn(p)}
                   </span>
                   {[
                     { elim: false, label: t('quicklog_fp_survived'), icon: '♥', color: COLORS.success },
@@ -829,6 +836,7 @@ export default function QuickLogView({
  */
 function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPlayer, isTablet }) {
   const { t } = useLanguage(); // own hook — module-level sub-component, not in QuickLogView's scope
+  const dn = useDisplayName();
   if (roster.length === 0) {
     return (
       <div style={{ padding: isTablet ? '0 24px 4px' : '0 16px 4px' }}>
@@ -891,7 +899,7 @@ function PlayerTileGrid({ label, color, roster, selected, onToggle, metricsByPla
                     color: COLORS.text,
                     overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
                   }}>
-                    {p.nickname || p.name || '?'}
+                    {dn(p)}
                   </span>
                 </div>
                 {/* Metrics row: ♥ survival · ⏱ punkty */}

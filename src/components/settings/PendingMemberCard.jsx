@@ -4,6 +4,7 @@ import PlayerAvatar from '../PlayerAvatar';
 import RoleChips from './RoleChips';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDisplayName } from '../../utils/playerName';
 import * as ds from '../../services/dataService';
 
 /**
@@ -22,6 +23,7 @@ import * as ds from '../../services/dataService';
  */
 export default function PendingMemberCard({ workspaceSlug, uid, linkedPlayer, team, displayName, email }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   // Default pre-selection: 'player' — most common case for PBLI-linked roster
   // members. Admin can toggle to add coach/scout/etc.
   const [selected, setSelected] = useState(['player']);
@@ -32,8 +34,7 @@ export default function PendingMemberCard({ workspaceSlug, uid, linkedPlayer, te
   // Bug B1: fallback order matches MemberCard — linked-player identity
   // first (primary match for PBLI-linked applicants), then /users/{uid}
   // profile, then email, then localized fallback.
-  const name = linkedPlayer?.nickname
-    || linkedPlayer?.name
+  const name = (linkedPlayer ? dn(linkedPlayer) : null)
     || displayName
     || email
     || (t('member_fallback') || 'Member');

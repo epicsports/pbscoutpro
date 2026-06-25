@@ -5,6 +5,7 @@ import { usePlayers } from '../hooks/useFirestore';
 import { winRateColor } from '../utils/colorScale';
 import { DataSourcePill } from './ui';
 import PlayerAvatar from './PlayerAvatar';
+import { useDisplayName } from '../utils/playerName';
 
 /**
  * LineupStatsSection — § 59.5 chemistry sections.
@@ -89,6 +90,7 @@ function ChemistrySection({ title, items, lookup, t }) {
 
 // § 59.5 — overlapping-avatar card.
 function ChemistryCard({ members, winRate, played, dim, t }) {
+  const dn = useDisplayName();
   const wrColor = winRateColor(winRate);
   const stackWidth = members.length === 0
     ? 0
@@ -128,7 +130,7 @@ function ChemistryCard({ members, winRate, played, dim, t }) {
           fontWeight: 600, color: COLORS.text,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {members.map(m => m.nickname || m.name).join(' + ')}
+          {members.map(m => dn(m)).join(' + ')}
         </div>
         <div style={{
           marginTop: 6, height: 4, background: COLORS.surfaceLight,
