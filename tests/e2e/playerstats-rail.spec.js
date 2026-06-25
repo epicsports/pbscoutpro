@@ -1,9 +1,11 @@
-// e2e — PlayerStats landscape = FIELD-IS-KING CanvasRailLayout (§118 canon; the
-// §118.1 report-first WIDTH split was REVERTED 2026-06-18 — it shrank the field on
-// wide screens). Landscape: field=HERO (fills height) → §116 collapses the rail to
-// the 56px strip; portrait unchanged. KEPT from §118.1-STAGE-B: the stat grid
-// reflows (auto-fit) so the 3rd card never clips (asserted in the stacked portrait
-// view, where the grid is directly visible). Hero data: pa1 / MATCH_PSTATS heatmap.
+// e2e — PlayerStats responsive layout.
+// PORTRAIT (phone): capped heatmap hero + stacked report; the 6-metric stat grid
+// reflows (auto-fit) so the 3rd card never clips (asserted here, grid directly visible).
+// TABLET-LANDSCAPE / WIDE (≥720): the wide 2-col ANALYTICS dashboard (hero card +
+// self-review LEFT, analytics grid RIGHT). CD Option A (2026-06-25): the player
+// self-stats screen renders ANALYTICS, not a field — so §116 "field-is-king"
+// CanvasRailLayout is RETIRED for THIS screen only (it stays for match/scout/opponent,
+// where the field IS the content). Hero/heatmap data: pa1 / MATCH_PSTATS.
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
 import { TEST_ACCOUNT, TRN_PSTATS, ROSTER_A_IDS } from './fixtures.js';
@@ -28,11 +30,16 @@ test.describe('PlayerStats field-is-king rail', () => {
       .evaluate(el => el.scrollWidth - el.clientWidth);
     expect(gridOverflow).toBeLessThanOrEqual(1);
 
-    // TABLET-LANDSCAPE: field-is-king → §116 strip present (rail collapsed), field fills height.
+    // TABLET-LANDSCAPE: PlayerStats landscape = the wide 2-col ANALYTICS dashboard
+    // (CD Option A, 2026-06-25 — §116 field-hero RETIRED for THIS screen ONLY; the
+    // player self-stats screen renders analytics, not a field). LEFT = hero card +
+    // self-review; RIGHT = analytics grid. §116 stays everywhere else (match/scout/opponent).
     await page.setViewportSize(TABLET_LS);
     await page.waitForTimeout(400);
-    await expect(page.getByTestId('rail-strip-back')).toBeVisible();              // rail collapsed → field is king
-    expect((await canvas.boundingBox()).height).toBeGreaterThan(TABLET_LS.height * 0.78); // field fills height (hero)
+    await expect(page.getByTestId('rail-strip-back')).toHaveCount(0);             // NO CanvasRailLayout field-hero on this screen
+    const wideGrid = page.getByTestId('player-stat-grid');
+    await expect(wideGrid).toBeVisible();                                         // analytics grid renders
+    expect((await wideGrid.boundingBox()).x).toBeGreaterThan(320);               // RIGHT column → genuine 2-col (hero left, analytics right)
 
     // PORTRAIT again: unchanged stack.
     await page.setViewportSize(PORTRAIT);
