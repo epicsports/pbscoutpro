@@ -514,7 +514,7 @@ const T = {
        same ruling as divisions/roles 2026-06-12) — identical in both langs. */
     phase_break:              'Break',
     phase_settle:             'Settle',
-    phase_mid:                'Mid',
+    phase_mid:                'Mid-game',
     phase_play:               'Odtwórz fazy',
     phase_row_label:          'Fazy punktu',
     phase_play_disabled_hint: 'Brak zarejestrowanych faz Settle/Mid',
@@ -2860,7 +2860,7 @@ const T = {
     /* §B phase view (match review, 2026-06-12) */
     phase_break:              'Break',
     phase_settle:             'Settle',
-    phase_mid:                'Mid',
+    phase_mid:                'Mid-game',
     phase_play:               'Play phases',
     phase_row_label:          'Point phases',
     phase_play_disabled_hint: 'No Settle/Mid stages captured yet',
