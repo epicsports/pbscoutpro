@@ -10,7 +10,7 @@
 // so a previewed point could never animate past its first phase).
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
-import { TEST_ACCOUNT, matchPhaseReviewUrl } from './fixtures.js';
+import { TEST_ACCOUNT, matchPhaseReviewUrl, matchupReviewUrl } from './fixtures.js';
 
 const PORTRAIT = { width: 414, height: 896 };
 const PHONE_LS = { width: 896, height: 414 };
@@ -159,5 +159,23 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await openReview(page, PORTRAIT);
     await expect(page.getByTestId('phase-play')).toBeVisible();
     await expect(page.getByTestId('end-match-inline')).toBeVisible();
+  });
+
+  // Regression guard for the TabletLiveScoringPremium rebuild: TRAINING review keeps its
+  // quick-log shortcut in the new landscape sidebar scoreboard; TOURNAMENT review (the
+  // prototype design) has none. (The rebuild initially dropped the training Quick CTA in
+  // landscape — restored conditionally on isTraining.)
+  test('landscape: training review keeps Quick CTA in sidebar; tournament has none', async ({ page }) => {
+    await login(page, TEST_ACCOUNT);
+    await page.setViewportSize(PHONE_LS);
+    await page.goto('/' + matchupReviewUrl);
+    await expect(page.getByTestId('review-scoreboard')).toBeVisible({ timeout: 20000 });
+    const rolesNudge = page.getByRole('button', { name: /^(Zrobię to później|I'll do it later)$/ });
+    if (await rolesNudge.isVisible().catch(() => false)) await rolesNudge.click();
+    await expect(page.getByTestId('quick-cta-a')).toBeVisible();
+    await expect(page.getByTestId('quick-cta-b')).toBeVisible();
+    // Tournament review (landscape) → no Quick CTA (matches the prototype).
+    await openReview(page, PHONE_LS);
+    await expect(page.getByTestId('quick-cta-a')).toHaveCount(0);
   });
 });

@@ -2513,11 +2513,18 @@ export default function MatchPage() {
               <div onClick={() => goScout(match?.teamA)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 0, cursor: isLocked ? 'default' : 'pointer' }}>
                 <TeamBadge team={teamA || { name: 'Home' }} size={46} />
                 <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, textAlign: 'center', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{teamA?.name || 'Home'}</span>
+                {/* Training keeps its quick-log shortcut (the tournament prototype has none). */}
+                {isTraining && !isLocked && (
+                  <div data-testid="quick-cta-a" onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, cursor: 'pointer' }}>{t('match_quick_cta')} ›</div>
+                )}
               </div>
               <span style={{ fontFamily: FONT, fontSize: 40, fontWeight: 800, color: COLORS.text, letterSpacing: '-1px', flexShrink: 0, ...TNUM }}>{sA}<span style={{ color: COLORS.textMuted, margin: '0 3px' }}>:</span>{sB}</span>
               <div onClick={() => goScout(match?.teamB)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 0, cursor: isLocked ? 'default' : 'pointer' }}>
                 <TeamBadge team={teamB || { name: 'Away' }} size={46} />
                 <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, textAlign: 'center', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{teamB?.name || 'Away'}</span>
+                {isTraining && !isLocked && (
+                  <div data-testid="quick-cta-b" onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, cursor: 'pointer' }}>{t('match_quick_cta')} ›</div>
+                )}
               </div>
             </div>
             {/* Warstwa A / Warstwa B segmented toggle ← hmVisibility per-team */}
