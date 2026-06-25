@@ -245,7 +245,7 @@ function LayoutsListWide({ t, loading, layouts, isSuper, onOpen, onBrowse, onNew
         {/* search */}
         <div style={{ position: 'relative', flex: '1 1 280px', minWidth: 220, maxWidth: 420 }}>
           <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: COLORS.textMuted, display: 'flex', pointerEvents: 'none' }}>
-            <RdIcon name="compass" size={15} />
+            <RdIcon name="search" size={15} />
           </span>
           <input
             value={q}
@@ -295,7 +295,7 @@ function LayoutsListWide({ t, loading, layouts, isSuper, onOpen, onBrowse, onNew
         {!loading && !!layouts.length && list.length === 0 && (
           <div style={{ padding: '64px 16px', textAlign: 'center', color: COLORS.textMuted, fontFamily: FONT, fontSize: FONT_SIZE.lg, fontWeight: 600 }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12, opacity: 0.6 }}>
-              <RdIcon name="compass" size={30} />
+              <RdIcon name="search" size={30} />
             </div>
             {t('layouts_no_results')}
           </div>

@@ -6,7 +6,7 @@ import React from 'react';
  * from the handoff `reference/redesign.jsx:77`, plus a few app-specific extras
  * (trash, shield, globe, palette) the menu/settings need.
  *
- * Names: compass, flag, target, impact, duo, note, footsteps, pin, warn, pencil,
+ * Names: compass, search, flag, target, impact, duo, note, footsteps, pin, warn, pencil,
  * play, pause, check, clock, layers, eye, eyeoff, trophy, star, chevron, close, swap, map,
  * building, jersey, book, hand, todo, home, door, user, plus, dots, trash, shield, globe, palette.
  */
@@ -15,6 +15,7 @@ export default function RdIcon({ name, size = 16, fill }) {
   const s = { stroke: 'currentColor', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round' };
   switch (name) {
     case 'compass': return <svg {...p}><circle cx="8" cy="8" r="6.2" {...s} /><path d="M10.6 5.4L9 9l-3.6 1.6L7 7z" {...s} /></svg>;
+    case 'search': return <svg {...p}><circle cx="7" cy="7" r="4.2" {...s} /><path d="M10.2 10.2l3.4 3.4" {...s} /></svg>;
     case 'flag': return <svg {...p}><path d="M4.2 14V2.4" {...s} /><path d="M4.2 3h7l-1.4 2.2L11.2 7.4h-7" {...s} /></svg>;
     case 'target': return <svg {...p}><circle cx="8" cy="8" r="6" {...s} /><circle cx="8" cy="8" r="2.6" {...s} /><path d="M8 .8v2.2M8 13v2.2M.8 8H3M13 8h2.2" {...s} /></svg>;
     case 'impact': return <svg {...p}><path d="M8 1.4l1.7 3.5 3.8-.6-2 3.3 2 3.3-3.8-.6L8 14.6l-1.7-3.7-3.8.6 2-3.3-2-3.3 3.8.6z" {...s} /></svg>;
