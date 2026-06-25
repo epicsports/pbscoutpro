@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-25 — [REDESIGN/Tier-2] Match-list cards → HeroLive + Fixture 1:1 (Jacek design-sync, night)
+**App (auto-deploy, e2e-gated). No data/logic change.** Merge `feat/matchcard-rebuild` (MatchCard.jsx + i18n, render-only). Jacek showed (IMG_0150/0147) the match-list cards were "mega inny" — the prototype has 2 distinct cards, prod had 1.
+- **LIVE → `HeroLive`** (redesign.jsx 152-179): card radius 18 + danger border; vertical teams (TeamBadge48 + 2-line name + "Scoutuj →") | **44px center score** + "Podgląd meczu"; 3 tap zones (A-scout / center-review / B-scout).
+- **SCHEDULED/COMPLETED → `Fixture`** (181-215): card radius 14; left 60px meta block (day/time/"POLE {n}" — or score+"FINAŁ" if done; tap=review) | right 2 stacked TeamLines (TeamBadge30 + name + "›" chevron + team-color left-gradient; tap=scout).
+- **Byte-identical wiring:** props/handlers/score-resolution/winner-logic/routing (`?scout=&mode=new`/review) all preserved; both callers (MatchListPremium, CoachTabContent) unchanged. Real `TeamBadge` + `getTeamName` + `team.color` — **no fabrication** (prod has no `short`; TeamBadge monogram is the truthful equivalent). `LiveMatchTile` retained (training tile).
+- 4 new `matchcard_*` i18n keys (pl+en). **No spec changes** (no test asserts MatchCard internals; routing URLs byte-identical).
+- **PROOF:** build + precommit green; **full e2e 116/116** (incl. capture suite).
+- **Smoke (Jacek):** Scout → match list = big LIVE cards (vertical teams + 44px score) + Fixture rows (meta-block + stacked teams + chevrons), matches IMG_0150.
+
 ## 2026-06-25 — [REDESIGN/Tier-2] Live-scoring review → TabletLiveScoringPremium 1:1 (Jacek design-sync, night)
 **App (auto-deploy, e2e-gated). No data/capture path.** Merge `feat/live-review-rebuild` (4 files). Rebuilt the LANDSCAPE review to the prototype after Jacek showed it was "mega inny" (the audit/Plan-agent had falsely claimed alignment — they compared code without the visual ground-truth).
 - **372px LEFT sidebar** (prototype `TabletLiveScoringPremium`): Back + NA ŻYWO + point-tag · scoreboard (TeamBadge46 + name | 40px score | …) · **Warstwa A/B** layer toggle · "Punkty" · **detailed PointRows** (PKT block + 2 stacked SideZones: TeamBadge22 + short + ✓/`scout: {name}` + pencil, winner-color left-border, select-for-anim) · **Kompletność** bars · Zakończ mecz. **RIGHT panel:** attached phase tabs top-left + bottom **animation scrubber** ("Animacja punktu N").
