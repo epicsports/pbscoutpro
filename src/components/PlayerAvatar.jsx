@@ -1,6 +1,7 @@
 import React from 'react';
 import { COLORS, FONT } from '../utils/theme';
 import { useWorkspace } from '../hooks/useWorkspace';
+import PixelAvatar from './avatars';
 
 /**
  * PlayerAvatar — circular avatar with fallback chain.
@@ -9,10 +10,11 @@ import { useWorkspace } from '../hooks/useWorkspace';
  *   1. player.photoURL (uploaded photo)
  *   2. nickname/name initial (single letter, colored bg)
  *
- * When avatarMode === 'avatar' (Privacy/PII Phase 1, super-admin set), the
- * photoURL is IGNORED and the deterministic colored-initial fallback always
- * renders — no player photos are shown anywhere this component is used.
- * (Full pixel-art avatars come later; Phase 1 = initial/seed, NO photo.)
+ * When avatarMode === 'avatar' (Privacy/PII), the photoURL is IGNORED and a
+ * deterministic pixel-art portrait renders instead — no player photos are
+ * shown anywhere this component is used. The portrait is seeded from the
+ * player's nickname/name/id (stable per player) unless the player has a saved
+ * `avatarSpec` (custom builder output — wired in Stage C).
  *
  * For scouting UI where space is tight, the parent typically renders
  * #number alongside; this component is purely the visual chip.
@@ -33,8 +35,24 @@ function useAvatarMode() {
 
 export default function PlayerAvatar({ player, size = 32, ringColor }) {
   const avatarMode = useAvatarMode();
-  // In 'avatar' mode the uploaded photo is suppressed entirely (PII).
-  const photoURL = avatarMode === 'avatar' ? null : player?.photoURL;
+
+  // 'avatar' mode → deterministic pixel-art portrait (photo suppressed for PII).
+  // Seed is the stable fallback; per-player `avatarSpec` (builder output) overrides
+  // it when present (Stage C). teamColor + ring follow the caller's ringColor.
+  if (avatarMode === 'avatar') {
+    return (
+      <PixelAvatar
+        seed={player?.nickname || player?.name || player?.id || '?'}
+        spec={player?.avatarSpec || undefined}
+        teamColor={ringColor || COLORS.accent}
+        size={size}
+        ring={ringColor}
+      />
+    );
+  }
+
+  // 'photo' mode (default): uploaded photo → colored-initial fallback.
+  const photoURL = player?.photoURL;
   const initial = (player?.nickname || player?.name || '?').charAt(0).toUpperCase();
 
   // Stable color per player from id hash (so the same player always gets the
