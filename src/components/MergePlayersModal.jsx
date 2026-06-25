@@ -21,7 +21,6 @@ const MERGEABLE_FIELDS = [
   { key: 'photoURL',       label: 'Photo URL',    labelKey: 'merge_field_photo_url' },
   { key: 'playerClass',    label: 'Class',        labelKey: 'merge_field_class' },
   { key: 'nationality',    label: 'Nationality',  labelKey: 'merge_field_nationality' },
-  { key: 'age',            label: 'Age',          labelKey: 'merge_field_age' },
   { key: 'pbliId',         label: 'PBLI ID',      labelKey: 'merge_field_pbli_id' },
   { key: 'favoriteBunker', label: 'Fav bunker',   labelKey: 'merge_field_fav_bunker' },
   { key: 'comment',        label: 'Notes',        labelKey: 'merge_field_notes' },
@@ -115,7 +114,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
       const value = winner?.[f.key];
       if (isEmpty(value)) return;
       if (canonical[f.key] === value) return;
-      merged[f.key] = f.key === 'age' ? Number(value) : value;
+      merged[f.key] = value;
     });
     // teams[] union — only write when it actually grows the canonical's set.
     const canonicalTeamSet = new Set(playerTeams(canonical));

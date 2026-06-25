@@ -39,11 +39,12 @@ import RdIcon from '../components/RdIcon';
  *   Firestore rule carve-out at /workspaces/{slug}/players/{pid} allows
  *   self-edit when resource.data.linkedUid == auth.uid AND the update
  *   touches only the whitelist: nickname / name / number / age /
- *   favoriteBunker / nationality / updatedAt.
+ *   favoriteBunker / nationality / updatedAt. (Age is still in the rule
+ *   whitelist but no longer collected/shown — Privacy/PII Phase 1.)
  */
 
 const PLAYER_FIELD_DEFAULTS = {
-  name: '', nickname: '', number: '', age: '',
+  name: '', nickname: '', number: '',
   favoriteBunker: '', nationality: '',
 };
 
@@ -101,7 +102,6 @@ export default function ProfilePage() {
       name: linkedPlayer.name || '',
       nickname: linkedPlayer.nickname || '',
       number: linkedPlayer.number || '',
-      age: linkedPlayer.age != null ? String(linkedPlayer.age) : '',
       favoriteBunker: linkedPlayer.favoriteBunker || '',
       nationality: linkedPlayer.nationality || '',
     });
@@ -181,13 +181,11 @@ export default function ProfilePage() {
   };
 
   // Shallow-compare current form state against the live linkedPlayer doc so
-  // the save CTA disables when nothing has changed. Handles age type coercion
-  // (string input ↔ numeric field).
+  // the save CTA disables when nothing has changed.
   const playerDirty = linkedPlayer && (
     player.name !== (linkedPlayer.name || '')
     || player.nickname !== (linkedPlayer.nickname || '')
     || player.number !== (linkedPlayer.number || '')
-    || player.age !== (linkedPlayer.age != null ? String(linkedPlayer.age) : '')
     || player.favoriteBunker !== (linkedPlayer.favoriteBunker || '')
     || player.nationality !== (linkedPlayer.nationality || '')
   );
@@ -203,7 +201,6 @@ export default function ProfilePage() {
         name: player.name.trim(),
         nickname: player.nickname.trim(),
         number: player.number.trim(),
-        age: player.age ? Number(player.age) : null,
         favoriteBunker: player.favoriteBunker || null,
         nationality: player.nationality || null,
       });
@@ -273,7 +270,6 @@ export default function ProfilePage() {
   const roleIcon = { admin: 'building', coach: 'book', scout: 'target', player: 'jersey' };
   const number = (linkedPlayer?.number || '').toString().trim();
   const nick = (linkedPlayer?.nickname || '').trim();
-  const age = linkedPlayer?.age != null && linkedPlayer.age !== '' ? linkedPlayer.age : null;
   const fullName = (user.displayName || '').trim();
   const emailLocal = (user.email || '').split('@')[0] || '';
   // Name split for the hero stack — last line is the emphasised one. Falls back
@@ -335,7 +331,7 @@ export default function ProfilePage() {
               )}
               <div style={{ fontFamily: FONT, fontSize: 26, fontWeight: 900, color: COLORS.text, lineHeight: 1.05, letterSpacing: '-.5px', textTransform: 'uppercase', wordBreak: 'break-word' }}>{lastName}</div>
               <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textMuted, marginTop: 9, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                {emailLocal && <>@{emailLocal}</>}{age != null && <>{emailLocal ? ' · ' : ''}{age} {t('profile_years') || 'lat'}</>}
+                {emailLocal && <>@{emailLocal}</>}
               </div>
             </div>
           </div>
@@ -424,10 +420,6 @@ export default function ProfilePage() {
                 <div>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_number') || 'Numer'}</div>
                   <Input value={player.number} onChange={(v) => setPlayer(p => ({ ...p, number: v }))} placeholder="07" />
-                </div>
-                <div>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_age') || 'Wiek'}</div>
-                  <Input type="number" value={player.age} onChange={(v) => setPlayer(p => ({ ...p, age: v }))} placeholder="—" />
                 </div>
                 <div>
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>{t('profile_player_nationality') || 'Narodowość'}</div>
@@ -691,24 +683,14 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* Number + Age row */}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
-                    {t('profile_player_number') || 'Numer'}
-                  </div>
-                  <Input value={player.number}
-                    onChange={(v) => setPlayer(p => ({ ...p, number: v }))}
-                    placeholder="07" />
+              {/* Number row */}
+              <div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
+                  {t('profile_player_number') || 'Numer'}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
-                    {t('profile_player_age') || 'Wiek'}
-                  </div>
-                  <Input type="number" value={player.age}
-                    onChange={(v) => setPlayer(p => ({ ...p, age: v }))}
-                    placeholder="—" />
-                </div>
+                <Input value={player.number}
+                  onChange={(v) => setPlayer(p => ({ ...p, number: v }))}
+                  placeholder="07" />
               </div>
 
               {/* Nationality */}

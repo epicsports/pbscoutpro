@@ -1,12 +1,18 @@
 import React from 'react';
 import { COLORS, FONT } from '../utils/theme';
+import { useWorkspace } from '../hooks/useWorkspace';
 
 /**
  * PlayerAvatar — circular avatar with fallback chain.
  *
- * Display priority:
+ * Display priority (workspace.piiSettings.avatarMode === 'photo', the default):
  *   1. player.photoURL (uploaded photo)
  *   2. nickname/name initial (single letter, colored bg)
+ *
+ * When avatarMode === 'avatar' (Privacy/PII Phase 1, super-admin set), the
+ * photoURL is IGNORED and the deterministic colored-initial fallback always
+ * renders — no player photos are shown anywhere this component is used.
+ * (Full pixel-art avatars come later; Phase 1 = initial/seed, NO photo.)
  *
  * For scouting UI where space is tight, the parent typically renders
  * #number alongside; this component is purely the visual chip.
@@ -14,8 +20,21 @@ import { COLORS, FONT } from '../utils/theme';
  * @param player - { id, nickname?, name?, number?, photoURL? }
  * @param size - px (default 32)
  */
+// Defensive read: useWorkspace() throws outside a WorkspaceProvider (e.g. in
+// isolated stories/tests). Fall back to the photo default rather than crash.
+function useAvatarMode() {
+  try {
+    const { workspace } = useWorkspace();
+    return workspace?.piiSettings?.avatarMode || 'photo';
+  } catch {
+    return 'photo';
+  }
+}
+
 export default function PlayerAvatar({ player, size = 32, ringColor }) {
-  const photoURL = player?.photoURL;
+  const avatarMode = useAvatarMode();
+  // In 'avatar' mode the uploaded photo is suppressed entirely (PII).
+  const photoURL = avatarMode === 'avatar' ? null : player?.photoURL;
   const initial = (player?.nickname || player?.name || '?').charAt(0).toUpperCase();
 
   // Stable color per player from id hash (so the same player always gets the

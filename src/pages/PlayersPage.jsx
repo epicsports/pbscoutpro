@@ -234,7 +234,6 @@ export default function PlayersPage() {
                 p.playerClass,
                 p.nationality,
                 p.role && p.role !== 'player' && p.role,
-                p.age && t('players_age_yo', p.age),
               ].filter(Boolean).join(' · ')}
               onClick={() => openEdit(p)}
               actions={isSuperAdmin ? (

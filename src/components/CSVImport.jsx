@@ -50,8 +50,8 @@ const MAPPABLE = [
     detect: ['id_zawodnika', 'pbli_id', 'pbliid', 'pbl_id', 'player_id', 'playerid', 'pbli', 'id'] },
   { key: 'photoURL',    label: 'Photo URL',      required: false,
     detect: ['photo', 'photo_url', 'photourl', 'zdjęcie', 'zdjecie', 'image', 'avatar'] },
-  { key: 'age',         label: 'Age',            required: false,
-    detect: ['age', 'wiek'] },
+  // 'age' column removed (Privacy/PII Phase 1) — age is no longer collected
+  // or displayed; CSVs carrying an age column simply ignore it.
 ];
 
 // ─── Normalization maps ────────────────────────────────────────
@@ -219,7 +219,6 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
       // normalize on the DB side. See src/utils/pbliMatching.js.
       pbliId:      normalizePbliInput(get(r, 'pbliId')),
       photoURL:    normalizePhoto(get(r, 'photoURL')),
-      age:         get(r, 'age'),
     })).filter(r => r.team && r.player);
     setParsed(rows);
 
@@ -354,7 +353,6 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             if (r.playerClass && r.playerClass !== byPbli.playerClass) upd.playerClass = r.playerClass;
             if (r.nationality && r.nationality !== byPbli.nationality) upd.nationality = r.nationality;
             if (r.photoURL && r.photoURL !== byPbli.photoURL) upd.photoURL = r.photoURL;
-            if (r.age && Number(r.age) && Number(r.age) !== byPbli.age) upd.age = Number(r.age);
 
             if (Object.keys(upd).length) {
               await ds.updatePlayer(byPbli.id, upd, { bump: false }); // bulk: bump once at end
@@ -392,7 +390,6 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             if (r.playerClass && r.playerClass !== tgt.playerClass) upd.playerClass = r.playerClass;
             if (r.nationality && r.nationality !== tgt.nationality) upd.nationality = r.nationality;
             if (r.photoURL && r.photoURL !== tgt.photoURL) upd.photoURL = r.photoURL;
-            if (r.age && Number(r.age) && Number(r.age) !== tgt.age) upd.age = Number(r.age);
             await ds.updatePlayer(tgt.id, upd, { bump: false });
             if (upd.teams) liveTeams.set(tgt.id, upd.teams);
             claimed++;
@@ -411,7 +408,6 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             role: r.role || 'player',
             playerClass: r.playerClass || null, nationality: r.nationality || null,
             pbliId: r.pbliId || null, photoURL: r.photoURL || null,
-            age: r.age ? Number(r.age) : null,
           }, { bump: false });
           created++;
           continue;
@@ -431,7 +427,6 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
           if (r.nationality && r.nationality !== existing.nationality) upd.nationality = r.nationality;
           if (r.pbliId && r.pbliId !== existing.pbliId) upd.pbliId = r.pbliId;
           if (r.photoURL && r.photoURL !== existing.photoURL) upd.photoURL = r.photoURL;
-          if (r.age && Number(r.age) && Number(r.age) !== existing.age) upd.age = Number(r.age);
           if (teamId && existing.teamId !== teamId) {
             await ds.changePlayerTeam(existing.id, teamId, existing.teamHistory || [], { bump: false });
             upd._teamChanged = true;
@@ -448,7 +443,6 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             role: r.role || 'player',
             playerClass: r.playerClass || null, nationality: r.nationality || null,
             pbliId: r.pbliId || null, photoURL: r.photoURL || null,
-            age: r.age ? Number(r.age) : null,
           }, { bump: false }); // bulk: bump once at end
           created++;
         }

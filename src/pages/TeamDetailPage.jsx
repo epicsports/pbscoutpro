@@ -274,7 +274,7 @@ export default function TeamDetailPage() {
     const accent = grp === 'coach' ? COLORS.info : grp === 'staff' ? COLORS.textDim : COLORS.accent;
     const ringColor = grp === 'player' ? (p.hero ? COLORS.accent : ELEV.hairlineStrong) : accent;
     const meta = grp === 'player'
-      ? [p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' · ')
+      ? [p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' · ')
       : null;
     return (
       <div key={p.id} style={{
@@ -613,7 +613,7 @@ export default function TeamDetailPage() {
                   <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{p.name}</div>
                   {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>{p.nickname}</div>}
                   {g.key === 'player' && (() => {
-                    const meta = [p.age && `${p.age} y/o`, p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' - ');
+                    const meta = [p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' - ');
                     return meta ? <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted }}>{meta}</div> : null;
                   })()}
                 </div>
