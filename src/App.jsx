@@ -60,6 +60,7 @@ const TrainingPage = lazy(() => import('./pages/TrainingPageRedirect'));
 const TrainingResultsPage = lazy(() => import('./pages/TrainingResultsPage'));
 const HitabilityPage = lazy(() => import('./pages/HitabilityPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const AvatarBuilderPage = lazy(() => import('./pages/AvatarBuilderPage'));
 const ScoutRankingPage = lazy(() => import('./pages/ScoutRankingPage'));
 const ScoutDetailPage = lazy(() => import('./pages/ScoutDetailPage'));
 const ScoutIssuesPage = lazy(() => import('./pages/ScoutIssuesPage'));
@@ -205,6 +206,7 @@ function AppRoutes() {
             <Route path="/training/:trainingId/results" element={<TrainingResultsPage />} />
             <Route path="/training/:trainingId/hitability" element={<RouteGuard><HitabilityPage /></RouteGuard>} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/avatar" element={<AvatarBuilderPage />} />
             <Route path="/training/:trainingId/matchup/:matchupId" element={<RouteGuard><MatchPage /></RouteGuard>} />
             <Route path="/training/:trainingId" element={<TrainingPage />} />
             <Route path="/scouts" element={<ScoutRankingPage />} />
