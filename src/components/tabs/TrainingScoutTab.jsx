@@ -8,7 +8,7 @@ import { useMatchups, usePlayers, useTrainingPoints } from '../../hooks/useFires
 import * as ds from '../../services/dataService';
 import { auth } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, SPACE, TOUCH, TNUM } from '../../utils/theme';
-import { SQUAD_MAP as SQUAD_META, getSquadName, squadColor } from '../../utils/squads';
+import { SQUAD_MAP as SQUAD_META, getSquadName } from '../../utils/squads';
 import Crest from '../Crest';
 import LiveMatchTile from '../LiveMatchTile';
 import { createEmptyPointData, createPointData } from '../../utils/pointFactory';
@@ -453,8 +453,11 @@ function MatchupCard({ matchup, training, squadRoster, liveScore, onOpen, onOpen
   const awayName = getSquadName(training, matchup.awaySquad);
   // Crest takes { color, short } — color = squad identity color (never amber),
   // short = 2-letter initials derived from the (custom-aware) squad name.
-  const homeTeam = { color: squadColor(matchup.homeSquad), short: homeName.slice(0, 2).toUpperCase() };
-  const awayTeam = { color: squadColor(matchup.awaySquad), short: awayName.slice(0, 2).toUpperCase() };
+  // Scrimmage squads are assembled ad-hoc from players of different teams → no team
+  // identity → render a NEUTRAL crest (textMuted), never a squad/team color (CD brief #3,
+  // 2026-06-25). Squads are distinguished by NAME, not color.
+  const homeTeam = { color: COLORS.textMuted, short: homeName.slice(0, 2).toUpperCase() };
+  const awayTeam = { color: COLORS.textMuted, short: awayName.slice(0, 2).toUpperCase() };
   // Hotfix #6 Bug 1: prefer live score (computed via useLiveMatchScores in
   // parent) over stored matchup.scoreA/B which is 0:0 during LIVE play
   // per Brief 9 Bug 2 Option A. Closed matchups skip liveScore in parent
