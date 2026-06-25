@@ -140,11 +140,16 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await login(page, TEST_ACCOUNT);
     await openReview(page, PHONE_LS);
 
-    // Field View shell (2026-06-16): in landscape the §B phase row is REPLACED by the
-    // floating FieldPhaseControl, and End match is a floating danger primaryAction — both
-    // ride the field (zero rail height). The in-rail §B row is portrait-only now.
-    await expect(page.getByTestId('field-phase')).toBeVisible();
-    await expect(page.getByTestId('phase-play')).toHaveCount(0);       // old in-rail row gone in landscape
+    // Field View shell (Stage 2b, 2026-06-21): in landscape the §B phase row is REPLACED by
+    // the COMPACT FLOAT variant of PointAxisScrubber (keyframe nodes + ▶ play head in a glass
+    // chip), and End match is a floating danger primaryAction — both ride the field (zero rail
+    // height). The in-rail §B row is portrait-only. The float keeps `field-phase` as its
+    // wrapper testid and now carries the scrubber's `phase-play` transport, anchored inside
+    // the floating field-corner controls (NOT in the rail).
+    const floatPhase = page.getByTestId('field-phase');
+    await expect(floatPhase).toBeVisible();
+    await expect(floatPhase.getByTestId('phase-play')).toBeVisible();  // compact scrubber has the ▶ transport
+    await expect(page.getByTestId('field-phase-control')).toBeVisible(); // it floats over the field, not the rail
     await expect(page.getByTestId('review-scoreboard')).toBeVisible();
     await expect(page.getByTestId('end-match-inline')).toHaveCount(0);
     await expect(page.getByTestId('rail-primary-end')).toBeVisible();  // End match floats (danger)
