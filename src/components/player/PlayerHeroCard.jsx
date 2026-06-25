@@ -28,6 +28,7 @@ import TeamBadge from '../TeamBadge';
 import RdIcon from '../RdIcon';
 import { playerTeams } from '../../utils/playerTeams';
 import { winRateColor } from '../../utils/colorScale';
+import { useLanguage } from '../../hooks/useLanguage';
 
 // ─── Side detection helpers (§ 59.4) ───
 // classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
@@ -124,12 +125,13 @@ function Avatar({ player, isHero, onPhotoClick }) {
 }
 
 export default function PlayerHeroCard({ player, playerTeam, isHero, stats, matches, onPhotoClick }) {
+  const { t } = useLanguage();
   const tc = playerTeam?.color || COLORS.accent;
   const hs = aggregateBySide(stats.positions);
   const sideMeta = [
-    { k: 'Snake',  label: 'Snake',   n: hs.Snake,  color: ZONE_COLORS.snake },
-    { k: 'Center', label: 'Centrum', n: hs.Center, color: ZONE_COLORS.center },
-    { k: 'Dorito', label: 'Dorito',  n: hs.Dorito, color: ZONE_COLORS.dorito },
+    { k: 'Snake',  label: t('zone_snake'),  n: hs.Snake,  color: ZONE_COLORS.snake },
+    { k: 'Center', label: t('zone_center'), n: hs.Center, color: ZONE_COLORS.center },
+    { k: 'Dorito', label: t('zone_dorito'), n: hs.Dorito, color: ZONE_COLORS.dorito },
   ].sort((a, b) => b.n - a.n);
   const topSide = sideMeta[0];
   const topSidePct = hs.total > 0 && topSide.n > 0 ? Math.round((topSide.n / hs.total) * 100) : null;
@@ -205,11 +207,11 @@ export default function PlayerHeroCard({ player, playerTeam, isHero, stats, matc
       {/* stat line */}
       {hasStatLine && (
         <div style={{ display: 'flex', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.surface }}>
-          <StatCell value={topSidePct} unit="%" label="Strona" sub={topSidePct != null ? topSide.label : null} color={topSidePct != null ? topSide.color : null} />
+          <StatCell value={topSidePct} unit="%" label={t('hero_strona')} sub={topSidePct != null ? topSide.label : null} color={topSidePct != null ? topSide.color : null} />
           <div style={{ width: 1, background: ELEV.hairline, margin: '12px 0' }} />
-          <StatCell value={topStart?.survivalRate} unit="%" label="Start" sub={topStart?.name} color={topStart ? winRateColor(topStart.survivalRate) : null} />
+          <StatCell value={topStart?.survivalRate} unit="%" label={t('hero_start')} sub={topStart?.name} color={topStart ? winRateColor(topStart.survivalRate) : null} />
           <div style={{ width: 1, background: ELEV.hairline, margin: '12px 0' }} />
-          <StatCell value={lastMatch ? `${lastMatch.scoreA}–${lastMatch.scoreB}` : null} label="Ostatni" sub={lastMatch ? (lastMatch.isWin ? 'Wygrana' : 'Przegrana') : null} color={lastMatch ? (lastMatch.isWin ? COLORS.success : COLORS.danger) : null} />
+          <StatCell value={lastMatch ? `${lastMatch.scoreA}–${lastMatch.scoreB}` : null} label={t('hero_ostatni')} sub={lastMatch ? (lastMatch.isWin ? t('hero_wygrana') : t('hero_przegrana')) : null} color={lastMatch ? (lastMatch.isWin ? COLORS.success : COLORS.danger) : null} />
         </div>
       )}
     </div>

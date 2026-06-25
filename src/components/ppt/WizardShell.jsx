@@ -381,7 +381,7 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
     }
   }, [state, advance, patch, layout, training, playerId, jumpTo, handleSave]);
 
-  const trainingName = training?.name || t('tab_training') || 'Trening';
+  const trainingName = training?.name || t('tab_training');
 
   // ── Shared overlays — identical in both phone + wide layouts ──
   // The exit-confirm modal + inline save toast are layout-agnostic, so

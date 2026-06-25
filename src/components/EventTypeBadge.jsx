@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trophy, Swords, Dumbbell } from 'lucide-react';
 import { COLORS, FONT, RADIUS } from '../utils/theme';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * EventTypeBadge — distinguishes an event's TYPE (Turniej / Sparing / Trening)
@@ -13,14 +14,18 @@ import { COLORS, FONT, RADIUS } from '../utils/theme';
  *
  * @param {'tournament'|'sparing'|'training'} type
  */
+// label resolved at RENDER via t() (keys reused: tournament / sparing /
+// tab_training) — not at module-eval, so it follows the active language.
 const TYPES = {
-  tournament: { Icon: Trophy, label: 'Turniej' },
-  sparing: { Icon: Swords, label: 'Sparing' },
-  training: { Icon: Dumbbell, label: 'Trening' },
+  tournament: { Icon: Trophy, labelKey: 'tournament' },
+  sparing: { Icon: Swords, labelKey: 'sparing' },
+  training: { Icon: Dumbbell, labelKey: 'tab_training' },
 };
 
 export default function EventTypeBadge({ type }) {
-  const { Icon, label } = TYPES[type] || TYPES.tournament;
+  const { t } = useLanguage();
+  const { Icon, labelKey } = TYPES[type] || TYPES.tournament;
+  const label = t(labelKey);
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,

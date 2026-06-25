@@ -905,7 +905,7 @@ export default function ScoutedTeamPage() {
         cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
       }}
     >
-      <Pencil size={16} strokeWidth={2.25} /> Rysuj
+      <Pencil size={16} strokeWidth={2.25} /> {t('coach_draw_label')}
     </div>
   ) : null;
 
