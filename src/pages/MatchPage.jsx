@@ -30,7 +30,7 @@ import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
 import HotSheet from '../components/selflog/HotSheet';
 import PlayerAvatar from '../components/PlayerAvatar';
-import { MapPin, Pencil, Play, Pause, Zap, Shield, Timer, Flag } from 'lucide-react';
+import { MapPin, Pencil } from 'lucide-react';
 import { capturePhases, toPersistedLiteral, fromPersistedLiteral, label as phaseLabel, isReasonRadial } from '../utils/pointPhases';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
@@ -56,6 +56,7 @@ import RosterGrid from '../components/RosterGrid';
 import ShotDrawer from '../components/ShotDrawer';
 import QuickShotPanel from '../components/QuickShotPanel';
 import StageSwitcher from '../components/match/StageSwitcher';
+import PointAxisScrubber from '../components/match/PointAxisScrubber';
 import ReasonRadial from '../components/match/ReasonRadial';
 import QuickLogView from '../components/QuickLogView';
 import PointSummary from '../components/PointSummary';
@@ -80,7 +81,6 @@ const PHASE_LAYER_DEFAULTS = {
 // PaT D4 — capture segments come from the canonical module (single source). Persisted
 // literals (toPersistedLiteral): break/settle/mid + endgame.
 const PHASE_SEGMENTS = capturePhases().map(p => toPersistedLiteral(p.key));
-const PHASE_ICON = { break: Zap, settle: Shield, mid: Timer, endgame: Flag };
 
 // emptyTeam + mirrorX now live in useCaptureDraft (imported above).
 
@@ -1881,72 +1881,48 @@ export default function MatchPage() {
           {!(landscape && heroAvailable) && (
             <div>{reviewHeatmapEl}</div>
           )}
-          {/* §B phase row — ▶ + [⚡Break | 🛡Settle | ⏱Mid] icon segments
-              (replaces the Stage 6-lite Replay pill; same approved §B pattern
-              as the Hitability mode switcher: inactive icon-only, active
-              icon+label). ▶ plays the replay through the scope's phases and
-              the active segment follows; tapping a segment stops playback and
-              pins. Settle/Mid disable when the CURRENT scope (aggregate or
-              previewed point) has no such keyframes (B2). Amber only on the
-              active/playing element (§27). */}
-          {/* Portrait-only: in landscape the phase row + per-team toggle move to the
+          {/* §B point axis — the phases rendered as keyframe NODES on a scrub
+              track under the review field ("Oś punktu"), with a play head. ▶
+              plays the replay through the scope's phases and the active node
+              follows; tapping a node stops playback and pins. Settle/Mid/Endgame
+              nodes dim + go inert when the CURRENT scope (aggregate or previewed
+              point) has no such keyframes (B2). Amber only on the active/playing
+              element + passed track (§27). */}
+          {/* Portrait-only: in landscape the phase control + per-team toggle move to the
               floating phaseControl (mrPhaseControlEl) + the structured layers rail zone
               (mrLayerZoneEl). */}
           {!(landscape && heroAvailable) && (<>
-          <div style={{ padding: `${SPACE.md}px ${R.layout.padding}px 0`, display: 'flex', alignItems: 'stretch', gap: 6 }}>
-            <div
-              data-testid="phase-play"
-              role="button" aria-pressed={phasePlaying && canReplay} aria-label={t('phase_play')}
-              onClick={canReplay ? () => { setReplayStage(null); setPhasePlaying(v => !v); } : undefined}
-              title={canReplay ? t('phase_play') : t('phase_play_disabled_hint')}
-              style={{
-                width: 44, minHeight: 44, flexShrink: 0, borderRadius: RADIUS.md,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: canReplay ? 'pointer' : 'default',
-                background: (phasePlaying && canReplay) ? `${COLORS.accent}1f` : COLORS.surface,
-                color: (phasePlaying && canReplay) ? COLORS.accent : COLORS.textMuted,
-                border: `1px solid ${(phasePlaying && canReplay) ? `${COLORS.accent}66` : COLORS.border}`,
-                opacity: canReplay ? 1 : 0.4,
-                WebkitTapHighlightColor: 'transparent', userSelect: 'none',
-              }}>
-              {(phasePlaying && canReplay) ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
-            </div>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: 6 }} role="group" aria-label={t('phase_row_label')}>
-              {PHASE_SEGMENTS.map(st => {
-                const enabled = st === 'break' ? true
-                  : st === 'settle' ? hasSettleStage
-                  : st === 'mid' ? hasMidStage
-                  : hasEndgameStage;
-                const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
-                const active = activeSeg === st;
-                const SegIcon = PHASE_ICON[st];
-                const segLabel = phaseLabel(fromPersistedLiteral(st), t);
-                return (
-                  <div key={st} data-testid={`phase-seg-${st}`} role="button"
-                    aria-pressed={active} aria-disabled={!enabled} aria-label={segLabel} title={segLabel}
-                    onClick={enabled ? () => pinPhase(st) : undefined}
-                    style={{
-                      flex: active ? '1 1 0' : '0 0 48px', minWidth: 48, minHeight: 44,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                      borderRadius: RADIUS.md, cursor: enabled ? 'pointer' : 'default', overflow: 'hidden',
-                      transition: 'flex-grow .22s ease, flex-basis .22s ease, background .15s ease, border-color .15s ease',
-                      WebkitTapHighlightColor: 'transparent', fontFamily: FONT, fontSize: 13, fontWeight: 700,
-                      background: active ? COLORS.surfaceLight : COLORS.surface,
-                      color: active ? COLORS.accent : COLORS.textDim,
-                      border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-                      opacity: enabled ? 1 : 0.4,
-                    }}>
-                    <SegIcon size={18} strokeWidth={active ? 2.4 : 2} style={{ flexShrink: 0 }} aria-hidden="true" />
-                    <span data-testid={`phase-seg-label-${st}`} style={{
-                      whiteSpace: 'nowrap', overflow: 'hidden',
-                      maxWidth: active ? 120 : 0, opacity: active ? 1 : 0,
-                      transition: 'max-width .22s ease, opacity .18s ease',
-                    }}>{segLabel}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* §B point-axis scrubber — the captured phases as keyframe NODES on a
+              scrub track under the review field ("Oś punktu"), with a play head.
+              Replaces the discrete phase-pill segment row. READ-SIDE ONLY: it
+              drives phasePin / replay view state, never the capture/write path.
+              DISCRETE snap (prod timeline[] is keyframe-not-continuous) — the
+              head sits AT the active node, no interpolation. break = keyframe #0
+              (always a node); settle/mid/endgame nodes appear only when the
+              CURRENT scope (aggregate or previewed point) captured them (B2). */}
+          {(() => {
+            const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
+            const phaseNodes = PHASE_SEGMENTS.map(st => ({
+              key: st,
+              label: phaseLabel(fromPersistedLiteral(st), t),
+              enabled: st === 'break' ? true
+                : st === 'settle' ? hasSettleStage
+                : st === 'mid' ? hasMidStage
+                : hasEndgameStage,
+            }));
+            const lastEnabled = phaseNodes.filter(p => p.enabled).slice(-1)[0];
+            return (
+              <PointAxisScrubber
+                phases={phaseNodes}
+                active={activeSeg}
+                onPick={pinPhase}
+                playing={phasePlaying && canReplay}
+                canPlay={canReplay}
+                onPlay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
+                atEnd={!!lastEnabled && activeSeg === lastEnabled.key}
+              />
+            );
+          })()}
           {/* Per-team layer toggles (§ 40) — independent positions/shots for each team */}
           <PerTeamHeatmapToggle
             teamA={{ name: teamA?.name, color: TEAM_COLORS.A }}
