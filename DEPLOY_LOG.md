@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-25 — [ASSETS+DATA/Tier-2] NXL US Pro team logos — 20 logos + `--live` logoUrl migration (CD brief #4, GO'd)
+**App assets (auto-deploy) + `--live` Firestore write (additive, GO'd by brief + Jacek confirms).** Commit `37823df5` (20 files in `public/team-logos/`).
+- **Hosting:** 20 logos → `public/team-logos/` → served at `https://epicsports.github.io/pbscoutpro/team-logos/{file}` (GitHub Pages; logoUrl = URL ref per §93, no base64).
+- **Mapping:** 20 logos → NXL US Pro teams by name (20/20 unique, `--dry` confirmed). Jacek-confirmed ambiguities: FIT→**PaintballFIT**, RL→**Red Legion**; NewYorkExtreme→**New York Xtreme** (spelling).
+- **`--live` migration** (`/tmp` admin-SDK script): set `team.logoUrl` on the 20 (all were `logoUrl=none` → additive, no overwrite). **Wrote 20/20, 0 skipped; read-back confirms 20 teams now carry a `/team-logos/` URL.** No deletes, no rules — within the brief GO.
+- **Live when** the `37823df5` deploy completes (~10 min, e2e-gated) — then the crests resolve. **Smoke (Jacek):** scout/coach a tournament with these teams → crests show real logos (initials fallback until deploy lands).
+
 ## 2026-06-25 — [INFRA/Tier-2] i18n Stage 2 — string extraction + lint hardening (night)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/i18n-strings` (14 files). pl/en output UNCHANGED (same strings, now via `t()`).
 - **39 new keys** (pl+en) extracting ~30 hardcoded literals across 9 files: Preloader phases (shared) · MatchListPremium (Tournament closed/+Add/No matches/CSV import/select/search) · MatchCard tap-hints · CoachTab repair flow · PlayerStats `CAUSE_META` (7 elim labels, render-time `t()`) · PlayerHeroCard stat labels · "Trening" fallbacks · ScoutedTeam "Rysuj" · TrainingScoutTab.
