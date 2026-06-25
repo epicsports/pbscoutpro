@@ -72,7 +72,6 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
   const [fNumber,    setFNumber]    = useState('');
   const [fTeamId,    setFTeamId]    = useState('');   // primary team
   const [fTeams,     setFTeams]     = useState([]);   // § 72 — all memberships
-  const [fAge,       setFAge]       = useState('');
   const [fPbliId,    setFPbliId]    = useState('');
   const [fFavBunker, setFFavBunker] = useState('');
   const [fComment,   setFComment]   = useState('');
@@ -90,7 +89,6 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       setFNumber(player.number || '');
       setFTeams(playerTeams(player));
       setFTeamId(player.teamId || playerTeams(player)[0] || '');
-      setFAge(player.age ? String(player.age) : '');
       setFPbliId(player.pbliId || '');
       setFFavBunker(player.favoriteBunker || '');
       setFComment(player.comment || '');
@@ -102,7 +100,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       setFName(''); setFNick(''); setFNumber('');
       setFTeams(defaultTeamId ? [defaultTeamId] : []);
       setFTeamId(defaultTeamId || '');
-      setFAge(''); setFPbliId(''); setFFavBunker(''); setFComment('');
+      setFPbliId(''); setFFavBunker(''); setFComment('');
       setFPhotoURL('');
       setFRole('player'); setFClass(''); setFNation('');
     }
@@ -133,7 +131,6 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       // § 72 — teamId is the PRIMARY; always one of teams[].
       teamId:          (fTeams.includes(fTeamId) ? fTeamId : fTeams[0]) || null,
       teams:           fTeams,
-      age:             fAge ? Number(fAge) : null,
       // Normalize at the write boundary so the data stays clean for the
       // self-claim matcher (strips `#`, whitespace, lowercases). See
       // src/utils/pbliMatching.js + 2026-04-24 relax-player-linking brief.
@@ -268,20 +265,13 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         </div>
       </div>
 
-      {/* Age + Fav bunker */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <div style={{ width: 110, flexShrink: 0 }}>
-          <Field label={t('player_form_age_label')}><Input value={fAge} onChange={setFAge} placeholder={t('b13_eg_25')} type="number" /></Field>
-        </div>
-        <div style={{ flex: 1 }}>
-          <Field label={t('player_form_fav_bunker_label')}>
-            <Select value={fFavBunker} onChange={setFFavBunker}>
-              <option value="">— none —</option>
-              {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
-            </Select>
-          </Field>
-        </div>
-      </div>
+      {/* Fav bunker */}
+      <Field label={t('player_form_fav_bunker_label')}>
+        <Select value={fFavBunker} onChange={setFFavBunker}>
+          <option value="">— none —</option>
+          {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
+        </Select>
+      </Field>
 
       {/* Notes */}
       <Field label={t('player_form_notes_label')}>

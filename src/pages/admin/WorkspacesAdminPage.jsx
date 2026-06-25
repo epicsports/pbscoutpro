@@ -4,7 +4,7 @@ import { db } from '../../services/firebase';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { useUserProfiles } from '../../hooks/useUserNames';
 import PageHeader from '../../components/PageHeader';
-import { Btn, Card, Modal, Input, EmptyState, ConfirmModal, MoreBtn, ActionSheet } from '../../components/ui';
+import { Btn, Card, Modal, Input, EmptyState, ConfirmModal, MoreBtn, ActionSheet, SegmentedControl } from '../../components/ui';
 import RoleChips from '../../components/settings/RoleChips';
 import WorkspaceLogo from '../../components/settings/WorkspaceLogo';
 import InviteSection from '../../components/settings/InviteSection';
@@ -131,6 +131,25 @@ function ManageWorkspace({ workspace, onBack }) {
     finally { setSavingLogo(false); }
   }
 
+  // Privacy/PII Phase 1 — per-workspace avatar mode (super-admin only).
+  // 'photo' (default) = show uploaded player photos; 'avatar' = suppress
+  // photos everywhere, show deterministic colored initials. Optimistic local
+  // state so the segmented control reflects the tap immediately; the live
+  // workspace snapshot re-syncs it after the write lands.
+  const savedAvatarMode = workspace.piiSettings?.avatarMode || 'photo';
+  const [avatarMode, setAvatarMode] = useState(savedAvatarMode);
+  const [savingAvatarMode, setSavingAvatarMode] = useState(false);
+  useEffect(() => { setAvatarMode(workspace.piiSettings?.avatarMode || 'photo'); }, [workspace.slug, savedAvatarMode]);
+
+  async function handleSetAvatarMode(mode) {
+    if (savingAvatarMode || mode === savedAvatarMode) return;
+    setAvatarMode(mode); // optimistic
+    setSavingAvatarMode(true);
+    try { await ds.setWorkspacePiiSettings(slug, { ...(workspace.piiSettings || {}), avatarMode: mode }); }
+    catch (e) { console.error('Save avatar mode failed:', e); setAvatarMode(savedAvatarMode); }
+    finally { setSavingAvatarMode(false); }
+  }
+
   return (
     <div style={{ background: COLORS.bg, minHeight: '100dvh' }}>
       <PageHeader
@@ -153,6 +172,24 @@ function ManageWorkspace({ workspace, onBack }) {
               disabled={savingLogo || logoInput.trim() === (workspace.logoUrl || '')}
               onClick={handleSaveLogo}
             >{savingLogo ? t('saving') : t('save')}</Btn>
+          </div>
+        </section>
+
+        {/* Player avatars — PII privacy control (Privacy Phase 1) */}
+        <section>
+          <SectionLabel text={t('wsadmin_avatars_label')} />
+          <div style={{ marginTop: SPACE.sm }}>
+            <SegmentedControl
+              value={avatarMode}
+              onChange={handleSetAvatarMode}
+              items={[
+                { key: 'photo',  label: t('wsadmin_avatars_photo') },
+                { key: 'avatar', label: t('wsadmin_avatars_avatar') },
+              ]}
+            />
+            <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: SPACE.xs, lineHeight: 1.5 }}>
+              {t('wsadmin_avatars_hint')}
+            </div>
           </div>
         </section>
 

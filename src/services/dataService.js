@@ -2748,6 +2748,20 @@ export async function setWorkspaceLogo(slug, logoUrl) {
   });
 }
 
+// Set a workspace's PII display settings (Privacy/PII Phase 1). Mirrors
+// setWorkspaceLogo's write shape — a workspace-doc update permitted by
+// isAdmin(slug) at the rules layer (super_admin or the workspace's own admin),
+// so no rules change. `piiSettings` is a plain map, e.g.
+// { avatarMode: 'photo' | 'avatar' }. Absent/default → 'photo' is enforced by
+// the consumers (PlayerAvatar), keeping existing workspaces backward-compatible.
+export async function setWorkspacePiiSettings(slug, piiSettings) {
+  if (!slug) throw new Error('slug required');
+  return updateDoc(doc(db, 'workspaces', slug), {
+    piiSettings: piiSettings || {},
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function approveUserRoles(wsSlug, targetUid, roles) {
   // Co-write members[] alongside userRoles so the granted user passes the
   // /workspaces read gate (`uid in resource.data.members`) and their events

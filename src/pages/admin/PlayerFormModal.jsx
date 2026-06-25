@@ -35,7 +35,6 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
 
   // Attributes
   const [fHero, setFHero] = useState(false);
-  const [fAge, setFAge] = useState('');
   const [fNationality, setFNationality] = useState('');
   const [fFavBunker, setFFavBunker] = useState('');
   const [fPlayerClass, setFPlayerClass] = useState('');
@@ -56,7 +55,6 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
     setFPbliId(player?.pbliId || '');
     setFPbliIdFull(player?.pbliIdFull || '');
     setFHero(!!player?.hero);
-    setFAge(player?.age ? String(player.age) : '');
     setFNationality(player?.nationality || '');
     setFFavBunker(player?.favoriteBunker || '');
     setFPlayerClass(player?.playerClass || '');
@@ -71,7 +69,6 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
   const validate = () => {
     const e = {};
     if (!fName.trim()) e.name = 'required';
-    if (fAge && (Number.isNaN(Number(fAge)) || Number(fAge) < 0 || Number(fAge) > 120)) e.age = '0-120';
     if (fPhotoURL.trim() && !/^https?:\/\//.test(fPhotoURL.trim())) e.photoURL = 'must start with http(s)://';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -89,7 +86,6 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
         pbliId: normalizePbliInput(fPbliId) || null,
         pbliIdFull: fPbliIdFull.trim() || null,
         hero: !!fHero,
-        age: fAge ? Number(fAge) : null,
         nationality: fNationality || null,
         favoriteBunker: fFavBunker || null,
         playerClass: fPlayerClass || null,
@@ -113,7 +109,6 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
           name: payload.name,
           nickname: payload.nickname,
           number: payload.number,
-          age: payload.age,
           favoriteBunker: payload.favoriteBunker,
           pbliId: payload.pbliId,
           playerClass: payload.playerClass,
@@ -201,21 +196,12 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
         <div style={{ padding: SPACE.xs }}>
           <Checkbox label={t('player_form_hero_label')} checked={fHero} onChange={setFHero} />
         </div>
-        <div style={{ display: 'flex', gap: SPACE.xs }}>
-          <div style={{ flex: 1 }}>
-            <FieldRow label={t('player_form_age_label')} error={errors.age}>
-              <Input value={fAge} onChange={setFAge} placeholder="—" type="number" />
-            </FieldRow>
-          </div>
-          <div style={{ flex: 2 }}>
-            <FieldRow label={t('player_form_nationality_label')}>
-              <Select value={fNationality} onChange={setFNationality} style={{ width: '100%' }}>
-                <option value="">{t('player_form_none_option')}</option>
-                {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
-              </Select>
-            </FieldRow>
-          </div>
-        </div>
+        <FieldRow label={t('player_form_nationality_label')}>
+          <Select value={fNationality} onChange={setFNationality} style={{ width: '100%' }}>
+            <option value="">{t('player_form_none_option')}</option>
+            {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
+          </Select>
+        </FieldRow>
         <div style={{ display: 'flex', gap: SPACE.xs }}>
           <div style={{ flex: 1 }}>
             <FieldRow label={t('role_label')}>
