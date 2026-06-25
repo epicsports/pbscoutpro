@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Privacy/PII Phase 2 — per-workspace surname truncation (privacy feature COMPLETE)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/pii-surnames` (29 files, NEW `playerName.js`). Jacek decisions: scope = everywhere displayed; format = "Jan Kow.".
+- **Setting:** `piiSettings.surnameMode: 'full'|'short'` (default 'full', backward-compatible) — reuses `setWorkspacePiiSettings`. 2nd super-admin `SegmentedControl` "Nazwiska: Pełne/Skrócone" under the avatar toggle in `WorkspacesAdminPage`.
+- **Helper:** `displayPlayerName(player, mode)` + `useDisplayName()` hook — short: nickname passthrough (pseudonym, not PII), single-token unchanged, **2+ tokens → "First Sur."** (first name + surname[:3]+"."). Defensive 'full' default outside a workspace.
+- **Applied at ~32 DISPLAY sites across 26 files** (rosters/cards/scouting/training/admin/profile). **Edit INPUTS + sort/search/dedup/insight-text left RAW** (need the real value). PII-correctness catches: pre-flattened name objects re-resolved via playersById before truncating; 2-line name+nick cards truncate only the name line.
+- **PROOF:** build + precommit green; **full e2e 115/115** (broad blast radius — names render everywhere).
+- **Smoke (Jacek):** super-admin → Workspaces → ws → "Nazwiska: Skrócone" → rosters/scouting show "Jan Kow."; edit forms keep full names.
+- **PRIVACY FEATURE COMPLETE** (Phase 1 avatar/age + Phase 2 surnames). Avatar feature also complete (engine+builder).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Pixel-avatar builder (Stage C) — route + persistence + profile entry + i18n (avatar feature COMPLETE)
 **App (auto-deploy, e2e-gated). No rules change** (self-write to own user doc). Merge `feat/avatar-builder` (6 files, NEW `AvatarBuilderPage.jsx`). Avatar brief Stage C — completes A+B+C.
 - **Persistence:** `setUserAvatarSpec(uid, avatarSpec)` → `users/{uid}.avatarSpec` (mirrors `setUserGlobalRole`; uid from `useWorkspace().user?.uid`). Read via `useWorkspace().userProfile.avatarSpec` (live `/users/{uid}` snapshot — NOT the Auth object).
