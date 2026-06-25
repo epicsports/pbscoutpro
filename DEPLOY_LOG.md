@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Live-scoring Stage 2b — landscape phase scrubber (float variant) (night)
+**App (auto-deploy, e2e-gated). No data/capture path.** Merge `feat/live-stage2b` (3 files). Fixes Jacek's IMG_0143 (landscape detached phase tabs).
+- **`PointAxisScrubber` `variant="float"`** — compact glass chip (44px play + clamped keyframe mini-track + active-phase label) for the landscape Field-View shell, replacing the floating `FieldPhaseControl` detached tabs. Same read-side bindings + captured-scope gating as the portrait inline scrubber; rides the field top-right; End-match still floats.
+- **`phase-view.spec.js:139` updated truthfully** (stronger): asserts the float `field-phase` wrapper carries the scrubber's `phase-play` + anchors in `field-phase-control` (floats, not rail). Dropped unused MatchPage `FieldPhaseControl` import (ScoutedTeamPage keeps its own).
+- **PROOF:** build + precommit green; **full e2e 115/115**.
+- **Smoke (Jacek, landscape):** review float = compact scrubber top-right, nodes/head animate on pin + ▶ replay, End-match floats bottom-right.
+- **Next (night queue):** tactic-name uniqueness bug → Stage 3 (live editor chrome) → Part B (TacticWorkspace, IMG_0140).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Live-scoring convergence Stage 2 — PointAxisScrubber (portrait review) (SYNC brief C)
 **App (auto-deploy, e2e-gated). No data/capture path touched.** Merge `feat/live-stage2` (3 files, NEW `PointAxisScrubber.jsx`). Read-side only.
 - **`PointAxisScrubber`** — phases as keyframe NODES on an "Oś punktu" scrub track + play head, under the **portrait** review field; replaces the discrete phase-pill segment row (prototype look). Binds READ-SIDE to `phasePin`/`pinPhase`/`replayStage`/`phasePlaying`; **discrete snap** (no continuous interpolation — prod `timeline[]` is keyframe-not-continuous); captured-scope gating (settle/mid/endgame nodes inert when uncaptured). `savePoint`/`makeTeamData`/`buildTimeline`/`useCaptureDraft` untouched.
