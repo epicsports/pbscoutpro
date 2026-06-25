@@ -1696,7 +1696,8 @@ export default function MatchPage() {
               <div style={{
                 fontFamily: FONT, fontWeight: 800, fontSize: TYPE.title,
                 color: COLORS.text, letterSpacing: TRACKING.tight,
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                overflow: 'hidden', lineHeight: 1.15,
               }}>{`${teamA?.name || '?'} vs ${teamB?.name || '?'}`}</div>
               {tournament?.name && (
                 <div style={{
@@ -1983,8 +1984,6 @@ export default function MatchPage() {
                 const oc = pt.outcome;
                 const aWon = oc === 'win_a';
                 const bWon = oc === 'win_b';
-                const aBar = aWon ? COLORS.success : bWon ? COLORS.danger : COLORS.borderLight;
-                const bBar = bWon ? COLORS.success : aWon ? COLORS.danger : COLORS.borderLight;
                 const ptDataA = pt.homeData || pt.teamA || {};
                 const ptDataB = pt.awayData || pt.teamB || {};
                 const elimA = (ptDataA.eliminations || []).filter(Boolean).length;
@@ -2027,7 +2026,6 @@ export default function MatchPage() {
                         cursor: isLocked ? 'default' : 'pointer',
                       }}
                     >
-                      <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: aBar, flexShrink: 0 }} />
                       <TeamBadge team={teamA || { name: 'Home' }} size={26} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -2105,7 +2103,6 @@ export default function MatchPage() {
                         }}>{shortB}</span>
                       </div>
                       <TeamBadge team={teamB || { name: 'Away' }} size={26} />
-                      <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 2, background: bBar, flexShrink: 0 }} />
                     </div>
                     {/* ⋮ menu */}
                     <div onClick={(e) => { e.stopPropagation(); setPointMenu({ id: pt.id, idx: idx + 1 }); }}
