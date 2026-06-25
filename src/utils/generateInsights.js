@@ -1351,6 +1351,7 @@ export function computeBreakSurvival(points, field, stage = 'break') {
     const players = side.players || [];
     const elims = side.eliminations || [];
     const elimTimes = side.eliminationTimes || [];
+    const assignments = side.assignments || [];
     const seenThisPoint = new Set();
 
     players.forEach((pos, i) => {
@@ -1365,7 +1366,12 @@ export function computeBreakSurvival(points, field, stage = 'break') {
       const label = best.positionName || best.name;
       if (!label) return;
 
-      if (!stats[label]) stats[label] = { count: 0, timesPlayed: 0, survived: 0, bunker: best };
+      if (!stats[label]) stats[label] = { count: 0, timesPlayed: 0, survived: 0, bunker: best, players: new Set() };
+      // OSOBOPOZYCJE — unique assigned players who held this bunker. Anonymous-first:
+      // assignments[i] is often null (scouts skip rosters) → set stays empty → people=0
+      // → rendered as a dash, never a faked number (§ identity-aggregate-honestly).
+      const pid = assignments[i];
+      if (pid) stats[label].players.add(pid);
       // timesPlayed: every player-bunker association (§ 60.4 — two players
       // at D1 in one point counts as 2 plays).
       stats[label].timesPlayed++;
@@ -1384,7 +1390,7 @@ export function computeBreakSurvival(points, field, stage = 'break') {
   });
 
   return Object.entries(stats)
-    .map(([label, { count, timesPlayed, survived, bunker }]) => ({
+    .map(([label, { count, timesPlayed, survived, bunker, players }]) => ({
       name: label,
       side: bunker.side || null,
       type: bunker.type || null,
@@ -1394,6 +1400,8 @@ export function computeBreakSurvival(points, field, stage = 'break') {
       totalPoints,
       pct: Math.round((count / totalPoints) * 100),
       survivalPct: count > 0 ? Math.round((survived / count) * 100) : 0,
+      // OSOBOPOZYCJE — distinct assigned players; 0 when no roster data (rendered as dash).
+      people: players ? players.size : 0,
     }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 7);
