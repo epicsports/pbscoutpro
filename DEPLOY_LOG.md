@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Rozbiegi (breakouts) — OSOBOPOZYCJE column + un-truncated names (night)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/rozbiegi-columns`. `generateInsights.js` + `ScoutedTeamPage.jsx` + `i18n.js` (1 key). CD brief `_CC_BRIEF_rozbiegi_opponentwide.md` #2.
+- **Finding (reported, not faked):** ZAGRAŃ (`timesPlayed`/`col_played`) + W PKT (`pointsPlayed`/`col_played_in`) **already existed** (§60.4). The only missing column = **OSOBOPOZYCJE** (unique players).
+- **OSOBOPOZYCJE** added honestly: `computeBreakSurvival` tracks a unique-`assignments[i]` Set per bunker → additive `people` field. **Anonymous-first reality:** scouts skip rosters → `assignments` often null → `people=0` → renders **`—`** (never a faked number). Existing `count`/`timesPlayed`/`survived`/`survivalPct`/`pct` untouched (additive only).
+- **Names un-truncated** (m0329): removed ellipsis → `overflowWrap:anywhere` (2-line wrap), numerics stay narrow/tnum.
+- **PROOF:** build + precommit green; **scoutedteam-rail 4/4** (existing testids preserved + new `breakouts-col-people`/`breakouts-cell-people`).
+- **Smoke (Jacek, prod):** opponent analysis → Rozbiegi table shows OSOBOPOZYCJE (`—` for anonymous-scouted opponents) + full obstacle names.
+
 ## 2026-06-25 — [FEATURE/Tier-2] ScoutedTeamPage master-detail — score bar + match-list (sub-stages 1+2) (night)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/scoutedteam-master-detail`. `ScoutedTeamPage.jsx` + `i18n.js` (1 key). The first 2 of 3 sub-stages of the ANALIZA PRZECIWNIKA landscape feature.
 - **Score bar (sub-stage 1):** when `isMatchScope`, a prominent hero score bar (real `scoreA`/`scoreB` + both crests/names + W/L/D color via the existing `won`/`lost`/`resultColor`) at the top of the report column. Renders only when a match is scoped (nothing in aggregate scopes).
