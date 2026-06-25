@@ -40,6 +40,7 @@ import TeamBadge from '../components/TeamBadge';
 import { useTrackedSave } from '../hooks/useSaveStatus';
 import { auth } from '../services/firebase';
 import { mirrorPointToLeft, mirrorShotsToRight, matchScore } from '../utils/helpers';
+import { useDisplayName } from '../utils/playerName';
 import { useField } from '../hooks/useField';
 // Shared capture brain (Stage 1 extraction) — owns the draft state, routing seam,
 // factories, capture handlers, annotation seam, undo. MatchPage destructures the
@@ -167,6 +168,8 @@ export default function MatchPage() {
     const first = full.split(/[\s@]/)[0];
     return first.length > 12 ? first.slice(0, 12) : first;
   };
+  // PII Phase 2 — surname-aware player-name formatter (DISPLAY only).
+  const dn = useDisplayName();
 
   // ── ds wrappers — switch between tournament & training paths ──
   const addPointFn = (data) => isTraining
@@ -1540,7 +1543,13 @@ export default function MatchPage() {
   const getChipLabel = (idx) => {
     const ap = draft.assign[idx];
     const rp = ap ? roster.find(p => p.id === ap) : null;
-    return rp ? `#${rp.number} ${rp.nickname || rp.name.split(' ').pop()}` : `P${idx+1}`;
+    if (!rp) return `P${idx+1}`;
+    // Compact chip (last-name only) unless short mode mangled the surname → then
+    // use the PII-aware label so no full surname leaks here either.
+    const piiName = dn(rp);
+    const rawName = rp.nickname || rp.name || '';
+    const label = piiName !== rawName ? piiName : (rp.nickname || rp.name.split(' ').pop());
+    return `#${rp.number} ${label}`;
   };
 
   // § Stage 6-lite (6L-0) — carry the additive Settle/Mid keyframes into the
@@ -2942,7 +2951,7 @@ export default function MatchPage() {
                     then name; number is a small secondary line shown only when set. */}
                 <PlayerAvatar player={r} size={40} />
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600, color: COLORS.text, lineHeight: 1.2, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {r.nickname || r.name || '—'}
+                  {dn(r) || '—'}
                 </div>
                 {r.number ? (
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textMuted }}>#{r.number}</div>

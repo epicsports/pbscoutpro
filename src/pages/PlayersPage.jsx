@@ -27,13 +27,14 @@ import { useLeagues } from '../hooks/useLeagues';
 import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import * as ds from '../services/dataService';
 import { COLORS, ELEV, FONT, FONT_SIZE, TYPE, TRACKING, TNUM, TOUCH, RADIUS, responsive } from '../utils/theme';
-import { playerDisplayName } from '../utils/helpers';
+import { useDisplayName } from '../utils/playerName';
 import { playerOnTeam } from '../utils/playerTeams';
 import { matchEntity, playerInLeague, playerInDivision } from '../utils/entityFilters';
 import { useLanguage } from '../hooks/useLanguage';
 
 export default function PlayersPage() {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const { players, loading } = usePlayers();
   const { teams } = useActiveTeams();
   const device = useDevice();
@@ -182,7 +183,7 @@ export default function PlayersPage() {
           getTeamName={getTeamName}
           onAdd={openAdd}
           onEdit={openEdit}
-          onDelete={(p) => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}
+          onDelete={(p) => modal.open({ type: 'delete', id: p.id, name: dn(p) })}
         />
       ) : (
       <div style={{ flex: 1, overflowY: 'auto', padding: R.layout.padding, paddingBottom: 64 }}>
@@ -228,7 +229,7 @@ export default function PlayersPage() {
                   }}>#{p.number}</span>
                 </div>
               }
-              title={<span>{p.name} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
+              title={<span>{dn({ name: p.name })} {p.nickname && <span style={{ color: COLORS.textDim, fontWeight: 400 }}>„{p.nickname}"</span>}</span>}
               subtitle={[
                 getTeamName(p.teamId),
                 p.playerClass,
@@ -238,7 +239,7 @@ export default function PlayersPage() {
               onClick={() => openEdit(p)}
               actions={isSuperAdmin ? (
                 <span onClick={e => e.stopPropagation()}>
-                  <Btn variant="ghost" size="sm" title={t('b13_aria_delete_player')} aria-label={t('b13_aria_delete_player')} style={{ minWidth: 44, minHeight: 44 }} onClick={() => modal.open({ type: 'delete', id: p.id, name: playerDisplayName(p) })}><Icons.Trash /></Btn>
+                  <Btn variant="ghost" size="sm" title={t('b13_aria_delete_player')} aria-label={t('b13_aria_delete_player')} style={{ minWidth: 44, minHeight: 44 }} onClick={() => modal.open({ type: 'delete', id: p.id, name: dn(p) })}><Icons.Trash /></Btn>
                 </span>
               ) : undefined} />
           );
@@ -336,6 +337,7 @@ function WRosterGroup({ icon, title, count, accent, children }) {
 // missing nickname drops the eyebrow; a missing number falls back to the role
 // icon badge so nothing renders "#" with no value.
 function WRosterCard({ p, roleColor, teamName, canDelete, onEdit, onDelete, t }) {
+  const dn = useDisplayName();
   const player = isPlayerRole(p);
   const hero = !!p.hero;
   const ring = player ? (hero ? COLORS.accent : ELEV.hairlineStrong) : roleColor;
@@ -384,7 +386,7 @@ function WRosterCard({ p, roleColor, teamName, canDelete, onEdit, onDelete, t })
           letterSpacing: TRACKING.tight,
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
         }}>
-          {p.name}{player && nick && <span style={{ color: COLORS.textDim, fontWeight: 600 }}> „{nick}"</span>}
+          {dn({ name: p.name })}{player && nick && <span style={{ color: COLORS.textDim, fontWeight: 600 }}> „{nick}"</span>}
         </div>
         {player && (sub || hero) && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 5, flexWrap: 'wrap' }}>

@@ -5,6 +5,7 @@ import PlayerAvatar from '../PlayerAvatar';
 import RoleChips from './RoleChips';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDisplayName } from '../../utils/playerName';
 import * as ds from '../../services/dataService';
 
 /**
@@ -44,6 +45,7 @@ export default function MemberCard({
   onTransferAdmin,
 }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -58,8 +60,7 @@ export default function MemberCard({
   // Bug B1 fallback chain: linked-player identity → /users/{uid} profile →
   // email → localized "member" label. UID fragment no longer surfaced.
   const memberLabel = t('member_fallback') || 'Member';
-  const name = linkedPlayer?.nickname
-    || linkedPlayer?.name
+  const name = (linkedPlayer ? dn(linkedPlayer) : null)
     || displayName
     || email
     || memberLabel;

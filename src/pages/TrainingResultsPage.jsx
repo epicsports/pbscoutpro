@@ -20,6 +20,7 @@ import { getRolesForUser, hasAnyRole } from '../utils/roleUtils';
 import { locatePlayerInPoint, alignSequence } from '../utils/selfReportMatcher';
 import { LogRow } from '../components/ppt/TodaysLogsList';
 import { useLanguage } from '../hooks/useLanguage';
+import { useDisplayName } from '../utils/playerName';
 
 // Premium eyebrow section header (matches the Setup/Squads training re-skins).
 function SecHead({ children, count, color }) {
@@ -486,6 +487,7 @@ export default function TrainingResultsPage() {
 }
 
 function PlayerRow({ row, rank, player, onClick }) {
+  const dn = useDisplayName();
   // Pre-existing win-rate gradient (high=success / mid=accent / low=danger) — a
   // performance metric, not a win/loss outcome; preserved as-is.
   const wrColor = row.winRate == null
@@ -514,7 +516,7 @@ function PlayerRow({ row, rank, player, onClick }) {
           fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {row.number ? <span style={{ color: COLORS.accent, fontWeight: 800 }}>#{row.number}</span> : null}{row.number ? ' ' : ''}{row.name}
+          {row.number ? <span style={{ color: COLORS.accent, fontWeight: 800 }}>#{row.number}</span> : null}{row.number ? ' ' : ''}{dn(player || { name: row.name })}
         </div>
         <div style={{
           fontFamily: FONT, fontSize: 10.5, fontWeight: 500, color: COLORS.textMuted, marginTop: 2,
@@ -536,8 +538,9 @@ function PlayerRow({ row, rank, player, onClick }) {
 function ReviewItem({ item, ordinal, playersById, onAccept, onReassign, onDismiss }) {
   const [busy, setBusy] = useState(false);
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const player = playersById[item.playerId];
-  const name = player ? (player.nickname || player.name || '?') : '?';
+  const name = player ? dn(player) : '?';
   const candOrder = (item.candidate.point.order ?? 0) + 1;
   const run = (fn) => async () => {
     if (busy) return;

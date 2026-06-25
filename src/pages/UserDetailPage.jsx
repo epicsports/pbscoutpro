@@ -16,6 +16,7 @@ import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { invalidateUserName } from '../hooks/useUserNames';
 import { getRolesForUser, hasRole } from '../utils/roleUtils';
+import { useDisplayName } from '../utils/playerName';
 import * as ds from '../services/dataService';
 
 /**
@@ -36,6 +37,7 @@ export default function UserDetailPage() {
   const { uid } = useParams();
   const navigate = useNavigate();
   const { t, lang } = useLanguage();
+  const dn = useDisplayName();
   const { workspace, user: currentUser } = useWorkspace();
   const { players } = usePlayers();
   const { teams } = useActiveTeams();
@@ -193,7 +195,13 @@ export default function UserDetailPage() {
     );
   }
 
-  const displayName = profile?.displayName || linkedPlayer?.nickname || linkedPlayer?.name || profile?.email || uid.slice(0, 8);
+  // PII Phase 2 — truncate the displayed person-name (account displayName or the
+  // linked player) in short mode; the email/uid fallbacks carry no surname and
+  // stay raw. The Input/edit paths elsewhere keep the full value.
+  const displayName = profile?.displayName
+    ? dn({ name: profile.displayName })
+    : (linkedPlayer ? (dn(linkedPlayer) !== '?' ? dn(linkedPlayer) : null) : null)
+      || profile?.email || uid.slice(0, 8);
   const isDisabled = profile?.disabled === true;
 
   return (
@@ -257,7 +265,7 @@ export default function UserDetailPage() {
                   fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
-                  {linkedPlayer.nickname || linkedPlayer.name}
+                  {dn(linkedPlayer)}
                   {linkedPlayer.number ? ` #${linkedPlayer.number}` : ''}
                   {linkedTeam && (
                     <span style={{ fontWeight: 500, color: COLORS.textDim }}> · {linkedTeam.name}</span>

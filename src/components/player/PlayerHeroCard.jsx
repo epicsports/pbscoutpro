@@ -29,6 +29,7 @@ import RdIcon from '../RdIcon';
 import { playerTeams } from '../../utils/playerTeams';
 import { winRateColor } from '../../utils/colorScale';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDisplayName } from '../../utils/playerName';
 
 // ─── Side detection helpers (§ 59.4) ───
 // classifyPosition returns full zone labels like "Snake Base", "Dorito 50".
@@ -126,6 +127,7 @@ function Avatar({ player, isHero, onPhotoClick }) {
 
 export default function PlayerHeroCard({ player, playerTeam, isHero, stats, matches, onPhotoClick }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const tc = playerTeam?.color || COLORS.accent;
   const hs = aggregateBySide(stats.positions);
   const sideMeta = [
@@ -138,7 +140,13 @@ export default function PlayerHeroCard({ player, playerTeam, isHero, stats, matc
   const topStart = (stats.bunkers || []).slice().sort((a, b) => (b.survivalRate ?? -1) - (a.survivalRate ?? -1))[0] || null;
   const lastMatch = (matches || [])[0] || null;
   const hasNumber = player.number != null && player.number !== '';
-  const nameParts = (player.name || '').trim().split(/\s+/);
+  // PII-aware name treatment (Privacy Phase 2). The eyebrow nickname line stays
+  // raw (pseudonym, not PII). The first/surname lines derive from the real
+  // `player.name`, but the surname is truncated in 'short' mode — pass a
+  // nickname-stripped player so dn() truncates the surname rather than swapping
+  // in the nickname. In 'full' mode dn() returns the name verbatim → no change.
+  const piiName = dn({ name: player.name }) || player.name || '';
+  const nameParts = piiName.trim().split(/\s+/);
   const first = nameParts[0] || player.name || '';
   const last = nameParts.slice(1).join(' ');
   const hasStatLine = topSidePct != null || (topStart && topStart.survivalRate != null) || lastMatch;

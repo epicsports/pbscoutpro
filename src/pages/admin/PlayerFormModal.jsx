@@ -6,6 +6,7 @@ import { normalizePbliInput } from '../../utils/pbliMatching';
 import { NATIONALITIES } from '../../components/PlayerEditModal';
 import { useLanguage } from '../../hooks/useLanguage';
 import { langToLocale } from '../../utils/plural';
+import { useDisplayName } from '../../utils/playerName';
 
 // Phase 2.2.c — create/edit modal for global /players/{playerId}.
 // Distinct from src/components/PlayerEditModal (workspace context with
@@ -22,6 +23,7 @@ import { langToLocale } from '../../utils/plural';
 //                      aliasIds-aware warning needs Modal-level rich content)
 export default function PlayerFormModal({ open, onClose, player, onRequestDelete }) {
   const { t, lang } = useLanguage();
+  const dn = useDisplayName();
   const isEdit = !!player;
 
   // Identity
@@ -149,7 +151,7 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? t('player_form_title_edit', player?.nickname || player?.name || 'player') : t('player_form_title_new')}
+      title={isEdit ? t('player_form_title_edit', player ? dn(player) : 'player') : t('player_form_title_new')}
       footer={<>
         {isEdit && onRequestDelete && (
           <Btn variant="danger" onClick={() => onRequestDelete(player)} disabled={saving} style={{ marginRight: 'auto' }}>

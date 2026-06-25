@@ -1,7 +1,9 @@
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import PlayerAvatar from './PlayerAvatar';
+import { useDisplayName } from '../utils/playerName';
 
 export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPlayerIds = [] }) {
+  const dn = useDisplayName();
   const count = selected.length;
   const isFull = count >= max;
   return (
@@ -28,7 +30,15 @@ export default function RosterGrid({ roster, selected, onToggle, max = 5, heroPl
         {roster.map(player => {
           const isOn = selected.includes(player.id);
           const isHero = heroPlayerIds.includes(player.id) || !!player.hero;
-          const displayName = player.nickname || player.name?.split(' ').pop() || '';
+          // Roster chips are intentionally compact (nickname or last-name only).
+          // dn(player) is the PII-aware full label; when it differs from the raw
+          // value (short mode mangled the surname) prefer it so no full surname
+          // leaks here either. Otherwise keep the existing compact last-name.
+          const piiName = dn(player);
+          const rawName = player.nickname || player.name || '';
+          const displayName = piiName !== rawName
+            ? piiName
+            : (player.nickname || player.name?.split(' ').pop() || '');
           return (
             <div key={player.id} onClick={() => onToggle(player.id)}
               style={{

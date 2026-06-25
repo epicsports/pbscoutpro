@@ -19,9 +19,11 @@ import { useLeagues } from '../hooks/useLeagues';
 import { useLanguage } from '../hooks/useLanguage';
 import { playerOnTeam, withTeamAdded, withTeamRemoved } from '../utils/playerTeams';
 import { playerInLeague, playerInDivision } from '../utils/entityFilters';
+import { useDisplayName } from '../utils/playerName';
 
 export default function TeamDetailPage() {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const device = useDevice();
   const R = responsive(device.type);
   const wide = device.width >= 720;
@@ -292,7 +294,7 @@ export default function TeamDetailPage() {
         <div
           onClick={grp === 'player' ? () => navigate(`/player/${p.id}/stats?scope=global`) : undefined}
           style={{ flex: 1, cursor: grp === 'player' ? 'pointer' : 'default', minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+          <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dn({ name: p.name })}</div>
           {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nickname}</div>}
           {meta && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{meta}</div>}
         </div>
@@ -610,7 +612,7 @@ export default function TeamDetailPage() {
                 <div
                   onClick={g.key === 'player' ? () => navigate(`/player/${p.id}/stats?scope=global`) : undefined}
                   style={{ flex: 1, cursor: g.key === 'player' ? 'pointer' : 'default', minWidth: 0 }}>
-                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{p.name}</div>
+                  <div style={{ fontFamily: FONT, fontSize: TOUCH.fontBase, color: COLORS.text, fontWeight: 600 }}>{dn({ name: p.name })}</div>
                   {p.nickname && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>{p.nickname}</div>}
                   {g.key === 'player' && (() => {
                     const meta = [p.favoriteBunker, p.pbliId && `PBLI: ${p.pbliId}`].filter(Boolean).join(' - ');
@@ -704,6 +706,7 @@ export default function TeamDetailPage() {
         selectedIds={[]}
         onToggle={handleAssignPlayer}
         emptyText="No players match. Use “New” to create one."
+        nameMode="player"
       />
 
       {/* Full edit modal */}

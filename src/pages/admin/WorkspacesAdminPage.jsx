@@ -150,6 +150,25 @@ function ManageWorkspace({ workspace, onBack }) {
     finally { setSavingAvatarMode(false); }
   }
 
+  // Privacy/PII Phase 2 — per-workspace surname display mode (super-admin only).
+  // 'full' (default) = show full names everywhere; 'short' = truncate a displayed
+  // real surname to 3 letters + "." ("Jan Kow.") at every DISPLAY site (edit
+  // inputs keep the full value). Same optimistic + reuse-the-merging-setter
+  // pattern as avatarMode above.
+  const savedSurnameMode = workspace.piiSettings?.surnameMode || 'full';
+  const [surnameMode, setSurnameMode] = useState(savedSurnameMode);
+  const [savingSurnameMode, setSavingSurnameMode] = useState(false);
+  useEffect(() => { setSurnameMode(workspace.piiSettings?.surnameMode || 'full'); }, [workspace.slug, savedSurnameMode]);
+
+  async function handleSetSurnameMode(mode) {
+    if (savingSurnameMode || mode === savedSurnameMode) return;
+    setSurnameMode(mode); // optimistic
+    setSavingSurnameMode(true);
+    try { await ds.setWorkspacePiiSettings(slug, { ...(workspace.piiSettings || {}), surnameMode: mode }); }
+    catch (e) { console.error('Save surname mode failed:', e); setSurnameMode(savedSurnameMode); }
+    finally { setSavingSurnameMode(false); }
+  }
+
   return (
     <div style={{ background: COLORS.bg, minHeight: '100dvh' }}>
       <PageHeader
@@ -189,6 +208,24 @@ function ManageWorkspace({ workspace, onBack }) {
             />
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: SPACE.xs, lineHeight: 1.5 }}>
               {t('wsadmin_avatars_hint')}
+            </div>
+          </div>
+
+          {/* Surnames — PII privacy control (Privacy Phase 2) */}
+          <div style={{ marginTop: SPACE.lg }}>
+            <SectionLabel text={t('wsadmin_surnames_label')} />
+            <div style={{ marginTop: SPACE.sm }}>
+              <SegmentedControl
+                value={surnameMode}
+                onChange={handleSetSurnameMode}
+                items={[
+                  { key: 'full',  label: t('wsadmin_surnames_full') },
+                  { key: 'short', label: t('wsadmin_surnames_short') },
+                ]}
+              />
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted, marginTop: SPACE.xs, lineHeight: 1.5 }}>
+                {t('wsadmin_surnames_hint')}
+              </div>
             </div>
           </div>
         </section>

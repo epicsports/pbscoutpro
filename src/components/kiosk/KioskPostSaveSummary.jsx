@@ -7,6 +7,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { SQUAD_MAP } from '../../utils/squads';
 import { readNormalizedEliminations } from '../../utils/deathTaxonomy';
 import { matchScore } from '../../utils/helpers';
+import { useDisplayName } from '../../utils/playerName';
 
 /**
  * KioskPostSaveSummary — § 55.1 post-save decision screen, full overlay.
@@ -39,6 +40,7 @@ export default function KioskPostSaveSummary() {
     kiosk?.postSaveOpen ? kiosk.matchupId : null,
   );
   const { players, playersById } = usePlayers();
+  const dn = useDisplayName();
 
   if (!kiosk || !kiosk.postSaveOpen) return null;
   // § force-entry — the summary (scoreboard + elim list + 2 CTAs) is
@@ -198,7 +200,7 @@ export default function KioskPostSaveSummary() {
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {elimRows.map(row => {
                 const player = playersById[row.playerId];
-                const nick = player?.nickname || player?.name || `#${(player?.number) || row.idx}`;
+                const nick = player ? dn(player) : `#${(player?.number) || row.idx}`;
                 return (
                   <div key={row.playerId || row.idx} style={{
                     padding: '10px 14px',

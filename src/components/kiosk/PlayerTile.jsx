@@ -1,5 +1,6 @@
 import React from 'react';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
+import { useDisplayName } from '../../utils/playerName';
 
 /**
  * PlayerTile — § 55.2 5-row identity layout (mockup v3).
@@ -50,9 +51,20 @@ export default function PlayerTile({
   suggested,         // bool (optional) — coach hint, MVP: not auto-set
   onTap,             // callback — fires with player.id
 }) {
+  const dn = useDisplayName();
   const firstName = player?.firstName || null;
-  const lastName  = player?.lastName  || null;
-  const nick      = player?.nickname || player?.name || '?';
+  // PII short mode truncates a displayed surname; the tile renders lastName on
+  // its own line so apply the same rule here (dn() works on name/nickname, not
+  // a bare surname). When dn leaves the full name unchanged, lastName stays full.
+  const rawLast  = player?.lastName  || null;
+  const piiFullName = dn(player);
+  const surnameMangled = rawLast && piiFullName !== (player?.nickname || player?.name || '?');
+  const lastName  = rawLast && surnameMangled && !player?.nickname
+    ? `${rawLast.slice(0, 3)}.`
+    : rawLast;
+  // Nick row is the dominant recognition label — show the PII-aware value
+  // (dn() === nickname||name in full mode, so this is byte-identical there).
+  const nick      = piiFullName;
   const jersey    = player?.number != null ? `#${player.number}` : '';
 
   // Tile-state colors per § 55.2 status table

@@ -8,6 +8,7 @@ import { useDevice } from '../../hooks/useDevice';
 import * as ds from '../../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../../utils/theme';
 import { SQUADS as SQUAD_META, getSquadName } from '../../utils/squads';
+import { useDisplayName } from '../../utils/playerName';
 
 // § 53: max 5 squads (was 4 per § 32). Anchored as a constant so other call
 // sites can reference the limit without re-reading SQUAD_META length.
@@ -38,6 +39,7 @@ const squadsDiffer = (a, b) => {
 export default function SquadEditor({ trainingId, training }) {
   const { players } = usePlayers();
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const device = useDevice();
   const wide = device.width >= 720;
 
@@ -290,7 +292,7 @@ export default function SquadEditor({ trainingId, training }) {
                       }}>
                       <PlayerAvatar player={p} size={32} />
                       {p.number ? <span style={{ fontSize: 11, fontWeight: 800, color: meta.color, letterSpacing: '-0.2px' }}>#{p.number}</span> : null}
-                      <span>{p.nickname || p.name || '?'}</span>
+                      <span>{dn(p)}</span>
                     </div>
                   );
                 })}
@@ -314,7 +316,7 @@ export default function SquadEditor({ trainingId, training }) {
           }}>
             <PlayerAvatar player={p} size={32} />
             {p?.number && <span style={{ fontSize: 11, fontWeight: 800, color: COLORS.accent, letterSpacing: '-0.2px' }}>#{p.number}</span>}
-            <span>{p?.nickname || p?.name || '?'}</span>
+            <span>{dn(p)}</span>
           </div>
         );
       })()}

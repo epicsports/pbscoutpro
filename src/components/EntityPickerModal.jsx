@@ -5,6 +5,7 @@ import SearchFilterPanel from './SearchFilterPanel';
 import { matchEntity } from '../utils/entityFilters';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
+import { useDisplayName } from '../utils/playerName';
 
 /**
  * EntityPickerModal — the shared add-to-event picker. SearchFilterPanel
@@ -18,6 +19,12 @@ import { useLanguage } from '../hooks/useLanguage';
  * predicate (extra (item)=>bool), excludeIds, multi, selectedIds, onPick (single),
  * onToggle (multi), renderItem? (item,{selected})=>node, emptyText?, note?
  * (optional caption under the panel — e.g. "descendants + retired excluded").
+ *
+ * nameMode — Privacy/PII Phase 2. The picker is polymorphic (players, teams,
+ * leagues); pass `nameMode="player"` from PLAYER pickers so the default row
+ * runs the items through the workspace surname-truncation helper. Left off
+ * (default) for team/league pickers — truncating a multi-word team name would
+ * be wrong.
  */
 export default function EntityPickerModal({
   open, onClose, title,
@@ -25,8 +32,10 @@ export default function EntityPickerModal({
   filters = [], predicate,
   excludeIds = [], multi = false, selectedIds = [],
   onPick, onToggle, renderItem, emptyText, note,
+  nameMode = null,
 }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const resolvedTitle = title ?? t('entity_picker_select');
   const resolvedEmptyText = emptyText ?? t('picker_no_matches');
   const [search, setSearch] = useState('');
@@ -41,7 +50,7 @@ export default function EntityPickerModal({
     <div style={{ display: 'flex', alignItems: 'center', gap: SPACE.sm }}>
       <PlayerAvatar player={it} size={28} />
       <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {it.nickname || it.name || '—'}{it.number ? ` · #${it.number}` : ''}
+        {(nameMode === 'player' ? dn(it) : (it.nickname || it.name)) || '—'}{it.number ? ` · #${it.number}` : ''}
       </span>
       {selected ? <span style={{ color: COLORS.accent, fontWeight: 800 }}>✓</span> : null}
     </div>

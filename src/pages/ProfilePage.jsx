@@ -20,6 +20,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { usePlayers, useActiveTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, TNUM } from '../utils/theme';
 import { ASSIGNABLE_ROLES } from '../utils/roleUtils';
+import { useDisplayName } from '../utils/playerName';
 import { useDevice } from '../hooks/useDevice';
 import RdIcon from '../components/RdIcon';
 import { PixelAvatar } from '../components/avatars';
@@ -54,6 +55,10 @@ export default function ProfilePage() {
   const { t } = useLanguage();
   const user = auth.currentUser;
   const { linkedPlayer, roles, workspace, userProfile } = useWorkspace();
+  // PII Phase 2 — surname truncation at display. The own-profile hero name is
+  // the USER account name (user.displayName), not a player object, so feed it
+  // through dn() as a synthetic { name } shape; linkedPlayer rows pass directly.
+  const dn = useDisplayName();
   const { teams } = useActiveTeams();
   const { players } = usePlayers();
   // Self-claim picker shows the FULL global player catalog (Jacek 2026-06-14):
@@ -277,7 +282,11 @@ export default function ProfilePage() {
   const roleIcon = { admin: 'building', coach: 'book', scout: 'target', player: 'jersey' };
   const number = (linkedPlayer?.number || '').toString().trim();
   const nick = (linkedPlayer?.nickname || '').trim();
-  const fullName = (user.displayName || '').trim();
+  // PII-aware display of the user's own account name (surname truncated in
+  // short mode). The raw value stays in the edit Input below. Guard the empty
+  // case so the email fallback below still triggers (dn('') would yield '?').
+  const rawDisplayName = (user.displayName || '').trim();
+  const fullName = rawDisplayName ? dn({ name: rawDisplayName }) : '';
   const emailLocal = (user.email || '').split('@')[0] || '';
   // Name split for the hero stack — last line is the emphasised one. Falls back
   // to the email when no display name is set (edge: no name → single line).
@@ -469,7 +478,7 @@ export default function ProfilePage() {
             {/* Unlink — separate surface */}
             <div style={{ ...wcard, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: SPACE.sm, minHeight: 52 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>{linkedPlayer.nickname || linkedPlayer.name || t('profile_claim_section') || 'Profil gracza'}</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>{dn(linkedPlayer) !== '?' ? dn(linkedPlayer) : (t('profile_claim_section') || 'Profil gracza')}</div>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2 }}>{t('profile_unlink_body') || 'Połączenie z profilem gracza'}</div>
               </div>
               <button type="button" onClick={() => setUnlinkOpen(true)} style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, padding: '10px 16px', minHeight: 44, borderRadius: 8, background: `${COLORS.danger}18`, color: COLORS.danger, border: `1px solid ${COLORS.danger}55`, cursor: 'pointer', letterSpacing: 0.3, WebkitTapHighlightColor: 'transparent' }}>{t('profile_unlink_btn') || 'Rozłącz'}</button>
@@ -515,7 +524,7 @@ export default function ProfilePage() {
             <div style={{
               fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>{user.displayName || user.email}</div>
+            }}>{user.displayName ? dn({ name: user.displayName }) : user.email}</div>
             <div style={{
               fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -815,7 +824,7 @@ export default function ProfilePage() {
                 <div style={{
                   fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text,
                 }}>
-                  {linkedPlayer.nickname || linkedPlayer.name || t('profile_claim_section') || 'Profil gracza'}
+                  {dn(linkedPlayer) !== '?' ? dn(linkedPlayer) : (t('profile_claim_section') || 'Profil gracza')}
                 </div>
                 <div style={{
                   fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2,

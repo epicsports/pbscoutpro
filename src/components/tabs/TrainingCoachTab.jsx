@@ -9,10 +9,12 @@ import { auth } from '../../services/firebase';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../../utils/theme';
 import { squadColor, getSquadName } from '../../utils/squads';
 import { useLanguage } from '../../hooks/useLanguage';
+import { useDisplayName } from '../../utils/playerName';
 
 export default function TrainingCoachTab({ trainingId, training, layoutId }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const { matchups } = useMatchups(trainingId);
   const { players, playersById } = usePlayers();
   const { insights } = useLayoutInsights(layoutId);
@@ -259,7 +261,11 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
                         }
                         title={
                           <span>
-                            {row.player.name}
+                            {/* Real name + nickname shown as two distinct elements.
+                                Truncate only the surname of the real name (pass a
+                                name-only object so the helper mangles the surname,
+                                not the nickname). Nickname annotation stays as-is. */}
+                            {dn({ name: row.player.name })}
                             {row.player.nickname && (
                               <span style={{ color: COLORS.textDim, fontWeight: 400 }}> „{row.player.nickname}"</span>
                             )}

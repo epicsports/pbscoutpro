@@ -9,6 +9,7 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '.
 import { playerOnTeam } from '../../utils/playerTeams';
 import { matchEntity } from '../../utils/entityFilters';
 import { SQUADS as SQUAD_META } from '../../utils/squads';
+import { useDisplayName } from '../../utils/playerName';
 
 /**
  * AttendeesEditor — inline attendance picker.
@@ -283,6 +284,7 @@ function SubHeader({ label, count, color, inline }) {
 
 function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   // Back-compat: legacy `active` prop maps to variant
   const v = variant !== 'inactive' ? variant : (active ? 'active' : 'inactive');
   return (
@@ -315,7 +317,7 @@ function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
             )}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
               <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: txCol, lineHeight: 1.1 }}>
-                {p.nickname || p.name || '?'}
+                {dn(p)}
               </span>
               {showSub && (
                 <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 1 }}>
@@ -340,6 +342,7 @@ function ChipGrid({ players, variant = 'inactive', active, onToggle }) {
  */
 function InviteGuestModal({ open, onClose, allPlayers, teams, excludeIds, onInvite }) {
   const { t } = useLanguage();
+  const dn = useDisplayName();
   const [q, setQ] = useState('');
   if (!open) return null;
   const teamById = {};
@@ -403,7 +406,7 @@ function InviteGuestModal({ open, onClose, allPlayers, teams, excludeIds, onInvi
                         <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim }}>#{p.number}</span>
                       )}
                       <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>
-                        {p.nickname || p.name || '?'}
+                        {dn(p)}
                       </span>
                       <span style={{ display: 'inline-flex', color: COLORS.accent, marginLeft: 2 }}><RdIcon name="plus" size={13} /></span>
                     </div>
