@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Today's points (phone) — day-summary card (CD brief #1) (night)
+**App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/today-summary-card`. `TodaysLogsList.jsx` only (+107/−1). CD brief "3 zmiany" #1.
+- **Phone day-summary card** above the points list (`!wide`): survival ring (conic, value-semantic ≥60 success/≥40 accent/else danger) + survPct% + "PRZEŻYTE"; 3 rows (Punkty dziś/Przeżyte/Stracone); streak pill (≥2 consecutive alive); "GDZIE BIEGAŁEŚ DZIŚ" proportional split bar (dorito/snake/center) + legend.
+- **Shared computation:** hoisted the survival/streak/split math into `deriveTodayStats(rows)` — used by BOTH `TodayHeroWide` (wide rail, behavior byte-identical) and the new `TodayHeroPhone`. No forked math. Real data (`outcome==='alive'` · `breakout.side`); no new data/i18n. List/delete/CTA/wide-rail UNCHANGED.
+- **Data confirm (CD ⚠):** side = `breakout.side` → **D=dorito · S=snake · C=center**; alive = `outcome==='alive'`. No mapping gap.
+- **PROOF:** build + precommit green; **FULL e2e suite 115/115** (ran the whole gate per the playerstats-rail lesson — this touches the shared LogRow/today surface). §27 PASS.
+- **Smoke (Jacek, prod):** /player/log (phone) → summary card above the list (ring/tiles/streak/split).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Rozbiegi (breakouts) — OSOBOPOZYCJE column + un-truncated names (night)
 **App (auto-deploy, e2e-gated). No rules/data.** Merge `feat/rozbiegi-columns`. `generateInsights.js` + `ScoutedTeamPage.jsx` + `i18n.js` (1 key). CD brief `_CC_BRIEF_rozbiegi_opponentwide.md` #2.
 - **Finding (reported, not faked):** ZAGRAŃ (`timesPlayed`/`col_played`) + W PKT (`pointsPlayed`/`col_played_in`) **already existed** (§60.4). The only missing column = **OSOBOPOZYCJE** (unique players).
