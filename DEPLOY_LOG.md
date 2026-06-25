@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-25 — [FEATURE/Tier-2] Live-scoring convergence Stage 2 — PointAxisScrubber (portrait review) (SYNC brief C)
+**App (auto-deploy, e2e-gated). No data/capture path touched.** Merge `feat/live-stage2` (3 files, NEW `PointAxisScrubber.jsx`). Read-side only.
+- **`PointAxisScrubber`** — phases as keyframe NODES on an "Oś punktu" scrub track + play head, under the **portrait** review field; replaces the discrete phase-pill segment row (prototype look). Binds READ-SIDE to `phasePin`/`pinPhase`/`replayStage`/`phasePlaying`; **discrete snap** (no continuous interpolation — prod `timeline[]` is keyframe-not-continuous); captured-scope gating (settle/mid/endgame nodes inert when uncaptured). `savePoint`/`makeTeamData`/`buildTimeline`/`useCaptureDraft` untouched.
+- **PROOF:** build + precommit green; **full e2e 115/115** (incl. `phase-view.spec.js` testid/aria contract preserved).
+- **⚠ Landscape NOT yet converted (= Jacek's screenshots).** Landscape review uses a FLOATING `FieldPhaseControl` chip in the Field-View shell — a different context than the attached track. A naive swap broke `phase-view:139` (float wants a compact chip, not the wide scrubber) → reverted. **Stage 2b** = a compact float-variant of the scrubber for landscape + test update + Jacek visual smoke.
+- **Next:** Stage 2b (landscape float-variant), then Stage 3 (editor chrome).
+
 ## 2026-06-25 — [FEATURE/Tier-2] Live-scoring convergence Stage 1 — point-row bars + header wrap (SYNC brief C)
 **App (auto-deploy, e2e-gated). No data/capture path touched.** Merge `feat/live-stage1` (MatchPage.jsx, 1 file). LiveMatchPremium convergence — Stage 1 of 3 (visual-only).
 - **Point rows:** removed the `aBar`/`bBar` side color strips (`:2030`/`:2108` + derivations) — prototype's consolidated head-to-head = crest + winner trophy + completeness dots only.
