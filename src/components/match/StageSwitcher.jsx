@@ -20,22 +20,23 @@ import { capturePhases, toPersistedLiteral, label } from '../../utils/pointPhase
  *   done     — { break, settle, mid } booleans: stage has captured data
  *   device-agnostic: each node is a ≥44px tap target; scales by flex.
  */
-export default function StageSwitcher({ stage = 'break', onChange, done = {}, stages = null }) {
+export default function StageSwitcher({ stage = 'break', onChange, done = {}, stages = null, wrap = false }) {
   const { t } = useLanguage();
   // PaT D4 — default capture nodes from the canonical module (single source); keys
   // are the persisted literals (break/settle/mid + endgame). The TACTIC editor
   // passes its own 5 positional stages [{key,label}] (Stage 2.2) via `stages`.
   const STAGES = stages || capturePhases().map(p => ({ key: toPersistedLiteral(p.key), label: label(p.key, t) }));
   return (
-    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }} role="tablist" aria-label={t('b13_capture_stage')}>
+    <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, flexWrap: wrap ? 'wrap' : 'nowrap', rowGap: wrap ? 8 : 0 }} role="tablist" aria-label={t('b13_capture_stage')}>
       {STAGES.map((s, i) => {
         const active = stage === s.key;
         const hasData = !!done[s.key];
         const color = active ? COLORS.accent : hasData ? COLORS.text : COLORS.textMuted;
         return (
           <React.Fragment key={s.key}>
-            {i > 0 && (
-              // Connector segment — filled up to the active node.
+            {i > 0 && !wrap && (
+              // Connector segment — filled up to the active node. Dropped in wrap mode
+              // (narrow rail, multi-row) where a connector at a line break reads wrong.
               <div style={{
                 width: 14, height: 2, flexShrink: 0,
                 background: (active || hasData) ? `${COLORS.accent}66` : COLORS.border,
