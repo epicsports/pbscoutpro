@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-26 — [REDESIGN/Tier-2] Phone Live field-card → RdLiveFieldCard (Jacek design-sync, render-verified)
+**App (auto-deploy, e2e-gated). READ-SIDE only — capture/save byte-identical.** Merge `feat/live-field-card` (MatchPage + i18n + phase-view spec). Jacek flagged the phone Live STILL diverged after the truncation fix: comparing prototype `RdLiveFieldCard` ↔ prod showed the controls were SCATTERED (separate OŚ PUNKTU block + 4 full-width toggle blocks below a bare field — my earlier Stage 1/2 mis-fire) where the prototype INTEGRATES them into one field card.
+- **Portrait review field area rebuilt:** one bordered card = field + **"Warstwy" popover** (top-left overlay, count badge, 4 independent filters Pozycje/Strzały × A/B wired to existing `hmVisibility`) replacing the 4 separate toggle blocks + **OŚ PUNKTU `PointAxisScrubber` ATTACHED** at the card bottom (was a separate block). **Rysuj omitted** — portrait review has no draw affordance (landscape-only §77), so no dead button (flagged).
+- **READ-SIDE:** `hmVisibility`/`phasePin`/`phasePlaying`/`replayStage`/scrubber/`HeatmapCanvas` wiring byte-identical; no `useCaptureDraft`/`savePoint`/write-path touch. **LANDSCAPE review byte-identical** (already matched the tablet `TabletLiveScoringPremium`). Kept prod's DISCRETE keyframe scrubber (not the prototype's faked continuous scrub).
+- `phase-view.spec.js` test 1 rewritten truthfully (toggle → `review-layers-btn` popover + `review-layer-*` testids).
+- **PROOF:** build + precommit green; **full e2e 116/116** incl. capture suite + the rewritten spec; **render-verified @390** matches RdLiveFieldCard.
+- **Smoke (Jacek):** phone Live → field in one card, tap "Warstwy" → 4 filters, phases attached at card bottom; data/markers unchanged.
+
 ## 2026-06-26 — [i18n/Tier-1] Coach tab hardcoded English (render-caught) — `e0d556d6`
 **App. i18n only.** Render harness @834 on the Coach tab caught hardcoded (never t()-wrapped) English: "Teams (n)"/"Matches (n)"/"Standings (n)" (CoachTabContent) + "Tactics board"/"Choose a field"/"Untitled field" (OpenTacticsAction — lacked `useLanguage`). Lint allows English source literals but doesn't force t()-wrapping → they rendered English in the PL UI. Added 6 keys (coach_*_count count-fns + tactics_board/open_tactics_pick_field/untitled_field), wrapped all. Render @834 confirms Drużyny/Mecze/Tablica taktyk. Full e2e 116/116. Player tab swept clean.
 
