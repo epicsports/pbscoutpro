@@ -4,6 +4,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import HeatmapCanvas from '../components/HeatmapCanvas';
 import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
+import CrestBand from '../components/CrestBand';
 import RdIcon from '../components/RdIcon';
 import TeamBadge from '../components/TeamBadge';
 import { Btn, EmptyState, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
