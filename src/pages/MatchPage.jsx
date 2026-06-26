@@ -1754,9 +1754,9 @@ export default function MatchPage() {
                 <TeamBadge team={teamA || { name: 'Home' }} size={compact ? 22 : 34} />
                 <div style={{
                   flex: 1, minWidth: 0,
-                  fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
+                  fontFamily: FONT, fontSize: compact ? 11 : 15, fontWeight: 700, color: COLORS.text,
                   display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
+                  overflow: 'hidden', overflowWrap: 'break-word', lineHeight: 1.15,
                 }}>{teamA?.name || 'Home'}</div>
               </div>
               {/* §B B5 + post-night STEP 3: compact rail variant. Tournament →
@@ -1790,7 +1790,7 @@ export default function MatchPage() {
             <div style={{ width: 1, background: COLORS.surfaceLight }} />
             {/* Score center — recessed */}
             <div style={{
-              flex: '0 0 auto', minWidth: compact ? 56 : 110,
+              flex: '0 0 auto', minWidth: compact ? 56 : 84,
               padding: compact ? '8px 8px' : '14px 12px',
               background: ELEV.sunken,
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -1816,9 +1816,9 @@ export default function MatchPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 7 : 10, minWidth: 0, justifyContent: 'flex-end' }}>
                 <div style={{
                   flex: 1, minWidth: 0,
-                  fontFamily: FONT, fontSize: compact ? 11 : 18, fontWeight: 700, color: COLORS.text,
+                  fontFamily: FONT, fontSize: compact ? 11 : 15, fontWeight: 700, color: COLORS.text,
                   display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden', wordBreak: 'break-word', lineHeight: 1.15,
+                  overflow: 'hidden', overflowWrap: 'break-word', lineHeight: 1.15,
                 }}>{teamB?.name || 'Away'}</div>
                 <TeamBadge team={teamB || { name: 'Away' }} size={compact ? 22 : 34} />
               </div>

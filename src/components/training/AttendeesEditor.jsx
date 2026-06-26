@@ -220,7 +220,7 @@ export default function AttendeesEditor({ trainingId, training }) {
       <SubHeader label={t('here')} count={here.length} color={COLORS.success} />
       {here.length === 0 ? (
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: `${SPACE.sm}px 0`, textAlign: 'center' }}>
-          Tap players below to mark them as here.
+          {t('tap_to_mark')}
         </div>
       ) : (
         <ChipGrid players={here} variant="active" onToggle={toggleAttendee} />
