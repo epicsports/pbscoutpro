@@ -2458,42 +2458,28 @@ export default function MatchPage() {
     //    phasePlaying/canReplay/replayStage, hmVisibility, previewPointId,
     //    closeMatchConfirm) — zero changes to the capture/save write path. ──
     if (landscape && heroAvailable) {
-      // Warstwa A/B ← prod's per-team hmVisibility. "Warstwa A" = show team A's
-      // layers (positions+shots ON), team B's OFF; "Warstwa B" = the mirror. The
-      // active side = whichever team currently has any layer visible (A wins ties).
-      const layerSide = (hmVisibility.teamA.positions || hmVisibility.teamA.shots) ? 'a' : 'b';
-      const setLayerSide = (k) => setHmVisibility(k === 'a'
-        ? { teamA: { positions: true, shots: true }, teamB: { positions: false, shots: false } }
-        : { teamA: { positions: false, shots: false }, teamB: { positions: true, shots: true } });
+      // Layers → the on-field "Warstwy" popover (ReviewLayersPopover, 4 independent
+      // filters Pozycje/Strzały × A/B) wired straight to hmVisibility — the SAME
+      // control the phone review uses (redesign.jsx RdLiveFieldCard). The old rail
+      // Warstwa A/B segmented toggle (single-layer-side) is RETIRED here; the field
+      // card now owns layer selection (feat/live-landscape-fieldcard, §1).
 
-      // Phase tabs ← prod's phasePin / pinPhase (the phase view selector). The
-      // active segment follows the replay clock while playing (replayStage), else
-      // phasePin. Settle/Mid go inert when the current scope captured no such
-      // keyframe (B2) — same gating as the portrait scrubber.
+      // Phase axis ← prod's phasePin / pinPhase. The active segment follows the
+      // replay clock while playing (replayStage), else phasePin. Settle/Mid/Endgame
+      // go inert when the current scope captured no such keyframe (B2) — the SAME
+      // node set the portrait PointAxisScrubber renders (here it's the attached
+      // scrubber under the field; the separate top phase-tabs + "Animacja punktu"
+      // bar are RETIRED, replay folded into the scrubber's play head).
       const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
-      const phaseTabs = PHASE_SEGMENTS.map(st => ({
+      const phaseNodes = PHASE_SEGMENTS.map(st => ({
         key: st,
         label: phaseLabel(fromPersistedLiteral(st), t),
         enabled: st === 'break' ? true
           : st === 'settle' ? hasSettleStage
           : st === 'mid' ? hasMidStage
           : hasEndgameStage,
-      })).filter(p => p.enabled); // only captured phases appear as attached tabs
-
-      // Animation scrubber ← prod's existing point replay. Discrete keyframe model
-      // (prod timeline[] is keyframe-not-continuous): the % reflects the active
-      // node's position along the captured stage axis (node-snap, no faked
-      // continuous data). "Animacja punktu N" = replay the SELECTED preview point
-      // (or the aggregate when nothing is previewed).
-      const replayNodes = phaseTabs;
-      const replayIdx = Math.max(0, replayNodes.findIndex(p => p.key === activeSeg));
-      const replayPct = replayNodes.length <= 1 ? 0 : Math.round((replayIdx / (replayNodes.length - 1)) * 100);
-      const selectedPoint = previewPointId ? points.find(p => p.id === previewPointId) : null;
-      const selPointN = selectedPoint ? (points.indexOf(selectedPoint) + 1) : null;
-      const animStatus = (phasePlaying && canReplay)
-        ? t('point_axis_playing')
-        : !canReplay ? t('phase_play_disabled_hint')
-        : t('point_axis_hint');
+      }));
+      const lastEnabledNode = phaseNodes.filter(p => p.enabled).slice(-1)[0];
 
       // Per-team scouting completeness ← real data: fraction of points where THAT
       // team's side carries a scoutedBy (the same signal the review `scoutedBy`
@@ -2539,7 +2525,7 @@ export default function MatchPage() {
           >
             <TeamBadge team={team || { name: label }} size={22} />
             <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, lineHeight: 1.15 }}>
-              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: win ? 800 : 700, color: win ? COLORS.text : COLORS.textDim, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: win ? 800 : 700, color: win ? COLORS.text : COLORS.textDim, lineHeight: 1.15, textWrap: 'balance', overflowWrap: 'break-word' }}>
                 {label}
                 {win && <span style={{ display: 'inline-flex', verticalAlign: 'middle', color: COLORS.success, marginLeft: 6 }}><RdIcon name="check" size={11} /></span>}
               </span>
@@ -2571,8 +2557,8 @@ export default function MatchPage() {
             </div>
             {/* stacked sides → scout each */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5, justifyContent: 'center', minWidth: 0 }}>
-              <SideZone team={teamA} label={shortNameOf(teamA?.name || 'Home')} sideTeamId={match?.teamA} scoutedBy={ptDataA.scoutedBy} win={aWon} />
-              <SideZone team={teamB} label={shortNameOf(teamB?.name || 'Away')} sideTeamId={match?.teamB} scoutedBy={ptDataB.scoutedBy} win={bWon} />
+              <SideZone team={teamA} label={teamA?.name || 'Home'} sideTeamId={match?.teamA} scoutedBy={ptDataA.scoutedBy} win={aWon} />
+              <SideZone team={teamB} label={teamB?.name || 'Away'} sideTeamId={match?.teamB} scoutedBy={ptDataB.scoutedBy} win={bWon} />
             </div>
             {(pt.isOT || isOpen) && (
               <div style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}>
@@ -2616,7 +2602,7 @@ export default function MatchPage() {
             <div data-testid="review-scoreboard" style={{ display: 'flex', alignItems: 'center', padding: '4px 18px 16px', gap: 12 }}>
               <div onClick={() => goScout(match?.teamA)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 0, cursor: isLocked ? 'default' : 'pointer' }}>
                 <TeamBadge team={teamA || { name: 'Home' }} size={46} />
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, textAlign: 'center', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{teamA?.name || 'Home'}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, textAlign: 'center', lineHeight: 1.2, textWrap: 'balance', overflowWrap: 'break-word' }}>{teamA?.name || 'Home'}</span>
                 {/* Training keeps its quick-log shortcut (the tournament prototype has none). */}
                 {isTraining && !isLocked && (
                   <div data-testid="quick-cta-a" onClick={(e) => { e.stopPropagation(); setActiveTeam('A'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, cursor: 'pointer' }}>{t('match_quick_cta')} ›</div>
@@ -2625,26 +2611,15 @@ export default function MatchPage() {
               <span style={{ fontFamily: FONT, fontSize: 40, fontWeight: 800, color: COLORS.text, letterSpacing: '-1px', flexShrink: 0, ...TNUM }}>{sA}<span style={{ color: COLORS.textMuted, margin: '0 3px' }}>:</span>{sB}</span>
               <div onClick={() => goScout(match?.teamB)} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 0, cursor: isLocked ? 'default' : 'pointer' }}>
                 <TeamBadge team={teamB || { name: 'Away' }} size={46} />
-                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, textAlign: 'center', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{teamB?.name || 'Away'}</span>
+                <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text, textAlign: 'center', lineHeight: 1.2, textWrap: 'balance', overflowWrap: 'break-word' }}>{teamB?.name || 'Away'}</span>
                 {isTraining && !isLocked && (
                   <div data-testid="quick-cta-b" onClick={(e) => { e.stopPropagation(); setActiveTeam('B'); setViewMode('quicklog'); }} style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, cursor: 'pointer' }}>{t('match_quick_cta')} ›</div>
                 )}
               </div>
             </div>
-            {/* Warstwa A / Warstwa B segmented toggle ← hmVisibility per-team */}
-            <div style={{ padding: '0 18px 14px' }}>
-              <div style={{ display: 'flex', gap: 4, padding: 4, background: ELEV.bg, border: `1px solid ${ELEV.hairline}`, borderRadius: 11 }}>
-                {[['a', `${t('review_layer_prefix')} ${shortNameOf(teamA?.name || 'A')}`], ['b', `${t('review_layer_prefix')} ${shortNameOf(teamB?.name || 'B')}`]].map(([k, lab]) => (
-                  <div
-                    key={k}
-                    data-testid={`review-layer-${k}`}
-                    aria-pressed={layerSide === k}
-                    onClick={() => setLayerSide(k)}
-                    style={{ flex: 1, textAlign: 'center', padding: '8px', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, cursor: 'pointer', background: layerSide === k ? ELEV.raised : 'transparent', border: `1px solid ${layerSide === k ? ELEV.hairlineStrong : 'transparent'}`, fontFamily: FONT, fontSize: 13, fontWeight: 800, color: layerSide === k ? COLORS.text : COLORS.textMuted }}
-                  >{lab}</div>
-                ))}
-              </div>
-            </div>
+            {/* Layers control RETIRED from the rail — now the on-field "Warstwy"
+                popover (ReviewLayersPopover) over the field card, 4 independent
+                filters. The single-side Warstwa A/B toggle is gone. */}
             {/* "Punkty" eyebrow */}
             <div style={{ padding: '0 18px 6px' }}>
               <SectionLabel>{t('match_points_section', points.length)}</SectionLabel>
@@ -2679,59 +2654,53 @@ export default function MatchPage() {
             </div>
           </div>
 
-          {/* ── RIGHT FIELD PANEL ── */}
+          {/* ── RIGHT FIELD PANEL — RdLiveFieldCard (redesign.jsx ~1450-1545):
+              header `{A} vs {B}` (FULL names) + the universal field card = field +
+              on-field "Warstwy" popover (4 independent filters) + the SINGLE
+              attached point-axis scrubber (play head folds in replay). The old
+              top phase-tabs + separate "Animacja punktu" bar are RETIRED — one
+              unified control now. READ-SIDE ONLY. ── */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            {/* phase tabs (top-LEFT, attached) + spacer + tournament name right */}
+            {/* header — `{A.name} vs {B.name}` (FULL names) + tournament name right */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '16px 20px', borderBottom: `1px solid ${ELEV.hairline}` }}>
-              {phaseTabs.map(({ key, label }) => (
-                <div
-                  key={key}
-                  data-testid={`phase-seg-${key}`}
-                  role="button"
-                  aria-pressed={activeSeg === key}
-                  onClick={() => pinPhase(key)}
-                  style={{ padding: '9px 16px', minHeight: 44, display: 'flex', alignItems: 'center', borderRadius: 10, cursor: 'pointer', background: activeSeg === key ? ELEV.raised : ELEV.surface, border: `1px solid ${activeSeg === key ? COLORS.accent + '55' : ELEV.hairline}`, fontFamily: FONT, fontSize: 13, fontWeight: 800, color: activeSeg === key ? COLORS.text : COLORS.textMuted }}
-                >{label}</div>
-              ))}
+              <span style={{ fontFamily: FONT, fontSize: 16, fontWeight: 800, color: COLORS.text, overflowWrap: 'break-word', minWidth: 0 }}>
+                {teamA?.name || 'Home'} <span style={{ color: COLORS.textMuted, fontWeight: 700 }}>{t('review_vs')}</span> {teamB?.name || 'Away'}
+              </span>
               <div style={{ flex: 1 }} />
               {tournament?.name && (
                 <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.textDim, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 320 }}>{tournament.name}</span>
               )}
             </div>
-            {/* field — the real review heatmap (replay-capable) */}
-            <div style={{ flex: 1, position: 'relative', padding: '20px 20px 0', minHeight: 0 }}>
-              <div style={{ position: 'absolute', inset: '20px 20px 0', borderRadius: '14px 14px 0 0', overflow: 'hidden', border: `1px solid ${ELEV.hairlineStrong}`, borderBottom: 'none', boxShadow: ELEV.shadow2, display: 'flex' }}>
-                {reviewHeatmapEl}
-              </div>
-            </div>
-            {/* bottom animation control bar — play/pause · "Animacja punktu N" ·
-                status · scrubber (node-snap %) · percent */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 20px 18px', margin: '0 20px', background: ELEV.surface, borderRadius: '0 0 14px 14px', border: `1px solid ${ELEV.hairlineStrong}`, borderTopWidth: 0 }}>
-              <div
-                data-testid="phase-play"
-                role="button"
-                aria-pressed={phasePlaying && canReplay}
-                onClick={canReplay ? () => { setReplayStage(null); setPhasePlaying(v => !v); } : undefined}
-                style={{ width: 46, height: 46, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: canReplay ? COLORS.accentGradient : ELEV.raised, color: canReplay ? '#1a1205' : COLORS.textMuted, cursor: canReplay ? 'pointer' : 'default', opacity: canReplay ? 1 : 0.5, boxShadow: canReplay ? `${ELEV.innerTop}, 0 4px 14px ${COLORS.accent}44` : 'none' }}
-              >
-                {(phasePlaying && canReplay) ? <RdIcon name="pause" size={16} /> : <RdIcon name="play" size={16} />}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>
-                    {selPointN ? t('review_anim_point', selPointN) : t('review_anim_aggregate')}
-                  </span>
-                  <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted }}>{animStatus}</span>
+            {/* the field card — fills the panel: field + Warstwy popover overlay +
+                attached scrubber underneath. */}
+            <div style={{ flex: 1, padding: 20, minHeight: 0, display: 'flex' }}>
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: 16, overflow: 'hidden', border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow2 }}>
+                {/* field area + on-field "Warstwy" popover (top-left, 4 filters →
+                    hmVisibility) — the SAME popover the phone review uses. */}
+                <div style={{ flex: 1, position: 'relative', minHeight: 0, display: 'flex' }}>
+                  {reviewHeatmapEl}
+                  <ReviewLayersPopover
+                    visibility={hmVisibility}
+                    onChange={setHmVisibility}
+                    shortA={shortNameOf(teamA?.name || 'A')}
+                    shortB={shortNameOf(teamB?.name || 'B')}
+                    label={t('review_layers_label')}
+                  />
                 </div>
-                {/* Discrete keyframe track — node-snap, no faked continuous data.
-                    Tapping the track is inert (read-side only; nodes pin via the
-                    attached phase tabs above). */}
-                <div style={{ height: 8, borderRadius: 999, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, position: 'relative' }}>
-                  <div style={{ width: replayPct + '%', height: '100%', borderRadius: 999, background: COLORS.accent, transition: 'width .18s ease' }} />
-                  <div style={{ position: 'absolute', top: '50%', left: replayPct + '%', width: 14, height: 14, borderRadius: '50%', background: '#fff', border: `2px solid ${COLORS.accent}`, transform: 'translate(-50%,-50%)', boxShadow: ELEV.shadow1, transition: 'left .18s ease' }} />
-                </div>
+                {/* SINGLE attached point-axis scrubber — captured phases as keyframe
+                    nodes (phase-seg-*) + play head (phase-play). Replay folded in:
+                    onPlay toggles phasePlaying, the head + active node follow the
+                    replay clock (replayStage) via `active`. READ-SIDE ONLY. */}
+                <PointAxisScrubber
+                  phases={phaseNodes}
+                  active={activeSeg}
+                  onPick={pinPhase}
+                  playing={phasePlaying && canReplay}
+                  canPlay={canReplay}
+                  onPlay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
+                  atEnd={!!lastEnabledNode && activeSeg === lastEnabledNode.key}
+                />
               </div>
-              <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.textDim, flexShrink: 0, width: 38, textAlign: 'right', ...TNUM }}>{replayPct}%</span>
             </div>
           </div>
           {reviewModalsEl}
