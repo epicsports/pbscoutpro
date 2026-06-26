@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-26 — [REDESIGN/Tier-2] Tactic editor → TacticWorkspace chrome (Jacek design-sync, render-verified, night)
+**App (auto-deploy, e2e-gated). DATA-CRITICAL screen — tactic SAVE byte-identical (verified).** Merge `feat/tactic-workspace` (TacticEditorPage + StageSwitcher + i18n). Part B of the night-sync brief; `redesign12.jsx` (TacticWorkspace) arrived → unblocked. Jacek decisions: **Q2=A** (visual redesign only — keep the existing data model + functions: click player → menu [bieg/strzał/bump] + freehand notes; NO 4-tool save-schema change).
+- **Chrome rebuilt to the prototype** (wide ≥720): left rail (348px) = FAZA phase-selector + "Jak rysować" how-to + "Ustawienie" status (placed/5, biegi, strzały) + Rysuj toggle | horizontal field (prod's REAL InteractiveCanvas) + "Zapisz taktykę" bar. Read-only variant for non-coach (no tools/save). Phone <720 = existing stacked layout byte-identical.
+- **Save preserved byte-identical** (agent + me verified): `updateLayoutTactic`/`tacticStateToDoc` payload, `useCaptureDraft` config, all capture/draw handlers unchanged. Kept prod's **5 real phases** (not the prototype's 3) + real canvas (not the mock FieldSurface).
+- **Render-first verification** (the night's method): rendered prod @1280 via the throwaway harness → caught the rail clipping "Mid-game"/"Endgame" (5 phases in a 348px rail) → fixed with an **additive `wrap` prop** on StageSwitcher (default false → MatchPage byte-identical) → re-render confirms 5 phases wrap to 2 clean rows.
+- **PROOF:** build + precommit green; **full e2e 116/116** incl. `layout-tactic-freehand` (the tactic SAVE golden) + `tactics-board`. Render @1280 matches TacticWorkspace.
+- **OPEN (Q2 follow-up, NIGHT_QUESTIONS):** the literal 4-tool canvas selector (player/runner/shot/draw as `{from,to}` segments) was NOT built — it needs a save-schema migration (data-critical), deferred per Jacek (visual redesign only now). Minor: coach role-badge amber (§27 nit, flagged for smoke).
+- **Smoke (Jacek):** open a tactic → left rail (phases/how-to/status/Rysuj) + field + Zapisz; drawing still works (click player → menu); saved tactics intact.
+
+## 2026-06-26 — [i18n/Tier-1] scout_tab_* PL values were English (render-caught) — `e73f94b4`
+**App. Value-only.** Render harness @834 showed the scout match-list add buttons in English ("+ Add match"/"+ Add team"). The `scout_tab_*` PL values were never translated (lint passes on key-existence, e2e on testids — only RENDER caught it). PL→Polish (Dodaj mecz/Dodaj drużynę/Gospodarz/Gość/Brak meczów/Dodaj drużyny/Dodawanie…); EN unchanged. Also render-VERIFIED the Scout HeroLive + Live-scoring (portrait+landscape) match the prototype 1:1.
+
 ## 2026-06-25 — [REDESIGN/Tier-2] Match-list cards → HeroLive + Fixture 1:1 (Jacek design-sync, night)
 **App (auto-deploy, e2e-gated). No data/logic change.** Merge `feat/matchcard-rebuild` (MatchCard.jsx + i18n, render-only). Jacek showed (IMG_0150/0147) the match-list cards were "mega inny" — the prototype has 2 distinct cards, prod had 1.
 - **LIVE → `HeroLive`** (redesign.jsx 152-179): card radius 18 + danger border; vertical teams (TeamBadge48 + 2-line name + "Scoutuj →") | **44px center score** + "Podgląd meczu"; 3 tap zones (A-scout / center-review / B-scout).
