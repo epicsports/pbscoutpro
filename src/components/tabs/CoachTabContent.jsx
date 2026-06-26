@@ -202,7 +202,7 @@ export default function CoachTabContent({ tournamentId }) {
         if (!ranked.length) return null;
         return (
           <div>
-            <SectionTitle>Standings ({ranked.length})</SectionTitle>
+            <SectionTitle>{t('coach_standings_count', ranked.length)}</SectionTitle>
             <StandingsTable
               entries={ranked}
               records={records}
@@ -215,7 +215,7 @@ export default function CoachTabContent({ tournamentId }) {
 
       {/* Teams — premium W-L cards with team-color identification + hide/restore */}
       <div>
-        <SectionTitle>Teams ({divisionScouted.length})</SectionTitle>
+        <SectionTitle>{t('coach_teams_count', divisionScouted.length)}</SectionTitle>
         {!loading && divisionScouted.length > 0 && (
           <div style={{ marginBottom: SPACE.sm }}>
             <SearchField value={teamSearch} onChange={setTeamSearch} placeholder={t('b13_coach_search_team_ph')} />
@@ -287,7 +287,7 @@ export default function CoachTabContent({ tournamentId }) {
 
       {/* Split-tap match list — grouped Live / Scheduled / Completed. */}
       <div>
-        <SectionTitle>Matches ({filteredMatches.length})</SectionTitle>
+        <SectionTitle>{t('coach_matches_count', filteredMatches.length)}</SectionTitle>
 
         {filteredMatches.length === 0 && (
           <EmptyState icon="⚔️" text={t('scout_tab_no_matches_yet')} />
