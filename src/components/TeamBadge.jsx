@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { COLORS, FONT } from '../utils/theme';
+import { hasFlag, flagDataUri, COUNTRY_NAMES } from '../utils/flags';
 
 /**
  * TeamBadge — the team analogue of PlayerAvatar (§ Team branding Phase 1).
@@ -53,6 +54,18 @@ export default function TeamBadge({ team, size = 32, ringColor }) {
     );
   }
 
+  // Tier 2 — country flag (premium inline SVG) when there's no logo but a country.
+  if (hasFlag(team?.country)) {
+    return (
+      <span style={styleBase}>
+        <img src={flagDataUri(team.country)} alt={COUNTRY_NAMES[team.country] || ''}
+          style={{ width: '118%', height: '118%', objectFit: 'cover', objectPosition: 'center',
+            filter: 'saturate(.92) contrast(1.02) drop-shadow(0 1px 2px rgba(0,0,0,.35))' }} />
+      </span>
+    );
+  }
+
+  // Tier 3 — team color + monogram.
   return (
     <span style={{ ...styleBase, color: '#fff', fontFamily: FONT, fontWeight: 800, fontSize: Math.max(9, Math.round(size * 0.4)), letterSpacing: '-0.5px' }}>
       {monogram}
