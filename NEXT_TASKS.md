@@ -3,7 +3,15 @@
 > **Canonical-board rule.** If something is *actionable and open*, it lives **here**. `DEPLOY_LOG.md` is the ship ledger (newest-first, full detail); `HANDOVER.md` is narrative state. Zero actionable items living ONLY in DEPLOY_LOG/HANDOVER. Kept current on every doc-closeout.
 > **Mandatory reads before code:** `docs/DESIGN_DECISIONS.md` § 27 (Apple HIG), `docs/PROJECT_GUIDELINES.md`, the active brief. See `CLAUDE.md`.
 
-**Last synced:** 2026-06-24 · main HEAD `6b2cc7f1` — core-screens workstream (#1-#3) + tablet wide-shell rescue + e2e-port fix + i18n fix/guard + matchClassify dedup shipped. MatchPage #4 CD-gated; layout editor parked.
+**Last synced:** 2026-06-26 · main HEAD `9ee45fcf` — design-sync render-first sweep (Live truncation + field-card → RdLiveFieldCard · scout_tab/coach/training i18n · tactic editor TacticWorkspace · menu Wyświetlanie). Active: phone render sweep (CC brief below).
+
+---
+
+## 🔵 ACTIVE — Design-sync render sweep (phone-first) → `CC_BRIEF_DESIGN_SYNC_PHONE_SWEEP.md`
+**Method = render-first:** render PROD @390/834/1280 via `tests/e2e/_render-harness.spec.js` → diff vs prototype `redesign*.jsx`; **DONE = render matches**, not "code similar." Read-side only · NEVER touch the capture/save path · prototype wins · full gate each · phone fixes must not regress tablet/landscape.
+- **Remaining screens @phone:** quick-log · settings/More · training results/squads · player self-claim · wide (834/1280) variants.
+- **Known residuals:** review point-row short-code clip (`shortNameOf` "TOULOU"→"TOU…", `MatchPage.jsx:1664`/`:2438`) · targeted i18n (render-caught English-in-PL ONLY, NOT the 166 pl===en blind).
+- **DONE this session (do NOT redo):** Live (scoreboard truncation `1fbe3bec` + field-card → RdLiveFieldCard `9ee45fcf`) · i18n scout_tab `e73f94b4`/coach `e0d556d6`/training `1fbe3bec` · opponent·pstats·profile·layouts render-verified aligned@phone · tactic editor `7c56bf70` (Q2) · menu Wyświetlanie `ecf59b55` (Q1). Full method + rules in the brief file.
 
 ---
 
