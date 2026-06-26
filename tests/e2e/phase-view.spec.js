@@ -63,36 +63,56 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await expect(page.getByTestId('phase-seg-settle')).toHaveAttribute('aria-disabled', 'false');
     await expect(page.getByTestId('phase-seg-mid')).toHaveAttribute('aria-disabled', 'false');
 
+    // feat/live-field-card (2026-06-26): the portrait per-team layer chips moved
+    // INTO the live-field-card "Warstwy" popover (review-layer-{aPos,aShot,bPos,
+    // bShot}, aria-pressed) — the standalone PerTeamHeatmapToggle (Pozycje/Strzały
+    // role-button capsules) is gone in portrait. Same 4 independent filters + same
+    // hmVisibility wiring + same B3 per-phase defaults; only the chrome relocated.
+    // Open the popover once; the filter buttons persist while it's open. aShot/bShot
+    // = the per-team Shots layers (were shotChips 0/1); aPos = team-A positions.
+    const openLayers = async () => {
+      const aShot = page.getByTestId('review-layer-aShot');
+      if (!(await aShot.isVisible().catch(() => false))) {
+        await page.getByTestId('review-layers-btn').click();
+        await expect(aShot).toBeVisible();
+      }
+    };
+    const aPos = page.getByTestId('review-layer-aPos');
+    const aShot = page.getByTestId('review-layer-aShot');
+    const bShot = page.getByTestId('review-layer-bShot');
+
     // Pin Settle → pressed; B3 defaults keep positions+shots ON.
     await page.getByTestId('phase-seg-settle').click();
     await expect(page.getByTestId('phase-seg-settle')).toHaveAttribute('aria-pressed', 'true');
-    const shotChips = page.getByRole('button', { name: /^(Strzały|Shots)$/ });
-    await expect(shotChips.nth(0)).toHaveAttribute('aria-pressed', 'true');
+    await openLayers();
+    await expect(aShot).toHaveAttribute('aria-pressed', 'true');
 
     // B4 — in Settle the only shot layer is the direction arrows: toggling
     // Shots off for both teams must change the canvas (arrows disappear).
     const withArrows = await canvasSnap(page);
-    await shotChips.nth(0).click();
-    await shotChips.nth(1).click();
+    await aShot.click();
+    await bShot.click();
     await page.waitForTimeout(300);
     const withoutArrows = await canvasSnap(page);
     expect(withArrows, 'settle direction arrows must render under the Shots layer').not.toBe(withoutArrows);
 
-    // Pin Mid → B3 defaults reset: positions ON, shots OFF.
+    // Pin Mid → B3 defaults reset: positions ON, shots OFF. (Pinning a phase via the
+    // attached scrubber dismisses the popover — reopen to assert the new defaults.)
     await page.getByTestId('phase-seg-mid').click();
     await expect(page.getByTestId('phase-seg-mid')).toHaveAttribute('aria-pressed', 'true');
-    const posChips = page.getByRole('button', { name: /^(Pozycje|Positions)$/ });
-    await expect(shotChips.nth(0)).toHaveAttribute('aria-pressed', 'false');
-    await expect(shotChips.nth(1)).toHaveAttribute('aria-pressed', 'false');
-    await expect(posChips.nth(0)).toHaveAttribute('aria-pressed', 'true');
+    await openLayers();
+    await expect(aShot).toHaveAttribute('aria-pressed', 'false');
+    await expect(bShot).toHaveAttribute('aria-pressed', 'false');
+    await expect(aPos).toHaveAttribute('aria-pressed', 'true');
 
     // §40 override WITHIN the phase: positions off in Mid…
-    await posChips.nth(0).click();
-    await expect(posChips.nth(0)).toHaveAttribute('aria-pressed', 'false');
+    await aPos.click();
+    await expect(aPos).toHaveAttribute('aria-pressed', 'false');
     // …and switching back to Break re-applies that phase's defaults.
     await page.getByTestId('phase-seg-break').click();
-    await expect(posChips.nth(0)).toHaveAttribute('aria-pressed', 'true');
-    await expect(shotChips.nth(0)).toHaveAttribute('aria-pressed', 'true');
+    await openLayers();
+    await expect(aPos).toHaveAttribute('aria-pressed', 'true');
+    await expect(aShot).toHaveAttribute('aria-pressed', 'true');
 
     // Scoreboard is a permanent resident across every phase state.
     await expect(page.getByTestId('review-scoreboard')).toBeVisible();
