@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-27 — [REDESIGN/Tier-2] Crest unification Krok 1 — 3-tier identity + premium bands (Design System 5, Jacek GO)
+**App (auto-deploy, e2e-gated).** Ujednolicenie crestów — one consistent team-identity system everywhere, no bare initials where a flag/logo can show.
+- **3-tier `Crest`/`TeamBadge`** (`src/utils/flags.js` + `TeamBadge.jsx`): logo (`logoUrl`, +50% scale) → **country flag** (13 premium inline-SVG flags + US default, via `team.country`) → color+initials. Additive — monogram teams byte-identical.
+- **`CrestBand`** (`src/components/CrestBand.jsx`): the logo/flag/initials identity band (bled-left, faded-right) ported 1:1 from the prototype `RdCrestBg`. Used in the **coach catalog rows** (tall premium rows + city/nick **Oswald** wordmark, prototype 808-824), **hidden rows**, and the **team-detail header** (ScoutedTeamPage, Oswald 28px wordmark). Scoreboards/match cards intentionally KEEP the small inline `TeamBadge` (approved decision).
+- **Country form field** added to TeamFormModal + dataService (additive). **Oswald** webfont + `FONT_COND` token + `rdShade`/`rdTint`/`splitTeamName` (`src/utils/color.js`).
+- **RENDER-VERIFY caught what the gate missed:** a page-crashing missing `CrestBand` import in ScoutedTeamPage (e2e was green 110/0 while the team-detail page was dead) — fixed (63b69289). Also caught the first pass was too conservative vs the prototype → upgraded to the Oswald premium rows + re-verified @834.
+- **Pixel baselines:** the redesign + the global Oswald load shift the `screen-*-diff` baselines (regenerated, `-win32` local-only; the deploy gate `test:e2e` excludes `pixel-diff|model C`, so these never gate the deploy). Functional gate (116) green.
+- **NOT in this deploy:** the country DATA back-fill (the flag fallback's data) — needs a team→country source; logo-less teams have no known country. Krok 2 (Coach team-detail data) is a separate iteration.
+
 ## 2026-06-26 — [UI/Tier-1] Tactics-board rail → LEFT + swipe-right-to-edit + CSV import pre-select (Jacek)
 **App (auto-deploy, e2e-gated).** Two small UX fixes.
 - **Tactics-board** (`LayoutTacticsBoardPage`): landscape rail moved RIGHT→LEFT (field on the right) for consistency with the editor + live screens (flipped divider border + minimize arrow). `SwipeDelete` extended additively with an optional `leftAction` (swipe-RIGHT reveals a left zone) → used as **Edit** (opens the editor); swipe-left still Remove-from-board; tap still selects/displays. Render-verified @1280 (rail left). Full e2e 116/116.
