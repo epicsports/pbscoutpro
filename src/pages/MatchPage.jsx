@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import Preloader from '../components/Preloader';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDevice } from '../hooks/useDevice';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -1005,7 +1006,7 @@ export default function MatchPage() {
     if (sourcesLoading && !loadTimedOut) {
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <EmptyState icon="⏳" text={t('loading_default')} />
+          <Preloader loop />
         </div>
       );
     }
@@ -1030,7 +1031,7 @@ export default function MatchPage() {
   if (!scoutingSide) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <EmptyState icon="⏳" text={t('loading_default')} />
+        <Preloader loop />
       </div>
     );
   }

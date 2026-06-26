@@ -34,12 +34,6 @@ const MONO = "'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace";
 const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
-// the coach's tactical stroke — a straight line from the player 'O' to a target
-const L = { x0: 30, y0: 84, x1: 158, y1: 34 };
-const Lang = (Math.atan2(L.y1 - L.y0, L.x1 - L.x0) * 180) / Math.PI; // arrowhead angle
-const Lu = (() => { const dx = L.x1 - L.x0, dy = L.y1 - L.y0, m = Math.hypot(dx, dy); return { x: dx / m, y: dy / m }; })();
-const PLUS = { x: L.x1 + Lu.x * 18, y: L.y1 + Lu.y * 18 }; // target mark just past the arrow
-
 export default function Preloader({
   phases,
   progress = null,
@@ -85,11 +79,6 @@ export default function Preloader({
   }, [p, loop, onDone]);
 
   // line draws 0→80%, arrowhead 78→92%, target 90→100%
-  const lineP = Math.min(100, p / 0.8);
-  const arrowF = Math.max(0, Math.min(1, (p - 78) / 14));
-  const plusF = Math.max(0, Math.min(1, (p - 90) / 10));
-  const tipF = Math.min(1, p / 80);
-  const tip = { x: L.x0 + (L.x1 - L.x0) * tipF, y: L.y0 + (L.y1 - L.y0) * tipF };
   const phase = phaseList.find((ph) => p <= ph.to) || phaseList[phaseList.length - 1];
   const complete = p >= 100;
 
@@ -98,49 +87,7 @@ export default function Preloader({
       {/* faint field grid backdrop */}
       <div style={{ position: 'absolute', inset: 0, opacity: 0.5, backgroundImage: `linear-gradient(${ELEV.hairline} 1px, transparent 1px), linear-gradient(90deg, ${ELEV.hairline} 1px, transparent 1px)`, backgroundSize: '40px 40px', maskImage: 'radial-gradient(ellipse 60% 60% at 50% 45%, #000 30%, transparent 75%)', WebkitMaskImage: 'radial-gradient(ellipse 60% 60% at 50% 45%, #000 30%, transparent 75%)' }} />
 
-      <div style={{ position: 'relative', width: 320, maxWidth: '82%', padding: '30px 28px 26px', borderRadius: 20, background: ELEV.surface, border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        {/* ── tactics board — coach draws the play ── */}
-        <div style={{ position: 'relative', width: '100%', height: 132, borderRadius: 12, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, overflow: 'hidden', marginBottom: 22 }}>
-          <svg viewBox="0 0 200 110" preserveAspectRatio="xMidYMid meet" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}>
-            {/* bunker silhouettes — low-opacity field furniture */}
-            <g fill={COLORS.textMuted} opacity="0.12">
-              <rect x="92" y="18" width="16" height="28" rx="4" />
-              <rect x="38" y="52" width="24" height="12" rx="6" />
-              <rect x="138" y="52" width="24" height="12" rx="6" />
-              <circle cx="100" cy="82" r="8" />
-            </g>
-            {/* centerline */}
-            <line x1="100" y1="8" x2="100" y2="102" stroke={ELEV.hairlineStrong} strokeWidth="1" strokeDasharray="3 5" />
-            {/* player start — the 'O' the coach draws from */}
-            <circle cx={L.x0} cy={L.y0} r="5" fill="none" stroke={accent} strokeWidth="2" opacity="0.9" />
-            {/* faint guide of the full play */}
-            <line x1={L.x0} y1={L.y0} x2={L.x1} y2={L.y1} stroke={accent} strokeWidth="1.5" opacity="0.14" strokeDasharray="2 6" strokeLinecap="round" />
-            {/* the drawn tactical stroke — revealed by progress (pathLength 100) */}
-            <line x1={L.x0} y1={L.y0} x2={L.x1} y2={L.y1} stroke={accent} strokeWidth="2.6" strokeLinecap="round" pathLength="100" strokeDasharray="100" strokeDashoffset={100 - lineP} style={{ filter: `drop-shadow(0 0 4px ${accent}77)` }} />
-            {/* marker nib while drawing */}
-            {!complete && tipF < 1 && (
-              <circle cx={tip.x} cy={tip.y} r="3.4" fill={accent} style={{ filter: `drop-shadow(0 0 6px ${accent})` }} />
-            )}
-            {/* arrowhead at the target — open 'V', drawn on at the end */}
-            {arrowF > 0 && (
-              <g transform={`translate(${L.x1} ${L.y1}) rotate(${Lang}) scale(${arrowF})`} style={{ opacity: arrowF }}>
-                <path d="M -13 -7 L 0 0 L -13 7" fill="none" stroke={accent} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 4px ${accent}77)` }} />
-              </g>
-            )}
-            {/* shooting-target reticle at the destination, drawn last */}
-            {plusF > 0 && (
-              <g transform={`translate(${PLUS.x} ${PLUS.y}) scale(${plusF})`} style={{ opacity: plusF }} stroke={accent} fill="none" strokeLinecap="round">
-                <circle r="8.5" strokeWidth="2" />
-                <circle r="4" strokeWidth="1.6" />
-                <circle r="1.4" fill={accent} stroke="none" />
-                <line x1="0" y1="-9" x2="0" y2="-13" strokeWidth="2" />
-                <line x1="0" y1="9" x2="0" y2="13" strokeWidth="2" />
-                <line x1="-9" y1="0" x2="-13" y2="0" strokeWidth="2" />
-                <line x1="9" y1="0" x2="13" y2="0" strokeWidth="2" />
-              </g>
-            )}
-          </svg>
-        </div>
+      <div style={{ position: 'relative', width: 320, maxWidth: '82%', padding: '28px 28px 24px', borderRadius: 20, background: ELEV.surface, border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow2, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
         {/* ── phase label + tabular % ── */}
         <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 9 }}>

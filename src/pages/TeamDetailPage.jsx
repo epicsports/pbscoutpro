@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import Preloader from '../components/Preloader';
 import { useModal } from '../hooks/useModal';
 import { useDevice } from '../hooks/useDevice';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
@@ -129,7 +130,7 @@ export default function TeamDetailPage() {
 
   if (!team) {
     const stillLoading = teamsLoading && !loadTimedOut;
-    if (stillLoading) return <EmptyState icon="⏳" text={t('loading_default')} />;
+    if (stillLoading) return <Preloader loop />;
     // Resolved-but-absent OR timed out → explicit error state, never an
     // eternal spinner (the 2026-06-11 scouted-team bug class).
     return (

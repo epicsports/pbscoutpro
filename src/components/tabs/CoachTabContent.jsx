@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Preloader from '../Preloader';
 import { useNavigate } from 'react-router-dom';
 import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
 import SearchField from '../SearchField';
@@ -181,7 +182,7 @@ export default function CoachTabContent({ tournamentId }) {
     );
   };
 
-  if (!tournament) return <EmptyState icon="⏳" text={t('loading_default')} />;
+  if (!tournament) return <Preloader loop />;
 
   return (
     <div style={{

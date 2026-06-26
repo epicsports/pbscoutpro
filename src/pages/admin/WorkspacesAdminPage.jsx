@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import Preloader from '../../components/Preloader';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
@@ -62,7 +63,7 @@ export default function WorkspacesAdminPage() {
           <Btn variant="accent" onClick={() => setCreateOpen(true)}>{t('wsadmin_new_btn')}</Btn>
         </div>
 
-        {workspaces === null && <EmptyState icon="⏳" text={t('wsadmin_loading')} />}
+        {workspaces === null && <Preloader loop />}
         {workspaces && workspaces.length === 0 && <EmptyState icon="🏢" text={t('wsadmin_empty')} />}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>

@@ -746,7 +746,7 @@ export default function ScoutedTeamPage() {
   if (!tournament || !team) {
     // Still resolving (subscriptions in flight) AND within the 12s ceiling → spinner.
     const stillLoading = (tournamentsLoading || teamsLoading || scoutedLoading) && !loadTimedOut;
-    if (stillLoading) return <EmptyState icon="⏳" text={t('loading_default')} />;
+    if (stillLoading) return <Preloader loop />;
     // Resolved-but-absent OR timed out → explicit error state, never an eternal
     // spinner. (Covers a deleted/invalid scouted-team URL on prod too.)
     return (

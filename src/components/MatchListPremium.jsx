@@ -188,7 +188,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
   const dataLoading = teamsLoading || matchesLoading || scoutedLoading;
   const { shown: loaderShown, progress: loaderP, close: closeLoader } = useScreenLoader(dataLoading);
 
-  if (!tournament) return <EmptyState icon="⏳" text={t('loading_default')} />;
+  if (!tournament) return <Preloader loop />;
 
   if (loaderShown) {
     return (

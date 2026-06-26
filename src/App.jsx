@@ -8,7 +8,7 @@ import { LanguageProvider } from './hooks/useLanguage';
 import { SaveStatusProvider } from './hooks/useSaveStatus';
 import { setBasePath } from './services/dataService';
 import { reloadOnceForStaleChunk, isStaleChunkError } from './utils/staleChunkReload';
-import { Loading } from './components/ui';
+import Preloader from './components/Preloader';
 import { useLanguage } from './hooks/useLanguage';
 import LoginPage from './pages/LoginPage';
 import EmailLinkSetupPage from './pages/EmailLinkSetupPage';
@@ -90,7 +90,7 @@ function AppRoutes() {
     else { setReady(false); }
   }, [basePath]);
 
-  if (loading || !userReady) return <Loading text="Checking session..." />;
+  if (loading || !userReady) return <Preloader loop />;
   // Email-link invite (durable association): the URL is a Firebase email sign-in
   // link → run the express-registration flow (complete sign-in + set password)
   // BEFORE the login gate (this flow creates the account). After it replaces the
@@ -108,7 +108,7 @@ function AppRoutes() {
   // link) redeems once the user is authed; on success setActiveWorkspace reloads
   // into the invited workspace. Failure → InviteErrorScreen.
   if (inviteError) return <InviteErrorScreen code={inviteError} onSignOut={signOutUser} />;
-  if (inviteRedeeming) return <Loading text="Joining workspace…" />;
+  if (inviteRedeeming) return <Preloader loop />;
   // Maks pending-gate bug — never strand a user on a silent permission-listener
   // death. When the workspace listener can't confirm state (errors past its retry
   // budget, or no snapshot within the backstop window), show an explicit recovery
@@ -130,9 +130,9 @@ function AppRoutes() {
     if (noWorkspace) {
       return <NoWorkspaceScreen onSignOut={signOutUser} />;
     }
-    return <Loading text="Preparing your workspace..." />;
+    return <Preloader loop />;
   }
-  if (!ready) return <Loading text="Preparing data..." />;
+  if (!ready) return <Preloader loop />;
 
   // § 38 AuthGate — route gating by linked-player + approval state.
   //   1. Admin always proceeds (emergency restore path: never locks out).
@@ -152,14 +152,14 @@ function AppRoutes() {
   if (!isAdmin && !premigration) {
     if (!linkedPlayer && !userProfile?.linkSkippedAt) {
       return (
-        <Suspense fallback={<Loading text="Loading..." />}>
+        <Suspense fallback={<Preloader loop />}>
           <PbleaguesOnboardingPage />
         </Suspense>
       );
     }
     if (isPendingApproval) {
       return (
-        <Suspense fallback={<Loading text="Loading..." />}>
+        <Suspense fallback={<Preloader loop />}>
           <PendingApprovalPage />
         </Suspense>
       );
@@ -171,7 +171,7 @@ function AppRoutes() {
       <KioskProvider>
       <QuickLogProvider>
       <HashRouter>
-        <Suspense fallback={<Loading text="Loading..." />}>
+        <Suspense fallback={<Preloader loop />}>
           <Routes>
             <Route path="/" element={<MainPage onSignOut={signOutUser} workspaceName={workspace.name} />} />
             <Route path="/teams" element={<TeamsPage />} />
