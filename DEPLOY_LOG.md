@@ -1,5 +1,8 @@
 # Deploy Log
 
+## 2026-06-26 — [i18n/Tier-1] Coach tab hardcoded English (render-caught) — `e0d556d6`
+**App. i18n only.** Render harness @834 on the Coach tab caught hardcoded (never t()-wrapped) English: "Teams (n)"/"Matches (n)"/"Standings (n)" (CoachTabContent) + "Tactics board"/"Choose a field"/"Untitled field" (OpenTacticsAction — lacked `useLanguage`). Lint allows English source literals but doesn't force t()-wrapping → they rendered English in the PL UI. Added 6 keys (coach_*_count count-fns + tactics_board/open_tactics_pick_field/untitled_field), wrapped all. Render @834 confirms Drużyny/Mecze/Tablica taktyk. Full e2e 116/116. Player tab swept clean.
+
 ## 2026-06-26 — [FEATURE/Tier-2] Drawer "Wyświetlanie" — super-admin display toggles (Q1=A, render-verified, night)
 **App (auto-deploy, e2e-gated). No data re-architecture — reuses existing piiSettings.** Merge `feat/menu-display-toggles` (MoreTabContent + i18n). Night-sync menu item; Jacek Q1=A: **super-admin controls, no per-workspace split.**
 - New "Wyświetlanie" section in the drawer (MoreTabContent), between SESJA and ZARZĄDZAJ, **gated to super-admin** (`useIsSuperAdmin`) — hidden for all other roles (overrides the prototype's show-to-all per Jacek).
