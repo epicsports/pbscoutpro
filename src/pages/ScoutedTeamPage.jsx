@@ -17,7 +17,8 @@ import { computeCoachingStats } from '../utils/coachingStats';
 import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, computeEliminationReasons, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { coachReportPhases, label as phaseLabel, toPersistedLiteral } from '../utils/pointPhases';
 import { ELIM_REASONS } from '../components/match/ReasonRadial';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, TNUM, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_COND, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, TNUM, responsive } from '../utils/theme';
+import { rdShade } from '../utils/color';
 import { computeTeamRecords } from '../utils/teamStats';
 import Preloader from '../components/Preloader';
 import { useScreenLoader } from '../hooks/useScreenLoader';
@@ -1172,15 +1173,15 @@ export default function ScoutedTeamPage() {
     const rec = teamRecord || { wins: 0, losses: 0, played: 0 };
     return (
       <div data-testid="scouted-team-crest-header" style={{
-        position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 16,
-        margin: wide ? '0 24px 4px' : '0 16px 4px', minHeight: 92, padding: '18px 18px',
-        background: `linear-gradient(100deg, ${color}2e, ${color}12 52%, transparent 78%), ${ELEV.surface}`,
-        border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: RADIUS.lg, boxShadow: ELEV.shadow1,
+        position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 18,
+        margin: wide ? '0 24px 4px' : '0 16px 4px', minHeight: 108, padding: '24px 22px',
+        background: `linear-gradient(100deg, ${rdShade(color, 0.36)}, ${rdShade(color, 0.6)} 56%, ${ELEV.surface})`,
+        border: `1px solid ${color}45`, borderRadius: 20, boxShadow: ELEV.shadow1,
       }}>
-        <CrestBand team={team} imgH={150} />
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(10,14,23,.5) 0%, rgba(10,14,23,.16) 48%, transparent 74%)' }} />
-        <div style={{ position: 'relative', flex: 1, minWidth: 0, paddingLeft: 104 }}>
-          <div style={{ fontFamily: FONT, fontSize: 21, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight, textShadow: '0 2px 8px rgba(0,0,0,.6)', overflowWrap: 'anywhere' }}>{team.name}</div>
+        <CrestBand team={team} imgH={188} />
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(8,11,17,.42) 0%, rgba(8,11,17,.14) 48%, transparent 74%)' }} />
+        <div style={{ position: 'relative', flex: 1, minWidth: 0, paddingLeft: 96 }}>
+          <div style={{ fontFamily: FONT_COND, fontSize: 28, fontWeight: 700, color: COLORS.white, textTransform: 'uppercase', letterSpacing: TRACKING.tight, textShadow: '0 2px 8px rgba(0,0,0,.6)', overflowWrap: 'anywhere' }}>{team.name}</div>
           {rec.played > 0 && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 8, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 10, padding: '5px 11px' }}>
               <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}</span>

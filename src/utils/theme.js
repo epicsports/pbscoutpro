@@ -292,6 +292,9 @@ export const COUNTER_WEIGHTS = {
 export const LEAGUES = ['NXL', 'DPL', 'PXL'];
 export const LEAGUE_COLORS = { NXL: '#ef4444', DPL: '#3b82f6', PXL: '#22c55e' };
 export const FONT = `'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
+// Condensed broadcast wordmark (Oswald) — big-logo team rows + team-detail header
+// nick/name. Prototype `FCOND`. Falls back to Inter/system if Oswald hasn't loaded.
+export const FONT_COND = `'Oswald', 'Inter', system-ui, sans-serif`;
 
 // ── Design Tokens ──
 

@@ -14,7 +14,8 @@ import CrestBand from '../CrestBand';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, ELEV, TRACKING, TNUM } from '../../utils/theme';
+import { COLORS, FONT, FONT_COND, FONT_SIZE, RADIUS, SPACE, ELEV, TRACKING, TNUM } from '../../utils/theme';
+import { rdShade, rdTint, splitTeamName } from '../../utils/color';
 import * as ds from '../../services/dataService';
 import { useLanguage } from '../../hooks/useLanguage';
 
@@ -144,44 +145,65 @@ export default function CoachTabContent({ tournamentId }) {
   const TeamRow = ({ st, dim }) => {
     const gt = teams.find(g => g.id === st.teamId) || (st.name ? { id: st.teamId, name: st.name } : null);
     if (!gt) return null;
-    const color = gt.color || COLORS.borderLight;
+    const tc = gt.color || COLORS.borderLight;
     const rec = records[st.id] || { wins: 0, losses: 0, played: 0 };
-    const g0 = dim ? '1c' : '26';
-    const g1 = dim ? '08' : '0a';
+
+    // ── Hidden variant (prototype 841-851): 72px, imgH 112, full name in the
+    // Oswald-condensed wordmark, amber "Restore" pill. The whole row is the
+    // touch target → drill-down; the Restore pill is the one interactive accent.
+    if (dim) {
+      return (
+        <div
+          onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
+          style={{
+            position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 13,
+            height: 72, padding: '0 14px', marginBottom: 8, cursor: 'pointer',
+            background: `linear-gradient(100deg, ${rdShade(tc, 0.4)}, ${rdShade(tc, 0.66)} 58%, ${ELEV.surface})`,
+            border: `1px solid ${tc}3a`, borderRadius: 16, opacity: 0.92,
+          }}>
+          <CrestBand team={gt} imgH={112} dim />
+          <div style={{ flex: 1, minWidth: 0, position: 'relative', paddingLeft: 64 }}>
+            <div style={{ fontFamily: FONT_COND, fontSize: 19, fontWeight: 700, color: COLORS.white, textTransform: 'uppercase', letterSpacing: '.2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', opacity: 0.9 }}>{gt.name}</div>
+          </div>
+          <div className="rd-press" onClick={(e) => { e.stopPropagation(); unhideTeam(st.id); }} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, minHeight: 44, padding: '6px 11px', borderRadius: 9, background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}40`, color: COLORS.accent, cursor: 'pointer' }}>
+            <RdIcon name="eye" size={14} />
+            <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800 }}>{t('restore') || 'Przywróć'}</span>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Visible variant (prototype 808-824): tall 114px, heavier rdShade
+    // gradient, imgH 180, city eyebrow over the Oswald nick wordmark, W-L pill,
+    // hide eyeoff. The row body is the single drill-down touch target.
+    const { city, nick } = splitTeamName(gt.name);
     return (
       <div
         onClick={() => navigate(`/tournament/${tournamentId}/team/${st.id}`)}
         style={{
-          position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 12,
-          padding: '14px 14px', marginBottom: 9, minHeight: 56,
-          background: `linear-gradient(90deg, ${color}${g0}, ${color}${g1} 30%, transparent 52%), ${ELEV.surface}`,
-          border: `1px solid ${ELEV.hairline}`, borderRadius: 13, boxShadow: ELEV.shadow1, cursor: 'pointer',
+          position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0,
+          height: 114, padding: '0 14px', marginBottom: 9, cursor: 'pointer',
+          background: `linear-gradient(100deg, ${rdShade(tc, 0.32)}, ${rdShade(tc, 0.62)} 60%, ${ELEV.surface})`,
+          border: `1px solid ${tc}55`, borderRadius: 18, boxShadow: ELEV.shadow1,
         }}>
         {/* CrestBand identity — bled-left + faded-right behind the content. */}
-        <CrestBand team={gt} imgH={dim ? 80 : 92} dim={dim} />
+        <CrestBand team={gt} imgH={180} />
         {/* Left scrim — keeps the name legible over the band (legibility, not decor). */}
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(10,14,23,.55) 0%, rgba(10,14,23,.18) 46%, transparent 70%)' }} />
-        <div style={{ position: 'relative', flex: 1, minWidth: 0, paddingLeft: 60 }}>
-          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 1px 4px rgba(0,0,0,.55)' }}>{gt.name}</div>
-          {st.division && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 2 }}>{st.division}</div>}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(8,11,17,.42) 0%, rgba(8,11,17,.12) 50%, transparent 74%)' }} />
+        <div style={{ position: 'relative', flex: 1, minWidth: 0, paddingLeft: 96 }}>
+          <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: rdTint(tc, 0.55), letterSpacing: '2.4px', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 1px 4px rgba(0,0,0,.6)' }}>{city}</div>
+          <div style={{ fontFamily: FONT_COND, fontSize: 25, fontWeight: 700, color: COLORS.white, letterSpacing: '.3px', lineHeight: 0.98, marginTop: 3, textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 2px 8px rgba(0,0,0,.7)' }}>{nick}</div>
         </div>
         {rec.played > 0
-          ? <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 9, padding: '5px 9px' }}>
+          ? <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, background: 'rgba(8,11,17,.55)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 9, padding: '5px 9px', backdropFilter: 'blur(4px)' }}>
               <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}</span>
-              <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted }}>–</span>
+              <span style={{ fontFamily: FONT, fontSize: 12, color: 'rgba(255,255,255,.5)' }}>–</span>
               <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}</span>
             </div>
-          : <span style={{ position: 'relative', fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 7, padding: '4px 8px', flexShrink: 0 }}>—</span>}
-        {dim ? (
-          <div className="rd-press" onClick={(e) => { e.stopPropagation(); unhideTeam(st.id); }} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '6px 11px', borderRadius: 9, background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}40`, color: COLORS.accent, cursor: 'pointer' }}>
-            <RdIcon name="eye" size={14} />
-            <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800 }}>{t('restore') || 'Przywróć'}</span>
-          </div>
-        ) : (
-          <div className="rd-press" onClick={(e) => { e.stopPropagation(); hideTeam(st.id); }} title={t('hide_team') || 'Ukryj drużynę'} style={{ position: 'relative', width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textMuted, cursor: 'pointer' }}>
-            <RdIcon name="eyeoff" size={15} />
-          </div>
-        )}
+          : <span style={{ position: 'relative', fontFamily: FONT, fontSize: 11, fontWeight: 800, color: 'rgba(255,255,255,.7)', background: 'rgba(8,11,17,.5)', border: '1px solid rgba(255,255,255,.14)', borderRadius: 7, padding: '4px 8px', flexShrink: 0 }}>—</span>}
+        <div className="rd-press" onClick={(e) => { e.stopPropagation(); hideTeam(st.id); }} title={t('hide_team') || 'Ukryj drużynę'} style={{ position: 'relative', width: 44, height: 44, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(8,11,17,.5)', border: '1px solid rgba(255,255,255,.14)', color: 'rgba(255,255,255,.7)', cursor: 'pointer' }}>
+          <RdIcon name="eyeoff" size={15} />
+        </div>
       </div>
     );
   };
