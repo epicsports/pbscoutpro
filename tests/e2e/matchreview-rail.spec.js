@@ -1,12 +1,12 @@
 // e2e — MatchPage REVIEW mode landscape = the prototype `TabletLiveScoringPremium`
-// 1:1 (feat/live-review-rebuild, 2026-06-25). The landscape review no longer uses
-// CanvasRailLayout's residual-rail + §116 collapse-strip + float-scrubber. Instead:
-// a FIXED 372px LEFT sidebar (back · LIVE · scoreboard · Warstwa toggle · PointRow
-// list · completeness · Zakończ mecz) + a RIGHT field panel (attached phase tabs ·
-// field hero · bottom animation bar). The OLD assertions (rail-strip-back, hero
-// ≥95% height, rail-overlay panel, field-phase float) targeted the retired shell —
-// the design genuinely moved those elements, so this spec asserts the new structure.
-// Scout editor view untouched. Portrait unchanged.
+// + `RdLiveFieldCard` (feat/live-landscape-fieldcard, 2026-06-26). The landscape
+// review uses a FIXED 372px LEFT sidebar (back · LIVE · FULL-name scoreboard ·
+// FULL-name PointRow list · completeness · Zakończ mecz) + a RIGHT field panel:
+// `{A} vs {B}` header + the universal field card (field + on-field "Warstwy"
+// popover with 4 independent filters + the SINGLE attached PointAxisScrubber whose
+// play head folds in replay). The previous rail Warstwa A/B toggle + the separate
+// top phase-tabs + the "Animacja punktu" bar are all RETIRED — this spec asserts
+// the popover + scrubber. Scout editor view untouched. Portrait unchanged.
 //
 // Fixture: TRN_PSTATS / MATCH_PSTATS (base layout WITH fieldImage + one logged
 // point) — the same read-only hero fixture the 4.1/4.2 specs use (viewport-only
@@ -55,27 +55,32 @@ test.describe('MatchPage review landscape — TabletLiveScoringPremium', () => {
     expect(pBox2.height).toBeLessThan(PORTRAIT.height * 0.7);
   });
 
-  // Landscape chrome: attached phase tabs (top-left of the field panel) + the
-  // Warstwa A/B segmented toggle (left sidebar) + the bottom animation bar's
-  // play transport. These replace the retired float-scrubber + collapse pins.
-  test('landscape: attached phase tabs, Warstwa A|B toggle, animation play transport', async ({ page }) => {
+  // Landscape field card: the attached PointAxisScrubber (phase nodes + play head)
+  // under the field + the on-field "Warstwy" popover (4 independent filters wired to
+  // hmVisibility). These replace the retired top phase-tabs, "Animacja punktu" bar,
+  // and the rail Warstwa A/B toggle.
+  test('landscape: attached scrubber (phase nodes + play head) + on-field Warstwy popover', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.setViewportSize(TABLET_LS);
     await page.goto('/' + url);
     await expect(page.getByTestId('review-scoreboard')).toBeVisible({ timeout: 20000 });
 
-    // Attached phase tabs — Break is always present (keyframe #0).
+    // Attached scrubber — Break node always present (keyframe #0) + pinned by default.
     await expect(page.getByTestId('phase-seg-break')).toBeVisible();
     await expect(page.getByTestId('phase-seg-break')).toHaveAttribute('aria-pressed', 'true');
 
-    // Warstwa A / Warstwa B segmented toggle (per-team heatmap layer).
-    await expect(page.getByTestId('review-layer-a')).toBeVisible();
-    await expect(page.getByTestId('review-layer-b')).toBeVisible();
-    await page.getByTestId('review-layer-b').click();
-    await expect(page.getByTestId('review-layer-b')).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByTestId('review-layer-a')).toHaveAttribute('aria-pressed', 'false');
-
-    // Bottom animation control bar — the play/pause transport is present.
+    // The play head (folds in replay) is present on the scrubber.
     await expect(page.getByTestId('phase-play')).toBeVisible();
+
+    // Layers → the on-field "Warstwy" popover (NOT the retired rail toggle).
+    await expect(page.getByTestId('review-layer-a')).toHaveCount(0); // old Warstwa A/B toggle gone
+    await expect(page.getByTestId('review-layers-btn')).toBeVisible();
+    await page.getByTestId('review-layers-btn').click();
+    // 4 independent per-team filters Pozycje/Strzały × A/B.
+    const bShot = page.getByTestId('review-layer-bShot');
+    await expect(bShot).toBeVisible();
+    const before = await bShot.getAttribute('aria-pressed');
+    await bShot.click();
+    await expect(bShot).not.toHaveAttribute('aria-pressed', before);
   });
 });

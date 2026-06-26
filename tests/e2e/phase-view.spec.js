@@ -156,18 +156,22 @@ test.describe('§B phase view — phase row, defaults, scope', () => {
     await expect(page.getByTestId('phase-seg-break')).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('landscape: attached phase tabs + animation-bar play; End match in sidebar; portrait keeps the §B row inline', async ({ page }) => {
+  test('landscape: attached scrubber (phase nodes + play) + Warstwy popover; End match in sidebar; portrait keeps the §B row inline', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await openReview(page, PHONE_LS);
 
-    // TabletLiveScoringPremium 1:1 (feat/live-review-rebuild, 2026-06-25): in landscape the
-    // §B phase row + float-scrubber are REPLACED by ATTACHED phase tabs (top-left of the right
-    // field panel, `phase-seg-*`) + a bottom animation bar carrying the `phase-play` transport.
-    // End match = the sidebar's "Zakończ mecz" gradient button (keeps `rail-primary-end`).
-    // The in-rail §B row is portrait-only.
-    await expect(page.getByTestId('phase-seg-break')).toBeVisible(); // attached tab (not a float)
-    await expect(page.getByTestId('field-phase')).toHaveCount(0);    // float-scrubber retired
-    await expect(page.getByTestId('phase-play')).toBeVisible();      // play lives in the animation bar
+    // feat/live-landscape-fieldcard (2026-06-26): landscape now mirrors the prototype
+    // RdLiveFieldCard — the separate top phase-tabs + "Animacja punktu" bar + the rail
+    // Warstwa A/B toggle are RETIRED. Layers → the on-field "Warstwy" popover
+    // (`review-layers-btn`, 4 independent filters); phases + replay → the SINGLE attached
+    // PointAxisScrubber under the field (`phase-seg-*` nodes + the `phase-play` head that
+    // folds in replay). End match = the sidebar's "Zakończ mecz" gradient button
+    // (`rail-primary-end`). The in-rail §B row is portrait-only.
+    await expect(page.getByTestId('phase-seg-break')).toBeVisible(); // attached scrubber node
+    await expect(page.getByTestId('field-phase')).toHaveCount(0);    // float-scrubber not used
+    await expect(page.getByTestId('phase-play')).toBeVisible();      // play head on the scrubber
+    await expect(page.getByTestId('review-layers-btn')).toBeVisible(); // on-field Warstwy popover
+    await expect(page.getByTestId('review-layer-a')).toHaveCount(0);   // rail Warstwa A/B toggle retired
     await expect(page.getByTestId('review-scoreboard')).toBeVisible();
     await expect(page.getByTestId('end-match-inline')).toHaveCount(0);
     await expect(page.getByTestId('rail-primary-end')).toBeVisible();  // End match = sidebar button
