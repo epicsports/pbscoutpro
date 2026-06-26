@@ -527,8 +527,10 @@ export async function addTeam(data, { bump = true } = {}) {
     parentTeamId: data.parentTeamId || null,
     externalId: data.externalId || null,
     // § Team branding — optional brand color (hex) + logo URL ref (never base64).
+    // country = 2nd-tier crest identity (flags.js) — additive, optional.
     color: data.color || null,
     logoUrl: data.logoUrl || null,
+    country: data.country || null,
     // divisions: { [league]: divisionString | null }. Set by CSV import
     // (Brief 2026-05-12 — PBLeagues NXL Dywizja column). Manual team
     // creation still defaults to empty; UI sets divisions via updateTeam
