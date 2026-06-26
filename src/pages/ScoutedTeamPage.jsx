@@ -2451,7 +2451,7 @@ export default function ScoutedTeamPage() {
   );
 
   return (
-    <div ref={wideRef} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div ref={wideRef} style={{ minHeight: '100vh', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       {pageHeaderEl}
       <div style={{ flex: 1, padding: wide ? '20px 24px 48px' : '14px 0 44px' }}>
         <div style={{
