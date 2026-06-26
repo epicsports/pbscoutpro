@@ -20,7 +20,6 @@ import {
   buildScoutDraftKey, loadScoutDraft, saveScoutDraft, clearScoutDraft,
   isScoutDraftNonPristine,
 } from '../services/scoutDraft';
-import PerTeamHeatmapToggle from '../components/match/PerTeamHeatmapToggle';
 import { hasAnyRole } from '../utils/roleUtils';
 import { getSquadName } from '../utils/squads';
 import { UnseenNotesModal, filterVisibleNotes } from '../components/CoachNotes';
@@ -79,6 +78,99 @@ const PHASE_LAYER_DEFAULTS = {
 const PHASE_SEGMENTS = capturePhases().map(p => toPersistedLiteral(p.key));
 
 // emptyTeam + mirrorX now live in useCaptureDraft (imported above).
+
+// ReviewLayersPopover — the portrait review-field "Warstwy" overlay (mirrors the
+// prototype RdLiveFieldCard, lines 1495-1516). A glass pill (layers icon + label +
+// accent count-badge of enabled layers) that toggles a map-style popover listing
+// the 4 INDEPENDENT heatmap filters: Pozycje/Strzały per team. Tap-outside closes.
+// READ-SIDE ONLY: it drives the existing `hmVisibility` view state, never the
+// capture/write path. Replaces the standalone PerTeamHeatmapToggle in portrait.
+// Built local to MatchPage (not in the shared PerTeamHeatmapToggle, which is used
+// elsewhere) per brief. Filter rows are real <button>s with aria-pressed so the
+// per-phase B3 defaults stay assertable + the rows stay accessible.
+function ReviewLayersPopover({ visibility, onChange, shortA, shortB, label }) {
+  const [open, setOpen] = useState(false);
+  React.useEffect(() => {
+    if (!open) return;
+    const close = () => setOpen(false);
+    const id = setTimeout(() => document.addEventListener('click', close), 0);
+    return () => { clearTimeout(id); document.removeEventListener('click', close); };
+  }, [open]);
+  // [team, key, kind, color, label, testid] — kind drives the dot (positions) vs
+  // ring (shots) swatch; mapping is byte-identical to the landscape per-team layers.
+  const filters = [
+    ['teamA', 'positions', 'dot',  TEAM_COLORS.A, `Pozycje ${shortA}`, 'review-layer-aPos'],
+    ['teamA', 'shots',     'ring', TEAM_COLORS.A, `Strzały ${shortA}`, 'review-layer-aShot'],
+    ['teamB', 'positions', 'dot',  TEAM_COLORS.B, `Pozycje ${shortB}`, 'review-layer-bPos'],
+    ['teamB', 'shots',     'ring', TEAM_COLORS.B, `Strzały ${shortB}`, 'review-layer-bShot'],
+  ];
+  const nOn = filters.filter(([team, key]) => visibility[team][key]).length;
+  const toggle = (team, key) =>
+    onChange({ ...visibility, [team]: { ...visibility[team], [key]: !visibility[team][key] } });
+  return (
+    <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 6 }} onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        data-testid="review-layers-btn"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          background: 'rgba(10,14,23,.82)', backdropFilter: 'blur(4px)',
+          border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: 10,
+          minHeight: 44, padding: '8px 11px', cursor: 'pointer',
+          WebkitTapHighlightColor: 'transparent',
+        }}
+      >
+        <span style={{ display: 'flex', color: COLORS.text }}><RdIcon name="layers" size={15} /></span>
+        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{label}</span>
+        <span style={{
+          fontFamily: FONT, fontSize: 10, fontWeight: 800, color: '#1a1205',
+          background: COLORS.accent, borderRadius: 999, minWidth: 16, height: 16,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          padding: '0 4px', ...TNUM,
+        }}>{nOn}</span>
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 7, background: ELEV.overlay, border: `1px solid ${ELEV.hairlineStrong}`,
+          borderRadius: 12, boxShadow: ELEV.shadow3, padding: 6, minWidth: 206,
+        }}>
+          {filters.map(([team, key, kind, color, lab, testid]) => {
+            const on = visibility[team][key];
+            return (
+              <button
+                type="button"
+                key={testid}
+                data-testid={testid}
+                aria-pressed={on}
+                onClick={() => toggle(team, key)}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  minHeight: 44, padding: '9px 10px', borderRadius: 8, cursor: 'pointer',
+                  background: on ? `${color}1a` : 'transparent', border: 'none',
+                  textAlign: 'left', WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span style={{
+                  width: 14, height: 14, flexShrink: 0, borderRadius: '50%',
+                  background: kind === 'dot' && on ? color : 'transparent',
+                  border: `2px solid ${on ? color : COLORS.textMuted}`,
+                }} />
+                <span style={{
+                  flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: on ? 800 : 600,
+                  color: on ? COLORS.text : COLORS.textDim,
+                }}>{lab}</span>
+                {on && <span style={{ display: 'flex', color }}><RdIcon name="check" size={14} /></span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MatchPage() {
   const device = useDevice();
@@ -1880,60 +1972,72 @@ export default function MatchPage() {
 
     const reviewColumnEl = (
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {/* Heatmap inline in portrait only — in landscape it's the HERO. */}
+          {/* Live field card (portrait) — ONE bordered card mirroring the prototype
+              RdLiveFieldCard (redesign.jsx 1450-1545): the review heatmap with a
+              map-style "Warstwy" popover overlay (top-left), and the point-axis
+              scrubber ATTACHED at the bottom (its own top border + surface bg). In
+              landscape the heatmap is the HERO and the phase control + per-team
+              layers move to the floating phaseControl + the structured rail zone
+              (mrPhaseControlEl / mrLayerZoneEl), so this whole card is portrait-only.
+              READ-SIDE ONLY — purely chrome around the existing reviewHeatmapEl +
+              hmVisibility + PointAxisScrubber; no capture/write path touched.
+              Rysuj button OMITTED: the portrait review is view-only (the draw chip is
+              landscape-only on the live InteractiveCanvas, §77), so a Rysuj here would
+              be a dead/no-op affordance — not added per brief. */}
           {!(landscape && heroAvailable) && (
-            <div>{reviewHeatmapEl}</div>
+            <div style={{
+              margin: `${SPACE.md}px ${R.layout.padding}px 0`,
+              borderRadius: 16, overflow: 'hidden',
+              border: `1px solid ${ELEV.hairlineStrong}`, boxShadow: ELEV.shadow2,
+              display: 'flex', flexDirection: 'column',
+            }}>
+              {/* Field area + Warstwy popover overlay */}
+              <div style={{ position: 'relative' }}>
+                {reviewHeatmapEl}
+                {/* §40 per-team layers — map-style popover (replaces the standalone
+                    PerTeamHeatmapToggle in portrait). Wired to the SAME hmVisibility. */}
+                <ReviewLayersPopover
+                  visibility={hmVisibility}
+                  onChange={setHmVisibility}
+                  shortA={shortNameOf(teamA?.name || 'A')}
+                  shortB={shortNameOf(teamB?.name || 'B')}
+                  label={t('review_layers_label')}
+                />
+              </div>
+              {/* §B point-axis scrubber — ATTACHED at the bottom of the card (the
+                  component renders its own top border + surface bg). The captured
+                  phases as keyframe NODES on a scrub track ("Oś punktu") with a play
+                  head. READ-SIDE ONLY: drives phasePin / replay view state, never the
+                  capture/write path. DISCRETE snap (prod timeline[] is keyframe-not-
+                  continuous) — the head sits AT the active node. break = keyframe #0
+                  (always a node); settle/mid/endgame nodes appear only when the CURRENT
+                  scope (aggregate or previewed point) captured them (B2). Amber only on
+                  the active/playing element + passed track (§27). */}
+              {(() => {
+                const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
+                const phaseNodes = PHASE_SEGMENTS.map(st => ({
+                  key: st,
+                  label: phaseLabel(fromPersistedLiteral(st), t),
+                  enabled: st === 'break' ? true
+                    : st === 'settle' ? hasSettleStage
+                    : st === 'mid' ? hasMidStage
+                    : hasEndgameStage,
+                }));
+                const lastEnabled = phaseNodes.filter(p => p.enabled).slice(-1)[0];
+                return (
+                  <PointAxisScrubber
+                    phases={phaseNodes}
+                    active={activeSeg}
+                    onPick={pinPhase}
+                    playing={phasePlaying && canReplay}
+                    canPlay={canReplay}
+                    onPlay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
+                    atEnd={!!lastEnabled && activeSeg === lastEnabled.key}
+                  />
+                );
+              })()}
+            </div>
           )}
-          {/* §B point axis — the phases rendered as keyframe NODES on a scrub
-              track under the review field ("Oś punktu"), with a play head. ▶
-              plays the replay through the scope's phases and the active node
-              follows; tapping a node stops playback and pins. Settle/Mid/Endgame
-              nodes dim + go inert when the CURRENT scope (aggregate or previewed
-              point) has no such keyframes (B2). Amber only on the active/playing
-              element + passed track (§27). */}
-          {/* Portrait-only: in landscape the phase control + per-team toggle move to the
-              floating phaseControl (mrPhaseControlEl) + the structured layers rail zone
-              (mrLayerZoneEl). */}
-          {!(landscape && heroAvailable) && (<>
-          {/* §B point-axis scrubber — the captured phases as keyframe NODES on a
-              scrub track under the review field ("Oś punktu"), with a play head.
-              Replaces the discrete phase-pill segment row. READ-SIDE ONLY: it
-              drives phasePin / replay view state, never the capture/write path.
-              DISCRETE snap (prod timeline[] is keyframe-not-continuous) — the
-              head sits AT the active node, no interpolation. break = keyframe #0
-              (always a node); settle/mid/endgame nodes appear only when the
-              CURRENT scope (aggregate or previewed point) captured them (B2). */}
-          {(() => {
-            const activeSeg = (phasePlaying && canReplay) ? (replayStage || 'break') : phasePin;
-            const phaseNodes = PHASE_SEGMENTS.map(st => ({
-              key: st,
-              label: phaseLabel(fromPersistedLiteral(st), t),
-              enabled: st === 'break' ? true
-                : st === 'settle' ? hasSettleStage
-                : st === 'mid' ? hasMidStage
-                : hasEndgameStage,
-            }));
-            const lastEnabled = phaseNodes.filter(p => p.enabled).slice(-1)[0];
-            return (
-              <PointAxisScrubber
-                phases={phaseNodes}
-                active={activeSeg}
-                onPick={pinPhase}
-                playing={phasePlaying && canReplay}
-                canPlay={canReplay}
-                onPlay={() => { setReplayStage(null); setPhasePlaying(v => !v); }}
-                atEnd={!!lastEnabled && activeSeg === lastEnabled.key}
-              />
-            );
-          })()}
-          {/* Per-team layer toggles (§ 40) — independent positions/shots for each team */}
-          <PerTeamHeatmapToggle
-            teamA={{ name: teamA?.name, color: TEAM_COLORS.A }}
-            teamB={{ name: teamB?.name, color: TEAM_COLORS.B }}
-            visibility={hmVisibility}
-            onChange={setHmVisibility}
-          />
-          </>)}
           {/* Points list */}
           <div style={{ padding: `8px ${R.layout.padding}px`, borderTop: `1px solid ${COLORS.border}` }}>
             {/* §B B6 — preview discoverability: the section label carries the
