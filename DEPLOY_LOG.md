@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-26 — [FEATURE/Tier-2] Drawer "Wyświetlanie" — super-admin display toggles (Q1=A, render-verified, night)
+**App (auto-deploy, e2e-gated). No data re-architecture — reuses existing piiSettings.** Merge `feat/menu-display-toggles` (MoreTabContent + i18n). Night-sync menu item; Jacek Q1=A: **super-admin controls, no per-workspace split.**
+- New "Wyświetlanie" section in the drawer (MoreTabContent), between SESJA and ZARZĄDZAJ, **gated to super-admin** (`useIsSuperAdmin`) — hidden for all other roles (overrides the prototype's show-to-all per Jacek).
+- Two inline pill toggles wired to the **existing per-workspace** `piiSettings` (no schema change): "Awatary zamiast zdjęć" → `avatarMode` photo↔avatar; "Ukryj nazwiska graczy" → `surnameMode` full↔short. Optimistic local state + revert-on-error (the `WorkspacesAdminPage` pattern via `setWorkspacePiiSettings`).
+- 6 new `drawer_display_*` i18n keys (PL genuine, EN in EN block).
+- **PROOF:** build + precommit green; full e2e **116/116** (no regression — section hidden for the coach-account suite); **render-verified @390 as super-admin** (section + both toggles render correctly).
+- **Smoke (Jacek, as super-admin):** drawer → "Wyświetlanie" → toggle avatars/surnames → players' photos/names update app-wide (list/profile/scoreboard/roster).
+
 ## 2026-06-26 — [REDESIGN/Tier-2] Tactic editor → TacticWorkspace chrome (Jacek design-sync, render-verified, night)
 **App (auto-deploy, e2e-gated). DATA-CRITICAL screen — tactic SAVE byte-identical (verified).** Merge `feat/tactic-workspace` (TacticEditorPage + StageSwitcher + i18n). Part B of the night-sync brief; `redesign12.jsx` (TacticWorkspace) arrived → unblocked. Jacek decisions: **Q2=A** (visual redesign only — keep the existing data model + functions: click player → menu [bieg/strzał/bump] + freehand notes; NO 4-tool save-schema change).
 - **Chrome rebuilt to the prototype** (wide ≥720): left rail (348px) = FAZA phase-selector + "Jak rysować" how-to + "Ustawienie" status (placed/5, biegi, strzały) + Rysuj toggle | horizontal field (prod's REAL InteractiveCanvas) + "Zapisz taktykę" bar. Read-only variant for non-coach (no tools/save). Phone <720 = existing stacked layout byte-identical.
