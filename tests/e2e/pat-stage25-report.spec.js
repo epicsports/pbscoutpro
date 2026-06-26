@@ -78,16 +78,17 @@ test.describe('PaT Stage 2.5 — per-stage report tables', () => {
     await login(page, TEST_ACCOUNT);
     await dismissNudge(page);
 
-    // PORTRAIT — the inline Break/Settle/Mid SegmentedControl is the portrait path;
-    // landscape replaces it with the floating FieldPhaseControl (§76). The report
-    // tables it governs are the same either way; portrait gives stable testids.
+    // field-views-sync — Break/Settle/Mid are the keyframes on the attached Oś-punktu
+    // axis (data-testid hm-phase-${key}) BELOW the field card, in every layout. The
+    // report tables they govern are the same; this asserts via those stable testids.
     await page.setViewportSize({ width: 414, height: 896 });
     await page.goto('/' + scoutedUrl);
     await dismissNudge(page);
     await expect(page.getByTestId('hm-phase-break')).toBeVisible({ timeout: 20000 });
 
     // Isolate is folded by default (secondary drill-down; the breakout table is the
-    // priority read) — only the toggle header shows, chips are collapsed.
+    // priority read) — only the toggle header shows, chips are collapsed. It lives in
+    // the field card's below-canvas controls (point axis + isolate).
     await expect(page.getByTestId('isolate-toggle')).toBeVisible();
 
     // Break (default): implicit phase → no captured reasons → block absent.
