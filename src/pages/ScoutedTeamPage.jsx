@@ -16,7 +16,8 @@ import { computeCoachingStats } from '../utils/coachingStats';
 import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, computeEliminationReasons, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
 import { coachReportPhases, label as phaseLabel, toPersistedLiteral } from '../utils/pointPhases';
 import { ELIM_REASONS } from '../components/match/ReasonRadial';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, responsive } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, TNUM, responsive } from '../utils/theme';
+import { computeTeamRecords } from '../utils/teamStats';
 import Preloader from '../components/Preloader';
 import { useScreenLoader } from '../hooks/useScreenLoader';
 import { useField } from '../hooks/useField';
@@ -312,6 +313,11 @@ export default function ScoutedTeamPage() {
   const tournament = tournaments.find(t => t.id === tournamentId);
   const scoutedEntry = scouted.find(s => s.id === scoutedId);
   const team = teams.find(t => t.id === scoutedEntry?.teamId);
+  // W-L record for THIS scouted team (shared util, same logic as the coach list).
+  const teamRecord = useMemo(
+    () => computeTeamRecords(matches, scouted)[scoutedId] || { wins: 0, losses: 0, played: 0 },
+    [matches, scouted, scoutedId],
+  );
 
   // No-eternal-loading: once resolved, clear the timeout; while unresolved, arm a
   // 12s ceiling → after which we show the error state even if a subscription
@@ -1154,6 +1160,39 @@ export default function ScoutedTeamPage() {
       badges={team ? <TeamBadge team={team} size={28} /> : null}
     />
   );
+
+  // Team-detail header BAND (prototype team-detail header, redesign.jsx 2408-2419) —
+  // a big identity band with the crest (logo / flag / initials) bled in from the left
+  // as the BACKGROUND, the team name + W-L riding on top, instead of the small circle.
+  // Sits directly under the nav PageHeader. Color tint gradient + dark scrim keep the
+  // name legible (§ 27: identity treatment, never amber, scrim is legibility not glow).
+  const teamCrestHeaderEl = team ? (() => {
+    const color = team.color || COLORS.borderLight;
+    const rec = teamRecord || { wins: 0, losses: 0, played: 0 };
+    return (
+      <div data-testid="scouted-team-crest-header" style={{
+        position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 16,
+        margin: wide ? '0 24px 4px' : '0 16px 4px', minHeight: 92, padding: '18px 18px',
+        background: `linear-gradient(100deg, ${color}2e, ${color}12 52%, transparent 78%), ${ELEV.surface}`,
+        border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: RADIUS.lg, boxShadow: ELEV.shadow1,
+      }}>
+        <CrestBand team={team} imgH={150} />
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(10,14,23,.5) 0%, rgba(10,14,23,.16) 48%, transparent 74%)' }} />
+        <div style={{ position: 'relative', flex: 1, minWidth: 0, paddingLeft: 104 }}>
+          <div style={{ fontFamily: FONT, fontSize: 21, fontWeight: 800, color: COLORS.text, letterSpacing: TRACKING.tight, textShadow: '0 2px 8px rgba(0,0,0,.6)', overflowWrap: 'anywhere' }}>{team.name}</div>
+          {rec.played > 0 && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 8, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 10, padding: '5px 11px' }}>
+              <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}</span>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted }}>W</span>
+              <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted }}>·</span>
+              <span style={{ fontFamily: FONT, fontSize: 14, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}</span>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted }}>L</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  })() : null;
 
   // § field-views-sync — the FIELD CARD (prototype OpponentAnalysisWide/Premium
   // `fieldCard`): one rounded card = the field region (HeatmapCanvas + on-field
@@ -2453,6 +2492,7 @@ export default function ScoutedTeamPage() {
   return (
     <div ref={wideRef} style={{ minHeight: '100vh', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       {pageHeaderEl}
+      {teamCrestHeaderEl}
       <div style={{ flex: 1, padding: wide ? '20px 24px 48px' : '14px 0 44px' }}>
         <div style={{
           maxWidth: 1280, margin: '0 auto',

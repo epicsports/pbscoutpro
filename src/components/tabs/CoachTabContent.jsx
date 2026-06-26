@@ -10,7 +10,7 @@ import DivisionTabs from './DivisionTabs';
 import StandingsTable from './StandingsTable';
 import OpenTacticsAction from '../OpenTacticsAction';
 import RdIcon from '../RdIcon';
-import TeamBadge from '../TeamBadge';
+import CrestBand from '../CrestBand';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../../hooks/useFirestore';
 import { useLiveMatchScores } from '../../hooks/useLiveMatchScores';
 import { computeTeamRecords } from '../../utils/teamStats';
@@ -138,8 +138,9 @@ export default function CoachTabContent({ tournamentId }) {
     return s ? teams.find(x => x.id === s.teamId) || null : null;
   };
 
-  // Premium team row — option-E team-color left-gradient identification (no square
-  // logo), name + division sub, W-L pill, hide eyeoff. ONE touch target → drill-down.
+  // Premium team row — CrestBand identity (logo → flag → initials, prototype rd-coach
+  // row): the crest bleeds in from the left + fades right behind a dark scrim, name +
+  // division sub padded clear, W-L pill, hide eyeoff. ONE touch target → drill-down.
   const TeamRow = ({ st, dim }) => {
     const gt = teams.find(g => g.id === st.teamId) || (st.name ? { id: st.teamId, name: st.name } : null);
     if (!gt) return null;
@@ -156,25 +157,28 @@ export default function CoachTabContent({ tournamentId }) {
           background: `linear-gradient(90deg, ${color}${g0}, ${color}${g1} 30%, transparent 52%), ${ELEV.surface}`,
           border: `1px solid ${ELEV.hairline}`, borderRadius: 13, boxShadow: ELEV.shadow1, cursor: 'pointer',
         }}>
-        <TeamBadge team={gt} size={34} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{gt.name}</div>
+        {/* CrestBand identity — bled-left + faded-right behind the content. */}
+        <CrestBand team={gt} imgH={dim ? 80 : 92} dim={dim} />
+        {/* Left scrim — keeps the name legible over the band (legibility, not decor). */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'linear-gradient(90deg, rgba(10,14,23,.55) 0%, rgba(10,14,23,.18) 46%, transparent 70%)' }} />
+        <div style={{ position: 'relative', flex: 1, minWidth: 0, paddingLeft: 60 }}>
+          <div style={{ fontFamily: FONT, fontSize: 15, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textShadow: '0 1px 4px rgba(0,0,0,.55)' }}>{gt.name}</div>
           {st.division && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 2 }}>{st.division}</div>}
         </div>
         {rec.played > 0
-          ? <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 9, padding: '5px 9px' }}>
+          ? <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 9, padding: '5px 9px' }}>
               <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.success, ...TNUM }}>{rec.wins}</span>
               <span style={{ fontFamily: FONT, fontSize: 12, color: COLORS.textMuted }}>–</span>
               <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.danger, ...TNUM }}>{rec.losses}</span>
             </div>
-          : <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 7, padding: '4px 8px', flexShrink: 0 }}>—</span>}
+          : <span style={{ position: 'relative', fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textDim, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 7, padding: '4px 8px', flexShrink: 0 }}>—</span>}
         {dim ? (
-          <div className="rd-press" onClick={(e) => { e.stopPropagation(); unhideTeam(st.id); }} style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '6px 11px', borderRadius: 9, background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}40`, color: COLORS.accent, cursor: 'pointer' }}>
+          <div className="rd-press" onClick={(e) => { e.stopPropagation(); unhideTeam(st.id); }} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '6px 11px', borderRadius: 9, background: `${COLORS.accent}1a`, border: `1px solid ${COLORS.accent}40`, color: COLORS.accent, cursor: 'pointer' }}>
             <RdIcon name="eye" size={14} />
             <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 800 }}>{t('restore') || 'Przywróć'}</span>
           </div>
         ) : (
-          <div className="rd-press" onClick={(e) => { e.stopPropagation(); hideTeam(st.id); }} title={t('hide_team') || 'Ukryj drużynę'} style={{ width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textMuted, cursor: 'pointer' }}>
+          <div className="rd-press" onClick={(e) => { e.stopPropagation(); hideTeam(st.id); }} title={t('hide_team') || 'Ukryj drużynę'} style={{ position: 'relative', width: 32, height: 32, borderRadius: 9, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, color: COLORS.textMuted, cursor: 'pointer' }}>
             <RdIcon name="eyeoff" size={15} />
           </div>
         )}

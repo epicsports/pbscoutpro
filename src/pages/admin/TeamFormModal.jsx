@@ -5,6 +5,7 @@ import TeamBadge from '../../components/TeamBadge';
 import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS, ELEV, TRACKING, LEAGUE_COLORS } from '../../utils/theme';
 import { useDevice } from '../../hooks/useDevice';
 import { addTeam, updateTeam, setParentTeam } from '../../services/dataService';
+import { COUNTRY_NAMES } from '../../utils/flags';
 import { useLeagues } from '../../hooks/useLeagues';
 import TeamPickerModal from './TeamPickerModal';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -38,6 +39,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
   const [fLeagues, setFLeagues] = useState([]);    // array of shortName strings
   const [fDivisions, setFDivisions] = useState({}); // { [shortName]: divName }
   const [fLogoUrl, setFLogoUrl] = useState('');     // team logo — external image URL (§93 pattern), never base64
+  const [fCountry, setFCountry] = useState('');     // ISO-ish country code (flags.js) — 2nd-tier crest identity, optional
 
   const [showAudit, setShowAudit] = useState(false);
   const [pickerMode, setPickerMode] = useState(null); // null | 'parent' | 'child'
@@ -52,6 +54,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
     setFLeagues(Array.isArray(team?.leagues) ? team.leagues : ['NXL']);
     setFDivisions(team?.divisions && typeof team.divisions === 'object' ? { ...team.divisions } : {});
     setFLogoUrl(team?.logoUrl || '');
+    setFCountry(team?.country || '');
     setShowAudit(false);
     setPickerMode(null);
     setErrors({});
@@ -86,6 +89,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
         leagues: fLeagues,
         divisions: fDivisions,
         logoUrl: fLogoUrl.trim() || null,
+        country: fCountry || null,
       };
       if (isEdit) {
         await updateTeam(team.id, payload);
@@ -183,7 +187,7 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
 
           {/* Premium crest preview — live from name + logo (color crest / initials fallback). */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 14, background: `linear-gradient(120deg, ${(team?.color || COLORS.accent)}1f, ${(team?.color || COLORS.accent)}08 46%, transparent 72%), ${ELEV.surface}`, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.shadow1 }}>
-            <TeamBadge team={{ name: fName, color: team?.color, logoUrl: fLogoUrl.trim() || null }} size={56} />
+            <TeamBadge team={{ name: fName, color: team?.color, logoUrl: fLogoUrl.trim() || null, country: fCountry || null }} size={56} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: fName ? COLORS.text : COLORS.textMuted, letterSpacing: TRACKING.tight, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fName || t('team_form_name_ph')}</div>
               {fLeagues.length > 0 && <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase', marginTop: 3 }}>{fLeagues.join(' · ')}</div>}
@@ -202,6 +206,16 @@ export default function TeamFormModal({ open, onClose, team, allTeams, childrenB
               pattern). Live preview is the crest header above (color crest / initials fallback). */}
           <FieldRow label={t('wsadmin_logo_label')}>
             <Input value={fLogoUrl} onChange={setFLogoUrl} placeholder="https://…/logo.png" />
+          </FieldRow>
+          {/* Country — 2nd-tier crest identity (flags.js). Optional; the flag shows
+              on the crest when there's no uploaded logo (§ Krok 1 unification). */}
+          <FieldRow label={t('team_form_country_label')} hint={t('team_form_country_hint')}>
+            <Select value={fCountry} onChange={setFCountry} style={{ width: '100%' }}>
+              <option value="">{t('team_form_none_option')}</option>
+              {Object.entries(COUNTRY_NAMES).map(([code, name]) => (
+                <option key={code} value={code}>{name}</option>
+              ))}
+            </Select>
           </FieldRow>
 
           <FieldRow label={t('team_form_leagues_label')} error={errors.leagues} hint={t('team_form_leagues_hint')} required>
