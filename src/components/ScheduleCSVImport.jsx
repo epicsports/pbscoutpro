@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Btn, Icons, Modal, Select } from './ui';
 import { COLORS, FONT, FONT_SIZE, RADIUS, TOUCH } from '../utils/theme';
 import { playerOnTeam } from '../utils/playerTeams';
@@ -146,10 +146,10 @@ function findNameMatches(name, teams) {
   return (teams || []).filter(t => t && t.name && t.name.trim().toLowerCase() === target);
 }
 
-export default function ScheduleCSVImport({ open, onClose, tournaments, teams, scouted, players, ds }) {
+export default function ScheduleCSVImport({ open, onClose, tournaments, teams, scouted, players, ds, activeTournamentId }) {
   const { t } = useLanguage();
   const [step, setStep] = useState('upload'); // upload | resolve | importing | done
-  const [tournamentId, setTournamentId] = useState('');
+  const [tournamentId, setTournamentId] = useState(activeTournamentId || '');
   const [parseError, setParseError] = useState('');
   const [parsedRows, setParsedRows] = useState([]); // each: { raw fields + _division, _scheduledAt, _homeKey, _awayKey }
   const [unresolved, setUnresolved] = useState({}); // teamKey → { name, division, action: 'match'|'create'|'skip', mapping: scoutedId|teamId }
@@ -164,10 +164,17 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
   const fileRef = useRef(null);
 
   const reset = () => {
-    setStep('upload'); setTournamentId(''); setParseError('');
+    setStep('upload'); setTournamentId(activeTournamentId || ''); setParseError('');
     setParsedRows([]); setUnresolved({}); setAutoMatched({}); setAutoMatchedWorkspace({});
     setImportLog([]); setImporting(false);
   };
+
+  // When opened from inside a tournament, target THAT tournament — don't make the
+  // user re-pick it (the picker is hidden in the upload step). Re-syncs each open
+  // in case the active tournament changed since mount.
+  useEffect(() => {
+    if (open && activeTournamentId) setTournamentId(activeTournamentId);
+  }, [open, activeTournamentId]);
 
   // Tournament picker — any tournament with a league assigned. Team divisions
   // are keyed by the SELECTED tournament's league (§ 71).
@@ -526,22 +533,34 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
               Mecze zostaną zapisane w wybranym turnieju z polami <code>scheduledAt</code>, <code>field</code>, <code>round</code>, <code>group</code>.
             </div>
 
-            <div>
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: 4 }}>
-                {t('schedule_csv_import_tournament_label')}
-              </div>
-              <Select value={tournamentId} onChange={setTournamentId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-                <option value="">— wybierz turniej —</option>
-                {leagueTournaments.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}{t.division ? ` · ${t.division}` : ''}{t.date ? ` · ${t.date}` : ''}</option>
-                ))}
-              </Select>
-              {!leagueTournaments.length && (
-                <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.danger, marginTop: 4 }}>
-                  {t('schedule_csv_import_no_tournaments')}
+            {activeTournamentId ? (
+              // Opened from inside a tournament → import targets it; no picker (Jacek 2026-06-26).
+              <div style={{ padding: '10px 12px', background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: RADIUS.md }}>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: 2 }}>
+                  {t('schedule_csv_import_tournament_label')}
                 </div>
-              )}
-            </div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800, color: COLORS.text }}>
+                  {tournaments.find(tt => tt.id === activeTournamentId)?.name || activeTournamentId}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim, marginBottom: 4 }}>
+                  {t('schedule_csv_import_tournament_label')}
+                </div>
+                <Select value={tournamentId} onChange={setTournamentId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
+                  <option value="">— wybierz turniej —</option>
+                  {leagueTournaments.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}{t.division ? ` · ${t.division}` : ''}{t.date ? ` · ${t.date}` : ''}</option>
+                  ))}
+                </Select>
+                {!leagueTournaments.length && (
+                  <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.danger, marginTop: 4 }}>
+                    {t('schedule_csv_import_no_tournaments')}
+                  </div>
+                )}
+              </div>
+            )}
 
             <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFile} style={{ display: 'none' }} />
             <Btn variant="accent" onClick={() => fileRef.current?.click()} disabled={!tournamentId}

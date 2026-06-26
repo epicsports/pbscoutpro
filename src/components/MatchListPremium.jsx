@@ -675,7 +675,7 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
       )}
       <ScheduleCSVImport open={scheduleCsvOpen} onClose={() => setScheduleCsvOpen(false)}
         tournaments={tournaments} teams={teams} scouted={scouted} players={players}
-        ds={ds} />
+        ds={ds} activeTournamentId={tournamentId} />
     </div>
   );
 }
