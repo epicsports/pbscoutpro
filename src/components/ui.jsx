@@ -262,13 +262,13 @@ export function MoreBtn({ onClick, testId }) {
 // `label`/`bg`/`color` are optional overrides (default = destructive red "Delete")
 // so the same gesture can drive a NON-destructive action (e.g. "Remove" from a
 // board) without a red/Delete mislabel — § 27 keeps red for destructive only.
-export function SwipeDelete({ onDelete, children, label, bg, color, testId }) {
+export function SwipeDelete({ onDelete, children, label, bg, color, testId, leftAction, leftLabel, leftBg, leftColor, leftTestId }) {
   const { t } = useLanguage();
-  const ref = useRef(null);
   const startX = useRef(0);
   const [offset, setOffset] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const THRESHOLD = 80;
+  const minOffset = leftAction ? -THRESHOLD : 0; // negative = swipe-right reveals the left action
 
   const handleTouchStart = (e) => {
     startX.current = e.touches[0].clientX;
@@ -277,11 +277,11 @@ export function SwipeDelete({ onDelete, children, label, bg, color, testId }) {
   const handleTouchMove = (e) => {
     if (!swiping) return;
     const dx = startX.current - e.touches[0].clientX;
-    setOffset(Math.max(0, Math.min(THRESHOLD, dx)));
+    setOffset(Math.max(minOffset, Math.min(THRESHOLD, dx)));
   };
   const handleTouchEnd = () => {
     setSwiping(false);
-    setOffset(o => o >= THRESHOLD * 0.6 ? THRESHOLD : 0);
+    setOffset(o => o >= THRESHOLD * 0.6 ? THRESHOLD : o <= -THRESHOLD * 0.6 ? -THRESHOLD : 0);
   };
   const reset = () => setOffset(0);
 
@@ -298,12 +298,25 @@ export function SwipeDelete({ onDelete, children, label, bg, color, testId }) {
           {label || t('delete')}
         </span>
       </div>
+      {/* LEFT action zone (swipe-RIGHT) — optional secondary action, e.g. Edit (§ Jacek) */}
+      {leftAction && (
+        <div style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0, width: THRESHOLD,
+          background: leftBg || COLORS.accent, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: '10px 0 0 10px',
+        }}>
+          <span data-testid={leftTestId} onClick={() => { reset(); leftAction(); }}
+            style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, fontWeight: 700, color: leftColor || COLORS.white, cursor: 'pointer' }}>
+            {leftLabel}
+          </span>
+        </div>
+      )}
       {/* Sliding content */}
       <div
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={() => { if (offset > 0) { reset(); } }}
+        onClick={() => { if (offset !== 0) { reset(); } }}
         style={{
           transform: `translateX(${-offset}px)`,
           transition: swiping ? 'none' : 'transform 0.2s ease-out',

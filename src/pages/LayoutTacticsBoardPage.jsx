@@ -254,7 +254,9 @@ export default function LayoutTacticsBoardPage() {
             // never shares the rail's top-right collapse/close corner. Non-destructive →
             // amber "Remove" (stays in the library), NOT red "Delete" (§27).
             <SwipeDelete key={id} onDelete={() => removeFromBoard(id)} label="Remove"
-              bg={COLORS.surfaceLight} color={COLORS.accent} testId={`tactic-remove-${id}`}>
+              bg={COLORS.surfaceLight} color={COLORS.accent} testId={`tactic-remove-${id}`}
+              leftAction={() => openEditor(id)} leftLabel={t('edit')}
+              leftBg={COLORS.accent} leftColor={COLORS.bg} leftTestId={`tactic-edit-${id}`}>
               <div ref={el => { rowRefs.current[id] = el; }} data-testid={`tactic-row-${id}`}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4,
@@ -300,7 +302,7 @@ export default function LayoutTacticsBoardPage() {
   const stripBtn = { minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 10, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: COLORS.textDim, fontSize: 18 };
   const stripEl = (
     <div data-testid="tactics-rail-strip" role="button" aria-label={t('layout_tactic_expand_aria')} onClick={() => setRailOpen(true)}
-      style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 0', gap: 6, borderLeft: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer' }}>
+      style={{ width: 56, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '6px 0', gap: 6, borderRight: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer' }}>
       <div role="button" aria-label={t('layout_tactic_back_aria')} onClick={(e) => { e.stopPropagation(); navigate(`/layout/${layoutId}`); }} style={{ ...stripBtn, color: COLORS.accent, fontSize: 22 }}>‹</div>
       <div style={{ width: 24, borderTop: `1px solid ${COLORS.border}`, margin: '2px 0' }} />
       <div data-testid="tactics-rail-expand" style={{ ...stripBtn, color: COLORS.accent }}>☰</div>
@@ -347,16 +349,17 @@ export default function LayoutTacticsBoardPage() {
         // LANDSCAPE — field HERO (height-first crop, fills 100% height) + INLINE
         // two-state rail (expanded 300px ↔ 56px strip), NO overlay panel.
         <div style={{ position: 'fixed', inset: 0, height: '100dvh', background: COLORS.bg, display: 'flex', flexDirection: 'row' }}>
-          {fieldBox(() => railOpen && setRailOpen(false))}
+          {/* Rail on the LEFT (consistent with the editor + live screens). Jacek 2026-06-26. */}
           {railOpen ? (
-            <div data-testid="tactics-rail" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderLeft: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
+            <div data-testid="tactics-rail" style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', minHeight: 0, borderRight: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 6px 6px 10px', borderBottom: `1px solid ${COLORS.border}`, flexShrink: 0 }}>
                 <span style={{ flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{layout?.name || t('layout_tactic_tactics_fallback')}</span>
-                <div role="button" aria-label={t('layout_tactic_minimize_aria')} data-testid="tactics-rail-minimize" onClick={() => setRailOpen(false)} style={stripBtn}>›</div>
+                <div role="button" aria-label={t('layout_tactic_minimize_aria')} data-testid="tactics-rail-minimize" onClick={() => setRailOpen(false)} style={stripBtn}>‹</div>
               </div>
               {railEl}
             </div>
           ) : stripEl}
+          {fieldBox(() => railOpen && setRailOpen(false))}
         </div>
       ) : (
         // PORTRAIT — stacked: header · field (capped) · rail list + footer.
