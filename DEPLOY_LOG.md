@@ -1,5 +1,14 @@
 # Deploy Log
 
+## 2026-06-26 — [REDESIGN/Tier-2] Tablet Live → universal field-view pattern (field-views-sync §1, render-verified)
+**App (auto-deploy, e2e-gated). READ-SIDE only.** Merge `feat/live-landscape-fieldcard` (MatchPage + i18n + 2 specs). Against the UPDATED prototype (`_HANDOFF_FIELD_SYNC`, `TabletLiveScoringPremium`). The landscape live had scattered controls (rail "Warstwa A/B" toggle + corner phase-tabs + separate "Animacja punktu" bar + short-code names); the updated prototype uses the universal "field view" pattern.
+- **Rebuilt the `landscape && heroAvailable` branch:** LEFT 372px rail = **full-name** scoreboard + **full-name** PointRow list (rail Warstwa toggle DELETED); RIGHT panel = header `{A.name} vs {B.name}` + **RdLiveFieldCard** (reused the phone `ReviewLayersPopover` — 4 independent Pozycje/Strzały×A/B filters on the field — + the single attached `PointAxisScrubber`). Corner phase-tabs + "Animacja punktu" bar DELETED; replay folded into the scrubber play head.
+- **FULL names** everywhere (`textWrap:balance`, no `shortNameOf` on these labels).
+- **READ-SIDE:** hmVisibility/phasePin/scrubber/HeatmapCanvas byte-identical; no write-path touch; **phone/portrait path untouched**.
+- `matchreview-rail` + `phase-view` landscape specs rewritten truthfully (toggle→popover testids).
+- **PROOF:** build + precommit green; full e2e **116/116** incl. capture suite; **render-verified @1280** matches the updated prototype.
+- **Smoke (Jacek, tablet landscape):** rail = full names · field = Warstwy popover + one attached OŚ PUNKTU axis (no corner tabs, no separate anim bar).
+
 ## 2026-06-26 — [REDESIGN/Tier-2] Phone Live field-card → RdLiveFieldCard (Jacek design-sync, render-verified)
 **App (auto-deploy, e2e-gated). READ-SIDE only — capture/save byte-identical.** Merge `feat/live-field-card` (MatchPage + i18n + phase-view spec). Jacek flagged the phone Live STILL diverged after the truncation fix: comparing prototype `RdLiveFieldCard` ↔ prod showed the controls were SCATTERED (separate OŚ PUNKTU block + 4 full-width toggle blocks below a bare field — my earlier Stage 1/2 mis-fire) where the prototype INTEGRATES them into one field card.
 - **Portrait review field area rebuilt:** one bordered card = field + **"Warstwy" popover** (top-left overlay, count badge, 4 independent filters Pozycje/Strzały × A/B wired to existing `hmVisibility`) replacing the 4 separate toggle blocks + **OŚ PUNKTU `PointAxisScrubber` ATTACHED** at the card bottom (was a separate block). **Rysuj omitted** — portrait review has no draw affordance (landscape-only §77), so no dead button (flagged).
