@@ -1,5 +1,10 @@
 # Deploy Log
 
+## 2026-06-26 — [UI/Tier-1] Tactics-board rail → LEFT + swipe-right-to-edit + CSV import pre-select (Jacek)
+**App (auto-deploy, e2e-gated).** Two small UX fixes.
+- **Tactics-board** (`LayoutTacticsBoardPage`): landscape rail moved RIGHT→LEFT (field on the right) for consistency with the editor + live screens (flipped divider border + minimize arrow). `SwipeDelete` extended additively with an optional `leftAction` (swipe-RIGHT reveals a left zone) → used as **Edit** (opens the editor); swipe-left still Remove-from-board; tap still selects/displays. Render-verified @1280 (rail left). Full e2e 116/116.
+- **CSV import** (shipped `cd9ae1f8`): pre-selects the active tournament when opened from inside one (was always showing the event picker — `ScheduleCSVImport` never got `activeTournamentId`).
+
 ## 2026-06-26 — [PRELOADER/UI/CI] Simplified Preloader everywhere (§3) + team logos +50% + CI flake fix
 **App (auto-deploy, e2e-gated).** Three things in the re-deploy that un-sticks prod (the prior two deploy runs: P2 was cancelled by the logo push, then the logo run FAILED on a CI-only e2e flake — so P2+logo never reached prod; prod was stuck at P1).
 - **Preloader (field-views-sync §3):** removed the tactics-board SVG from `Preloader.jsx` → the prototype's clean **determinate 0→100% bar** (phase label + tabular % + sheen + caption). Wired it into every generic loader: App.jsx app-boot (7× `<Loading text>`) + heavy/section `⏳` loaders (MatchListPremium/CoachTabContent/WorkspacesAdminPage/MatchPage×2/ScoutedTeamPage/TeamDetailPage). Left the training-not-found EmptyState (error, not a loader). Screens already on Preloader inherit the clean bar.
