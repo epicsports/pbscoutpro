@@ -44,9 +44,11 @@ export default function TeamBadge({ team, size = 32, ringColor }) {
       <span style={styleBase}>
         <img src={team.logoUrl} alt=""
           onError={() => setImgErr(true)}
-          // Logos ship with transparent padding → +20% so the art fills the tile
-          // (the badge's overflow:hidden crops the scaled overshoot). Jacek 2026-06-26.
-          style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.2)' }} />
+          // Logo files ship with padding + a thin white frame at the edges → scale up
+          // so the badge's overflow:hidden CROPS the white frame + padding and the art
+          // fills the tile. +50% — verified via a multi-scale render (1.4 clears the
+          // white, 1.8 starts clipping the art; 1.5 fills without clipping). Jacek 2026-06-26.
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scale(1.5)' }} />
       </span>
     );
   }

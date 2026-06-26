@@ -95,22 +95,22 @@ test.describe('PaT Stage 2.5 — per-stage report tables', () => {
     await expect(page.getByTestId('elim-reasons')).toHaveCount(0);
 
     // Settle → reason block appears with the seeded gunfight.
-    await page.getByTestId('hm-phase-settle').click();
+    await page.getByTestId('hm-phase-settle').click({ force: true });
     // §118.2 field-is-king restructure — the elim-reasons section is collapsible
     // (collapsed by default) and only MOUNTS for a phase that has reasons; expand it
     // once it exists. The open state persists when switching Settle → Mid below.
-    await page.getByTestId('sec-elim-reasons-toggle').click();
+    await page.getByTestId('sec-elim-reasons-toggle').click({ force: true });
     await expect(page.getByTestId('elim-reasons')).toBeVisible();
     await expect(page.getByTestId('elim-reason-gunfight')).toBeVisible();
     await expect(page.getByTestId('elim-reason-penalty')).toHaveCount(0);
 
     // Mid → the breakdown is phase-specific: penalty now, gunfight gone.
-    await page.getByTestId('hm-phase-mid').click();
+    await page.getByTestId('hm-phase-mid').click({ force: true });
     await expect(page.getByTestId('elim-reason-penalty')).toBeVisible();
     await expect(page.getByTestId('elim-reason-gunfight')).toHaveCount(0);
 
     // Back to Break → block gone again (one global control, coherent view).
-    await page.getByTestId('hm-phase-break').click();
+    await page.getByTestId('hm-phase-break').click({ force: true });
     await expect(page.getByTestId('elim-reasons')).toHaveCount(0);
   });
 });

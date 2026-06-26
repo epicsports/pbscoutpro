@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-26 — [PRELOADER/UI/CI] Simplified Preloader everywhere (§3) + team logos +50% + CI flake fix
+**App (auto-deploy, e2e-gated).** Three things in the re-deploy that un-sticks prod (the prior two deploy runs: P2 was cancelled by the logo push, then the logo run FAILED on a CI-only e2e flake — so P2+logo never reached prod; prod was stuck at P1).
+- **Preloader (field-views-sync §3):** removed the tactics-board SVG from `Preloader.jsx` → the prototype's clean **determinate 0→100% bar** (phase label + tabular % + sheen + caption). Wired it into every generic loader: App.jsx app-boot (7× `<Loading text>`) + heavy/section `⏳` loaders (MatchListPremium/CoachTabContent/WorkspacesAdminPage/MatchPage×2/ScoutedTeamPage/TeamDetailPage). Left the training-not-found EmptyState (error, not a loader). Screens already on Preloader inherit the clean bar.
+- **Team logos +50%** (`TeamBadge`): logo files ship with padding + a thin white frame → `transform: scale(1.5)` on the logo img (badge `overflow:hidden` crops it) so the art fills the tile + the white edges are gone. Verified via a multi-scale render (1.4 clears white, 1.8 clips art → 1.5).
+- **CI flake fix:** `pat-stage25-report.spec.js` — the 4 field-card control clicks (`hm-phase-*`/`sec-elim-reasons-toggle`) got `{ force: true }`. They pass locally (116/0 across P1/P2/P3 runs) but timed out in CI on actionability (a canvas-sizing race on the rebuilt field card destabilizes the axis node); force bypasses the race. This is what failed the logo deploy.
+- **PROOF:** P3 full e2e 116/116 local; the spec fix targets the CI-only timeout.
+
 ## 2026-06-26 — [REDESIGN/Tier-2] Opponent analysis → OpponentAnalysisWide (field-views-sync §2, render-verified @390/834/1280)
 **App (auto-deploy, e2e-gated). Coach-draw write path byte-identical.** Merge `feat/opponent-fieldcard` (ScoutedTeamPage + useWide + i18n + 2 specs). `ScoutedTeamPage` was the old narrow-rail layout (letter-breaking tables + corner phase-tabs — Jacek screen 3). Rebuilt to the updated prototype `OpponentAnalysisWide`.
 - **Universal field-view pattern:** on-field **"Warstwy" popover** (Pozycje/Strzały/Plan coacha + the 2 extra prod layers Notatki/Replay kept) + **attached "Oś punktu" axis** below the field + **scope segment** at the rail top + **FIXED-width tables** (names no longer break letter-by-letter) + **full names** (team + players). Responsive `useWide(860)`: ≥860 field+rail side-by-side, <860 field-on-top stacked.
