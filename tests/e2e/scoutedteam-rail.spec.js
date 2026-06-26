@@ -1,47 +1,63 @@
-// e2e — ScoutedTeam landscape = FIELD-IS-KING CanvasRailLayout (§118 canon; the
-// §118.1 report-first WIDTH split was REVERTED 2026-06-18 — it shrank the field
-// even on wide screens). Landscape: field=HERO (fills height, aspect drives width),
-// rail residual → §116 collapses to the 56px strip; report sections live in the
-// strip→overlay. Portrait unchanged. (The §116 strip/overlay mechanics are covered
-// by rail-collapse.spec.js; here we assert the field-is-king invariant + the
-// coach-draw coordinate guardrail.) Fixture: TRN_PSTATS (base layout WITH fieldImage).
+// e2e — ScoutedTeam = the prototype OpponentAnalysisWide / OpponentAnalysisPremium
+// responsive model (feat/opponent-fieldcard, field-views-sync §2): a FIELD CARD
+// (HeatmapCanvas + on-field Warstwy popover + Rysuj + attached Oś-punktu axis) +
+// a RAIL (scope segment + coach tables). useWide(860): ≥860 = field card + rail
+// SIDE BY SIDE (field sticky); <860 = field card ON TOP, rail below (one column).
+// Replaces the prior orientation-gated CanvasRailLayout field-is-king path (the
+// §116 strip / rail-strip-back is gone — there is no fixed fullscreen overlay now).
+// Here we assert the responsive split + the coach-draw coordinate guardrail.
+// Fixture: TRN_PSTATS (base layout WITH fieldImage).
 import { test, expect } from '@playwright/test';
 import { login } from '../helpers/auth.js';
 import { TEST_ACCOUNT, TRN_PSTATS, TEAM_A, WS } from './fixtures.js';
 
 const url = `#/tournament/${TRN_PSTATS}/team/${TEAM_A}`;
-const TABLET_LS = { width: 1194, height: 834 };
-const PORTRAIT = { width: 414, height: 896 };
+const WIDE = { width: 1194, height: 834 };     // ≥860 → field + rail side by side
+const NARROW = { width: 414, height: 896 };    // <860 → field on top, rail below
 
-test.describe('ScoutedTeam field-is-king rail', () => {
-  test('tablet-landscape: field is HERO (fills height) + §116 strip; portrait capped; portrait unchanged', async ({ page }) => {
+test.describe('ScoutedTeam field-card responsive (field-views-sync)', () => {
+  test('wide: field card + rail side by side; narrow: stacked (field on top); field is a sized card, not a full-page hero', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
 
-    // PORTRAIT: capped hero, report stacked below (unchanged).
-    await page.setViewportSize(PORTRAIT);
+    // NARROW (<860): field card on TOP, report column BELOW (single column). The
+    // field region is a sized card (~250px), well under the viewport — NOT a hero.
+    await page.setViewportSize(NARROW);
     await page.goto('/' + url);
+    const card = page.getByTestId('opponent-field-card');
+    const report = page.getByTestId('scouted-report-column');
+    await expect(card).toBeVisible({ timeout: 20000 });
+    await expect(report).toBeVisible();
     const canvas = page.locator('canvas').first();
-    await expect(canvas).toBeVisible({ timeout: 20000 });
-    expect((await canvas.boundingBox()).height).toBeLessThan(PORTRAIT.height * 0.7);
+    await expect(canvas).toBeVisible();
+    expect((await canvas.boundingBox()).height).toBeLessThan(NARROW.height * 0.7);
+    // stacked: the field card sits ABOVE the report column.
+    const cardBoxN = await card.boundingBox();
+    const repBoxN = await report.boundingBox();
+    expect(repBoxN.y).toBeGreaterThan(cardBoxN.y + cardBoxN.height - 5);
 
-    // TABLET-LANDSCAPE: field-is-king → §116 strip present (rail collapsed to 56px),
-    // field fills the height (hero — NOT the report-first residual letterbox). RED while report-first.
-    await page.setViewportSize(TABLET_LS);
+    // WIDE (≥860): the field card and the report column sit SIDE BY SIDE (the field
+    // card's right edge is left of the report column's left edge). The field is a
+    // sized card (~420px region), NOT a full-height hero.
+    await page.setViewportSize(WIDE);
     await page.waitForTimeout(400);
-    await expect(page.getByTestId('rail-strip-back')).toBeVisible();          // rail collapsed → field is king
-    expect((await canvas.boundingBox()).height).toBeGreaterThan(TABLET_LS.height * 0.78); // field fills height (hero)
+    const cardBoxW = await card.boundingBox();
+    const repBoxW = await report.boundingBox();
+    expect(repBoxW.x).toBeGreaterThan(cardBoxW.x + cardBoxW.width - 5); // rail is to the RIGHT
+    expect((await canvas.boundingBox()).height).toBeLessThan(WIDE.height * 0.78); // sized card, not hero
 
-    // PORTRAIT again: unchanged stack.
-    await page.setViewportSize(PORTRAIT);
+    // NARROW again: back to the stacked single column.
+    await page.setViewportSize(NARROW);
     await page.waitForTimeout(400);
-    expect((await canvas.boundingBox()).height).toBeLessThan(PORTRAIT.height * 0.7);
+    const cardBox2 = await card.boundingBox();
+    const repBox2 = await report.boundingBox();
+    expect(repBox2.y).toBeGreaterThan(cardBox2.y + cardBox2.height - 5);
   });
 
   // §118.2 — the data-confidence banner shows on screen-open and the X dismisses it
-  // (per-view, not persisted). Portrait, where the report column is stacked + visible.
+  // (per-view, not persisted). Narrow, where the report column is stacked + visible.
   test('confidence banner shows on open; X dismisses it', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
-    await page.setViewportSize(PORTRAIT);
+    await page.setViewportSize(NARROW);
     await page.goto('/' + url);
     const x = page.getByTestId('scouted-confidence-dismiss');
     await expect(x).toBeVisible({ timeout: 20000 });
@@ -51,11 +67,11 @@ test.describe('ScoutedTeam field-is-king rail', () => {
 
   // §118.2 STAGE 2 — report sections are individually collapsible. Breakouts is
   // the only defaultOpen section (the headline read); every other section opens
-  // collapsed so the field stays king + the report is a scannable header list.
-  // Asserted in portrait, where the report column is stacked + visible.
+  // collapsed so the report is a scannable header list. Asserted narrow, where the
+  // report column is stacked below the field card + visible.
   test('report sections collapse/expand; breakouts open by default, shots collapsed', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
-    await page.setViewportSize(PORTRAIT);
+    await page.setViewportSize(NARROW);
     await page.goto('/' + url);
     await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20000 });
 
@@ -68,7 +84,7 @@ test.describe('ScoutedTeam field-is-king rail', () => {
     await breakouts.click();
     await expect(breakouts).toHaveAttribute('aria-expanded', 'true');
 
-    // Every OTHER rendered section starts collapsed (field-is-king default). Which
+    // Every OTHER rendered section starts collapsed (scannable-header default). Which
     // secondary sections render is fixture-data-dependent, so assert generically:
     // take the first non-breakouts section toggle, prove it starts collapsed, then
     // expanding it works. (`additional sections` below-fold toggle is revealed first
@@ -84,14 +100,15 @@ test.describe('ScoutedTeam field-is-king rail', () => {
     await expect(collapsed).toHaveAttribute('aria-expanded', 'true');
   });
 
-  // Coordinate guardrail in the field-is-king canvas: a coach-draw at the canvas
+  // Coordinate guardrail in the field card canvas: a coach-draw at the canvas
   // CENTER persists a stroke whose normalized coords land near center — the tap
   // transform survives. Restores annotations after (shared serial emulator state).
+  // Wide so the field card + attached Oś-punktu axis (field-phase) are present.
   test('field: coach-draw at center maps to ~center (coordinate guardrail)', async ({ page }) => {
     await login(page, TEST_ACCOUNT);
     await page.waitForFunction(() => !!window.__pbtest, { timeout: 20000 });
     await page.evaluate(s => window.__pbtest.setWorkspace(s), WS);
-    await page.setViewportSize(TABLET_LS);
+    await page.setViewportSize(WIDE);
     await page.goto('/' + url);
 
     await expect(page.getByTestId('field-phase')).toBeVisible({ timeout: 20000 });

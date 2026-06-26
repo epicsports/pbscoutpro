@@ -6,7 +6,7 @@ import PageHeader from '../components/PageHeader';
 import PlayerAvatar from '../components/PlayerAvatar';
 import RdIcon from '../components/RdIcon';
 import TeamBadge from '../components/TeamBadge';
-import { Btn, EmptyState, Input, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag, SegmentedControl } from '../components/ui';
+import { Btn, EmptyState, Modal, Icons, ConfirmModal, Score, ResultBadge, SideTag } from '../components/ui';
 import { NotatkiSection, AddNoteSheet } from '../components/CoachNotes';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePlayers, useLayouts, useNotes } from '../hooks/useFirestore';
 import { useWorkspace } from '../hooks/useWorkspace';
@@ -20,48 +20,19 @@ import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, responsi
 import Preloader from '../components/Preloader';
 import { useScreenLoader } from '../hooks/useScreenLoader';
 import { useField } from '../hooks/useField';
+import { useWide } from '../hooks/useWide';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useDisplayName } from '../utils/playerName';
-import { Footprints, Crosshair, Route, Medal, Zap, Pencil, Skull, X, ChevronDown } from 'lucide-react';
+import { Footprints, Crosshair, Route, Medal, Zap, Skull, X, ChevronDown } from 'lucide-react';
 import { resolveZones } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
-import FullscreenToggle from '../components/canvas/FullscreenToggle';
-import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
-import { RailZone, RailToggleList, RailItemList } from '../components/canvas/RailZones';
-import FieldPhaseControl from '../components/canvas/FieldPhaseControl';
-import { FIELD_LAYERS } from '../components/canvas/fieldViewConfig';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 import SearchFilterPanel from '../components/SearchFilterPanel';
 import { matchEntity, playerInDivision, playerDivisionSet } from '../utils/entityFilters';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
-
-// SectionHeader (premium "North Star" eyebrow): UPPERCASE tracked label + a
-// flex hairline rule; with an `icon` it gets a NEUTRAL icon tile (sunken +
-// hairline + textDim — § 27 design-review 2026-06-22: amber is reserved for
-// interactive/active state, never structural headers). Same eyebrow as PlayerStats.
-const SectionHeader = ({ children, icon: Icon }) => (
-  <div style={{
-    padding: '18px 16px 10px',
-    display: 'flex', alignItems: 'center', gap: 9,
-  }}>
-    {Icon && (
-      <span style={{
-        width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`,
-        color: COLORS.textDim,
-      }}><Icon size={15} strokeWidth={2} /></span>
-    )}
-    <span style={{
-      fontFamily: FONT, fontSize: 12, fontWeight: 800,
-      color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
-    }}>{children}</span>
-    <div style={{ flex: 1, height: 1, background: ELEV.hairline }} />
-  </div>
-);
 
 // CollapsibleSection (§118.2): a report section that tucks away. Own useState
 // (NOT an accordion — consistent with the RailZone control zones). Header reuses
@@ -237,6 +208,15 @@ function computeCompleteness(heatmapPoints) {
 export default function ScoutedTeamPage() {
   const device = useDevice();
   const R = responsive(device.type);
+  // § field-views-sync — container-query split (prototype OpponentAnalysisWide /
+  // OpponentAnalysisPremium): ≥860 = field card + rail side-by-side; <860 = field
+  // ON TOP, rail (scope segment + tables) below in a single column. Replaces the
+  // prior orientation-gated CanvasRailLayout field-is-king path. The field card +
+  // the rail measure off the SAME container width via this ref.
+  const [wideRef, wide] = useWide(860);
+  // § field-views-sync — the on-field "Warstwy" popover open state. 3 independent
+  // filters (Pozycje/Strzały/Plan coacha) live here now, NOT in a rail LAYERS zone.
+  const [layersOpen, setLayersOpen] = useState(false);
   const { t, lang } = useLanguage();
   const dn = useDisplayName();
     const { tournamentId, scoutedId } = useParams();
@@ -290,32 +270,6 @@ export default function ScoutedTeamPage() {
   const [hmIsolateOpen, setHmIsolateOpen] = useState(false);
   // § Stage 6-lite — replay animation toggle (OFF by default; on-demand).
   const [hmReplay, setHmReplay] = useState(false);
-  const [heatmapExpanded, setHeatmapExpanded] = useState(true);
-
-  // § 81 ScoutedTeam immersive — heatmap-region full-viewport overlay.
-  // Local state, DECOUPLED from useLandscapeMode / isLandscape: rotation
-  // does NOT auto-promote (ScoutedTeam is a scroll-dashboard, not a
-  // canvas-page; entry is explicit via Maximize2 on the expanded region).
-  // Inline ↔ fixed-overlay is a single wrapper-style swap on the same JSX
-  // subtree → no remount, draw state + canvas DOM preserved across enter/
-  // exit. Scroll position saved on enter, restored on exit.
-  const [heatmapFullscreen, setHeatmapFullscreen] = useState(false);
-  const scrollContainerRef = useRef(null);
-  const scrollTopBeforeFsRef = useRef(0);
-  const enterHeatmapFs = () => {
-    if (scrollContainerRef.current) {
-      scrollTopBeforeFsRef.current = scrollContainerRef.current.scrollTop;
-    }
-    setHeatmapFullscreen(true);
-  };
-  const exitHeatmapFs = () => {
-    setHeatmapFullscreen(false);
-    requestAnimationFrame(() => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollTopBeforeFsRef.current;
-      }
-    });
-  };
   // § 78 Stage 2 — annotation layer toggles.
   //   2a Plan coacha: editable per scouted-team, canonical coords, default ON.
   //   2b Notatki scouta: aggregated read-only from point.annotations,
@@ -544,6 +498,15 @@ export default function ScoutedTeamPage() {
       return prev.slice(0, -1);
     });
   };
+  // § field-views-sync — the Warstwy popover closes on any outside click (prototype
+  // parity: deferred listener so the opening click itself doesn't immediately close it).
+  useEffect(() => {
+    if (!layersOpen) return undefined;
+    const close = () => setLayersOpen(false);
+    const id = setTimeout(() => document.addEventListener('click', close), 0);
+    return () => { clearTimeout(id); document.removeEventListener('click', close); };
+  }, [layersOpen]);
+
   const handleCoachClear = () => { setCoachStrokes([]); setCoachRedo([]); };
   const enterCoachDrawMode = () => { setCoachEraser(false); setCoachCurrent(null); setCoachDrawMode(true); };
   const exitCoachDrawMode = async () => {
@@ -840,14 +803,8 @@ export default function ScoutedTeamPage() {
   const replaying = hmReplay && canReplay;
   const inertWhileReplaying = replaying ? { opacity: 0.4, pointerEvents: 'none' } : null;
 
-  // §116 Stage 4.2 — in LANDSCAPE the heatmap is promoted to the HERO
-  // (CanvasRailLayout) and the report column (scope pills + all sections,
-  // original order) moves to the rail BY REFERENCE; portrait is unchanged.
-  // The canvas + its overlay chrome (Rysuj chip / DrawToolbar) are defined ONCE
-  // and rendered in whichever branch is live; the below-canvas view controls
-  // (Stage / Layers / Isolate) stay with the heatmap section in the column, so
-  // in landscape they land in the rail at their original position.
-  const landscape = device.isLandscape;
+  // § field-views-sync — the field card renders only when there's a real field image
+  // + ≥1 match (else the report sections + empty states carry the page).
   const heroAvailable = teamMatches.length > 0 && !!field?.fieldImage;
 
   const heatmapCanvasEl = (
@@ -889,29 +846,8 @@ export default function ScoutedTeamPage() {
     </HeatmapCanvas>
   );
 
-  // § 78 2a — "✏ Rysuj" entry chip (PORTRAIT only — in landscape the draw entry is a
-  // fieldTool beside the phase bar, see fvFieldToolsEl). Only on the expanded heatmap.
-  const coachRysujChipEl = !coachDrawMode ? (
-    <div
-      role="button" aria-label={t('draw_coach_plan_aria')}
-      onClick={enterCoachDrawMode}
-      style={{
-        position: 'absolute', top: 8, right: 8, zIndex: 35,
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        minHeight: 36, padding: '0 12px', borderRadius: 18,
-        background: 'rgba(15, 23, 42, 0.85)',
-        border: `1px solid ${COLORS.border}`,
-        color: COLORS.text,
-        fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
-        backdropFilter: 'blur(8px)',
-        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-      }}
-    >
-      <Pencil size={16} strokeWidth={2.25} /> {t('coach_draw_label')}
-    </div>
-  ) : null;
-
-  // The draw toolbar (draw mode) — rides the canvas in BOTH orientations.
+  // The draw toolbar (draw mode) — rides the canvas (replaces the on-field Rysuj
+  // entry while drawing). Coach-plan write path unchanged (onDone → exitCoachDrawMode).
   const coachDrawToolbarEl = coachDrawMode ? (
     <DrawToolbar
       color={coachColor}
@@ -930,15 +866,159 @@ export default function ScoutedTeamPage() {
     />
   ) : null;
 
-  // Overlay chrome that rides the CANVAS — PORTRAIT path (chip + toolbar).
-  const heatmapChromeEl = (<>{coachRysujChipEl}{coachDrawToolbarEl}</>);
+  // ── § field-views-sync — on-field "Warstwy" popover (prototype OpponentAnalysis
+  // Wide/Premium) ─────────────────────────────────────────────────────────────────
+  // 3 INDEPENDENT filters as the prototype's primary triad (dot swatch + label +
+  // count badge), wired to the REAL prod layer state — Pozycje→hmShowPositions,
+  // Strzały→hmShowShots, Plan coacha→hmShowCoachPlan. We also surface prod's two
+  // additional real layers (Notatki scouta→hmShowAnnotations, Replay→hmReplay) so
+  // no live capability is lost vs. the old rail LAYERS zone; the badge counts only
+  // the three primary triad layers the prototype displays. §27: each swatch color is
+  // semantic (success/danger), amber = the active Plan-coacha/Notatki/Replay state.
+  const warstwyDefs = [
+    { key: 'pos', label: t('scouted_warstwy_positions'), color: COLORS.success, on: hmShowPositions, toggle: () => setHmShowPositions(v => !v), primary: true },
+    { key: 'shots', label: t('scouted_warstwy_shots'), color: COLORS.danger, on: hmShowShots, toggle: () => setHmShowShots(v => !v), primary: true },
+    { key: 'plan', label: t('scouted_layer_coach_plan'), color: COLORS.accent, on: hmShowCoachPlan, toggle: () => setHmShowCoachPlan(v => !v), primary: true },
+    { key: 'notes', label: t('scouted_layer_notes'), color: COLORS.accent, on: hmShowAnnotations, toggle: () => setHmShowAnnotations(v => !v), primary: false },
+    { key: 'replay', label: t('scouted_warstwy_replay'), color: COLORS.accent, on: replaying, toggle: canReplay ? () => setHmReplay(v => !v) : undefined, primary: false, disabled: !canReplay },
+  ];
+  const warstwyActiveCount = warstwyDefs.filter(d => d.primary && d.on).length;
+  const warstwyPopoverEl = (
+    <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 36 }}>
+      <div
+        role="button" aria-expanded={layersOpen} data-testid="warstwy-toggle"
+        onClick={(e) => { e.stopPropagation(); setLayersOpen(o => !o); }}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 44,
+          background: 'rgba(10,14,23,.82)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+          border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: 10, padding: '0 11px',
+          cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+        }}>
+        <span style={{ display: 'flex', color: COLORS.text }}><RdIcon name="layers" size={15} /></span>
+        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{t('scouted_layer_layers')}</span>
+        <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, color: COLORS.black, background: COLORS.accent, borderRadius: 999, minWidth: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', fontVariantNumeric: 'tabular-nums' }}>{warstwyActiveCount}</span>
+      </div>
+      {layersOpen && (
+        <div data-testid="warstwy-popover"
+          onClick={(e) => e.stopPropagation()}
+          style={{ marginTop: 7, background: ELEV.overlay, border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: 12, boxShadow: ELEV.shadow3, padding: 6, minWidth: 188 }}>
+          {warstwyDefs.map(d => {
+            const on = !!d.on, disabled = !!d.disabled;
+            return (
+              <div key={d.key} role="button" aria-pressed={on}
+                data-testid={`warstwy-${d.key}`}
+                onClick={disabled ? undefined : (e) => { e.stopPropagation(); d.toggle && d.toggle(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px', minHeight: 44,
+                  borderRadius: 8, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1,
+                  background: on ? `${d.color}1a` : 'transparent', WebkitTapHighlightColor: 'transparent',
+                }}>
+                <span style={{ width: 10, height: 10, borderRadius: '50%', flexShrink: 0, background: on ? d.color : 'transparent', border: `1.5px solid ${on ? d.color : COLORS.textMuted}` }} />
+                <span style={{ flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: on ? 800 : 600, color: on ? COLORS.text : COLORS.textDim }}>{d.label}</span>
+                {on && <span style={{ display: 'flex', color: d.color }}><RdIcon name="check" size={14} /></span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
-  // §116 Stage 4.2 — the landscape HERO: canvas + ONLY the draw toolbar (the Rysuj
-  // entry is a fieldTool beside the phase bar, not an overlapping top-right chip).
-  const heatmapHeroEl = (
-    <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0 }}>
-      {heatmapCanvasEl}
-      {coachDrawToolbarEl}
+  // § field-views-sync — on-field "Rysuj" entry (prototype amber field chip). Top-
+  // right ON the field; wires to the REAL prod enterCoachDrawMode (the coach-plan
+  // draw — write path untouched). In draw mode the DrawToolbar replaces it.
+  const fieldRysujEl = !coachDrawMode ? (
+    <div role="button" aria-label={t('draw_coach_plan_aria')} data-testid="field-rysuj"
+      onClick={enterCoachDrawMode}
+      style={{
+        position: 'absolute', top: 12, right: 12, zIndex: 36,
+        display: 'flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 12px',
+        background: 'rgba(10,14,23,.8)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+        border: `1px solid ${COLORS.accent}55`, borderRadius: 10,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      }}>
+      <span style={{ display: 'flex', color: COLORS.accent }}><RdIcon name="pencil" size={15} /></span>
+      <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent }}>{t('coach_draw_label')}</span>
+    </div>
+  ) : null;
+
+  // § field-views-sync — ATTACHED "Oś punktu" phase axis (prototype): a play button +
+  // scrubber track with the phase keyframes (Breakout/Settle/Mid/Endgame) BELOW the
+  // field, replacing the floating phase tabs in the field corner. Backed by the REAL
+  // prod phase state (hmPhase / phaseItems — gating + testids unchanged) and the
+  // replay (hmReplay / canReplay). Each keyframe carries its hm-phase-${key} testid so
+  // the per-phase report tables (and PaT Stage 2.5) stay driven from here.
+  const activePhaseIdx = Math.max(0, phaseItems.findIndex(p => p.key === hmPhase));
+  const phaseAxisPct = (idx) => phaseItems.length <= 1 ? 0 : Math.round((idx / (phaseItems.length - 1)) * 100);
+  const fieldPhaseAxisEl = (
+    <div data-testid="field-phase" style={{ background: ELEV.surface, borderTop: `1px solid ${ELEV.hairline}`, padding: '14px 18px', ...inertWhileReplaying }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 11 }}>
+        <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase' }}>{t('scouted_layer_stage')}</span>
+        <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: replaying ? COLORS.accent : COLORS.textMuted }}>
+          {replaying ? t('scouted_axis_playing') : (canReplay ? t('scouted_axis_hint') : '')}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <div role="button" aria-label="Replay" aria-pressed={replaying}
+          data-testid="field-phase-replay"
+          onClick={canReplay ? () => setHmReplay(v => !v) : undefined}
+          title={canReplay ? undefined : t('scouted_no_mid')}
+          style={{
+            width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: canReplay ? `linear-gradient(150deg, ${COLORS.accent}, ${COLORS.accentDim})` : ELEV.sunken,
+            color: canReplay ? COLORS.black : COLORS.textMuted,
+            cursor: canReplay ? 'pointer' : 'default', opacity: canReplay ? 1 : 0.5,
+            boxShadow: canReplay ? `0 3px 12px ${COLORS.accent}44` : 'none',
+          }}>{replaying ? <RdIcon name="pause" size={15} /> : <RdIcon name="play" size={15} />}</div>
+        <div role="tablist" aria-label={t('scouted_layer_stage')} style={{ flex: 1, minWidth: 0, paddingTop: 5 }}>
+          <div style={{ position: 'relative', height: 16, display: 'flex', alignItems: 'center' }}>
+            <div style={{ height: 6, width: '100%', borderRadius: 999, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, overflow: 'hidden' }}>
+              <div style={{ width: phaseAxisPct(activePhaseIdx) + '%', height: '100%', borderRadius: 999, background: COLORS.accent }} />
+            </div>
+            {phaseItems.map((p, i) => {
+              const pos = phaseAxisPct(i), active = p.key === hmPhase, passed = i <= activePhaseIdx;
+              return (
+                <div key={p.key} role="tab" aria-selected={active}
+                  data-testid={`field-phase-${p.key}`}
+                  title={p.disabled ? p.title : undefined}
+                  onClick={p.disabled ? undefined : () => setHmPhase(p.key)}
+                  style={{
+                    position: 'absolute', left: pos + '%', top: '50%', transform: 'translate(-50%,-50%)',
+                    width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: p.disabled ? 'default' : 'pointer', opacity: p.disabled ? 0.4 : 1,
+                    zIndex: 2, WebkitTapHighlightColor: 'transparent',
+                  }}>
+                  <span style={{
+                    width: active ? 15 : 12, height: active ? 15 : 12, borderRadius: '50%',
+                    background: passed ? COLORS.accent : ELEV.raised,
+                    border: `2px solid ${active ? '#fff' : (passed ? COLORS.accent : COLORS.accent + '88')}`,
+                    boxShadow: active ? `0 0 0 4px ${COLORS.accent}33` : 'none', transition: 'width .12s, height .12s',
+                  }} />
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ position: 'relative', height: 15, marginTop: 7 }}>
+            {phaseItems.map((p, i) => {
+              const pos = phaseAxisPct(i), active = p.key === hmPhase;
+              return (
+                <span key={p.key} data-testid={`hm-phase-${p.key}`}
+                  onClick={p.disabled ? undefined : () => setHmPhase(p.key)}
+                  title={p.disabled ? p.title : undefined}
+                  style={{
+                    position: 'absolute', left: pos + '%',
+                    transform: pos === 0 ? 'none' : pos === 100 ? 'translateX(-100%)' : 'translateX(-50%)',
+                    fontFamily: FONT, fontSize: 11, fontWeight: active ? 800 : 600,
+                    color: p.disabled ? COLORS.borderLight : active ? COLORS.accent : COLORS.textMuted,
+                    cursor: p.disabled ? 'default' : 'pointer', whiteSpace: 'nowrap',
+                    opacity: p.disabled ? 0.5 : 1,
+                  }}>{p.label}</span>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -1011,90 +1091,14 @@ export default function ScoutedTeamPage() {
     </div>
   ) : null;
 
-  // Below-canvas view controls — shared between the portrait expanded region
-  // and the landscape rail (where they keep the section's original position).
+  // Below-canvas view controls. § field-views-sync RESTRUCTURE: the layer toggles
+  // moved to the on-field Warstwy popover (warstwyPopoverEl) and the phase keyframes
+  // to the attached Oś-punktu axis (fieldPhaseAxisEl) — so this block now hosts ONLY
+  // the point axis (match scope) + the per-player Isolate selector. Same state, same
+  // testids (point-axis-*, isolate-toggle); just relocated chrome.
   const heatmapControlsEl = (
     <>
       {pointAxisEl}
-      {/* § Stage 2 — coach 3-way axis (Break/Settle/Mid) GOVERNS the view:
-          positions, the intrinsic zone choropleth, and the luf connectors all
-          resolve to the active stage. Surface-fill segmented bar (coach idiom).
-          Mid is greyed when no point captured it. */}
-      <div style={{ padding: '8px 16px 0', ...inertWhileReplaying }}>
-        <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 5 }}>{t('scouted_layer_stage')}</div>
-        <SegmentedControl
-          items={phaseItems}
-          value={hmPhase}
-          onChange={setHmPhase}
-        />
-      </div>
-      {/* Subordinate layer toggles — sit beneath the governing mode group.
-          Zones are no longer here (intrinsic per mode). */}
-      <div style={{ padding: '10px 16px 0', fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', letterSpacing: 0.4 }}>{t('scouted_layer_layers')}</div>
-      <div style={{ display: 'flex', gap: 6, padding: '6px 16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <div onClick={() => setHmShowPositions(v => !v)} style={{
-          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-          background: hmShowPositions ? 'rgba(34,197,94,0.15)' : 'transparent',
-          color: hmShowPositions ? COLORS.success : COLORS.textMuted,
-          border: `1px solid ${hmShowPositions ? 'rgba(34,197,94,0.4)' : COLORS.border}`,
-          ...inertWhileReplaying,
-        }}>{t('scouted_layer_positions')}</div>
-        <div onClick={() => setHmShowShots(v => !v)} style={{
-          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-          background: hmShowShots ? 'rgba(239,68,68,0.15)' : 'transparent',
-          color: hmShowShots ? COLORS.danger : COLORS.textMuted,
-          border: `1px solid ${hmShowShots ? 'rgba(239,68,68,0.4)' : COLORS.border}`,
-          ...inertWhileReplaying,
-        }}>{t('scouted_layer_shots')}</div>
-        {/* § Stage 6-lite — Replay toggle. Reuses the layer-pill idiom; amber
-            (accent) only while active (playing) per § 27 color discipline.
-            Disabled when no Settle/Mid keyframes exist to play. */}
-        <div
-          onClick={canReplay ? () => setHmReplay(v => !v) : undefined}
-          title={canReplay ? undefined : 'No Settle/Mid stages captured yet'}
-          style={{
-            padding: '5px 14px', borderRadius: RADIUS.full,
-            cursor: canReplay ? 'pointer' : 'default',
-            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-            background: replaying ? `${COLORS.accent}1f` : 'transparent',
-            color: replaying ? COLORS.accent : COLORS.textMuted,
-            border: `1px solid ${replaying ? `${COLORS.accent}66` : COLORS.border}`,
-            opacity: canReplay ? 1 : 0.4,
-          }}>{t('scouted_layer_replay')}</div>
-        {/* § OSTRZAŁ — "Strefy" toggle removed: zones are intrinsic per mode now
-            (always-on choropleth keyed to hmPhase). */}
-        {/* § 78 Stage 2 — annotation layer toggles. Neutral styling (no semantic
-            color) since strokes are multi-color per stroke and Jacek's spec was
-            "labelowy pill". Default ON / OFF per § 78 brief. */}
-        <div onClick={() => setHmShowCoachPlan(v => !v)} style={{
-          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-          background: hmShowCoachPlan ? `${COLORS.accent}1f` : 'transparent',
-          color: hmShowCoachPlan ? COLORS.accent : COLORS.textMuted,
-          border: `1px solid ${hmShowCoachPlan ? `${COLORS.accent}66` : COLORS.border}`,
-          ...inertWhileReplaying,
-        }}>{t('scouted_layer_coach_plan')}</div>
-        <div onClick={() => setHmShowAnnotations(v => !v)} style={{
-          padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-          fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-          background: hmShowAnnotations ? `${COLORS.accent}1f` : 'transparent',
-          color: hmShowAnnotations ? COLORS.accent : COLORS.textMuted,
-          border: `1px solid ${hmShowAnnotations ? `${COLORS.accent}66` : COLORS.border}`,
-          ...inertWhileReplaying,
-        }}>{t('scouted_layer_notes')}</div>
-        {/* Collapse is a portrait scroll-estate device — meaningless when the
-            hero is promoted (§116 Stage 4.2), so it hides in landscape. */}
-        {!landscape && (
-          <div onClick={() => setHeatmapExpanded(false)} style={{
-            padding: '5px 14px', borderRadius: RADIUS.full, cursor: 'pointer',
-            fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-            background: 'transparent', color: COLORS.textMuted,
-            border: `1px solid ${COLORS.border}`,
-          }}>{t('scouted_layer_collapse')}</div>
-        )}
-      </div>
       {/* § OSTRZAŁ B3 — per-player isolation selector. Tap a roster player →
           only their positions/cones/zones read full, the rest dim; tap again to
           clear. Chip-based (not canvas-tap): the heatmap aggregates many
@@ -1151,72 +1155,87 @@ export default function ScoutedTeamPage() {
     />
   );
 
-  // Scope pills (§ 60.6) — Ostatni mecz / Ten turniej / Cały layout /
-  // Mecz ▾ picker. Layout pill only renders when tournament shares a
-  // layout with another tournament; rest always visible.
-  const scopePillsEl = (() => {
-        const layoutTs = currentLayoutId
-          ? tournaments.filter(t => t.layoutId === currentLayoutId)
-          : [];
-        const showLayoutPill = currentLayoutId && layoutTs.length > 1;
+  // § field-views-sync — the FIELD CARD (prototype OpponentAnalysisWide/Premium
+  // `fieldCard`): one rounded card = the field region (HeatmapCanvas + on-field
+  // Warstwy popover + Rysuj entry + draw toolbar) with the attached Oś-punktu phase
+  // axis BELOW it, then the point-axis/isolate controls. Replaces the old expand/
+  // collapse heatmap section + the floating phase tabs. The HeatmapCanvas + coach-
+  // draw wiring are the SAME elements (heatmapCanvasEl) — only the chrome changed.
+  // The field region is NOT a fixed-height box: HeatmapCanvas sizes width-first
+  // ('fit') and drives its own height (real prod sizing — a forced fixed height would
+  // clip the canvas, since HeatmapCanvas hardcodes its sizing strategy). The card
+  // width is governed by the grid column (≈1.45fr wide / full-bleed narrow).
+  const fieldCardEl = heroAvailable ? (
+    <div data-testid="opponent-field-card" style={{ background: ELEV.surface, border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: 16, overflow: 'hidden', boxShadow: ELEV.shadow2 }}>
+      <div style={{ position: 'relative', background: '#0a1410' }}>
+        {heatmapCanvasEl}
+        {coachDrawMode && coachDrawToolbarEl}
+        {!coachDrawMode && warstwyPopoverEl}
+        {!coachDrawMode && fieldRysujEl}
+      </div>
+      {/* attached Oś-punktu axis (phase keyframes + play) */}
+      {fieldPhaseAxisEl}
+      {/* point axis + isolate sit directly under the card (match scope / drill-down) */}
+      <div style={{ background: ELEV.surface, borderTop: `1px solid ${ELEV.hairline}` }}>
+        {heatmapControlsEl}
+      </div>
+    </div>
+  ) : null;
 
-        const matchPillLabel = isMatchScope
-          ? `vs ${selectedOppTeam?.name || '?'}`
-          : t('scope_match_picker');
+  // § field-views-sync — SCOPE segmented control (prototype rail top): Ostatni mecz /
+  // Ten turniej / Ten layout, an amber-fill segment (replaces the wrapping pill row).
+  // Same scope state/URL writes; the Mecz ▾ picker pill rides alongside (match scope
+  // is data-driven via the picker + the match list, not a fixed segment).
+  const scopeSegmentEl = (() => {
+    const layoutTs = currentLayoutId ? tournaments.filter(t => t.layoutId === currentLayoutId) : [];
+    const showLayoutSeg = currentLayoutId && layoutTs.length > 1;
+    const segs = [
+      { key: 'lastMatch', label: t('scope_last_match'), active: isLastMatchScope, disabled: !lastMatch, onClick: () => setSearchParams({ scope: 'lastMatch' }) },
+      { key: 'tournament', label: t('scope_tournament'), active: isTournamentScope, onClick: () => setSearchParams({}) },
+      ...(showLayoutSeg ? [{ key: 'layout', label: `${t('scope_layout')} (${layoutTs.length})`, active: isLayoutScope, onClick: () => setSearchParams({ scope: 'layout' }) }] : []),
+    ];
+    const matchActive = isMatchScope;
+    return (
+      <div data-testid="scope-segment" style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 6, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 12, padding: 4 }}>
+          {segs.map(s => (
+            <div key={s.key} role="button" aria-pressed={s.active} aria-disabled={s.disabled || undefined}
+              data-testid={`scope-seg-${s.key}`}
+              onClick={s.disabled ? undefined : s.onClick}
+              title={s.disabled ? t('scope_no_closed') : undefined}
+              style={{
+                flex: 1, textAlign: 'center', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderRadius: 9, cursor: s.disabled ? 'default' : 'pointer', opacity: s.disabled ? 0.45 : 1,
+                background: s.active ? COLORS.accent : 'transparent',
+                color: s.active ? COLORS.black : COLORS.textDim,
+                fontFamily: FONT, fontSize: 12, fontWeight: 800, letterSpacing: 0.2,
+                WebkitTapHighlightColor: 'transparent',
+              }}>{s.label}</div>
+          ))}
+        </div>
+        {/* Mecz ▾ picker — a separate affordance (the match scope opens a specific
+            match's points); active state shows the opponent + a clear ✕. */}
+        <div role="button" data-testid="scope-match-picker"
+          onClick={() => matchActive ? setSearchParams({}) : setMatchPickerOpen(true)}
+          style={{
+            marginTop: 8, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            borderRadius: 10, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+            background: matchActive ? COLORS.accentA08 : 'transparent',
+            border: `1px solid ${matchActive ? COLORS.accent : COLORS.border}`,
+            color: matchActive ? COLORS.accent : COLORS.textDim,
+            fontFamily: FONT, fontSize: 12, fontWeight: 700,
+          }}>
+          <span>{matchActive ? `vs ${selectedOppTeam?.name || '?'}` : t('scope_match_picker')}</span>
+          {matchActive && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}
+        </div>
+      </div>
+    );
+  })();
 
-        const Pill = ({ active, disabled, onClick, title, children }) => (
-          <div
-            onClick={disabled ? undefined : onClick}
-            title={title}
-            style={{
-              padding: '6px 12px', borderRadius: 8,
-              background: active ? COLORS.accentA08 : 'transparent',
-              border: `1px solid ${active ? COLORS.accent : COLORS.border}`,
-              color: active ? COLORS.accent : (disabled ? COLORS.borderLight : COLORS.textDim),
-              fontFamily: FONT, fontSize: 12, fontWeight: 600,
-              cursor: disabled ? 'default' : 'pointer',
-              opacity: disabled ? 0.55 : 1,
-              minHeight: 44,
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}
-          >
-            {children}
-          </div>
-        );
+  // (§ field-views-sync — the scope PILLS were replaced by the scope SEGMENT at the
+  // top of the rail, see scopeSegmentEl above. The §60.6 scope semantics — Ostatni
+  // mecz / Ten turniej / Ten layout + Mecz ▾ picker — are preserved verbatim there.)
 
-        return (
-          <div style={{ display: 'flex', gap: 8, padding: '8px 16px 0', flexWrap: 'wrap' }}>
-            <Pill
-              active={isLastMatchScope}
-              disabled={!lastMatch}
-              title={!lastMatch ? t('scope_no_closed') : undefined}
-              onClick={() => setSearchParams({ scope: 'lastMatch' })}
-            >
-              {t('scope_last_match')}
-            </Pill>
-            <Pill active={isTournamentScope} onClick={() => setSearchParams({})}>
-              {t('scope_tournament')}
-            </Pill>
-            {showLayoutPill && (
-              <Pill active={isLayoutScope} onClick={() => setSearchParams({ scope: 'layout' })}>
-                {t('scope_layout')} ({layoutTs.length})
-              </Pill>
-            )}
-            <Pill
-              active={isMatchScope}
-              onClick={() => isMatchScope ? setSearchParams({}) : setMatchPickerOpen(true)}
-            >
-              <span>{matchPillLabel}</span>
-              {isMatchScope && <span style={{ fontSize: 11, opacity: 0.7 }}>✕</span>}
-            </Pill>
-          </div>
-        );
-      })();
-
-  // Portrait: the column IS the page scroller (flex:1, overflowY:auto). Landscape:
-  // the column is content-height (flex:0 0 auto) and the RAIL scrolls as one unit
-  // (zones + column) → expanding any zone grows the rail's scroll, never steals the
-  // report column's height (the expand→squeeze regression is gone structurally).
   // Match score bar (§ sub-stage 1) — a prominent header strip rendered at the top
   // of the report column ONLY when a single match is scoped (isMatchScope). Shows
   // {scoutedTeam} {myScore} : {oppScore} {opponent} with W/L/draw color (the SAME
@@ -1248,7 +1267,7 @@ export default function ScoutedTeamPage() {
       }}>
         {/* scouted (this) team */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }}>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, textAlign: 'right', overflowWrap: 'normal', wordBreak: 'normal', textWrap: 'balance' }}>
             {team?.name || 'Team'}
           </span>
           {team && <TeamBadge team={team} size={26} />}
@@ -1270,7 +1289,7 @@ export default function ScoutedTeamPage() {
         {/* opponent team */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
           {selectedOppTeam && <TeamBadge team={selectedOppTeam} size={26} />}
-          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700, color: COLORS.text, overflowWrap: 'normal', wordBreak: 'normal', textWrap: 'balance' }}>
             {selectedOppTeam?.name || '?'}
           </span>
         </div>
@@ -1278,11 +1297,11 @@ export default function ScoutedTeamPage() {
     );
   })();
 
-  const renderColumn = (scroll) => (
-      // maxWidth in the landscape rail keeps the report at a comfortable measure — a
-      // wide (report-first) rail must not stretch the table name columns (flex:1)
-      // into a sea of empty space (§118.1). Portrait is already page-capped.
-      <div ref={scrollContainerRef} data-testid="scouted-report-column" style={{ ...(scroll ? { flex: 1, overflowY: 'auto' } : { flex: '0 0 auto', maxWidth: 560 }), display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 80 }}>
+  // § field-views-sync — the REPORT column (coach numeric sections). Content-height;
+  // the page-level container (the useWide grid) owns scrolling. The fixed-width table
+  // columns + word-wise name wrapping keep names full + un-clipped at any rail width.
+  const renderColumn = () => (
+      <div data-testid="scouted-report-column" style={{ display: 'flex', flexDirection: 'column', gap: 0, paddingBottom: 24 }}>
         {/* Match score bar — match-scoped only (sub-stage 1) */}
         {matchScoreBarEl}
         {/* Data confidence banner — contextual qualifier */}
@@ -1436,84 +1455,9 @@ export default function ScoutedTeamPage() {
         )}
 
         {/* ─── ABOVE FOLD — Coach Brief priorities (Sławek § 34 + § 60) ─── */}
-
-        {/* Heatmap — promoted to top of analysis, expanded by default (§ 60.1).
-            §116 Stage 4.2: in landscape the canvas is the page HERO (promoted
-            out of the column), so this section keeps only the view controls at
-            their original position in the rail. */}
-        {/* Field View shell: in landscape the heatmap controls (Stage/Layers/Isolate)
-            moved OUT of the column — Stage+▶ → floating phaseControl, Layers/Isolate →
-            structured rail zones (fvControlZonesEl, rendered above this column). So the
-            column shows only the coach REPORT sections here. */}
-        {teamMatches.length > 0 && !(landscape && heroAvailable) && (
-          <>
-            <SectionHeader>{t('section_heatmap')}</SectionHeader>
-            <div style={{ margin: '0 16px 4px' }}>
-              {!heatmapExpanded ? (
-                <div
-                  onClick={() => setHeatmapExpanded(true)}
-                  style={{
-                    height: 110, borderRadius: 12, overflow: 'hidden',
-                    background: '#0a1410', border: '1px solid #162016',
-                    cursor: 'pointer', position: 'relative',
-                  }}>
-                  <HeatmapCanvas
-                    fieldImage={field.fieldImage}
-                    points={heatmapDisplayPoints}
-                    rosterPlayers={roster}
-                    bunkers={field.bunkers || []}
-                    dangerZone={field.dangerZone}
-                    sajgonZone={field.sajgonZone}
-                    showPositions={true}
-                    showShots={true}
-                    heroPlayerIds={heroPlayerIds}
-                  />
-                  <div style={{
-                    position: 'absolute', left: 0, right: 0, bottom: 0,
-                    padding: '4px 10px',
-                    fontFamily: FONT, fontSize: 10, fontWeight: 600,
-                    color: COLORS.textSubtle, textAlign: 'center',
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
-                  }}>{t('scouted_heatmap_expand')}</div>
-                </div>
-              ) : (
-                <div style={heatmapFullscreen ? {
-                  // § 81 — heatmap-region full-viewport overlay. Same JSX
-                  // subtree as inline (no remount) — only the wrapper style
-                  // swaps. Covers viewport; dashboard underneath is hidden.
-                  // Background = page bg so notch / dynamic island reads as
-                  // a single immersive surface. Pills sit at the bottom of
-                  // the flex column with safe-area-aware padding.
-                  position: 'fixed', inset: 0, zIndex: 60,
-                  background: COLORS.bg,
-                  display: 'flex', flexDirection: 'column',
-                  overflow: 'hidden',
-                  paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-                } : { borderRadius: 12, overflow: 'hidden', background: '#0a1410', border: '1px solid #162016', position: 'relative' }}>
-                  {heatmapCanvasEl}
-                  {/* § 81 ScoutedTeam immersive — heatmap-region overlay
-                      trigger. top-left placement avoids collision with the
-                      "✏ Rysuj" chip (top-right). Both orientations (NO
-                      auto-on-landscape — entry is explicit on this surface
-                      per § 81 boundary). `isLandscape={false}` bypasses the
-                      canvas-page rotation gate baked into the shared
-                      component (which is for canvas-primary surfaces, not
-                      scroll-dashboards). Visible on the expanded region in
-                      both inline + fullscreen states (same Icon flips
-                      Maximize2 ↔ Minimize2 via fsActive). */}
-                  <FullscreenToggle
-                    placement="top-left"
-                    fsActive={heatmapFullscreen}
-                    onToggle={heatmapFullscreen ? exitHeatmapFs : enterHeatmapFs}
-                    isLandscape={false}
-                  />
-                  {heatmapChromeEl}
-                  {heatmapControlsEl}
-                </div>
-              )}
-            </div>
-          </>
-        )}
+        {/* § field-views-sync — the heatmap is no longer a section inside the report
+            column: it is the dedicated FIELD CARD (fieldCardEl) rendered beside/above
+            the rail. The report column holds ONLY the coach numeric sections. */}
 
         {/* Section 1 — Breakouty */}
         {breakSurvival.length > 0 && (() => {
@@ -1553,7 +1497,7 @@ export default function ScoutedTeamPage() {
                     }}>
                       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <SideTag side={b.side || 'center'} />
-                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, minWidth: 0, overflowWrap: 'anywhere' }}>{b.name}</span>
+                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, minWidth: 0, overflowWrap: 'normal', wordBreak: 'normal', textWrap: 'balance' }}>{b.name}</span>
                         {b.type && (
                           <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
                         )}
@@ -1848,7 +1792,7 @@ export default function ScoutedTeamPage() {
                         #{i + 1}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, overflowWrap: 'normal', wordBreak: 'normal', textWrap: 'balance' }}>
                           {h.number ? `#${h.number} ` : ''}{dn(playersById[h.playerId] || { name: h.fullName, nickname: h.name !== h.fullName ? h.name : undefined })}
                         </div>
                         <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
@@ -2292,12 +2236,12 @@ export default function ScoutedTeamPage() {
           )}
         </div>
 
-        {/* Matches — below fold in PORTRAIT (gated by the show-more toggle, default
-            closed, byte-identical to before). In LANDSCAPE this is the master pane of
-            the master-detail flow, so it's surfaced unconditionally and opens by
-            default (the list drives the heatmap/score-bar scope). */}
-        {(landscape || showAdditional) && (
-        <CollapsibleSection title={t('section_matches', teamMatches.length)} testId="sec-matches" defaultOpen={landscape}>
+        {/* Matches — § field-views-sync: in WIDE (≥860, field+rail side-by-side) this
+            is the master pane of the master-detail flow (row → match scope drives the
+            field card + score bar), surfaced + default-open. In NARROW it stays behind
+            the show-more toggle and the whole row navigates to the match page. */}
+        {(wide || showAdditional) && (
+        <CollapsibleSection title={t('section_matches', teamMatches.length)} testId="sec-matches" defaultOpen={wide}>
 
           {!teamMatches.length && <EmptyState icon="📋" text={t('b13_add_match_or_schedule')} />}
 
@@ -2316,14 +2260,14 @@ export default function ScoutedTeamPage() {
             const isDraw = isFinal && hasScore && myScore === oppScore;
             const isScheduled = !hasScore && !isFinal;
             const resultColor = won ? COLORS.success : lost ? COLORS.danger : isDraw ? COLORS.accent : COLORS.text;
-            // Sub-stage 2 — master-detail in LANDSCAPE: the row is the master pane.
-            // Click → select the match scope (heatmap + score-bar update on the right)
+            // Sub-stage 2 — master-detail in WIDE: the row is the master pane.
+            // Click → select the match scope (field card + score-bar update beside it)
             // instead of navigating away; the selected row is accent-highlighted; an
             // explicit "open match" affordance keeps the full match page reachable.
-            // PORTRAIT is unchanged — the whole row navigates as today.
-            const isSelectedRow = landscape && isMatchScope && matchIdParam === m.id;
+            // NARROW is unchanged — the whole row navigates as today.
+            const isSelectedRow = wide && isMatchScope && matchIdParam === m.id;
             const openMatch = () => navigate(`/tournament/${tournamentId}/match/${m.id}`);
-            const rowClick = landscape
+            const rowClick = wide
               ? () => setSearchParams({ scope: 'match', mid: m.id })
               : openMatch;
             return (
@@ -2352,9 +2296,9 @@ export default function ScoutedTeamPage() {
                 ) : (
                   <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 600, color: COLORS.textMuted }}>— : —</span>
                 )}
-                {/* Open-match affordance — landscape only; portrait keeps the
+                {/* Open-match affordance — wide only; narrow keeps the
                     whole-row-navigates behaviour so no second control competes. */}
-                {landscape && (
+                {wide && (
                   <div role="button" aria-label={t('open_match')} data-testid="open-match-btn"
                     onClick={(e) => { e.stopPropagation(); openMatch(); }}
                     style={{
@@ -2476,115 +2420,52 @@ export default function ScoutedTeamPage() {
     </>
   );
 
-  // ── Field View shell wiring (reference impl, 'scouted-team' descriptor) ──
-  // STATE→PROPS binding only (the thickened contract carries the structure). The
-  // draw entry stays the existing floating "Rysuj" chip (heatmapChromeEl) + §81
-  // fullscreen is landscape-suppressed, so fieldTools is null here.
-  const fvPhaseControlEl = (
-    <FieldPhaseControl
-      kind="coach"
-      phases={phaseItems}
-      phase={hmPhase} onPhase={setHmPhase}
-      done={{ break: true, settle: canReplay, mid: hasMid, endgame: hasEndgame }}
-      canReplay={canReplay} replaying={replaying}
-      onReplay={() => setHmReplay(v => !v)}
-    />
-  );
-  const fvLayerItems = [
-    { key: 'positions', icon: FIELD_LAYERS.positions.icon, label: t('scouted_layer_positions'), on: hmShowPositions, onToggle: () => setHmShowPositions(v => !v), disabled: replaying },
-    { key: 'shots', icon: FIELD_LAYERS.shots.icon, label: t('scouted_layer_shots'), on: hmShowShots, onToggle: () => setHmShowShots(v => !v), disabled: replaying },
-    { key: 'coachPlan', icon: FIELD_LAYERS.coachPlan.icon, label: t('scouted_layer_coach_plan'), on: hmShowCoachPlan, onToggle: () => setHmShowCoachPlan(v => !v), disabled: replaying },
-    { key: 'notes', icon: FIELD_LAYERS.notes.icon, label: t('scouted_layer_notes'), on: hmShowAnnotations, onToggle: () => setHmShowAnnotations(v => !v), disabled: replaying },
-  ];
-  const fvIsolateItems = roster.map(p => ({
-    key: p.id, label: (p.name || p.nickname) ? dn(p) : `#${p.number}`,
-    avatar: p.number != null ? String(p.number) : '•', accent: p.playerColor || undefined,
-    active: hmSelectedPlayer === p.id,
-    onSelect: () => setHmSelectedPlayer(hmSelectedPlayer === p.id ? null : p.id),
-  }));
-  const fvIsolateActive = hmSelectedPlayer ? roster.find(p => p.id === hmSelectedPlayer) : null;
-  const fvLayersActive = fvLayerItems.filter(it => (it.perTeam ? (it.a?.on || it.b?.on) : it.on)).length;
-  // Active-count pill shown in a collapsed zone header (so folding never hides that
-  // a control group is engaged). Amber + black = the active/brand chip language.
-  const railCountPill = { fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 800, color: COLORS.black, background: COLORS.accent, borderRadius: RADIUS.full, minWidth: 18, textAlign: 'center', padding: '1px 6px' };
-  // Every rail zone is INDEPENDENTLY collapsible (each RailZone owns its useState) —
-  // NOT an accordion. The whole rail scrolls as one unit (see renderColumn(false) +
-  // the rail wrapper), so expanding any zone never squeezes the report column.
-  const fvControlZonesEl = (
-    <>
-      <RailZone label="Scope" collapsible testId="rail-scope-toggle">{scopePillsEl}</RailZone>
-      {/* § sub-stage 3 — POINT axis as a rail zone (match scope only). Same scrubber
-          definition as the portrait controls (one source) — selecting a stop filters
-          the HERO field to that single point. */}
-      {pointAxisEl && (
-        <RailZone label={t('scouted_point_axis')} collapsible testId="rail-point-axis-toggle"
-          headerExtra={selectedPointId ? <span style={railCountPill}>{matchPointsOrdered.findIndex(p => p.id === selectedPointId) + 1}</span> : null}>
-          {pointAxisEl}
-        </RailZone>
-      )}
-      <RailZone label={t('scouted_layer_layers')} collapsible defaultCollapsed testId="rail-layers-toggle"
-        headerExtra={fvLayersActive > 0 ? <span style={railCountPill}>{fvLayersActive}</span> : null}>
-        <RailToggleList items={fvLayerItems} />
-      </RailZone>
-      {roster.length > 0 && (
-        <RailZone label={t('scouted_layer_isolate')} last collapsible defaultCollapsed
-          testId="rail-isolate-toggle"
-          headerExtra={fvIsolateActive ? <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700, color: COLORS.accent }}>{(fvIsolateActive.name || fvIsolateActive.nickname) ? dn(fvIsolateActive) : `#${fvIsolateActive.number}`}</span> : null}>
-          <RailItemList items={fvIsolateItems} />
-        </RailZone>
-      )}
-    </>
-  );
-  const fvPins = [
-    { key: 'positions', icon: FIELD_LAYERS.positions.icon, label: t('scouted_layer_positions'), on: hmShowPositions, onToggle: () => setHmShowPositions(v => !v) },
-    { key: 'coachPlan', icon: FIELD_LAYERS.coachPlan.icon, label: t('scouted_layer_coach_plan'), on: hmShowCoachPlan, onToggle: () => setHmShowCoachPlan(v => !v) },
-    { key: 'notes', icon: FIELD_LAYERS.notes.icon, label: t('scouted_layer_notes'), on: hmShowAnnotations, onToggle: () => setHmShowAnnotations(v => !v) },
-  ];
-  // fieldTools — the draw entry as an ICON beside the phase bar (landscape; the toolbar
-  // replaces it on the field in draw mode). Mockup `.f-btn`, real-scale ≥44px tap target.
-  const fvFieldToolsEl = !coachDrawMode ? (
-    <div role="button" aria-label={t('draw_coach_plan_aria')} data-testid="fv-tool-draw"
-      onClick={enterCoachDrawMode}
+  // § field-views-sync — the scout CTA at the foot of the rail (prototype). Reuses
+  // the existing "open this match → scout a point" door: a single accent action.
+  const scoutCtaEl = isMatchScope && selectedMatch ? (
+    <div role="button" data-testid="opponent-scout-cta"
+      onClick={() => navigate(`/tournament/${tournamentId}/match/${selectedMatch.id}`)}
       style={{
-        minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(13,17,23,0.92)', border: `1px solid ${COLORS.border}`, borderRadius: 8,
-        color: COLORS.text, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-        backdropFilter: 'blur(8px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
+        margin: '4px 16px 0', minHeight: 48, padding: '0 15px', borderRadius: 13,
+        background: COLORS.accent, color: COLORS.black,
+        fontFamily: FONT, fontSize: 15, fontWeight: 800, cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
       }}>
-      <Pencil size={18} strokeWidth={2.25} />
+      <RdIcon name="target" size={17} /> {t('open_match')}
     </div>
   ) : null;
 
-  // §116 Stage 4.2 — LANDSCAPE (hero available): the heatmap is the HERO, the
-  // report column (sections) is the rail BY REFERENCE. The view controls now live
-  // in structured rail zones (scope/layers/isolate) + the floating phaseControl;
-  // primaryAction is null (coach plan auto-persists on draw-done, GAP B). Collapses
-  // to the §116 strip on cramped tablet-landscape, pinning the most-used layers.
-  if (landscape && heroAvailable) {
-    return (
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '100dvh', zIndex: 100, background: COLORS.bg, display: 'flex', flexDirection: 'column' }}>
-        <CanvasRailLayout
-          isLandscape
-          aspect={16 / 10}
-          railMin={200}
-          header={pageHeaderEl}
-          artifact={heatmapHeroEl}
-          phaseControl={fvPhaseControlEl}
-          fieldTools={fvFieldToolsEl}
-          rail={<div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>{fvControlZonesEl}{renderColumn(false)}</div>}
-          collapsed={{ tabs: [], pins: fvPins, count: null, onBack: () => navigate('/') }}
-        />
-        {modalsEl}
-      </div>
-    );
-  }
+  // § field-views-sync — ONE responsive layout (prototype OpponentAnalysisWide /
+  // OpponentAnalysisPremium). `wide` (≥860, measured on wideRef) → field card + rail
+  // SIDE BY SIDE (field sticky); `<860` → field card ON TOP, rail (scope segment +
+  // tables + CTA) BELOW in a single column. No orientation gate, no fixed overlay:
+  // the same chrome at phone / tablet / desktop. The coach-draw write path and all
+  // data hooks are unchanged — only the container changed.
+  const railEl = (
+    <div style={{ minWidth: 0, marginTop: wide ? 0 : 22 }}>
+      {scopeSegmentEl}
+      {renderColumn()}
+      {scoutCtaEl}
+    </div>
+  );
 
-  // PORTRAIT (and landscape without a hero) — the original stacked layout.
   return (
-    <div style={{ minHeight: '100vh', maxWidth: R.layout.maxWidth || 640, margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div ref={wideRef} style={{ minHeight: '100vh', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       {pageHeaderEl}
-      {scopePillsEl}
-      {renderColumn(true)}
+      <div style={{ flex: 1, padding: wide ? '20px 24px 48px' : '14px 0 44px' }}>
+        <div style={{
+          maxWidth: 1280, margin: '0 auto',
+          display: wide ? 'grid' : 'block',
+          gridTemplateColumns: wide ? 'minmax(0, 1.45fr) minmax(380px, 1fr)' : '1fr',
+          gap: 24, alignItems: 'start',
+        }}>
+          <div style={{ position: wide ? 'sticky' : 'static', top: wide ? 16 : 'auto', minWidth: 0, padding: wide ? 0 : '0 16px' }}>
+            {fieldCardEl}
+          </div>
+          <div style={{ padding: wide ? 0 : 0 }}>{railEl}</div>
+        </div>
+      </div>
       {modalsEl}
     </div>
   );

@@ -1908,6 +1908,13 @@ const T = {
     scouted_layer_coach_plan: 'Plan coacha',
     scouted_layer_notes:      'Notatki scouta',
     scouted_layer_collapse:   '⇱ Zwiń',
+    /* ScoutedTeamPage — Warstwy popover (clean labels; the popover draws its own
+       swatch dot, so no glyph prefix) + attached point-axis status hints */
+    scouted_warstwy_positions: 'Pozycje',
+    scouted_warstwy_shots:     'Strzały',
+    scouted_warstwy_replay:    'Replay',
+    scouted_axis_playing:      'odtwarzanie…',
+    scouted_axis_hint:         'wybierz fazę',
     /* QuickLogView */
     quicklog_no_players:      'Brak graczy w składzie',
     /* ─── regression-sweep (2026-06-13) ─── */
@@ -4167,6 +4174,12 @@ const T = {
     scouted_layer_coach_plan: 'Coach plan',
     scouted_layer_notes:      'Scout notes',
     scouted_layer_collapse:   '⇱ Collapse',
+    /* ScoutedTeamPage — Warstwy popover (clean labels) + attached axis hints */
+    scouted_warstwy_positions: 'Positions',
+    scouted_warstwy_shots:     'Shots',
+    scouted_warstwy_replay:    'Replay',
+    scouted_axis_playing:      'playing…',
+    scouted_axis_hint:         'pick a stage',
     /* QuickLogView */
     quicklog_no_players:      'No players in this squad',
     /* ─── regression-sweep (2026-06-13) ─── */
