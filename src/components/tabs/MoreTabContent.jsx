@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { COLORS, FONT, FONT_SIZE } from '../../utils/theme';
+import { COLORS, FONT, FONT_SIZE, ELEV } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useWorkspace } from '../../hooks/useWorkspace';
 import { useViewAs } from '../../hooks/useViewAs';
@@ -73,6 +73,14 @@ export default function MoreTabContent({
             <MoreItem iconName="flag" label={t('close_tournament') || 'Zamknij turniej'} accent onClick={onCloseTournament} isLast />
           )}
         </MoreSection>
+      )}
+
+      {/* DISPLAY — super-admin-only display toggles. Reuses the existing
+          per-workspace piiSettings (avatarMode / surnameMode) — same prefs the
+          super-admin Workspaces page edits, surfaced here as quick toggles.
+          Gated isSuperAdmin → hidden for every other role. */}
+      {isSuperAdmin && (
+        <DisplaySection workspace={workspace} t={t} />
       )}
 
       {/* 2. ZARZĄDZAJ — coach + admin only (pure-player + scout-only hidden) */}
@@ -242,6 +250,102 @@ function ScoutingSection({ navigate, t }) {
         isLast
       />
     </MoreSection>
+  );
+}
+
+/* ─── DISPLAY section (super-admin) ────────────────────────────────── */
+
+// Quick toggles for the two per-workspace display prefs (piiSettings). Reuses
+// ds.setWorkspacePiiSettings with the same optimistic-local-state + merge-the-
+// existing-map + revert-on-error pattern as WorkspacesAdminPage (lines 139-170).
+// No new data model — ON maps to the privacy-preserving mode of each pref.
+function DisplaySection({ workspace, t }) {
+  const slug = workspace?.slug;
+
+  // Avatars: ON = 'avatar' (1-bit initials), OFF = 'photo' (default).
+  const savedAvatarMode = workspace?.piiSettings?.avatarMode || 'photo';
+  const [avatarMode, setAvatarMode] = useState(savedAvatarMode);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  useEffect(() => { setAvatarMode(workspace?.piiSettings?.avatarMode || 'photo'); }, [slug, savedAvatarMode]);
+
+  // Surnames: ON = 'short' (first name + initial), OFF = 'full' (default).
+  const savedSurnameMode = workspace?.piiSettings?.surnameMode || 'full';
+  const [surnameMode, setSurnameMode] = useState(savedSurnameMode);
+  const [savingSurname, setSavingSurname] = useState(false);
+  useEffect(() => { setSurnameMode(workspace?.piiSettings?.surnameMode || 'full'); }, [slug, savedSurnameMode]);
+
+  const toggleAvatars = async () => {
+    if (savingAvatar || !slug) return;
+    const next = avatarMode === 'avatar' ? 'photo' : 'avatar';
+    setAvatarMode(next); // optimistic
+    setSavingAvatar(true);
+    try { await ds.setWorkspacePiiSettings(slug, { ...(workspace.piiSettings || {}), avatarMode: next }); }
+    catch (e) { console.error('Save avatar mode failed:', e); setAvatarMode(savedAvatarMode); }
+    finally { setSavingAvatar(false); }
+  };
+
+  const toggleSurnames = async () => {
+    if (savingSurname || !slug) return;
+    const next = surnameMode === 'short' ? 'full' : 'short';
+    setSurnameMode(next); // optimistic
+    setSavingSurname(true);
+    try { await ds.setWorkspacePiiSettings(slug, { ...(workspace.piiSettings || {}), surnameMode: next }); }
+    catch (e) { console.error('Save surname mode failed:', e); setSurnameMode(savedSurnameMode); }
+    finally { setSavingSurname(false); }
+  };
+
+  return (
+    <MoreSection title={t('drawer_display_section') || 'Wyświetlanie'}>
+      <MoreItem
+        iconName="user"
+        label={t('drawer_display_avatars_label') || 'Awatary zamiast zdjęć'}
+        sub={t('drawer_display_avatars_sub') || 'Grafiki 1-bit zamiast fotografii graczy'}
+        onClick={toggleAvatars}
+        rightSlot={<Toggle on={avatarMode === 'avatar'} onClick={toggleAvatars} />}
+      />
+      <MoreItem
+        iconName="duo"
+        label={t('drawer_display_surnames_label') || 'Ukryj nazwiska graczy'}
+        sub={t('drawer_display_surnames_sub') || 'Pokazuj tylko imię i inicjał nazwiska'}
+        onClick={toggleSurnames}
+        rightSlot={<Toggle on={surnameMode === 'short'} onClick={toggleSurnames} />}
+        isLast
+      />
+    </MoreSection>
+  );
+}
+
+// Inline pill toggle (no shared component in ui.jsx). Track + knob; amber accent
+// only on the ON state (§27). ≥44px hit area via the padded wrapper.
+function Toggle({ on, onClick }) {
+  return (
+    <span
+      role="switch"
+      aria-checked={on}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        minWidth: 44, minHeight: 44, marginRight: -4,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      <span style={{
+        position: 'relative',
+        width: 44, height: 26, borderRadius: 999,
+        background: on ? COLORS.accent : ELEV.sunken,
+        border: `1px solid ${on ? COLORS.accent : ELEV.hairlineStrong}`,
+        transition: 'background 140ms ease, border-color 140ms ease',
+        display: 'inline-block', flexShrink: 0,
+      }}>
+        <span style={{
+          position: 'absolute', top: 2, left: on ? 20 : 2,
+          width: 20, height: 20, borderRadius: '50%',
+          background: on ? COLORS.black : COLORS.textDim,
+          transition: 'left 140ms ease, background 140ms ease',
+          boxShadow: ELEV.shadow1,
+        }} />
+      </span>
+    </span>
   );
 }
 
