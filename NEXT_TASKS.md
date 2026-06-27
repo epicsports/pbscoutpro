@@ -15,6 +15,12 @@
 
 ---
 
+## ✅ DONE 2026-06-27 — Crest unification Krok 1 (Design System 5) — SHIPPED `3b82500c` (detail in DEPLOY_LOG)
+3-tier team identity (logo → **country flag** → color+initials) in `TeamBadge`/`CrestBand` + premium catalog rows (Oswald city/nick wordmark) + team-detail header + country form field. Render-verified @834 vs prototype; render-verify caught a page-crashing missing import the gate missed.
+- **🔴 PARKED — country DATA back-fill (the flag fallback's data):** the flag only shows for logo-less teams with `team.country`. The form sets it going forward; a bulk back-fill needs Jacek GO + a team→country source (the 16 prototype-mapped NXL teams are mostly US but they HAVE logos, so no visible flag; logo-less teams have no known country). **Needs a source from Jacek.**
+- **🔵 NEXT — Crest Krok 2 (separate iteration):** Coach team-detail data (heatmap + timeline + rozbiegi table + deeper-analysis CTA) — wireframe `Coach Team-Detail - Wireframe.html` in the package. Requires per-team aggregates redesign. NOT started.
+- **Pixel-diff note:** redesign + global Oswald webfont shifted all `screen-*-diff` baselines (regenerated `-win32`); deploy gate excludes `pixel-diff|model C` so they don't gate. Consider `-linux` baselines / Oswald preload later if the local diff suite matters.
+
 ## ✅ DONE 2026-06-23/24 — core screens + tablet rescue + infra (detail in DEPLOY_LOG)
 - **Core-screens redesign** (audit-scoped: MatchCard→ScoutTab→overview→MatchPage): **#1 MatchCard** premium (nav contract preserved) · **#2 ScoutTabContent + shared `DivisionTabs`** (lenient filter, c10a282e preserved) · **#3a StandingsTable** (phone + CoachWide) · **matchClassify util** dedup (3 copies→1).
 - **🚨 Tablet wide-shell RESCUE** (user-reported, bug-mode): overlays (`NavDrawer`/`TournamentPicker`/modals) were `<AppShell>` children → the wide shell renders its own bodies INSTEAD of `{children}` → **on tablet they never mounted** (menu/event dead). **Fixed:** overlays moved to top-level in MainPage. + sidebar de-dupe (removed the 2nd drawer-opener) + **ScoutWide detail pane → real layout field image** (was placeholder).
