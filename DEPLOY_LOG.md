@@ -1,5 +1,11 @@
 # Deploy Log
 
+## 2026-06-27 — [FIX/capture] Tablet-landscape point-logging — restore player selection + phase switch (Jacek prod bug, "Go b)")
+**App (auto-deploy, e2e-gated).** PROD bug (Jacek screenshot, mid-tournament): on a tablet in **landscape** the live point-logging editor showed the field but **no player-selection grid and no phase switcher** — a scout couldn't log a point. Cause: both were `!immersive`-gated (`RosterGrid` ~3043; `StageSwitcher` inside the `!immersive` PageHeader) and tablet-landscape = `immersive`, so both were hidden (pre-existing gap — the editor was built for portrait capture).
+- **Fix (Option B, Jacek-approved):** `MatchPage.jsx` — added a visible fixed bottom strip (`{immersive && ...}`, left:176 clears the rail) with the `RosterGrid` (when `rosterGridVisible`) + the `StageSwitcher`, + `paddingBottom: immersive?124:0` on the field container so it doesn't cover the field. **DISPLAY ONLY** — reuses `toggleRosterPlayer`/`switchStage`/`draft` verbatim; capture/save logic + canvas sizing (`InteractiveCanvas`/`maxCanvasHeight`) untouched.
+- **Render-verified @1024×768 (touch=tablet immersive):** PRE-POINT (new point) → roster chips "Playing 0/5" #1–#5 + Breakout/Settle/Mid visible; MID-POINT (players placed) → phases visible, roster correctly hidden. Deploy gate (real specs) 116/0.
+- Workaround for users until live: log in **portrait** (the strip is portrait-native there).
+
 ## 2026-06-27 — [FEATURE/Tier-2] Crest Krok 2 — "Najczęstsze rozbiegi" breakout-target table (Jacek "go ahead")
 **App (auto-deploy, e2e-gated).** New per-team breakout aggregate in the opponent/team-detail page.
 - **`src/utils/breakoutRuns.js`** `computeBreakoutRuns(heatmapPoints, field)` — groups every scouted player's **Break-keyframe position → nearest bunker** (reuses `findNearestBunker` from generateInsights, 0.15 radius) into `{bunker, count, successPct, sharePct}`, top 6. Success = slot not eliminated (`point.eliminations`, same source as ROZBICIE); share = count/totalBreaks. Null-safe, anonymous-first.

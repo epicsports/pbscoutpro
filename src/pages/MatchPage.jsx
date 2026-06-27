@@ -2868,7 +2868,7 @@ export default function MatchPage() {
         </div>
         );
       })()}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingLeft: immersive ? 176 : 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingLeft: immersive ? 176 : 0, paddingBottom: immersive ? 124 : 0 }}>
 
         {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
         <div style={{ position: 'relative' }}>
@@ -3038,6 +3038,31 @@ export default function MatchPage() {
         </div>
 
       </div>
+
+      {/* ═══ IMMERSIVE CAPTURE STRIP ═══ (Option B — Jacek-approved)
+          Landscape/tablet editor: the !immersive RosterGrid + StageSwitcher are
+          hidden (left rail stays minimal chrome), so a scout had no way to select
+          players or switch phases. This fixed bottom strip — mirroring the
+          opponent-analysis landscape pattern (controls attached below the field) —
+          surfaces those SAME components. Display + gating only; capture/save logic,
+          handlers and props are reused VERBATIM from the !immersive paths above. */}
+      {immersive && (
+        <div style={{
+          position: 'fixed', left: 176, right: 0, bottom: 0, zIndex: 45,
+          display: 'flex', flexDirection: 'column', gap: 8,
+          padding: '10px 12px',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+          background: ELEV.surface, borderTop: `1px solid ${ELEV.hairlineStrong}`,
+          boxShadow: ELEV.shadow2,
+        }}>
+          {rosterGridVisible && (
+            <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} heroPlayerIds={heroPlayerIds} />
+          )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
+          </div>
+        </div>
+      )}
 
       {/* ═══ ROSTER GRID ═══ */}
       {!immersive && rosterGridVisible && (
