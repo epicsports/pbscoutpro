@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-27 — [FEATURE/Tier-2] Crest Krok 2 — "Najczęstsze rozbiegi" breakout-target table (Jacek "go ahead")
+**App (auto-deploy, e2e-gated).** New per-team breakout aggregate in the opponent/team-detail page.
+- **`src/utils/breakoutRuns.js`** `computeBreakoutRuns(heatmapPoints, field)` — groups every scouted player's **Break-keyframe position → nearest bunker** (reuses `findNearestBunker` from generateInsights, 0.15 radius) into `{bunker, count, successPct, sharePct}`, top 6. Success = slot not eliminated (`point.eliminations`, same source as ROZBICIE); share = count/totalBreaks. Null-safe, anonymous-first.
+- **`ScoutedTeamPage.jsx`** — new collapsible "Najczęstsze rozbiegi" section (after Breakouts, before Strzały; match/team scope), table cols `# · Rozbieg · Częstość · Sukces · Udział` + share bar (wireframe 186-191). Gated on data (hidden when empty). The heatmap, phase axis + "Głębsza analiza" flow already existed (reused).
+- **DATA-HONEST interpretation (documented + LOCKED):** the literal wireframe "od → do" lane→bunker (e.g. "Snake → 50 lewy") is NOT derivable — the capture flow records where a player breaks TO, not their start lane. Shipped the breakout-TARGET version (the derivable, full-coverage read); the lane-level run is deferred (needs a capture-flow change).
+- **Verify:** logic + field source + integration + empty-state render + wireframe-matching JSX all verified; gate 129/0. **Populated table is composition-verified only** — the e2e fixtures have no breakout positions ("Brakuje pozycji startowych"), so a live populated render wasn't possible → **smoke on a real team with placed positions.** Additive + gated = low-risk.
+
 ## 2026-06-27 — [REDESIGN/Tier-2] Crest unification Krok 1 — 3-tier identity + premium bands (Design System 5, Jacek GO)
 **App (auto-deploy, e2e-gated).** Ujednolicenie crestów — one consistent team-identity system everywhere, no bare initials where a flag/logo can show.
 - **3-tier `Crest`/`TeamBadge`** (`src/utils/flags.js` + `TeamBadge.jsx`): logo (`logoUrl`, +50% scale) → **country flag** (13 premium inline-SVG flags + US default, via `team.country`) → color+initials. Additive — monogram teams byte-identical.

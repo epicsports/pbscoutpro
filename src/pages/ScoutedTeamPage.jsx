@@ -15,6 +15,7 @@ import * as ds from '../services/dataService';
 import { mirrorPointToLeft } from '../utils/helpers';
 import { computeCoachingStats } from '../utils/coachingStats';
 import { generateInsights, generateCounters, computeBreakSurvival, computeSideTendency, computeTopHeroes, computeTacticalSignals, computeShotTargets, computeCalloutZoneTargets, computeBigMoves, computeEliminationReasons, INSIGHT_COLORS, INSIGHT_ICONS, COUNTER_COLORS } from '../utils/generateInsights';
+import { computeBreakoutRuns } from '../utils/breakoutRuns';
 import { coachReportPhases, label as phaseLabel, toPersistedLiteral } from '../utils/pointPhases';
 import { ELIM_REASONS } from '../components/match/ReasonRadial';
 import { COLORS, FONT, FONT_COND, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING, TNUM, responsive } from '../utils/theme';
@@ -696,6 +697,12 @@ export default function ScoutedTeamPage() {
   // Prague) has only Break captured → Settle/Mid show graceful-empty (no keyframe),
   // which is correct: there was no settle/mid setup to report.
   const breakSurvival = useMemo(() => computeBreakSurvival(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
+  // Crest Krok 2 — "Najczęstsze rozbiegi": most-frequent breakout-TARGET bunkers
+  // for the team aggregate. Always Break-keyframe (kf#0 = point.players); NOT
+  // phase-gated like breakSurvival — the lane-level "od→do" run is deferred
+  // (needs a capture-flow change, see breakoutRuns.js header). Scope =
+  // heatmapPoints (match/team aggregate), NOT the single-point field narrow.
+  const breakoutRuns = useMemo(() => computeBreakoutRuns(heatmapPoints, field), [heatmapPoints, field]);
   const sideTendency = useMemo(() => computeSideTendency(heatmapPoints, field), [heatmapPoints, field]);
   const tacticalSignals = useMemo(() => computeTacticalSignals(heatmapPoints, field, players), [heatmapPoints, field, players]);
   const shotTargets = useMemo(() => computeShotTargets(heatmapPoints, field, hmPhase), [heatmapPoints, field, hmPhase]);
@@ -1554,6 +1561,54 @@ export default function ScoutedTeamPage() {
               </div>
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('breakout_survival_overall', overallSurvival)}
+              </div>
+            </CollapsibleSection>
+          );
+        })()}
+
+        {/* Crest Krok 2 — Najczęstsze rozbiegi (most-frequent breakout-target
+            bunkers). Mirrors the Breakouts table-row idiom; columns map to the
+            wireframe: # · Rozbieg (bunker) · Częstość (count "14×") · Sukces
+            (success %) · Udział (share bar, width = sharePct). Read-only DATA →
+            zero amber (§27: amber is interactive-only); share bar uses a neutral
+            fill, success% uses semantic success/accent/danger thresholds. The
+            literal lane→bunker "od→do" run is DEFERRED — see breakoutRuns.js. */}
+        {breakoutRuns.length > 0 && (() => {
+          const successColor = (pct) =>
+            pct >= 60 ? COLORS.success : pct >= 40 ? COLORS.accent : COLORS.danger;
+          return (
+            <CollapsibleSection icon={Route} title={t('breakout_runs_title')} testId="breakout-runs">
+              <div style={{ margin: '0 16px 12px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
+                {/* Column headers — # · Rozbieg · Częstość · Sukces · Udział */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 14px', background: COLORS.surface,
+                  borderBottom: `1px solid ${COLORS.surfaceLight}`,
+                }}>
+                  <div style={{ width: 18, fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4 }}>#</div>
+                  <div style={{ flex: 1, fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('breakout_runs_col_target')}</div>
+                  <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('breakout_runs_col_count')}</div>
+                  <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('breakout_runs_col_success')}</div>
+                  <div style={{ width: 88, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.4, textTransform: 'uppercase' }}>{t('breakout_runs_col_share')}</div>
+                </div>
+                {breakoutRuns.map((r, i) => (
+                  <div key={r.bunker} data-testid={`breakout-run-${i}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 14px',
+                    borderBottom: i < breakoutRuns.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
+                  }}>
+                    <div style={{ width: 18, fontFamily: FONT, fontSize: 12, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: COLORS.textMuted }}>{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, overflowWrap: 'normal', wordBreak: 'normal', textWrap: 'balance' }}>{r.bunker}</div>
+                    <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: COLORS.text }}>{r.count}×</div>
+                    <div style={{ width: 52, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 12, fontWeight: 800, fontVariantNumeric: 'tabular-nums', color: successColor(r.successPct) }}>{r.successPct}%</div>
+                    <div style={{ width: 88, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: COLORS.surface, overflow: 'hidden' }}>
+                        <div style={{ width: `${r.sharePct}%`, height: '100%', borderRadius: 3, background: COLORS.textDim }} />
+                      </div>
+                      <span style={{ width: 32, textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 11, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: COLORS.textDim }}>{r.sharePct}%</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CollapsibleSection>
           );
