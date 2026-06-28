@@ -282,9 +282,10 @@ export default function AdminTeamsPage() {
                   iconLeft={<TeamBadge team={t} size={36} />}
                   title={`${titlePrefix}${t.name || '—'}`}
                   subtitle={parts.join(' · ') || ' '}
-                  /* § admin-parity — body-tap opens the SHARED team-detail view
-                     (roster + leagues/divisions); ⋮ keeps the admin metadata
-                     form (parent/extId/retire) + duplicate-resolve. */
+                  /* § team-edit unification — body-tap AND ⋮→Edit both open the
+                     SHARED team-detail page (roster + branding + country +
+                     sister teams + audit, admin-gated). ⋮ keeps only the admin
+                     OPERATIONS (resolve-duplicate / retire / restore). */
                   onClick={() => navigate(`/team/${t.id}?from=admin`)}
                   actions={<MoreBtn onClick={() => setActionFor(t)} />}
                 />
@@ -319,7 +320,10 @@ export default function AdminTeamsPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.name}
         actions={actionFor ? [
-          { label: t('edit'), onPress: () => { setEditing(actionFor); setActionFor(null); } },
+          /* § team-edit unification — "Edit" now opens the SHARED team-detail
+             page (same as the row body-tap), not the modal. The modal is kept
+             ONLY for "+ New team" creation. § DESIGN_DECISIONS team-edit. */
+          { label: t('edit'), onPress: () => { navigate(`/team/${actionFor.id}?from=admin`); setActionFor(null); } },
           ...(dupTeamIds.has(actionFor.id) ? [{
             label: t('admin_teams_action_resolve_dup'),
             onPress: () => { setResolveExternalId(actionFor.externalId); setActionFor(null); },
@@ -369,7 +373,9 @@ export default function AdminTeamsPage() {
         />
       )}
 
-      {/* Team form modal */}
+      {/* Team CREATE modal — editing only ever holds 'new' now (edit goes to the
+          shared team-detail page). Kept because the detail page needs an existing
+          /teams/{id} doc; creation has no doc yet. § team-edit unification. */}
       <TeamFormModal
         open={!!editing}
         onClose={() => setEditing(null)}
