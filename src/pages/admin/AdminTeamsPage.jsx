@@ -12,7 +12,6 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { retireTeam, unretireTeam } from '../../services/dataService';
 import { teamInLeague, teamInDivision } from '../../utils/entityFilters';
 import { useSearchFilter } from '../../hooks/useSearchFilter';
-import TeamFormModal from './TeamFormModal';
 import TeamDuplicateResolutionView from './TeamDuplicateResolutionView';
 import ChildrenOrphanWarning from './ChildrenOrphanWarning';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -42,7 +41,6 @@ export default function AdminTeamsPage() {
   const { players } = usePlayers();
   const leaguesList = useLeagues();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [editing, setEditing] = useState(null);
   const [actionFor, setActionFor] = useState(null);
   const [retireFor, setRetireFor] = useState(null);
   const [resolveExternalId, setResolveExternalId] = useState(null);
@@ -144,7 +142,6 @@ export default function AdminTeamsPage() {
         newParentForChildren,
       });
       setRetireFor(null);
-      if (editing && editing !== 'new' && editing.id === retireFor.id) setEditing(null);
     } catch (err) {
       console.error('Retire team failed:', err);
       setRetireError(err?.message || 'Retire failed — see console');
@@ -229,7 +226,7 @@ export default function AdminTeamsPage() {
             <option value="name">{t('admin_players_sort_name')}</option>
             <option value="updatedAt">{t('b13_admin_sort_updated_desc')}</option>
           </Select>
-          <Btn variant="accent" onClick={() => setEditing('new')}>+ New team</Btn>
+          <Btn variant="accent" onClick={() => navigate('/team/new?from=admin')}>+ New team</Btn>
         </div>
 
         {/* Filter pills */}
@@ -372,18 +369,6 @@ export default function AdminTeamsPage() {
           childrenByParent={childrenByParent}
         />
       )}
-
-      {/* Team CREATE modal — editing only ever holds 'new' now (edit goes to the
-          shared team-detail page). Kept because the detail page needs an existing
-          /teams/{id} doc; creation has no doc yet. § team-edit unification. */}
-      <TeamFormModal
-        open={!!editing}
-        onClose={() => setEditing(null)}
-        team={editing === 'new' ? null : editing}
-        allTeams={teams}
-        childrenByParent={childrenByParent}
-        onRequestRetire={(t) => { setRetireFor(t); }}
-      />
     </Screen>
   );
 }

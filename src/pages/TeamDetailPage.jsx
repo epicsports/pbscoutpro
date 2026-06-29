@@ -13,7 +13,7 @@ import RdIcon from '../components/RdIcon';
 import TeamBadge, { isHex } from '../components/TeamBadge';
 import ColorPicker from '../components/ColorPicker';
 import { useTeams, usePlayers } from '../hooks/useFirestore';
-import { useViewAs } from '../hooks/useViewAs';
+import { useIsSuperAdmin } from '../hooks/useIsSuperAdmin';
 import { useWorkspace } from '../hooks/useWorkspace';
 import TeamPickerModal from './admin/TeamPickerModal';
 import { COUNTRY_NAMES } from '../utils/flags';
@@ -28,7 +28,11 @@ import { useDisplayName } from '../utils/playerName';
 
 export default function TeamDetailPage() {
   const { t, lang } = useLanguage();
-  const { effectiveIsAdmin } = useViewAs();
+  // § team-edit unification — editing/create/delete on the team screen is a
+  // super-admin operation (security bugfix: previously any user reaching
+  // /team/:id saw edit UI while the server silently rejected the write —
+  // /docs TEAM_CONSOLIDATION_BRIEF). Non-super-admin = read-only profile.
+  const canEdit = useIsSuperAdmin();
   const dn = useDisplayName();
   const device = useDevice();
   const R = responsive(device.type);
@@ -72,6 +76,18 @@ export default function TeamDetailPage() {
   // Delete team
   const [deleteModal, setDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
+
+  // § Create mode — the SAME screen handles "new team" (route /team/new →
+  // teamId==='new'), replacing the old admin TeamFormModal. Super-admin only.
+  const isNew = teamId === 'new';
+  const [cName, setCName] = useState('');
+  const [cLeagues, setCLeagues] = useState(['NXL']);
+  const [cExtId, setCExtId] = useState('');
+  const [cCountry, setCCountry] = useState('');
+  const [cLogo, setCLogo] = useState('');
+  const [cColor, setCColor] = useState(null);
+  const [cSaving, setCSaving] = useState(false);
+  const [cErr, setCErr] = useState(null);
 
   // External ID — inline editable, persisted on blur. MUST be declared with
   // the other hooks (not after the early-return below) so the hook call order
@@ -162,6 +178,75 @@ export default function TeamDetailPage() {
     const id = setTimeout(() => setLoadTimedOut(true), 12000);
     return () => clearTimeout(id);
   }, [team]);
+
+  // Create mode renders BEFORE the team-resolution gate (no team doc yet).
+  if (isNew) {
+    if (!canEdit) {
+      return (
+        <div data-testid="team-create-denied">
+          <EmptyState icon="🔒" text={t('team_create_denied')} />
+        </div>
+      );
+    }
+    const cReady = !!cName.trim();
+    const saveNew = async () => {
+      if (!cName.trim() || cSaving) return;
+      setCSaving(true); setCErr(null);
+      try {
+        const ref = await ds.addTeam({
+          name: cName.trim(), leagues: cLeagues,
+          externalId: cExtId.trim() || null, country: cCountry || null,
+          logoUrl: cLogo.trim() || null, color: cColor || null,
+        });
+        navigate(`/team/${ref.id}?from=admin`);
+      } catch (e) { setCErr(e?.message || 'Save failed'); setCSaving(false); }
+    };
+    return (
+      <Screen archetype="list" padBottom={false} style={{ display: 'flex', flexDirection: 'column' }}
+        header={<PageHeader back={{ to: backTo }} title={t('team_create_title')} />}>
+        <div style={{ flex: 1, overflowY: 'auto', maxWidth: 640, width: '100%', margin: '0 auto', padding: R.layout.padding, paddingBottom: 80, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <SectionLabel>{t('team_form_team_name_label')}</SectionLabel>
+            <Input value={cName} onChange={setCName} placeholder={t('team_form_name_ph')} autoFocus />
+          </div>
+          <div>
+            <SectionLabel>{t('team_detail_leagues_label')}</SectionLabel>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {leaguesList.map(L => {
+                const l = L.shortName; const a = cLeagues.includes(l);
+                return <Btn key={L.id} variant="default" size="sm" active={a}
+                  style={{ borderColor: a ? LEAGUE_COLORS[l] : COLORS.border, color: a ? LEAGUE_COLORS[l] : COLORS.textDim }}
+                  onClick={() => setCLeagues(arr => arr.includes(l) ? arr.filter(x => x !== l) : [...arr, l])}>{l}</Btn>;
+              })}
+            </div>
+          </div>
+          <div>
+            <SectionLabel>{t('team_detail_pbli_id_label')}</SectionLabel>
+            <Input value={cExtId} onChange={setCExtId} placeholder={t('b13_team_ext_id_ph')} />
+          </div>
+          <div>
+            <SectionLabel>{t('team_form_country_label')}</SectionLabel>
+            <Select value={cCountry} onChange={setCCountry} style={{ width: '100%' }}>
+              <option value="">{t('team_form_none_option')}</option>
+              {Object.entries(COUNTRY_NAMES).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+            </Select>
+          </div>
+          <div>
+            <SectionLabel>{t('team_detail_logo_url_label')}</SectionLabel>
+            <Input value={cLogo} onChange={setCLogo} placeholder="https://…/logo.png" />
+          </div>
+          <div>
+            <SectionLabel>{t('team_detail_brand_color_label')}</SectionLabel>
+            <ColorPicker value={isHex(cColor) ? cColor : null} onChange={setCColor} onCommit={setCColor} />
+          </div>
+          {cErr && <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.danger }}>{cErr}</div>}
+          <Btn variant="accent" disabled={!cReady || cSaving} onClick={saveNew} style={{ width: '100%', justifyContent: 'center' }}>
+            <Icons.Check /> {cSaving ? t('saving') : t('save')}
+          </Btn>
+        </div>
+      </Screen>
+    );
+  }
 
   if (!team) {
     const stillLoading = teamsLoading && !loadTimedOut;
@@ -440,7 +525,7 @@ export default function TeamDetailPage() {
         </div>
         {grp === 'player' ? (
           <div
-            onClick={() => ds.setPlayerHero(p.id, !p.hero)}
+            onClick={canEdit ? () => ds.setPlayerHero(p.id, !p.hero) : undefined}
             title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
             style={{
               display: 'flex', alignItems: 'center', gap: 4, padding: '6px 8px', borderRadius: RADIUS.sm,
@@ -457,8 +542,10 @@ export default function TeamDetailPage() {
             color: accent, background: `${accent}14`, border: `1px solid ${accent}40`, borderRadius: RADIUS.sm, padding: '5px 9px',
           }}>{grp === 'coach' ? t('role_coach') : t('player_form_staff_role')}</span>
         )}
-        <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
-        <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
+        {canEdit && <>
+          <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
+          <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
+        </>}
       </div>
     );
   };
@@ -486,9 +573,9 @@ export default function TeamDetailPage() {
             </div>
           </div>
         </div>
-        {/* logo slot — reuses the EXISTING logoUrl field (§93: URL ref, never
-            upload). Tapping focuses the logo URL Input on the right. Real
-            file→storage upload is a separate task (m1247). */}
+        {/* logo slot (super-admin only) — focuses the logo URL Input on the right
+            (§93: URL ref, never base64 upload; real file→storage = m1247). */}
+        {canEdit && (
         <div style={{ ...wcard, padding: 18 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 11 }}>
             <span style={wlabel}>{t('team_detail_logo_url_label')}</span>
@@ -505,20 +592,21 @@ export default function TeamDetailPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* RIGHT — info (id / color / logo url / leagues) + roster grid */}
       <div style={{ minWidth: 0 }}>
         {/* Name */}
-        {wSection(t('team_form_team_name_label'), null, nameInput)}
+        {canEdit && wSection(t('team_form_team_name_label'), null, nameInput)}
 
         {/* External ID */}
-        {wSection(t('team_detail_pbli_id_label'), null, (
+        {canEdit && wSection(t('team_detail_pbli_id_label'), null, (
           <Input value={extIdLocal} onChange={setExtIdLocal} onBlur={handleExtIdBlur} placeholder={t('b13_team_ext_id_ph')} />
         ))}
 
         {/* Brand color */}
-        {wSection(t('team_detail_brand_color_label'), null, (
+        {canEdit && wSection(t('team_detail_brand_color_label'), null, (
           <>
             <ColorPicker value={isHex(effColor) ? effColor : null} onChange={handleColorPreview} onCommit={handleColorCommit} />
             <div onClick={() => handleSetColor(null)} style={{ marginTop: 8, minHeight: 44, display: 'inline-flex', alignItems: 'center', cursor: 'pointer', fontFamily: FONT, fontSize: TOUCH.fontXs, color: !isHex(effColor) ? COLORS.accent : COLORS.textDim, WebkitTapHighlightColor: 'transparent' }}>{t('team_detail_reset_color')}</div>
@@ -526,15 +614,15 @@ export default function TeamDetailPage() {
         ))}
 
         {/* Logo URL field — the canonical logo edit (the left slot focuses this) */}
-        {wSection(t('team_detail_logo_url_label'), null, (
+        {canEdit && wSection(t('team_detail_logo_url_label'), null, (
           <Input id="team-logo-url-input" value={logoLocal} onChange={setLogoLocal} onBlur={handleLogoBlur} placeholder="https://…/logo.png" />
         ))}
 
         {/* Country — 2nd-tier crest identity (flags.js). Optional. */}
-        {wSection(t('team_form_country_label'), null, countrySelect)}
+        {canEdit && wSection(t('team_form_country_label'), null, countrySelect)}
 
         {/* Leagues + divisions */}
-        {wSection(t('team_detail_leagues_label'), null, (
+        {canEdit && wSection(t('team_detail_leagues_label'), null, (
           <>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {leaguesList.map(L => {
@@ -564,19 +652,19 @@ export default function TeamDetailPage() {
           </>
         ))}
 
-        {/* Sister teams + audit — admin only (§ team-edit unification) */}
-        {effectiveIsAdmin && (
+        {/* Sister teams + audit — super-admin only (§ team-edit unification) */}
+        {canEdit && (
           <div style={{ ...wcard, padding: 20, marginBottom: 16 }}>{adminMetaBlock}</div>
         )}
 
         {/* Roster — grouped by role, each group a width-filling grid */}
         <div style={{ ...wcard, padding: 20 }}>
-          <SectionTitle right={
+          <SectionTitle right={canEdit ? (
             <div style={{ display: 'flex', gap: 6 }}>
               <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}><Icons.Plus /> New</Btn>
               <Btn variant="default" size="sm" onClick={() => modal.open('addExisting')}><Icons.Search /> Find</Btn>
             </div>
-          }>{t('team_detail_roster_n', teamPlayers.length)}</SectionTitle>
+          ) : null}>{t('team_detail_roster_n', teamPlayers.length)}</SectionTitle>
 
           {!teamPlayers.length && <EmptyState icon="?" text={t('team_detail_empty_roster')} />}
 
@@ -604,12 +692,14 @@ export default function TeamDetailPage() {
           })()}
         </div>
 
-        {/* Delete team */}
+        {/* Delete team — super-admin only */}
+        {canEdit && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, marginTop: 16 }}>
           <Btn variant="ghost" onClick={() => setDeleteModal(true)} style={{ color: COLORS.danger, width: '100%', justifyContent: 'center' }}>
             <Icons.Trash /> {t('team_detail_delete_btn')}
           </Btn>
         </div>
+        )}
       </div>
     </div>
   );
@@ -637,7 +727,8 @@ export default function TeamDetailPage() {
           </div>
         </div>
 
-        {/* Team info */}
+        {/* Team info — super-admin only (read-only users see hero band + roster) */}
+        {canEdit && (
         <div>
           {/* Name */}
           <div style={{ marginBottom: 12 }}>
@@ -722,9 +813,10 @@ export default function TeamDetailPage() {
             </div>
           )}
         </div>
+        )}
 
-        {/* Sister teams + audit — admin only (§ team-edit unification) */}
-        {effectiveIsAdmin && (
+        {/* Sister teams + audit — super-admin only (§ team-edit unification) */}
+        {canEdit && (
           <div style={{
             background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
             borderRadius: 16, padding: 16, boxShadow: ELEV.shadow1,
@@ -733,7 +825,7 @@ export default function TeamDetailPage() {
 
         {/* Roster */}
         <div>
-          <SectionTitle right={
+          <SectionTitle right={canEdit ? (
             <div style={{ display: 'flex', gap: 6 }}>
               <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}>
                 <Icons.Plus /> New
@@ -742,7 +834,7 @@ export default function TeamDetailPage() {
                 <Icons.Search /> Find
               </Btn>
             </div>
-          }>
+          ) : null}>
             {t('team_detail_roster_n', teamPlayers.length)}
           </SectionTitle>
 
@@ -793,7 +885,7 @@ export default function TeamDetailPage() {
                 {g.key === 'player' ? (
                   /* HERO toggle — global (§ 25), players only */
                   <div
-                    onClick={() => ds.setPlayerHero(p.id, !p.hero)}
+                    onClick={canEdit ? () => ds.setPlayerHero(p.id, !p.hero) : undefined}
                     title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 4,
@@ -813,8 +905,10 @@ export default function TeamDetailPage() {
                     borderRadius: RADIUS.sm, padding: '5px 9px',
                   }}>{g.label}</span>
                 )}
-                <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
-                <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
+                {canEdit && <>
+                  <Btn variant="ghost" size="sm" onClick={() => setEditPlayer(p)} title={t('team_detail_edit_profile_title')}><Icons.Edit /></Btn>
+                  <Btn variant="ghost" size="sm" onClick={() => handleRemoveFromTeam(p.id)} title={t('team_detail_remove_title')}><Icons.Trash /></Btn>
+                </>}
               </div>
               );
             };
@@ -837,13 +931,15 @@ export default function TeamDetailPage() {
           })()}
         </div>
 
-        {/* Delete team */}
+        {/* Delete team — super-admin only */}
+        {canEdit && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, marginTop: 8 }}>
           <Btn variant="ghost" onClick={() => setDeleteModal(true)}
             style={{ color: COLORS.danger, width: '100%', justifyContent: 'center' }}>
             <Icons.Trash /> {t('team_detail_delete_btn')}
           </Btn>
         </div>
+        )}
       </div>
       )}
 
