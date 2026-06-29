@@ -1,5 +1,17 @@
 # Deploy Log
 
+## 2026-06-29 — [FEATURE/§1c·AMBER] Field fullscreen + contextual phase-axis (analysis screens, view-only)
+**App (auto-deploy, e2e-gated).** Night-batch §1c. Maximize-to-fullscreen on the analysis field screens, per prototype `fieldfull.jsx` (`FieldFullscreen` + `FFAxis`). **View-only — no edit/draw, no new write path (AMBER).**
+- **NEW `src/components/field/FieldFullscreen.jsx`** — reusable portal overlay (prod tokens). Bottom `FFAxis` (play + scrub + keyframe dots) renders **only when a non-empty `phases` prop is passed**. Esc + 44px close; body-scroll lock; `field` render-prop caps the canvas to the measured stage.
+- **`ScoutedTeamPage.jsx`** (opponent analysis, HAS phase data) — on-field maximize → fullscreen + **phase-axis**; `onPhase` → existing `setHmPhase` (swaps real per-phase heatmap/callout overlay, same as the on-page Stage axis; gated Mid/Endgame filtered out).
+- **`HitabilityPage.jsx`** (field-center, data-less) — maximize via CanvasRailLayout `fieldTools` slot → fullscreen **with axis HIDDEN** + `readOnly:true` (tap/drag suppressed → zero write path).
+- **`HeatmapCanvas.jsx`** — additive `maxCanvasHeight` prop (default null = prior behavior; bounds wide-landscape overflow).
+- **Excluded (RED, untouched):** Live tile, draw palette, bunkers/lines/zones/calibration/tactic-edit. No Live/edit bleed.
+- **Data paths preserved (§6.6):** heatmap loads, per-phase computes, coach-draw, point-axis, isolate, nav — all reused; additions only; hook-order safe.
+- **Verified:** build PASS · precommit PASS · e2e **116/116** · render @390/834/1280 × {ScoutedTeam fullscreen+axis+scrub · Hitability fullscreen axis-hidden} **6/6**. i18n `field_fullscreen` (PL/EN; no DE block in codebase → N/A).
+- **Revert:** `git revert -m 1 <merge sha>`. Additive view overlay; low blast radius.
+- **Smoke (Jacek):** opponent team → field maximize → fullscreen + bottom phase scrub swaps overlay · Hitability → maximize → fullscreen view (axis hidden). **Confirm:** Hitability fullscreen is intentionally view-only (log hits on the normal page) — OK?
+
 ## 2026-06-29 — [REFACTOR/§1a] Team-management consolidation — super-admin gate + create mode (− TeamFormModal) + EU flags/country foundation
 **App (auto-deploy, e2e-gated).** Night-batch §1a. ONE team screen (`/team/:id`), super-admin-only edit, create folded in. **Structural per Jacek D1=(a) — NO visual reskin (deferred; prototype `teammanage.jsx` lands later on this clean foundation).**
 - **Security bugfix (the #1 ask):** `TeamDetailPage.jsx` edit gate `effectiveIsAdmin` → **`isSuperAdmin`** (`useIsSuperAdmin`). Non-super-admin = read-only profile (crest + leagues + roster tap→stats); ALL edit affordances hidden both layouts (name/extId/color/logo/country/leagues, sister, audit, danger, New/Find, per-player edit/remove). Previously `/team/:id` showed edit UI to anyone while the server silently rejected the write (silent-failure gap) — now UI matches the (super-admin-only) authority. **Behavior change to smoke: workspace coaches/admins now see `/team/:id` read-only.**

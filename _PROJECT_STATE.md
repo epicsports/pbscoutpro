@@ -141,7 +141,7 @@ Triage prod ↔ prototyp po kodzie (nie render — to drugi krok). Cel §0: nie 
 | App shell | `AppShell.jsx` + `AppShellPremiumWide.jsx` | 🟢 SHIPPED |
 | **Pixel avatars + builder** | `avatars.jsx` PixelAvatar+AvatarBuilder, `/profile/avatar` | 🟢 SHIPPED (→ team roster MOŻE go użyć) |
 | Layout editor / library | `LayoutsPage.jsx` (LayoutsListWide) + `LayoutDetailPage.jsx` | 🟢 SHIPPED-likely |
-| **Field block — unified mode rail** | `CanvasRailLayout.jsx` + per-page `configMode` inline | ⚠️ PARTIAL — brak jednego rail trybów (view/bunkers/lines/zones/tactic/calibrate); §1c fullscreen+oś też prawdopodobnie brak |
+| **Field block — unified mode rail** | `CanvasRailLayout.jsx` + per-page `configMode` inline | ⚠️ PARTIAL. **§1c fullscreen + oś faz SHIPPED 2026-06-29** (`FieldFullscreen.jsx`: ScoutedTeam +oś, Hitability bez osi, view-only; e2e 116/116, render 6/6). ⏳ unified mode-rail (bunkers/lines/zones/calibrate EDIT) = **RED** → staged briefy Opusa + GO |
 | **New player / new team** | `PlayerFormModal.jsx` / `TeamFormModal.jsx` | ❌ to single-form modale, NIE 3/2-krokowe wizardy (§2C work) |
 | **Team management** | `TeamDetailPage.jsx` | 🟢 §1a SHIPPED 2026-06-29 (gate→`isSuperAdmin` + read-only + create-mode `/team/new` + `TeamFormModal` usunięty; e2e 116/116; render 3×3). ⏳ reskin wizualny per `teammanage.jsx` = osobny krok na tym fundamencie |
 
