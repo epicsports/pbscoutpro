@@ -12,7 +12,6 @@ import { COLORS, FONT, FONT_SIZE, SPACE, RADIUS } from '../../utils/theme';
 import { retireTeam, unretireTeam } from '../../services/dataService';
 import { teamInLeague, teamInDivision } from '../../utils/entityFilters';
 import { useSearchFilter } from '../../hooks/useSearchFilter';
-import TeamFormModal from './TeamFormModal';
 import TeamDuplicateResolutionView from './TeamDuplicateResolutionView';
 import ChildrenOrphanWarning from './ChildrenOrphanWarning';
 import { useLanguage } from '../../hooks/useLanguage';
@@ -42,7 +41,6 @@ export default function AdminTeamsPage() {
   const { players } = usePlayers();
   const leaguesList = useLeagues();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [editing, setEditing] = useState(null);
   const [actionFor, setActionFor] = useState(null);
   const [retireFor, setRetireFor] = useState(null);
   const [resolveExternalId, setResolveExternalId] = useState(null);
@@ -144,7 +142,6 @@ export default function AdminTeamsPage() {
         newParentForChildren,
       });
       setRetireFor(null);
-      if (editing && editing !== 'new' && editing.id === retireFor.id) setEditing(null);
     } catch (err) {
       console.error('Retire team failed:', err);
       setRetireError(err?.message || 'Retire failed — see console');
@@ -229,7 +226,7 @@ export default function AdminTeamsPage() {
             <option value="name">{t('admin_players_sort_name')}</option>
             <option value="updatedAt">{t('b13_admin_sort_updated_desc')}</option>
           </Select>
-          <Btn variant="accent" onClick={() => setEditing('new')}>+ New team</Btn>
+          <Btn variant="accent" onClick={() => navigate('/team/new?from=admin')}>+ New team</Btn>
         </div>
 
         {/* Filter pills */}
@@ -282,9 +279,10 @@ export default function AdminTeamsPage() {
                   iconLeft={<TeamBadge team={t} size={36} />}
                   title={`${titlePrefix}${t.name || '—'}`}
                   subtitle={parts.join(' · ') || ' '}
-                  /* § admin-parity — body-tap opens the SHARED team-detail view
-                     (roster + leagues/divisions); ⋮ keeps the admin metadata
-                     form (parent/extId/retire) + duplicate-resolve. */
+                  /* § team-edit unification — body-tap AND ⋮→Edit both open the
+                     SHARED team-detail page (roster + branding + country +
+                     sister teams + audit, admin-gated). ⋮ keeps only the admin
+                     OPERATIONS (resolve-duplicate / retire / restore). */
                   onClick={() => navigate(`/team/${t.id}?from=admin`)}
                   actions={<MoreBtn onClick={() => setActionFor(t)} />}
                 />
@@ -319,7 +317,10 @@ export default function AdminTeamsPage() {
         onClose={() => setActionFor(null)}
         title={actionFor?.name}
         actions={actionFor ? [
-          { label: t('edit'), onPress: () => { setEditing(actionFor); setActionFor(null); } },
+          /* § team-edit unification — "Edit" now opens the SHARED team-detail
+             page (same as the row body-tap), not the modal. The modal is kept
+             ONLY for "+ New team" creation. § DESIGN_DECISIONS team-edit. */
+          { label: t('edit'), onPress: () => { navigate(`/team/${actionFor.id}?from=admin`); setActionFor(null); } },
           ...(dupTeamIds.has(actionFor.id) ? [{
             label: t('admin_teams_action_resolve_dup'),
             onPress: () => { setResolveExternalId(actionFor.externalId); setActionFor(null); },
@@ -368,16 +369,6 @@ export default function AdminTeamsPage() {
           childrenByParent={childrenByParent}
         />
       )}
-
-      {/* Team form modal */}
-      <TeamFormModal
-        open={!!editing}
-        onClose={() => setEditing(null)}
-        team={editing === 'new' ? null : editing}
-        allTeams={teams}
-        childrenByParent={childrenByParent}
-        onRequestRetire={(t) => { setRetireFor(t); }}
-      />
     </Screen>
   );
 }
