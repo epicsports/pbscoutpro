@@ -461,9 +461,16 @@ koncept → prototyp → design → klikalny prototyp → kod
 - **Responsive audit screenshots:** 5 viewports
 - Tymek tests on iPhone and reports bugs directly
 
-### 7.6 Merge / deploy authorization — TWO-TIER v2 (LAW, Jacek GO 2026-06-12)
+### 7.6 Merge / deploy authorization
 
-Supersedes the 2026-06-11 UI-vs-logic split. The axis is no longer "does it render"
+> **SUPERSEDED 2026-06-29 by `CC_AUTOPILOT_ENVELOPE.md` (repo root) — CANONICAL.**
+> The gate is now blast-radius: **GREEN** (hands-free merge) · **AMBER** (one
+> pre-merge gate) · **RED** (full Jacek GO). Mapping: Tier 1 → GREEN/AMBER,
+> Tier 1.5 → AMBER-with-mockup, Tier 2 → RED. The TWO-TIER v2 text below is kept
+> only as dated historical record + precedent — follow the envelope, not this.
+
+**[Historical — TWO-TIER v2, LAW Jacek GO 2026-06-12]** Superseded the 2026-06-11
+UI-vs-logic split. The axis is no longer "does it render"
 but "is the design/pattern ALREADY APPROVED and is identity PROVABLE".
 
 **Tier 1 — autonomous merge `--no-ff` + deploy** (then Jacek smokes on prod
