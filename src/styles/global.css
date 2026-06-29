@@ -447,3 +447,13 @@ canvas {
 @keyframes vsiCrestL { 0% { opacity: 0 } 100% { opacity: .34 } }
 @keyframes vsiCrestR { 0% { opacity: 0 } 100% { opacity: .34 } }
 @keyframes vsiCoinPop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.55) } 60% { opacity: 1; transform: translate(-50%,-50%) scale(1.1) } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1) } }
+
+/* SideSwapStrip — the manual side-swap ⇄ button (design `.swap`: rotate 180° on
+   hover, raised bg). Hover/press only; the real swap fires on click via onSwap. */
+.sss-swap { transition: transform .25s ease, background .15s ease; }
+.sss-swap:hover { transform: rotate(180deg); background: #1f2b40; }
+.sss-swap:active { transform: rotate(180deg) scale(.94); }
+@media (prefers-reduced-motion: reduce) {
+  .sss-swap { transition: none; }
+  .sss-swap:hover { transform: none; }
+}

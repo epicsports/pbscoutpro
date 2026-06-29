@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { hasFlag, flagDataUri } from '../../utils/flags';
+import { splitTeamName } from '../../utils/color';
 import { COLORS, FONT, FONT_COND, TEAM_COLORS } from '../../utils/theme';
 
 /**
@@ -182,8 +183,11 @@ export default function VsIntro({
 
   const lockup = (team, color, side /* 'scout' | 'opp' */) => {
     const isScout = side === 'scout';
-    const city = (team?.city || team?.region || '').trim();
-    const nick = (team?.name || '').trim() || '—';
+    // splitTeamName: last token = nick, leading tokens = city-eyebrow. Single-word
+    // names return city === nick, so the eyebrow collapses (nick-only lockup).
+    const { city: splitCity, nick: splitNick } = splitTeamName(team?.name || '');
+    const city = splitCity === splitNick ? '' : splitCity;
+    const nick = splitNick || '—';
     return (
       <div
         style={{
