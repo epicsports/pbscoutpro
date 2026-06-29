@@ -54,11 +54,15 @@ import QuickShotPanel from '../components/QuickShotPanel';
 import StageSwitcher from '../components/match/StageSwitcher';
 import PointAxisScrubber from '../components/match/PointAxisScrubber';
 import ReasonRadial from '../components/match/ReasonRadial';
+import VsIntro from '../components/match/VsIntro';
+import SideSwapStrip from '../components/match/SideSwapStrip';
 import QuickLogView from '../components/QuickLogView';
 import PointSummary from '../components/PointSummary';
 
 // E5/E5A/E5B + emptyTeam now live in useCaptureDraft (imported above).
 const PENALTIES = ['', '141', '241', '341'];
+// VS-intro per-device pref (localStorage). 'on' (default) | 'off'.
+const VS_INTRO_KEY = 'pbscoutpro-vsintro';
 
 // §B B3 — per-phase layer DEFAULTS for the review heatmap (convention, not
 // gates). The §40 per-team capsules override freely WITHIN the active phase;
@@ -436,6 +440,20 @@ export default function MatchPage() {
   // the current key. `discardDraftConfirm` confirms before deletion.
   const [draftSavedAt, setDraftSavedAt] = useState(0);
   const [scoutEditorMenuOpen, setScoutEditorMenuOpen] = useState(false);
+  // VS-intro point-open animation toggle. Per-device pref (no Firestore sync),
+  // mirroring the `pbscoutpro-handedness` localStorage pattern (MoreShell.jsx).
+  // Default ON; user disables it via the editor ⋮ menu.
+  const [vsIntroEnabled, setVsIntroEnabled] = useState(() => {
+    try { return (localStorage.getItem(VS_INTRO_KEY) || 'on') !== 'off'; }
+    catch { return true; }
+  });
+  const toggleVsIntro = () => {
+    setVsIntroEnabled((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(VS_INTRO_KEY, next ? 'on' : 'off'); } catch { /* private mode */ }
+      return next;
+    });
+  };
   const discardDraftConfirm = useConfirm();
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -1154,6 +1172,27 @@ export default function MatchPage() {
     setOutcome(null); setShowOpponent(false);
     setDraftComment(''); setIsOT(false);
     setQuickShotPlayer(null);
+  };
+
+  // Manual side-swap — the SINGLE source of the "flip pill" behaviour, now driven
+  // by SideSwapStrip's centre ⇄ (portrait + landscape share this handler). Body is
+  // byte-identical to the previous inline flip-pill onClick (capture-stable):
+  //   1. flip the LOCAL fieldSide (Path X — local-only, no shared currentHomeSide
+  //      write that previously caused a cross-team leak on team switch),
+  //   2. persist forward intent for the current team so a review round-trip keeps
+  //      the manual orientation choice,
+  //   3. mirror the live capture (players / bumps / shots) across x.
+  const handleManualSwapSides = async () => {
+    changeFieldSide(s => s === 'left' ? 'right' : 'left');
+    if (scoutingSide === 'home' || scoutingSide === 'away') {
+      teamSideMemoryRef.current[scoutingSide] = nextFieldSideRef.current;
+    }
+    setDraft(prev => ({
+      ...prev,
+      players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
+      bumps: prev.bumps.map(b => b ? { ...b, x: 1 - b.x } : null),
+      shots: prev.shots.map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null)),
+    }));
   };
 
   // B1 / § 82 — centralized exit-edit. Clears drafts + ancillary state,
@@ -2421,6 +2460,11 @@ export default function MatchPage() {
           localStorage draft for the current key + resets in-memory
           state; safe-confirms via discardDraftConfirm. */}
       <ActionSheet open={scoutEditorMenuOpen} onClose={() => setScoutEditorMenuOpen(false)} actions={[
+        { label: vsIntroEnabled ? t('vs_intro_disable') : t('vs_intro_enable'), onPress: () => {
+          toggleVsIntro();
+          setScoutEditorMenuOpen(false);
+        }},
+        { separator: true },
         { label: t('scout_draft_discard'), danger: true, onPress: () => {
           setScoutEditorMenuOpen(false);
           discardDraftConfirm.ask(true);
@@ -2765,35 +2809,23 @@ export default function MatchPage() {
             Stage 3 reskin (style-only): premium sunken row container with a
             hairline divider so the context bar reads as a distinct recessed
             band under the header. */}
-        <div style={{ width: '100%', marginTop: 0, padding: '8px 12px 8px 16px', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.sunken, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span onClick={async () => {
-              // Manual flip is LOCAL-ONLY (2026-04-25 Path X). Same rationale
-              // as the savePoint auto-swap branch above — the previous shared
-              // currentHomeSide write caused cross-team leak on team switch.
-              changeFieldSide(s => s === 'left' ? 'right' : 'left');
-              // 2026-04-28: persist for current team so re-entry after a
-              // review round-trip preserves manual orientation choice.
-              if (scoutingSide === 'home' || scoutingSide === 'away') {
-                teamSideMemoryRef.current[scoutingSide] = nextFieldSideRef.current;
-              }
-              setDraft(prev => ({
-                ...prev,
-                players: prev.players.map(p => p ? { ...p, x: 1 - p.x } : null),
-                bumps: prev.bumps.map(b => b ? { ...b, x: 1 - b.x } : null),
-                shots: prev.shots.map(arr => (arr || []).map(s => s ? { ...s, x: 1 - s.x } : null)),
-              }));
-            }}
-            style={{
-              fontSize: 12, padding: '7px 12px', borderRadius: 9, minHeight: 44, boxSizing: 'border-box',
-              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`,
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontFamily: FONT, boxShadow: ELEV.innerTop,
-            }}>
-            <span style={{ color: COLORS.textDim, fontWeight: 600, letterSpacing: '.3px' }}>{t('match_from_label')}</span>
-            <span style={{ fontWeight: 800, color: TEAM_COLORS[activeTeam] }}>{fieldSide === 'left' ? 'LEFT' : 'RIGHT'}</span>
-            <span style={{ color: COLORS.accent, display: 'inline-flex' }}><RdIcon name="swap" size={13} /></span>
-          </span>
-          <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
+        <div style={{ width: '100%', marginTop: 0, padding: '8px 12px 8px 12px', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.sunken, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          {/* Stage 4 reskin — the manual flip pill + separate start-side label are
+              consolidated into ONE full-width SideSwapStrip (design `.pstrip`): both
+              teams + their current side + an amber ⇄ that fires the SAME manual swap.
+              StageSwitcher drops to its own row below (the strip needs the full width). */}
+          <SideSwapStrip
+            scouted={scoutedTeam}
+            opponent={opponentTeam}
+            scoutedColor={scoutedTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
+            opponentColor={opponentTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
+            fieldSide={fieldSide}
+            onSwap={handleManualSwapSides}
+            orientation="horizontal"
+          />
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
+          </div>
         </div>
       </PageHeader>
         );
@@ -2847,11 +2879,31 @@ export default function MatchPage() {
             }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</span>
           </div>
           {/* mini scoreboard */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px 12px', borderBottom: `1px solid ${ELEV.hairline}`, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px 12px', borderBottom: `1px solid ${ELEV.hairline}` }}>
             <ScoreSide team={teamA} color={TEAM_COLORS.A} />
             <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: COLORS.text, flexShrink: 0, letterSpacing: '-.5px', ...TNUM }}>{scoreStr}</span>
             <ScoreSide team={teamB} color={TEAM_COLORS.B} />
           </div>
+          {/* Side-swap strip (vertical adaptation of the design `.pstrip`, which is
+              portrait-only — FLAGGED). Landscape previously had no manual swap; this
+              surfaces the SAME handler as the portrait strip, byte-stable capture. */}
+          {(() => {
+            const lScouted = scoutingSide === 'away' ? teamB : teamA;
+            const lOpponent = scoutingSide === 'away' ? teamA : teamB;
+            return (
+              <div style={{ padding: '12px 12px 0' }}>
+                <SideSwapStrip
+                  scouted={lScouted}
+                  opponent={lOpponent}
+                  scoutedColor={lScouted?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
+                  opponentColor={lOpponent?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
+                  fieldSide={fieldSide}
+                  onSwap={handleManualSwapSides}
+                  orientation="vertical"
+                />
+              </div>
+            );
+          })()}
           {/* spacer — field carries the live capture; rail stays minimal chrome */}
           <div style={{ flex: 1, minHeight: 0 }} />
           {/* Save CTA — pinned bottom */}
@@ -3033,6 +3085,31 @@ export default function MatchPage() {
                   {shortName(rightTeam)}
                 </div>
               </>
+            );
+          })()}
+          {/* ═══ VS INTRO OVERLAY ═══ — display-only point-open animation.
+              Self-contained absolutely-positioned layer over THIS canvas region
+              (does NOT touch the card's canvas sizing). Measures its own box for
+              the portrait/landscape split; plays once per opened point (mount +
+              playKey change); tap anywhere dismisses; reduced-motion + the
+              per-device toggle skip it entirely. scouted = the team being scouted,
+              opponent = the other side (matches the §2.5 scoutingSide mapping used
+              by the header above — the overlay reads, never writes). */}
+          {(() => {
+            const scoutedTeam = scoutingSide === 'away' ? teamB : teamA;
+            const opponentTeam = scoutingSide === 'away' ? teamA : teamB;
+            const idx = editingId ? points.findIndex(p => p.id === editingId) : -1;
+            const ptNum = idx >= 0 ? idx + 1 : points.length + 1;
+            return (
+              <VsIntro
+                enabled={vsIntroEnabled}
+                playKey={ptNum}
+                pointNumber={ptNum}
+                scouted={scoutedTeam}
+                opponent={opponentTeam}
+                scoutedColor={scoutedTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
+                opponentColor={opponentTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
+              />
             );
           })()}
         </div>
