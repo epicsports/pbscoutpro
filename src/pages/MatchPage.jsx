@@ -54,11 +54,14 @@ import QuickShotPanel from '../components/QuickShotPanel';
 import StageSwitcher from '../components/match/StageSwitcher';
 import PointAxisScrubber from '../components/match/PointAxisScrubber';
 import ReasonRadial from '../components/match/ReasonRadial';
+import VsIntro from '../components/match/VsIntro';
 import QuickLogView from '../components/QuickLogView';
 import PointSummary from '../components/PointSummary';
 
 // E5/E5A/E5B + emptyTeam now live in useCaptureDraft (imported above).
 const PENALTIES = ['', '141', '241', '341'];
+// VS-intro per-device pref (localStorage). 'on' (default) | 'off'.
+const VS_INTRO_KEY = 'pbscoutpro-vsintro';
 
 // §B B3 — per-phase layer DEFAULTS for the review heatmap (convention, not
 // gates). The §40 per-team capsules override freely WITHIN the active phase;
@@ -436,6 +439,20 @@ export default function MatchPage() {
   // the current key. `discardDraftConfirm` confirms before deletion.
   const [draftSavedAt, setDraftSavedAt] = useState(0);
   const [scoutEditorMenuOpen, setScoutEditorMenuOpen] = useState(false);
+  // VS-intro point-open animation toggle. Per-device pref (no Firestore sync),
+  // mirroring the `pbscoutpro-handedness` localStorage pattern (MoreShell.jsx).
+  // Default ON; user disables it via the editor ⋮ menu.
+  const [vsIntroEnabled, setVsIntroEnabled] = useState(() => {
+    try { return (localStorage.getItem(VS_INTRO_KEY) || 'on') !== 'off'; }
+    catch { return true; }
+  });
+  const toggleVsIntro = () => {
+    setVsIntroEnabled((prev) => {
+      const next = !prev;
+      try { localStorage.setItem(VS_INTRO_KEY, next ? 'on' : 'off'); } catch { /* private mode */ }
+      return next;
+    });
+  };
   const discardDraftConfirm = useConfirm();
   const lastAssignA = useRef(E5());
   const lastAssignB = useRef(E5());
@@ -2421,6 +2438,11 @@ export default function MatchPage() {
           localStorage draft for the current key + resets in-memory
           state; safe-confirms via discardDraftConfirm. */}
       <ActionSheet open={scoutEditorMenuOpen} onClose={() => setScoutEditorMenuOpen(false)} actions={[
+        { label: vsIntroEnabled ? t('vs_intro_disable') : t('vs_intro_enable'), onPress: () => {
+          toggleVsIntro();
+          setScoutEditorMenuOpen(false);
+        }},
+        { separator: true },
         { label: t('scout_draft_discard'), danger: true, onPress: () => {
           setScoutEditorMenuOpen(false);
           discardDraftConfirm.ask(true);
@@ -3033,6 +3055,31 @@ export default function MatchPage() {
                   {shortName(rightTeam)}
                 </div>
               </>
+            );
+          })()}
+          {/* ═══ VS INTRO OVERLAY ═══ — display-only point-open animation.
+              Self-contained absolutely-positioned layer over THIS canvas region
+              (does NOT touch the card's canvas sizing). Measures its own box for
+              the portrait/landscape split; plays once per opened point (mount +
+              playKey change); tap anywhere dismisses; reduced-motion + the
+              per-device toggle skip it entirely. scouted = the team being scouted,
+              opponent = the other side (matches the §2.5 scoutingSide mapping used
+              by the header above — the overlay reads, never writes). */}
+          {(() => {
+            const scoutedTeam = scoutingSide === 'away' ? teamB : teamA;
+            const opponentTeam = scoutingSide === 'away' ? teamA : teamB;
+            const idx = editingId ? points.findIndex(p => p.id === editingId) : -1;
+            const ptNum = idx >= 0 ? idx + 1 : points.length + 1;
+            return (
+              <VsIntro
+                enabled={vsIntroEnabled}
+                playKey={ptNum}
+                pointNumber={ptNum}
+                scouted={scoutedTeam}
+                opponent={opponentTeam}
+                scoutedColor={scoutedTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
+                opponentColor={opponentTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
+              />
             );
           })()}
         </div>

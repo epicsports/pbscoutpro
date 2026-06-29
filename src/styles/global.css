@@ -431,3 +431,19 @@ canvas {
 .rd-zone:active { transform: scale(.98); }
 .rd-scroll::-webkit-scrollbar { width: 0; height: 0; }
 .rd-scroll { scrollbar-width: none; }
+
+/* ─── VS intro overlay (Scout point-open) — keyframes ───
+   Consumed by src/components/match/VsIntro.jsx (inline animation props reference
+   these by name). Geometry/colours/timing reproduced from the design handoff
+   ("Scout — VS intro RESPONSIVE"). Reduced-motion is handled in the component
+   (it renders nothing), so no media-query override is needed here. */
+@keyframes vsiOut { 0%, 62% { opacity: 1; transform: scale(1) } 100% { opacity: 0; transform: scale(.985); visibility: hidden } }
+@keyframes vsiFade { 0% { opacity: 0 } 10% { opacity: 1 } 100% { opacity: 1 } }
+@keyframes vsiSlideA { 0% { opacity: 0; transform: translate(-26px,-16px) } 100% { opacity: 1; transform: none } }
+@keyframes vsiSlideB { 0% { opacity: 0; transform: translate(26px,16px) } 100% { opacity: 1; transform: none } }
+@keyframes vsiSeam { 0% { opacity: 0 } 100% { opacity: 1 } }
+@keyframes vsiInL { 0% { opacity: 0; transform: translateX(-46px) } 100% { opacity: 1; transform: none } }
+@keyframes vsiInR { 0% { opacity: 0; transform: translateX(46px) } 100% { opacity: 1; transform: none } }
+@keyframes vsiCrestL { 0% { opacity: 0 } 100% { opacity: .34 } }
+@keyframes vsiCrestR { 0% { opacity: 0 } 100% { opacity: .34 } }
+@keyframes vsiCoinPop { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.55) } 60% { opacity: 1; transform: translate(-50%,-50%) scale(1.1) } 100% { opacity: 1; transform: translate(-50%,-50%) scale(1) } }
