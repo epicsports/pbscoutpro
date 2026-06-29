@@ -28,7 +28,8 @@ import { useWide } from '../hooks/useWide';
 import { useUserNames, fallbackScoutLabel } from '../hooks/useUserNames';
 import { useLanguage } from '../hooks/useLanguage';
 import { useDisplayName } from '../utils/playerName';
-import { Footprints, Crosshair, Route, Medal, Zap, Skull, X, ChevronDown } from 'lucide-react';
+import { Footprints, Crosshair, Route, Medal, Zap, Skull, X, ChevronDown, Maximize2 } from 'lucide-react';
+import FieldFullscreen from '../components/field/FieldFullscreen';
 import { resolveZones } from '../utils/layoutZones';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
@@ -221,6 +222,9 @@ export default function ScoutedTeamPage() {
   // § field-views-sync — the on-field "Warstwy" popover open state. 3 independent
   // filters (Pozycje/Strzały/Plan coacha) live here now, NOT in a rail LAYERS zone.
   const [layersOpen, setLayersOpen] = useState(false);
+  // § 1c — VIEW-ONLY fullscreen (maximize). The field has phase/point data, so the
+  // overlay shows the contextual bottom phase-axis (FFAxis).
+  const [fsOpen, setFsOpen] = useState(false);
   const { t, lang } = useLanguage();
   const dn = useDisplayName();
     const { tournamentId, scoutedId } = useParams();
@@ -822,8 +826,12 @@ export default function ScoutedTeamPage() {
   // + ≥1 match (else the report sections + empty states carry the page).
   const heroAvailable = teamMatches.length > 0 && !!field?.fieldImage;
 
-  const heatmapCanvasEl = (
+  // § 1c — render fn so the FieldFullscreen overlay can rebuild the SAME canvas
+  // (same props/handlers → same per-phase data) with a height cap matching its
+  // measured stage box. `maxCanvasHeight` defaults to undefined = prior behavior.
+  const renderHeatmapCanvas = (maxCanvasHeight) => (
     <HeatmapCanvas
+      maxCanvasHeight={maxCanvasHeight}
       fieldImage={field.fieldImage}
       points={heatmapDisplayPoints}
       rosterPlayers={roster}
@@ -860,6 +868,7 @@ export default function ScoutedTeamPage() {
       )}
     </HeatmapCanvas>
   );
+  const heatmapCanvasEl = renderHeatmapCanvas();
 
   // The draw toolbar (draw mode) — rides the canvas (replaces the on-field Rysuj
   // entry while drawing). Coach-plan write path unchanged (onDone → exitCoachDrawMode).
@@ -954,6 +963,23 @@ export default function ScoutedTeamPage() {
       }}>
       <span style={{ display: 'flex', color: COLORS.accent }}><RdIcon name="pencil" size={15} /></span>
       <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.accent }}>{t('coach_draw_label')}</span>
+    </div>
+  ) : null;
+
+  // § 1c — on-field MAXIMIZE entry. Bottom-right corner (clear of the top Warstwy/
+  // Rysuj chips) → opens the VIEW-ONLY fullscreen overlay. Icon-only 44px target.
+  const fieldMaximizeEl = !coachDrawMode ? (
+    <div role="button" aria-label={t('field_fullscreen')} title={t('field_fullscreen')}
+      data-testid="field-maximize"
+      onClick={() => setFsOpen(true)}
+      style={{
+        position: 'absolute', bottom: 12, right: 12, zIndex: 36,
+        width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(10,14,23,.82)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+        border: `1px solid ${COLORS.accent}55`, borderRadius: 11,
+        cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: COLORS.accent,
+      }}>
+      <Maximize2 size={17} />
     </div>
   ) : null;
 
@@ -1220,6 +1246,7 @@ export default function ScoutedTeamPage() {
         {coachDrawMode && coachDrawToolbarEl}
         {!coachDrawMode && warstwyPopoverEl}
         {!coachDrawMode && fieldRysujEl}
+        {!coachDrawMode && fieldMaximizeEl}
       </div>
       {/* attached Oś-punktu axis (phase keyframes + play) */}
       {fieldPhaseAxisEl}
@@ -2516,6 +2543,29 @@ export default function ScoutedTeamPage() {
     </>
   );
 
+  // § 1c — VIEW-ONLY fullscreen overlay. Field maxed + the SAME HeatmapCanvas
+  // (per-phase data preserved) + the contextual bottom phase-axis. `onPhase` is
+  // wired to the prod phase state (setHmPhase) — scrubbing/playing the axis swaps
+  // the field's per-phase overlay (HeatmapCanvas `phase` + per-phase callout
+  // weights), exactly like the on-page Stage axis. Disabled (data-less) phases
+  // are filtered out so the axis only offers keyframes that have data. No write.
+  const fsPhases = phaseItems.filter(p => !p.disabled).map(p => ({ key: p.key, label: p.label }));
+  const fieldFullscreenEl = (fsOpen && heroAvailable) ? (
+    <FieldFullscreen
+      onClose={() => setFsOpen(false)}
+      title={team?.name || 'Team'}
+      subtitle={t('opponent_analysis')}
+      closeLabel={t('close')}
+      field={(h) => renderHeatmapCanvas(h)}
+      phases={fsPhases}
+      activePhaseKey={hmPhase}
+      onPhase={setHmPhase}
+      axisLabel={t('scouted_layer_stage')}
+      playingLabel={t('scouted_axis_playing')}
+      hintLabel={t('scouted_axis_hint')}
+    />
+  ) : null;
+
   // § field-views-sync — the scout CTA at the foot of the rail (prototype). Reuses
   // the existing "open this match → scout a point" door: a single accent action.
   const scoutCtaEl = isMatchScope && selectedMatch ? (
@@ -2564,6 +2614,7 @@ export default function ScoutedTeamPage() {
         </div>
       </div>
       {modalsEl}
+      {fieldFullscreenEl}
     </div>
   );
 }
