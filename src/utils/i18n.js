@@ -2271,6 +2271,8 @@ const T = {
     hero_przegrana:                  'Przegrana',
     /* ScoutedTeamPage draw label */
     coach_draw_label:                'Rysuj',
+    /* § 1c — field fullscreen (maximize) */
+    field_fullscreen:                'Pełny ekran',
     /* DrawToolbar */
     draw_toolbar_undo:              'Undo',
     draw_toolbar_redo:              'Redo',
@@ -4546,6 +4548,8 @@ const T = {
     hero_przegrana:                  'Loss',
     /* ScoutedTeamPage draw label */
     coach_draw_label:                'Draw',
+    /* § 1c — field fullscreen (maximize) */
+    field_fullscreen:                'Fullscreen',
     /* DrawToolbar */
     draw_toolbar_undo:              'Undo',
     draw_toolbar_redo:              'Redo',

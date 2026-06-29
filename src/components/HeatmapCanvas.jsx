@@ -193,6 +193,10 @@ export default function HeatmapCanvas({
   // onDraw* callbacks. BaseCanvas owns the touchHandler routing.
   drawMode = false,
   onDrawStart, onDrawMove, onDrawEnd, onDrawAbort,
+  // § 1c — optional height cap forwarded to BaseCanvas's 'fit' sizing. Default
+  // null = prior behavior (cap = window.innerHeight). The FieldFullscreen overlay
+  // passes the measured stage height so the maximized field fills without overflow.
+  maxCanvasHeight = null,
   children,
 }) {
   // Per-team visibility: if `visibility` prop is provided, it overrides the global booleans.
@@ -873,6 +877,7 @@ export default function HeatmapCanvas({
       // `window.innerHeight` for the height cap when no `maxCanvasHeight`
       // is passed — sufficient for read-only consumers like ScoutedTeam.
       sizingStrategy="fit"
+      maxCanvasHeight={maxCanvasHeight}
       fieldImage={fieldImage}
       pinchZoom={pinchZoom}
       pan={pan}

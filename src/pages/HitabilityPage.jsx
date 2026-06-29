@@ -8,8 +8,9 @@ import * as ds from '../services/dataService';
 import CanvasRailLayout from '../components/canvas/CanvasRailLayout';
 import HitabilityCanvas from '../components/hitability/HitabilityCanvas';
 import HitBreakdownList from '../components/hitability/HitBreakdownList';
+import FieldFullscreen from '../components/field/FieldFullscreen';
 import { ActionSheet, ConfirmModal, Modal, Btn, Input, FormField } from '../components/ui';
-import { Settings, Crosshair, BarChart3 } from 'lucide-react';
+import { Settings, Crosshair, BarChart3, Maximize2 } from 'lucide-react';
 import { COLORS, FONT, FONT_SIZE, COLORS_ZONE_PALETTE } from '../utils/theme';
 
 const MODES = ['config', 'track', 'sum'];
@@ -58,6 +59,8 @@ export default function HitabilityPage() {
   const [confirmDel, setConfirmDel] = useState(null); // { kind:'p'|'t', id, label, count } | null
   const [editor, setEditor] = useState(null); // { kind:'p'|'t', id } | null — STEP 2 marker popup
   const [shotSheet, setShotSheet] = useState(null); // track-mode: targetId whose shots to list+delete
+  // § 1c — VIEW-ONLY fullscreen (maximize). No phase data here → axis hidden.
+  const [fsOpen, setFsOpen] = useState(false);
   const configRef = useRef(null);
   const inited = useRef(false);
   const migrating = useRef(false);
@@ -330,7 +333,11 @@ export default function HitabilityPage() {
   const railMin = device.isDesktop ? 280 : device.isTablet ? 240 : 200;
   const sortedHits = [...hits].sort((a, b) => (msOf(b.ts) - msOf(a.ts)));
 
-  const canvasEl = (onTap) => (
+  // `readOnly` (§ 1c fullscreen) suppresses ALL write-capable gestures (tap/
+  // long-press/drag) so the maximized field is a pure VIEW — no new Firestore
+  // write path. `maxHeight` lets the fullscreen overlay cap the canvas to its
+  // measured stage box. Both default to the prior interactive behavior.
+  const canvasEl = (onTap, { maxHeight = maxH, readOnly = false } = {}) => (
     <HitabilityCanvas
       fieldImage={layout?.fieldImage}
       bunkers={layout?.bunkers || []}
@@ -341,11 +348,11 @@ export default function HitabilityPage() {
       mode={mode}
       hitsByTarget={mode === 'config' ? {} : hitsByTarget}
       weightTargets={mode === 'sum'}
-      onTap={onTap}
-      onLongPress={mode === 'config' ? configLongPress : mode === 'track' ? trackLongPress : undefined}
-      onDragMarker={moveMarker}
-      onDragEnd={persistNow}
-      maxHeight={maxH}
+      onTap={readOnly ? undefined : onTap}
+      onLongPress={readOnly ? undefined : (mode === 'config' ? configLongPress : mode === 'track' ? trackLongPress : undefined)}
+      onDragMarker={readOnly ? undefined : moveMarker}
+      onDragEnd={readOnly ? undefined : persistNow}
+      maxHeight={maxHeight}
     />
   );
 
@@ -394,6 +401,19 @@ export default function HitabilityPage() {
         header={headerEl}
         hint={hintEl}
         artifact={canvasEl(mode === 'config' ? configTap : mode === 'track' ? trackTap : undefined)}
+        fieldTools={(
+          <div role="button" aria-label={t('field_fullscreen')} title={t('field_fullscreen')}
+            data-testid="hit-fullscreen"
+            onClick={() => setFsOpen(true)}
+            style={{
+              width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 11, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
+              background: 'rgba(10,14,23,.82)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+              border: `1px solid ${COLORS.accent}55`, color: COLORS.accent,
+            }}>
+            <Maximize2 size={17} />
+          </div>
+        )}
         rail={(
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', paddingTop: 6 }}>
             {/* Mode switcher — icon-segment pattern (Jacek 2026-06-11): INACTIVE tabs
@@ -510,6 +530,19 @@ export default function HitabilityPage() {
         confirmLabel={t('hitability_del_confirm')}
         danger
       />
+
+      {/* § 1c — VIEW-ONLY maximize. Data-less field → no phase axis (phases omitted).
+          The fullscreen canvas is read-only (no tap/long-press/drag) so there is no
+          new write path; existing config/hit markers still render for inspection. */}
+      {fsOpen && (
+        <FieldFullscreen
+          onClose={() => setFsOpen(false)}
+          title={t('hitability_card_title')}
+          subtitle={layout?.name}
+          closeLabel={t('close')}
+          field={(h) => canvasEl(undefined, { maxHeight: h, readOnly: true })}
+        />
+      )}
     </div>
   );
 }
