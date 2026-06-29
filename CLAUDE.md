@@ -21,6 +21,7 @@ When referencing docs, use these paths:
 |---|---|
 | UI patterns + product decisions | `docs/DESIGN_DECISIONS.md` |
 | Build conventions + anti-patterns | `docs/PROJECT_GUIDELINES.md` |
+| CC autonomy / merge gate (canonical) | `CC_AUTOPILOT_ENVELOPE.md` (root) |
 | § 27 executable review checklist | `docs/REVIEW_CHECKLIST.md` |
 | System architecture (long-form) | `docs/architecture/{NAME}.md` |
 | Ops / setup | `docs/ops/{NAME}.md` |
@@ -93,8 +94,10 @@ Only commit if verdict is READY TO COMMIT.
 - **Opus = architect + brief author + decision synthesizer.**
 - **Jacek = product owner + final GO.**
 
-**CC never merges app code to main or runs `npm run deploy` without explicit Jacek GO**
-— including doc-only commits. (Firebase-side ops are governed separately by the
+**Merge / deploy authorization is governed by `CC_AUTOPILOT_ENVELOPE.md` (repo root) —
+the canonical, blast-radius gate:** GREEN = hands-free to merge · AMBER = one pre-merge
+gate · RED = full Jacek GO at every checkpoint. Tier can only ratchet UP; uncertain →
+treat as the higher tier. (Firebase-side ops are governed separately by the
 Firebase-autonomy policy below.)
 
 **Autonomy that IS yours (CC), scoped:** within a single GO'd brief, implement its steps
@@ -115,9 +118,11 @@ brief's scope — never ACROSS tasks, architecture, the merge gate, or the app-d
 3. `npx vite build 2>&1 | tail -5` (must pass)
 4. `npm run precommit` (must pass)
 5. Commit on the feature branch → push the branch
-6. Report READY. **Do NOT merge to main. Do NOT `npm run deploy`.** Wait for Jacek GO.
+6. Then act on the task's tier per `CC_AUTOPILOT_ENVELOPE.md`: **GREEN** → merge;
+   **AMBER** → report READY + one pre-merge gate; **RED** → report READY, wait for Jacek GO.
+   Never run `npm run deploy` by hand (main-push auto-deploys, e2e-gated).
 
-### CC — on Jacek GO (merge + deploy)
+### CC — on a mergeable tier (GREEN, or AMBER/RED after GO)
 1. `git checkout main` → `git merge --no-ff <branch>` → `git push origin main`
 2. `npm run deploy`
 3. Append to `DEPLOY_LOG.md`
