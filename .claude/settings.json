@@ -38,8 +38,7 @@
       "Write(briefs/**)",
       "Edit(briefs/**)",
       "Write(docs/briefs/**)",
-      "Edit(docs/briefs/**)",
-      "Read(//c/Users/JacekPARCZEWSKI/Downloads/**)"
+      "Edit(docs/briefs/**)"
     ],
     "ask": [
       "Bash(rm *)",

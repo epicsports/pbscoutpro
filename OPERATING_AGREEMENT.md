@@ -58,6 +58,12 @@ Jacek wychodzi z pętli przekazywania roboty do CD. **CC sam zasila CD.**
 - Gdy **cały** aktywny epik = 🟢 → CC nie startuje nowego epiku samowolnie; raportuje
   „done, <następny> czeka na GO". Tylko 🔴/realne widełko idzie do Jacka.
 
+## 10. Skrzynka przekazań = `_inbox/` (od 2026-07-01)
+Wymiana plików (zrzuty, zipy design-systemu CD, drafty briefów, dane Jacka) idzie przez
+**`_inbox/` w repo**, nie przez Downloads. CC szuka nowych dropów w `_inbox/`. Zawartość
+gitignored (tylko `_inbox/README.md` trackowany); katalog jest w repo → operacje na plikach
+zaufane bez promptów (dlatego `Read(Downloads/**)` usunięte z whitelisty).
+
 ## 9. CC = jedyna sortownia + pętla domknięta z obu stron (od 2026-06-30)
 - **CC jest jedynym wlotem zadań.** Każdy request (feature/bug/pomysł/poprawka) **najpierw**
   ląduje w `BACKLOG.md` jako wiersz z `owner`, **potem** klasyfikacja:

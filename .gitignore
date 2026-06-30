@@ -32,6 +32,11 @@ scripts/migration/player_dedup_backup.*.json
 # Night-run intake (local coordination scratch; shipped work logged in DEPLOY_LOG)
 NIGHT_QUEUE.md
 
+# Handoff inbox (Jacek/CD drops: zrzuty, zipy, drafty briefów) — not part of code.
+# Keep the dir + its README tracked; ignore everything dropped into it.
+_inbox/*
+!_inbox/README.md
+
 # Night-mode scratch (game references; not shipped)
 .night/
 
