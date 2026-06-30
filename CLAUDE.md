@@ -22,6 +22,9 @@ When referencing docs, use these paths:
 | UI patterns + product decisions | `docs/DESIGN_DECISIONS.md` |
 | Build conventions + anti-patterns | `docs/PROJECT_GUIDELINES.md` |
 | CC autonomy / merge gate (canonical) | `CC_AUTOPILOT_ENVELOPE.md` (root) |
+| **Backlog (THE only work list)** | `BACKLOG.md` (root) — others archived in `/_archive/` |
+| **Code reality (routes/ui/data/tokens/flags)** | `APP_MAP.md` (root) — read BEFORE designing/building |
+| **How we work (workflow, render-proof, comms)** | `OPERATING_AGREEMENT.md` (root) |
 | § 27 executable review checklist | `docs/REVIEW_CHECKLIST.md` |
 | System architecture (long-form) | `docs/architecture/{NAME}.md` |
 | Ops / setup | `docs/ops/{NAME}.md` |
