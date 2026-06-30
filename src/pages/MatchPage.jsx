@@ -2810,19 +2810,12 @@ export default function MatchPage() {
             hairline divider so the context bar reads as a distinct recessed
             band under the header. */}
         <div style={{ width: '100%', marginTop: 0, padding: '8px 12px 8px 12px', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.sunken, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-          {/* Stage 4 reskin — the manual flip pill + separate start-side label are
-              consolidated into ONE full-width SideSwapStrip (design `.pstrip`): both
-              teams + their current side + an amber ⇄ that fires the SAME manual swap.
-              StageSwitcher drops to its own row below (the strip needs the full width). */}
-          <SideSwapStrip
-            scouted={scoutedTeam}
-            opponent={opponentTeam}
-            scoutedColor={scoutedTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
-            opponentColor={opponentTeam?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
-            fieldSide={fieldSide}
-            onSwap={handleManualSwapSides}
-            orientation="horizontal"
-          />
+          {/* Field-priority refinement — the full-width SideSwapStrip no longer sits
+              in this context bar (it stole vertical height from the field). It now
+              FLOATS as an absolute overlay on the TOP of the field card (see the
+              canvas wrapper below), giving the field more height. Only the phase
+              StageSwitcher stays here, in its own row. The swap still fires the SAME
+              handleManualSwapSides — byte-stable capture. */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
           </div>
@@ -2925,6 +2918,35 @@ export default function MatchPage() {
         {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
         <div style={{ position: 'relative' }}>
           <FullscreenToggle fsActive={fsActive} onToggle={() => setFullscreen(!fsActive)} isLandscape={isLandscape} />
+          {/* ═══ FLOATING SIDE-SWAP STRIP ═══ (portrait only) — the strip used to
+              sit in the context bar ABOVE the field, stealing height. It now floats
+              as an absolute overlay on the TOP of THIS field card (same relative
+              host as the VsIntro overlay). The wrapper is pointer-events:none and
+              right-inset to clear the Full-screen toggle (top-right, zIndex 30); the
+              strip itself is pointer-events:auto, so only the thin top band captures
+              taps — the field play area below stays fully interactive. zIndex 25:
+              above the base indicators (15), below VsIntro (60) so the intro still
+              covers it during playback. Landscape keeps its rail strip (untouched). */}
+          {!immersive && (() => {
+            const fScouted = scoutingSide === 'away' ? teamB : teamA;
+            const fOpponent = scoutingSide === 'away' ? teamA : teamB;
+            return (
+              <div style={{ position: 'absolute', top: 6, left: 8, right: 60, zIndex: 25, pointerEvents: 'none' }}>
+                <div style={{ pointerEvents: 'auto' }}>
+                  <SideSwapStrip
+                    scouted={fScouted}
+                    opponent={fOpponent}
+                    scoutedColor={fScouted?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
+                    opponentColor={fOpponent?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
+                    fieldSide={fieldSide}
+                    onSwap={handleManualSwapSides}
+                    orientation="horizontal"
+                    floating
+                  />
+                </div>
+              </div>
+            );
+          })()}
           <InteractiveCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
             maxCanvasHeight={canvasMaxHeight(0, 180)}
             // § 79 — scout flow has NO "Shot 2nd" toolbar; only `shots[]` is
