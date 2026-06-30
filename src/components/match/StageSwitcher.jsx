@@ -18,9 +18,13 @@ import { capturePhases, toPersistedLiteral, label } from '../../utils/pointPhase
  *   stage    — active stage key: 'break' | 'settle' | 'mid'
  *   onChange — (key) => void
  *   done     — { break, settle, mid } booleans: stage has captured data
+ *   ranges   — optional { break, settle, mid } STATIC time-range hint strings
+ *              (e.g. '0–5s'). Render-only sub-labels so the scout knows what to
+ *              collect per phase; NOT data (phases carry no timestamps). When
+ *              omitted the switcher renders exactly as before (portrait paths).
  *   device-agnostic: each node is a ≥44px tap target; scales by flex.
  */
-export default function StageSwitcher({ stage = 'break', onChange, done = {}, stages = null, wrap = false }) {
+export default function StageSwitcher({ stage = 'break', onChange, done = {}, stages = null, wrap = false, ranges = null }) {
   const { t } = useLanguage();
   // PaT D4 — default capture nodes from the canonical module (single source); keys
   // are the persisted literals (break/settle/mid + endgame). The TACTIC editor
@@ -61,10 +65,18 @@ export default function StageSwitcher({ stage = 'break', onChange, done = {}, st
                   <span style={{ width: 4, height: 4, borderRadius: '50%', background: COLORS.accent }} />
                 )}
               </span>
-              <span style={{
-                fontFamily: FONT, fontSize: 12, fontWeight: active ? 800 : 600, color,
-                letterSpacing: 0.2,
-              }}>{s.label}</span>
+              {ranges && ranges[s.key] ? (
+                // phase label + static time-range hint stacked (rail variant)
+                <span style={{ display: 'inline-flex', flexDirection: 'column', lineHeight: 1.05 }}>
+                  <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: active ? 800 : 600, color, letterSpacing: 0.2 }}>{s.label}</span>
+                  <span style={{ fontFamily: FONT, fontSize: 8.5, fontWeight: 600, color: COLORS.textMuted, letterSpacing: 0.2 }}>{ranges[s.key]}</span>
+                </span>
+              ) : (
+                <span style={{
+                  fontFamily: FONT, fontSize: 12, fontWeight: active ? 800 : 600, color,
+                  letterSpacing: 0.2,
+                }}>{s.label}</span>
+              )}
             </div>
           </React.Fragment>
         );
