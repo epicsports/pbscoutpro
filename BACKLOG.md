@@ -5,91 +5,174 @@
 > każdy z jedną linią `→ patrz BACKLOG.md`. Nikt nie tworzy drugiej tabeli stanu.
 >
 > **Własność kolumn (sztywna):**
-> - `Design` — właściciel: **Design**. Intencja/prototyp gotowy.
+> - `Design` — właściciel: **CD**. Intencja/prototyp gotowy.
 > - `Build` — właściciel: **CC**. Stan z gita/deployu, nie z notatek.
 > - `Verified` — właściciel: **CC**. Link do zrzutów @390/834/1280. Bez pary zrzutów = NIE 🟢.
-> - `Notes` — kto chce, decyzje + linki do briefu w `/briefs/`.
+> - `owner` — kto prowadzi: **CC** (kod/bug/dane/infra/refactor/perf) · **CD** (wygląd/ekran/UX/komponent) · **ARCH** (mgła/duże/pomysł/research/decyzja).
 
-## Legenda statusów (wspólna — koniec z różnymi emoji u każdego agenta)
+## Legenda statusów (wspólna)
 - ⚪ backlog (nieruszone)
-- 🔵 designed — Design skończył intencję/prototyp, czeka na build
+- 🔵 designed — CD skończył intencję/prototyp, czeka na build
 - 🟠 in-build — CC pracuje
 - 🟢 live+verified — na produkcji **i** zrzuty @390/834/1280 dołączone
 - 🔴 blocked / potrzebne widełko od Jacka
+- ❄️ PARKED — dotyka live scout-screena (field-cluster), zamrożone do po Birmingham (po 5.07.2026)
+
+---
+
+## 🚦 WLOT ZADAŃ + TRIAGE — CC jest jedyną sortownią (od 2026-06-30)
+Każdy request (feature / bug / pomysł / poprawka) **najpierw** ląduje tu jako wiersz z `owner`, **potem** klasyfikacja:
+- jasny **kod / bug / dane / infra / refactor / perf** → `owner=CC`, robię sam.
+- wartość w **wyglądzie / nowym ekranie / UX / komponencie** → `owner=CD`; wiersz „design-needed" z Notes (komponenty z `APP_MAP.md` + data-contract + ścieżka do zrzutu w `/screenshots/`) → briefuję CD.
+- **mgła / duże / pomysł / research / decyzja o priorytecie / wymaga rozbicia** → `owner=ARCH`; **nie zaczynam**, flaguję do architekta. (przykłady: nowy moduł, „mam pomysł", duża funkcja bez zakresu)
+- waham się CC↔ARCH → **domyślnie ARCH**. Tanio zapytać, drogo zbudować źle.
+
+### Pętla domknięta z obu stron (niezmiennik)
+- **CD** wkłada każdy design do BACKLOG jako 🔵 **w momencie powstania** — nie gdy CC go wypatrzy.
+- **CC nie shipuje ekranu na 🟢, jeśli nie przeszedł wcześniej przez 🔵 w BACKLOG.**
+  **Brak wiersza designu = build się NIE zaczyna** — CC flaguje „⚠ design nie zarejestrowany"
+  zamiast budować. Nic nie wjeżdża do kodu z pominięciem BACKLOG. (Audyt-w-drugą-stronę
+  z 2026-06-30 = jednorazowe nadrobienie; ta reguła sprawia, że nie trzeba go powtarzać.)
+- Niezmienniki: **field-cluster ❄️** — cokolwiek dotyka live scout-screena dopisuję, ustawiam `owner`, ale **parkuję do GO**. **Destrukcyjne** (rm/force-push/reset --hard) — dalej pytam. Moje kolumny: build/verified. Design jest CD.
 
 ---
 
 ## EPIC: field-cluster (klaster pola)
+> ❄️ **ZAMROŻONE do po Birmingham (2–5.07.2026)** — decyzja Jacka 2026-06-30. Żywy ekran
+> live-scout, używany NA evencie. Zero zmian w `MatchPage`/field-cluster do końca turnieju.
 
-> ❄️ **ZAMROŻONE do po Birmingham (2–5.07.2026)** — decyzja Jacka 2026-06-30. To jest
-> żywy ekran live-scout, używany NA evencie. Zero zmian w `MatchPage`/field-cluster
-> (FieldWorkspace shell, tactic-on-layout, N5/N6) do zakończenia turnieju. Wracamy po.
-
-| Screen | Design | Build | Verified | Notes |
+| Screen | Design | Build | owner | Notes |
 |---|---|---|---|---|
-| Match scout / Live Point Tracker | ⚪ | ⚪ | — | snapshot 2026-06-30, faza Breakout; i18n mismatch: „Rysuj" PL vs „Save point/Breakout/Settle/Mid-game" EN |
-| Tactic page (rysowanie po layoutach) | ⚪ | ⚪ | — | flagi z handoffu: redundancja „Gotowe/Save", i18n; loupe LEFT (praworęczny) |
-| Layout detail page | ⚪ | ⚪ | — | — |
+| Match scout / Live Point Tracker | ⚪ | ⚪❄️ | CD | i18n mismatch „Rysuj" PL vs EN; MatchPage #4 wide re-skin CD-gated (≥720 sign-off) |
+| Tactic page (rysowanie po layoutach) | ⚪ | ⚪❄️ | CD | redundancja „Gotowe/Save", i18n, loupe LEFT; tactic-creation redesign (oś faz + Warstwy) |
+| Layout detail page | ⚪ | ⚪❄️ | CD | Lines+Zones panele → explicit fields; field-config + **obstacle UI „DUŻY BRAK"** + re-entry bug |
+| N7 FieldWorkspace shell + mode-wizard | ⚪ | ⚪❄️ | ARCH | strukturalny refaktor (stan LayoutDetailPage → wspólny hook) |
+| N8 Taktyka skompozytowana na canvasie | ⚪ | ⚪❄️ | ARCH | integracja taktyka↔layout = decyzja architektoniczna |
+| N5 Callout-line render+draw · N6 Zone vertex editor | ⚪ | ⚪❄️ | CC | `editLines[]` zapisywane, nigdy rysowane; feasibility med→high |
 
 ## EPIC: team-consolidation (konsolidacja drużyn) — ✅ DONE
-
-Brief `docs/briefs/TEAM_CONSOLIDATION_BRIEF.md`. Reality-pass 2026-06-30 (agent): **90% już shipnięte**, jedyny realny delta = gate-bug na liście (naprawiony). TeamFormModal już usunięty, CREATE-mode żyje, pełny field-inventory §6 + list §7 obecne. Zero pozycji czekających na design CD.
-
-| Screen | Design | Build | Verified | Notes |
-|---|---|---|---|---|
-| Team screen VIEW/EDIT/CREATE (`/team/:id`, `/team/new`) | 🟢 | 🟢 | `/screenshots/team-detail-{390,834,1280}.png` | super-admin gate (`useIsSuperAdmin`) na edit/roster/audit/danger; 3-tier crest; sister cards; CREATE folduje dawny TeamFormModal. `TeamDetailPage.jsx:35` |
-| Super-admin list (`/admin/teams`) | 🟢 | 🟢 | `/screenshots/admin-teams-{390,834,1280}.png` | search + Liga/Dywizja + status-pille + sort + pagination + ⋮ ops-only + dup-banner. **Gate-fix** `effectiveIsAdmin`→`useIsSuperAdmin` (brief §2) shipnięty — `AdminTeamsPage.jsx:53` |
-| TeamFormModal removal | n/d | 🟢 | — | plik nie istnieje, zero importów (reality-pass §7) |
-
-## EPIC: bugfix-red (twarde błędy — priorytet)
+Reality-pass 2026-06-30: 90% było shipnięte, gate-fix `AdminTeamsPage`→super-admin domknął epik. Zero pozycji dla CD.
 
 | Screen | Design | Build | Verified | Notes |
 |---|---|---|---|---|
-| Tournament team picker | n/d | 🟢 | logic-only (brak render-diff) | FIX `MatchListPremium.jsx`: child dziedziczy ligę rodzica (`inLeague(parent)`). e2e 7/7. merge bdad66f2 |
-| Add-to-tournament | n/d | 🟢 | logic-only | FIX: child dziedziczy `divisions[league]` rodzica. roster-division pass. merge bdad66f2 |
-| Profile-claim (Safari) | n/d | 🟢 | — | NIE-obecny w bieżącym kodzie (naprawiony przy „relax onboarding" rewrite). Zero `update` poza-scope w `src/`. Owed: jednorazowy Safari smoke live-bundla (prod może być starszy) |
+| Team screen VIEW/EDIT/CREATE (`/team/:id`, `/team/new`) | 🟢 | 🟢 | `/screenshots/team-detail-{390,834,1280}.png` | super-admin gate; 3-tier crest; CREATE folduje TeamFormModal |
+| Super-admin list (`/admin/teams`) | 🟢 | 🟢 | `/screenshots/admin-teams-{390,834,1280}.png` | gate-fix `effectiveIsAdmin`→`useIsSuperAdmin` (§2) |
+| TeamFormModal removal | n/d | 🟢 | — | plik nie istnieje, zero importów |
+
+## EPIC: bugfix-red — ✅ DONE (ffacc468)
+| Screen | Build | Notes |
+|---|---|---|
+| Tournament team picker · Add-to-tournament | 🟢 | child dziedziczy ligę+dywizję rodzica (`MatchListPremium.jsx`) |
+| Profile-claim (Safari) | 🟢 | nie-obecny w bieżącym kodzie; owed: 1× Safari smoke live-bundla |
 
 ---
 
-### Rytuał (na każdy epik, nie na ekran)
-1. Design: bundluje ekrany epika → jeden komplet `brief + prototyp` do `/briefs/<epic>.md`. Status → 🔵.
-2. CC: bierze cały epik wsadowo (noc), buduje, **render-verify @390/834/1280 PRZED shipem**, commit zrzutów. Status → 🟠 → 🟢. Bez pary zrzutów zostaje 🟠.
-3. Jacek: ogląda arkusz par (prototyp obok zrzutu) raz na epik → „GO" albo flaga. Koniec.
+## 📋 PEŁNY BACKLOG FUNKCJONALNOŚCI — backfill 2026-06-30
+Wciągnięte z `_archive/{NEXT_TASKS,DEPLOY_LOG,_LANDSCAPE_BACKLOG}.md` + `NIGHT_*.md` + `docs/{ops/HANDOVER,DESIGN_DECISIONS,product/*}.md` + grep TODO/FIXME w `src/`. Deduplikowane. Status build = ⚪ jeśli nie inaczej.
 
-### Twarde reguły
-- CC shipuje 🟠→🟢 **samodzielnie**, gdy render-proof przechodzi. Eskaluje do Jacka tylko 🔴 lub realne widełko, w ≤3 liniach.
-- Wszystko, czego potrzebuje drugi agent, ląduje w repo jako plik. Nigdy przez Jacka.
-- Status raportujemy jako tabelę powyżej. Zero eseju kończącego się pytaniem.
+### owner=CC — buildable teraz (kod/bug/dane/infra/refactor/perf, zakres jasny)
+| # | Item | bucket | Notes |
+|---|---|---|---|
+| CC-1 | Wide-shell e2e coverage = ZERO ⭐ | infra | Playwright wide-viewport project + un-gate; tablet bugi docierały do usera bez gate'a. Najwyższa wartość. |
+| CC-2 | `updatePlayer` catalogVersion bump | bug | twin naprawionego `updateTeam` — edity gracza niewidoczne 30d. 1-liner. |
+| CC-3 | `divisionAliases` rok z daty turnieju | data | `divisionAliases.js:69` TODO — derive year from tournament date |
+| CC-4 | i18n precommit guard | infra | wepnij `find-missing-i18n.cjs` do precommit (zweryfikuj czy już nie wpięte) |
+| CC-5 | i18n — resztki hardcoded-PL | bug | ~5: `PlayerStatsPage` CAUSE_META + `ScheduleCSVImport` |
+| CC-6 | `NetworkErrorState` → wepnij w 5 paneli | refactor | komponent gotowy, 5 load-timeout EmptyStates do podmiany |
+| CC-7 | ScheduleList grouping component | refactor | Live/Scheduled/Completed + stage; ScoutTab/CoachTab/wide (matchClassify gotowe) |
+| CC-8 | Preloader true per-stage stepping | perf | heatmap/stats/ranking: fetch-done→compute-done zamiast 1 boolean |
+| CC-9 | Shared `ReportTable` primitive | refactor | breakouts/shooting/PlayerStats grids copy-paste; extract |
+| CC-10 | Data-integrity audit script (side-flip scan) | infra | skan historycznych punktów; mark `confidence:low` (zależy od CC-P1) |
+| CC-11 | Country DATA back-fill (crest flags) | data | **blocked: potrzebne źródło team→country od Jacka**; forma ustawia forward-only |
+| CC-12 | Stuck-user recovery (3 konta + biuro rola) | data | ops; **GO-gated** (--live stamp) |
+| CC-13 | Route-level guards (`/teams`,`/players`,`/my-issues`) | infra | 12/15 guarded; rozszerz player-allowlist. Low. |
+| CC-14 | `MatchCard` testids coverage | infra | brak pokrycia strukturalnego render-catch |
+| CC-15 | kiosk `onTapPoint` → switch lobby ctx | code | `OlderPointsSection.jsx:51` Brief-B follow-up (kiosk, nie live-scout) |
+| CC-16 | externalId duplicate admin-curation | data | `useFirestore.js:179` TODO (część player-dedup?) Low. |
+| CC-17 | Reads Mini App Check (reCAPTCHA v3) | infra | `initializeAppCheck` brak; **separate GO** |
+| CC-18 | `chore/design-sync-inputs` push | infra | branch lokalnie, nie na main; **czeka na GO** |
+| CC-19 | Pixel-diff baselines -linux/-mac | infra | regen poza -win32 (Oswald shift); zweryfikuj czy gate dziś zielony |
+| CC-20 | B20 cross-device same-UID presence | bug | passive-presence; low, edge-case |
+| CC-21 | Low-prio code-residuals batch | refactor | vite chunk limit · isFreePlay hide · invite resend · PPT retry · hmVisibility persist · composite indexes |
+
+### owner=CC — ❄️ PARKED (dotyka live scout / field-cluster — do GO po Birmingham)
+| # | Item | bucket | Notes |
+|---|---|---|---|
+| CC-P1 | **Side-swap home/away korupcja danych** (FEEDBACK PP2) | bug 🔴 | „apka miesza stronami" → korupcja Firestore. **Zweryfikować czy wciąż otwarte** (sporo scout-point shipnięte od feedbacku). Dotyka MatchPage → park; potencjalne P0 = patrz raport do Jacka. |
+| CC-P2 | **Concurrent dual-coach sync** (FEEDBACK PP1) | bug 🔴 | „jeden tworzy punkt, drugi czeka". Zweryfikować vs „concurrent scouting side-safe" (ALREADY SHIPPED). |
+| CC-P3 | Point immutability (freeze side po save) | refactor | prewencja re-korupcji po CC-P1 |
+| CC-P4 | Hardcoded canvas labels i18n (`drawZones.js` DISCO/ZEEKER…) | bug | stringi na żywym polu |
+| CC-P5 | B8 Strzela% denominator (data-trust) | bug | parked w data-validation workstream |
+| CC-P6 | Loupe pan-lag perf | perf | `loupeSourceRef` nigdy nie wypełniony; offscreen/throttle |
+| CC-P7 | `scoutShortName` dead-code cleanup (MatchPage) | refactor | martwy po collapsed-line redesign |
+
+### owner=CD — design-needed (briefuję CD: APP_MAP komponenty + data-contract + zrzut)
+| # | Item | bucket | Notes |
+|---|---|---|---|
+| CD-1 | forms-wide (NewPlayerWide/NewTeamWide) | screen | **blocked: brak eksportu `redesign7.jsx` od CD** |
+| CD-2 | Opponent/coach-summary full re-skin | screen | `ScoutedTeamPage` body + `OpponentAnalysisWide` (tylko chrome shipnięte) |
+| CD-3 | Crest Krok 2 — coach team-detail | screen | heatmap+timeline+deeper-CTA (rozbiegi table już jest). heatmap-extract = ❄️ patrz CD-P2 |
+| CD-4 | MyProfile/TeamProfile full 2-col wide | screen | v1 shipnięte; pełny sticky 2-col additive |
+| CD-5 | Viewer layout (read-only field viewer) | screen | premium + landscape; dziś 4 ikony + static bg |
+| CD-6 | LayoutsList landscape + filtry | screen | full-width siatka + league chipsy + search |
+| CD-7 | Scout (landscape) filtry + i18n | screen | division chipsy + search; i18n bug (section_matches/match_details) |
+| CD-8 | B4 role-aware home + CTA | screen | empty-states funkcjonalne; „get started" home potrzebuje mockupu |
+| CD-9 | Hitability density UX (tap-connection-line @N>5) | screen | własny brief |
+| CD-10 | „Domowy" home badge | screen | mały; komponent czyta `defaultWorkspace` |
+| CD-11 | Pixel-avatar builder | screen | **blocked: brak eksportu `avatars.jsx` (510 linii) od CD** |
+| CD-12 | Custom zones builder | screen | spec `docs/product/CUSTOM_ZONES_SPEC.md` istnieje, zero kodu builderа |
+
+### owner=CD — ❄️ PARKED (live scout / field-cluster)
+| # | Item | bucket | Notes |
+|---|---|---|---|
+| CD-P1 | MatchPage #4 wide re-skin | screen | CD-gated (≥720 sign-off + Jacek green-light) |
+| CD-P2 | ScoutWide points-heatmap overlay | screen | wymaga extractu `matchHeatmapPoints()` z MatchPage |
+| CD-P3 | Folded-rail opponent controls | screen | nakłada się z ScoutedTeamPage landscape |
+
+### owner=ARCH — flaguję do architekta, NIE startuję (mgła/duże/research/decyzja)
+| # | Item | bucket | Notes |
+|---|---|---|---|
+| A-1 | Brief G — schema unification | data/refactor | retire members[]/adminUid/passwordHash, slug-normalize; Admin SDK + multi-checkpoint |
+| A-2 | Phase 0 schema discovery (workspaces a/b/c) | research | decyzja blokuje Phase 1 |
+| A-3 | Phase 1 schema work | refactor | blocked na A-2 |
+| A-4 | G2 cross-tenant catalog isolation | data | players/teams/layouts read = any-authed (interim); cutover przed FIT |
+| A-5 | Cross-workspace player identity bridge | data | pbliId-keyed overlay doc; Phase 3.1+ |
+| A-6 | Tournament refs reconciliation MVP | refactor | collectionGroup deferred / Phase 2.3.d |
+| A-7 | Phase γ reconciliation strategy lock | decyzja | trust-one-source vs manual super-admin escape |
+| A-8 | defaultWorkspace self-update rule | rules | tenant-rules = in-brief CONFIRM; not load-bearing |
+| A-9 | i18next migration (Phase 9) | refactor | lib + ~150-200 sites; duże |
+| A-10 | freehand-as-string architecture | refactor | mapa vs string-pack; dotyka un-e2e concurrent-merge |
+| A-11 | arc-B phase-2 untangle-then-wrap | refactor | WorkspacesAdmin/LayoutAnalytics/TrainingSetup/LayoutWizard + AnalyticsCanvas extract |
+| A-12 | TournamentFormModal merge (dup-audit) | refactor | New vs Edit ~80% identyczne; rewires create/update; GO |
+| A-13 | player-dedup Items 2-3 | data | reconcile queue + super-admin surface; --live = Hard-ESCALATE |
+| A-14 | kiosk join-by-code (Arc E) | code | flow nie istnieje; potrzebny brief |
+| A-15 | Trafialność / accuracy (=N9) | research | position→target pairs; nowa kolekcja + coach-draw + RBAC |
+| A-16 | Point-as-Timeline Stage 4/5/7 | research | typed move-vocab → time-axis → self-log+kiosk unification; PARKED na vocab Jacka |
+| A-17 | READS_SPLASH full cold-start brief | idea | login splash żyje; pełny brief nie zbudowany; GO |
+| A-18 | Layout editor IA redesign | decyzja | parked na dyskusję IA z Jackiem (memory `project_layout_config_ux_review`) |
+| A-19 | events-list redesign | decyzja | Jacek „przebudować docelowo"; dual-badge OK na teraz |
+| A-20 | G3 per-role nav surface | decyzja | co widzi scout/coach/player; dziś „admin sees all" |
+| A-21 | G1 ranger1996 empty roles | decyzja | 1 user bez ról — nadać czy usunąć z members[]? |
+| A-22 | Coach/staff profile linking | screen | dziś tylko player-linking; brak coach/staff encji |
+| A-23 | Hitability fullscreen view-only — confirm | decyzja | potwierdzić intencję (log na normalnej stronie, nie fullscreen) |
+| A-24 | N10 Logo drag-drop upload (team) | code | łamie §93 URL-only; brak write-path; backend+produkt GO |
+| A-25 | Breakout lane-level run | data | „lane→bunker" nie-derivable z capture (records break-TO); ❄️ |
+| A-26 | 4-tool canvas selector (player/runner/shot/draw) | code | needs save-schema migration; ❄️ live-scout |
+| A-27 | Ballistics→InteractiveCanvas migration | refactor | delete FieldCanvas.jsx; „Opus territory"; ❄️ live-canvas |
+| A-28 | Rozbieg verification mismatch (PP4) | research | root-cause nieznany (side-swap vs human); ❄️ |
+| A-29 | Dev Snapshot v1+ (PII anonymization) | research | low |
+| A-30 | VISION post-NXL: user accounts / email-auth | feature | roadmap |
+| A-31 | VISION: Video CV PoC | research | (CV MVP już osobno wystartowany) |
+| A-32 | VISION: Claude PR-reviewer agent · Scout ranking+rewards | idea | nice-to-have; rewards blocked na accounts |
 
 ---
 
-## ✅ ZRECONCILOWANE z gitem (CC, 2026-06-30) — to już 🟢 (na prodzie), NIE budować
-Render-confirm nocy (0 rozjazdów) + reality-pass 2 agentów potwierdziły, że **prawie cała powierzchnia jest shipnięta**:
-- **Scout point** (rail 330px · matchup flip-card `SideSwapStrip` · oś faz + czasy · roster V3 · markery team-color + watermark-fallback · stożki team-color · animowane tory · VS intro · laptop→landscape · usunięty portret-FS · base-side glass-pille) — `MatchPage.jsx` + `components/match/*` + `field/*`.
-- **Team management** = `TeamManage`/`TeamDetailPage` (hero crest · nazwa/extID/kraj/ligi · roster+HERO · siostry · audyt · retire · create `/team/new` · usunięty `TeamFormModal`).
-- **Listy/dashboardy**: Today's points · Select training · My profile · Scout ranking · Point-logging (kiosk) · CSV · Workspace switcher · Coach list+DivTabs · Player stats wide · App shell (phone+wide) · Layout editor/library.
-- **Avatary**: pełny rozszerzony `AvatarBuilder` (`/profile/avatar`) — **już shipnięte** (nie „basic").
-- **ROZBIEGI→jedna tabela**, `ReportTable`, `ScheduleList`, EU flagi.
-→ Stare wiersze „team-consolidation" (Home/Team-detail/Confirm/Empty/Input) = `exists`/🟢 (ui.jsx + TeamDetailPage). Field-cluster wiersze → patrz niżej.
-
-## 🆕 NEW — wymaga decyzji Jacka (jedyne otwarte; reszta = exists/extends → CC robi sam)
-Reality-pass wyłapał te NIE-istniejące w kodzie (`new`). RED = drogie/architektura:
-- **🔴 N7 FieldWorkspace shell + mode-wizard** — wymaga wyciągnięcia stanu `LayoutDetailPage` do wspólnego hooka. Strukturalny refaktor. (rdzeń field-cluster)
-- **🔴 N8 Taktyka skompozytowana na canvasie layoutu** — taktyka to osobny doc/page; integracja = decyzja architektoniczna.
-- **🔴 N10 Logo drag-drop upload** (team) — łamie §93 URL-only; brak write-path. Backend+produkt GO.
-- **🟠 N9 Trafialność (accuracy) connection-map** — nowa kolekcja + coach-draw + RBAC. Borderline RED.
-- **🟢 N5 Callout-line render+draw** (`editLines[]` zapisywane, nigdy rysowane) · **N6 Zone vertex editor** (splątane z §88) — feasibility med→high.
-- **🟢 NOT-RED (CC może po GO/sam): N1 watermark-marker** (częściowo zrobione) · **N2 live A-vs-B view** (view-only) · **N3 base end-zones** · **N4 field rail primitives** · **N11 per-team W/L chip** · **wizardy NewPlayer/NewTeam** (3/2-krok, ten sam payload).
-- **DROP/CONFLICT (nie budować):** point-logging 5-step wizard (`wizard.jsx`) ↔ shipnięty kiosk · team-row warianty A–F (eksploracja) · pole „age" (FICTION, brak w schemacie) · `useTx()` (scaffolding).
-- **⚠ PINNĄĆ przed buildem scout-point-resztki:** roster on/off (CONFLICT: `assignments[i]` vs nowy `onField[i]` vs UI-only) · shot `kind` (FICTION — brak pola).
+## ✅ ZRECONCILOWANE z gitem (2026-06-30) — 🟢 na prodzie, NIE budować
+Scout point (rail · flip-card · oś faz · roster V3 · markery team-color · VS intro · laptop→landscape · glass-pille) · Team management (`TeamDetailPage`) · Listy/dashboardy (Today's points · training · profile · scout ranking · kiosk · CSV · workspace switcher · coach list · player stats wide · app shell · layout library) · `AvatarBuilder` · ROZBIEGI→jedna tabela · `ReportTable` · `ScheduleList` · EU flagi.
+**DROP/CONFLICT (nie budować):** point-logging 5-step wizard ↔ kiosk · team-row warianty A–F · pole „age" (FICTION) · shot `kind` (FICTION) · `useTx()` scaffolding · roster on/off (CONFLICT `assignments[i]` vs `onField[i]` — PINNĄĆ przed scout-point-resztkami).
 
 ## CD handoff (Jacek poza pętlą — od 2026-06-30)
-CC sam podaje robotę do CD. Gdy ekran w **aktywnym** epiku jest ⚪ i czeka na design,
-CC wypełnia jego `Notes` wszystkim, czego CD potrzebuje, by projektować bez Jacka:
-realne komponenty z `APP_MAP.md`, data-contract (realne pola), ścieżka do aktualnego
-zrzutu w `/screenshots/`. CD projektuje z tego → ustawia 🔵. CC: 🔵 → build →
-render-proof @390/834/1280 → 🟢. Trzymamy się **team-consolidation**; **NIE** briefujemy
-field-cluster (❄️ do po Birmingham). Gdy cały aktywny epik = 🟢 → CC **nie** zaczyna
-nowego epiku, raportuje tylko „done, field-cluster czeka na GO". 🔴 → Jacek.
+CC zasila CD: ⚪ ekran w aktywnym epiku → CC wypełnia `Notes` (APP_MAP komponenty + data-contract + zrzut `/screenshots/`). CD → 🔵. CC: 🔵 → build → render-proof @390/834/1280 → 🟢. **Bez 🔵 build się nie zaczyna** (patrz wlot/triage wyżej). Trzymamy się aktywnego epiku; NIE briefujemy field-cluster ❄️. Cały epik 🟢 → „done, <next> czeka na GO". 🔴 → Jacek.
 
-## Stan epików: **bugfix-red** ✅ (3 bugi 🟢, ffacc468). **team-consolidation** ✅ DONE (reality-pass: 90% było shipnięte; gate-fix `AdminTeamsPage`→super-admin domknął epik; zero pozycji dla CD). **field-cluster** ❄️ ZAMROŻONE do po Birmingham (2–5.07). **Brak aktywnego epiku — czeka na GO Jacka po evencie.**
+## Stan epików
+**bugfix-red** ✅ · **team-consolidation** ✅ · **field-cluster** ❄️ (do po Birmingham). **Brak aktywnego epiku** — czeka na GO Jacka po evencie. Backfill 2026-06-30 wciągnął całą resztę funkcjonalności (powyżej) z owner=CC/CD/ARCH.

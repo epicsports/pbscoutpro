@@ -58,6 +58,19 @@ Jacek wychodzi z pętli przekazywania roboty do CD. **CC sam zasila CD.**
 - Gdy **cały** aktywny epik = 🟢 → CC nie startuje nowego epiku samowolnie; raportuje
   „done, <następny> czeka na GO". Tylko 🔴/realne widełko idzie do Jacka.
 
+## 9. CC = jedyna sortownia + pętla domknięta z obu stron (od 2026-06-30)
+- **CC jest jedynym wlotem zadań.** Każdy request (feature/bug/pomysł/poprawka) **najpierw**
+  ląduje w `BACKLOG.md` jako wiersz z `owner`, **potem** klasyfikacja:
+  kod/bug/dane/infra/refactor/perf → **CC** (robi sam) · wygląd/ekran/UX/komponent → **CD**
+  (design-needed + brief) · mgła/duże/pomysł/research/decyzja-o-priorytecie/rozbicie → **ARCH**
+  (nie startuje, flaguje). Wahanie CC↔ARCH → **domyślnie ARCH**.
+- **Niezmiennik domknięcia (oba kierunki):**
+  - CD wkłada każdy design do BACKLOG jako 🔵 **w momencie powstania**, nie gdy CC wypatrzy.
+  - **CC nie shipuje na 🟢 niczego, co nie przeszło wcześniej przez 🔵 w BACKLOG.**
+    **Brak wiersza designu = build się NIE zaczyna** — CC flaguje „⚠ design nie zarejestrowany"
+    zamiast budować. Nic nie wjeżdża do kodu z pominięciem BACKLOG.
+- Field-cluster ❄️: cokolwiek dotyka live scout-screena → dopisz + `owner`, ale **parkuj do GO**.
+
 ## 7. Czego NIE robimy
 - Nie tworzymy drugiej tabeli stanu (jeden `BACKLOG.md`, jeden właściciel kolumny).
 - Nie przekazujemy niczego „przez Jacka", co może być plikiem w repo.
