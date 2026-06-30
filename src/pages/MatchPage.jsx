@@ -29,7 +29,7 @@ import { MapPin, Pencil } from 'lucide-react';
 import { capturePhases, toPersistedLiteral, fromPersistedLiteral, label as phaseLabel, isReasonRadial } from '../utils/pointPhases';
 import { useTournaments, useActiveTeams, useScoutedTeams, useMatches, usePoints, usePlayers, useLayouts, useTrainings, useMatchups, useTrainingPoints, useNotes } from '../hooks/useFirestore';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive, ELEV, TNUM, TRACKING, TYPE } from '../utils/theme';
+import { COLORS, FONT, FONT_COND, FONT_SIZE, RADIUS, SPACE, TEAM_COLORS, responsive, ELEV, TNUM, TRACKING, TYPE } from '../utils/theme';
 import RdIcon from '../components/RdIcon';
 import TeamBadge from '../components/TeamBadge';
 import { useTrackedSave } from '../hooks/useSaveStatus';
@@ -3138,25 +3138,30 @@ export default function MatchPage() {
             const rightTeam = fieldSide === 'left' ? oppTeam : mineTeam;
             const leftColor = TEAM_COLORS[leftKey];
             const rightColor = TEAM_COLORS[rightKey];
-            const shortName = (t) => (t?.name || '').slice(0, 10).toUpperCase() || '—';
+            const shortName = (t) => (t?.name || '').slice(0, 12).toUpperCase() || '—';
+            // Premium base-side label — glass pill (consistent with the new scout
+            // chrome) + team-colour dot + Oswald wordmark. Replaces the bare 11px text.
+            const sideChip = (team, color, side) => (
+              <div style={{
+                position: 'absolute', top: 8, [side]: 10, zIndex: 15, pointerEvents: 'none',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 9,
+                background: 'rgba(8,11,18,.58)',
+                backdropFilter: 'blur(7px)', WebkitBackdropFilter: 'blur(7px)',
+                border: `1px solid ${color}66`,
+                boxShadow: '0 2px 10px rgba(0,0,0,.45)',
+              }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0, boxShadow: `0 0 6px ${color}99` }} />
+                <span style={{
+                  fontFamily: FONT_COND, fontSize: 14, fontWeight: 700, letterSpacing: '.5px',
+                  color: COLORS.white, textTransform: 'uppercase', lineHeight: 1, whiteSpace: 'nowrap',
+                }}>{shortName(team)}</span>
+              </div>
+            );
             return (
               <>
-                <div style={{
-                  position: 'absolute', top: 6, left: 10, zIndex: 15,
-                  fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: 0.5,
-                  color: leftColor, opacity: 0.85, pointerEvents: 'none',
-                  textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                }}>
-                  {shortName(leftTeam)}
-                </div>
-                <div style={{
-                  position: 'absolute', top: 6, right: 10, zIndex: 15,
-                  fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: 0.5,
-                  color: rightColor, opacity: 0.85, pointerEvents: 'none',
-                  textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                }}>
-                  {shortName(rightTeam)}
-                </div>
+                {sideChip(leftTeam, leftColor, 'left')}
+                {sideChip(rightTeam, rightColor, 'right')}
               </>
             );
           })()}
