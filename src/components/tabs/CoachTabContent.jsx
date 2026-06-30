@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import Preloader from '../Preloader';
 import { useNavigate } from 'react-router-dom';
-import { Btn, SectionTitle, SectionLabel, EmptyState, SkeletonList } from '../ui';
+import { Btn, SectionTitle, EmptyState, SkeletonList } from '../ui';
 import SearchField from '../SearchField';
 import { matchEntity } from '../../utils/entityFilters';
-import MatchCard from '../MatchCard';
+import ScheduleList from '../match/ScheduleList';
 import { classifyMatch } from '../../utils/matchClassify';
 import DivisionTabs from './DivisionTabs';
 import StandingsTable from './StandingsTable';
@@ -320,37 +320,13 @@ export default function CoachTabContent({ tournamentId }) {
           <EmptyState icon="⚔️" text={t('scout_tab_no_matches_yet')} />
         )}
 
-        {live.length > 0 && (
-          <div style={{ marginBottom: SPACE.sm }}>
-            <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
-            {live.map(m => (
-              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId}
-                getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed}
-                liveScore={liveScores[m.id]?.score || null} />
-            ))}
-          </div>
-        )}
-
-        {scheduled.length > 0 && (
-          <div style={{ marginBottom: SPACE.sm }}>
-            {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
-            {scheduled.map(m => (
-              <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId}
-                getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed}
-                liveScore={liveScores[m.id]?.score || null} />
-            ))}
-          </div>
-        )}
-
-        {completed.length > 0 && (
-          <div style={{ marginBottom: SPACE.sm }}>
-            <SectionLabel>Completed ({completed.length})</SectionLabel>
-            {completed.map(m => (
-              <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId}
-                getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} />
-            ))}
-          </div>
-        )}
+        {/* Shared Live / Scheduled / Completed grouping (dup-audit #2). Coach
+            variant: no grid, no stage sub-grouping → byte-identical to the old
+            inlined flat sections. Arrays are pre-sorted newest-first above. */}
+        <ScheduleList
+          live={live} scheduled={scheduled} completed={completed}
+          tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam}
+          navigate={navigate} readOnly={isClosed} liveScores={liveScores} />
       </div>
     </div>
   );
