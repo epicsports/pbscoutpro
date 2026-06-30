@@ -1,35 +1,44 @@
 import React from 'react';
 import { useLanguage } from '../../hooks/useLanguage';
 import { hasFlag, flagDataUri } from '../../utils/flags';
-import { splitTeamName } from '../../utils/color';
+import { splitTeamName, rdShade } from '../../utils/color';
 import { COLORS, FONT, FONT_COND, ELEV } from '../../utils/theme';
 import RdIcon from '../RdIcon';
 
 /**
- * SideSwapStrip — the consolidated manual side-swap strip (design handoff:
- * "Scout — VS intro", the `.pstrip` + `.swap`/`.swapwrap` strip, lines ~119/132-371).
+ * SideSwapStrip — the consolidated matchup flip-card strip (design handoff
+ * "Scout point — consolidated": the `.strip` / `.tside` / `.ctr` row, scoutpoint.jsx
+ * lines 34-56 + 402-427). Rendered in BOTH the landscape immersive rail (the top
+ * of the matchup card, with the phase timeline as its bottom strip) and the phone
+ * portrait floating overlay on the field's top edge.
  *
- * Replaces the old "flip pill" + separate start-side indicator with ONE strip:
- *   [ team on field-left ]  ·  ( amber ⇄ )  ·  [ team on field-right ]
- * Each half shows the team's 3-tier identity crest (logo → country flag → none,
- * SAME resolver as VsIntro / CrestBand) bleeding in from the outer edge, a
- * city-eyebrow + nickname lockup (`splitTeamName`), and a small side chip
- * (LEFT / RIGHT) — amber for the scouted team, neutral for the opponent.
+ * One horizontal strip, three columns:
+ *   [ field-LEFT team half ]  ·  [ centre: Punkt N + score + ⇄ ]  ·  [ field-RIGHT team half ]
  *
- * The centre amber ⇄ button is the REAL field-side swap (NOT display-only): it
- * calls `onSwap`, which flips the existing `fieldSide` + mirrors the live capture
- * EXACTLY as the previous flip pill did. When `fieldSide` flips, the two halves
- * exchange position because the strip mirrors the FIELD (left half = field-left
- * team), so the swap reads as a literal left/right exchange.
+ * Each team half is FILLED with a 2-stop gradient DERIVED from that team's brand
+ * colour (`color` → `rdShade(color)`), with the team's 3-tier identity crest
+ * (logo → country flag → none, SAME resolver as VsIntro / CrestBand) bleeding LARGE
+ * from the outer edge (`opacity .4`, `mix-blend-mode:screen`, gradient mask fading
+ * under the city/nick lockup). The scouted side carries an amber "◀ Scout" tag; the
+ * opponent a dimmed "Rywal ▶" tag.
+ *
+ * The centre amber ⇄ button is the REAL field-side swap (NOT display-only): it calls
+ * `onSwap`, which flips the existing `fieldSide` + mirrors the live capture EXACTLY
+ * as before. When `fieldSide` flips, the two halves exchange position because the
+ * strip mirrors the FIELD (left half = field-left team).
  *
  * `orientation`:
- *   'horizontal' (default) — the design's portrait `.pstrip` (phone chrome).
- *   'vertical'             — ADAPTED for the narrow landscape/immersive rail
- *                            (the design hides `.pstrip` in landscape; we stack
- *                            field-left team / ⇄ / field-right team instead).
+ *   'vertical'   — the narrow landscape/immersive rail (compact: smaller nick, swap
+ *                  stacked under the score). [legacy name — layout is still a row]
+ *   'horizontal' — the phone portrait floating overlay (larger nick, score + swap
+ *                  inline). [default]
  *
- * Identity colours travel with each team (NEVER amber — § 27: amber is reserved
- * for the interactive ⇄ control + the scouted-side chip, both interactive/active).
+ * CHROME ONLY — `onSwap` is the unchanged `handleManualSwapSides`; the strip writes
+ * no capture state. Identity colours/crests travel with each team (NEVER amber —
+ * § 27: amber is reserved for the interactive ⇄ + the scouted "Scout" tag, both
+ * interactive/active). The outer card backing (border / radius / glass) is supplied
+ * by the host (rail matchup card / portrait float wrapper) so this strip is just the
+ * 3-column band.
  */
 
 // 3-tier identity resolver — mirrors VsIntro.crestSrc / CrestBand fallback order.
@@ -42,9 +51,21 @@ function crestSrc(team) {
 const mix = (c, pct) => `color-mix(in srgb, ${c} ${pct}%, transparent)`;
 const cityColor = (c, pct) => `color-mix(in srgb, ${c} ${pct}%, #fff)`;
 
-// Left-bleed → fade-right (and its mirror), ported from CrestBand's WM_LOGO.
-const MASK_L = 'linear-gradient(90deg, #000 0%, #000 48%, transparent 84%)';
-const MASK_R = 'linear-gradient(270deg, #000 0%, #000 48%, transparent 84%)';
+// Crest bleed mask — opaque from the outer edge, fading to transparent under the
+// text (ported from CrestBand's WM_LOGO; prototype `.bleed` mask).
+const MASK_L = 'linear-gradient(90deg, #000, #000 44%, transparent 84%)';
+const MASK_R = 'linear-gradient(270deg, #000, #000 44%, transparent 84%)';
+
+// Two-stop team gradient (filled side), derived from a single brand colour:
+//   stop A = brand @ 46%, stop B = darkened brand @ 30%, → transparent.
+// `fromRight` mirrors the angle so the opponent half reads from the right edge.
+const sideGradient = (color, fromRight) => {
+  const a = color;
+  const b = rdShade(color, 0.42); // darker 2nd stop (rgb string; composes in color-mix)
+  return fromRight
+    ? `linear-gradient(260deg, ${mix(a, 46)}, ${mix(b, 30)} 64%, transparent)`
+    : `linear-gradient(100deg, ${mix(a, 46)}, ${mix(b, 30)} 64%, transparent)`;
+};
 
 export default function SideSwapStrip({
   scouted,
@@ -54,17 +75,12 @@ export default function SideSwapStrip({
   fieldSide,
   onSwap,
   orientation = 'horizontal',
-  floating = false,
+  floating = false, // accepted for call-site compat; backing now lives on the host
+  pointLabel = null, // "Punkt 5" — centre eyebrow (accent)
+  score = null,      // "2:1"    — centre score (Oswald)
 }) {
   const { t } = useLanguage();
-  const vertical = orientation === 'vertical';
-  // `floating` (portrait-only) — the strip is overlaid on the TOP of the field
-  // card instead of sitting in normal flow above it (Jacek: the field is the
-  // priority). Its backing becomes a compact semi-transparent dark gradient +
-  // blur so the field reads underneath; the cells/⇄ stay fully interactive (the
-  // host wrapper in MatchPage sets pointer-events:none, this strip :auto, so the
-  // field play area below the thin top band keeps every tap/capture).
-  const floatBand = floating && !vertical;
+  const vertical = orientation === 'vertical'; // landscape rail (compact)
 
   // The scouted (active) team starts from `fieldSide`; the opponent is opposite.
   // The strip mirrors the FIELD, so the field-left team is the LEAD half.
@@ -76,14 +92,17 @@ export default function SideSwapStrip({
     ? { team: opponent, color: opponentColor, isScouted: false, side: 'right' }
     : { team: scouted, color: scoutedColor, isScouted: true, side: 'right' };
 
-  // In horizontal the trailing half bleeds/aligns from the RIGHT edge; in the
-  // narrow vertical rail both halves bleed from the left (text reads left).
+  const SCOUT = t('match_scout_tag');
+  const RIVAL = t('match_rival_tag');
+
   const renderCell = (slot, fromRight) => {
-    const { team, color, isScouted, side } = slot;
+    const { team, color, isScouted } = slot;
     const { city, nick } = splitTeamName(team?.name || '');
     const src = crestSrc(team);
-    const alignEnd = !vertical && fromRight;
-    const sideLabel = t(side === 'left' ? 'match_side_left' : 'match_side_right');
+    // Tag text — arrow points outward toward the team's own half (prototype).
+    const tagText = isScouted
+      ? (fromRight ? `${SCOUT} ▶` : `◀ ${SCOUT}`)
+      : (fromRight ? `${RIVAL} ▶` : RIVAL);
 
     return (
       <div
@@ -94,11 +113,8 @@ export default function SideSwapStrip({
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: alignEnd ? 'flex-end' : 'flex-start',
-          background: fromRight
-            ? `linear-gradient(270deg, ${mix(color, 52)}, transparent 80%)`
-            : `linear-gradient(90deg, ${mix(color, 52)}, transparent 80%)`,
-          minHeight: floatBand ? 46 : 52,
+          justifyContent: fromRight ? 'flex-end' : 'flex-start',
+          background: sideGradient(color, fromRight),
         }}
       >
         {src ? (
@@ -110,11 +126,11 @@ export default function SideSwapStrip({
               position: 'absolute',
               top: '50%',
               transform: 'translateY(-50%)',
-              [fromRight ? 'right' : 'left']: -10,
-              height: vertical ? 42 : 54,
+              [fromRight ? 'right' : 'left']: -24,
+              height: vertical ? 100 : 92,
               width: 'auto',
               objectFit: 'contain',
-              opacity: 0.9,
+              opacity: 0.4,
               mixBlendMode: 'screen',
               pointerEvents: 'none',
               WebkitMaskImage: fromRight ? MASK_R : MASK_L,
@@ -129,18 +145,18 @@ export default function SideSwapStrip({
             minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
-            gap: 3,
-            alignItems: alignEnd ? 'flex-end' : 'flex-start',
-            textAlign: alignEnd ? 'right' : 'left',
-            padding: alignEnd ? '0 12px 0 46px' : '0 46px 0 12px',
+            gap: 4,
+            alignItems: fromRight ? 'flex-end' : 'flex-start',
+            textAlign: fromRight ? 'right' : 'left',
+            padding: fromRight ? '0 11px 0 9px' : '0 9px 0 11px',
           }}
         >
           <span
             style={{
               fontFamily: FONT,
-              fontSize: 9,
+              fontSize: vertical ? 8 : 8.5,
               fontWeight: 800,
-              letterSpacing: '1.3px',
+              letterSpacing: '1.1px',
               textTransform: 'uppercase',
               lineHeight: 1.2,
               padding: '2px 6px',
@@ -151,18 +167,17 @@ export default function SideSwapStrip({
               border: isScouted ? 'none' : `1px solid ${ELEV.hairlineStrong}`,
             }}
           >
-            {sideLabel}
+            {tagText}
           </span>
           {city ? (
             <span
               style={{
                 fontFamily: FONT,
-                fontSize: 9.5,
+                fontSize: vertical ? 8 : 9,
                 fontWeight: 800,
-                letterSpacing: '2px',
+                letterSpacing: '1.9px',
                 textTransform: 'uppercase',
-                color: cityColor(color, 42),
-                textShadow: '0 1px 4px rgba(0,0,0,.7)',
+                color: cityColor(color, 34),
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -175,9 +190,9 @@ export default function SideSwapStrip({
           <span
             style={{
               fontFamily: FONT_COND,
-              fontSize: vertical ? 18 : 20,
+              fontSize: vertical ? 13 : 16,
               fontWeight: 700,
-              lineHeight: 0.98,
+              lineHeight: 1.0,
               textTransform: 'uppercase',
               color: COLORS.white,
               textShadow: '0 2px 8px rgba(0,0,0,.8)',
@@ -195,42 +210,98 @@ export default function SideSwapStrip({
   };
 
   // Centre amber ⇄ — the REAL swap (interactive → amber is correct per § 27).
-  const swapWrap = (
-    <div
+  const swapBtn = (
+    <button
+      type="button"
+      className="sss-swap"
+      onClick={onSwap}
+      title={t('match_swap_sides')}
+      aria-label={t('match_swap_sides')}
       style={{
+        width: 44,
+        height: 44,
+        borderRadius: '50%',
         flex: 'none',
+        background: ELEV.raised,
+        border: `1px solid ${COLORS.accent}`,
+        color: COLORS.accent,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: floatBand ? 'transparent' : ELEV.sunken,
-        ...(vertical ? { width: '100%', height: 48 } : { width: 52, alignSelf: 'stretch' }),
+        cursor: 'pointer',
+        boxShadow: '0 1px 4px rgba(0,0,0,.4)',
+        WebkitTapHighlightColor: 'transparent',
+        touchAction: 'manipulation',
       }}
     >
-      <button
-        type="button"
-        className="sss-swap"
-        onClick={onSwap}
-        title={t('match_swap_sides')}
-        aria-label={t('match_swap_sides')}
-        style={{
-          width: 44,
-          height: 44,
-          borderRadius: '50%',
-          flex: 'none',
-          background: ELEV.raised,
-          border: `1px solid ${ELEV.hairlineStrong}`,
-          color: COLORS.accent,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          boxShadow: '0 4px 14px rgba(0,0,0,.55)',
-          WebkitTapHighlightColor: 'transparent',
-          touchAction: 'manipulation',
-        }}
-      >
-        <RdIcon name="swap" size={18} />
-      </button>
+      <RdIcon name="swap" size={18} />
+    </button>
+  );
+
+  // Score lockup — Oswald, dim colon (prototype `.score` + `.score i`).
+  const [sA, sB] = String(score || '').split(':');
+  const scoreEl = score ? (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 4,
+        fontFamily: FONT_COND,
+        fontSize: vertical ? 22 : 21,
+        fontWeight: 700,
+        color: COLORS.white,
+        lineHeight: 1,
+      }}
+    >
+      <span>{sA}</span>
+      <span style={{ color: COLORS.textMuted, fontSize: vertical ? 14 : 15 }}>:</span>
+      <span>{sB}</span>
+    </div>
+  ) : null;
+
+  const centre = (
+    <div
+      style={{
+        flex: 'none',
+        width: vertical ? 70 : 116,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: vertical ? 5 : 6,
+        padding: vertical ? '7px 3px' : '0 4px',
+        background: ELEV.bg,
+        borderLeft: `1px solid ${ELEV.hairline}`,
+        borderRight: `1px solid ${ELEV.hairline}`,
+      }}
+    >
+      {pointLabel ? (
+        <span
+          style={{
+            fontFamily: FONT,
+            fontSize: vertical ? 8 : 8.5,
+            fontWeight: 800,
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            color: COLORS.accent,
+            lineHeight: 1,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {pointLabel}
+        </span>
+      ) : null}
+      {vertical ? (
+        <>
+          {scoreEl}
+          {swapBtn}
+        </>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          {scoreEl}
+          {swapBtn}
+        </div>
+      )}
     </div>
   );
 
@@ -238,23 +309,16 @@ export default function SideSwapStrip({
     <div
       style={{
         display: 'flex',
-        flexDirection: vertical ? 'column' : 'row',
+        flexDirection: 'row',
         alignItems: 'stretch',
         width: '100%',
-        borderRadius: 10,
         overflow: 'hidden',
-        border: floatBand ? `1px solid ${ELEV.hairlineStrong}` : `1px solid ${ELEV.hairline}`,
-        background: floatBand
-          ? 'linear-gradient(180deg, rgba(8,11,18,.82), rgba(8,11,18,.46))'
-          : ELEV.surface,
-        ...(floatBand
-          ? { backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', boxShadow: '0 6px 18px rgba(0,0,0,.5)' }
-          : { boxShadow: ELEV.innerTop }),
+        minHeight: vertical ? 76 : 56,
       }}
     >
       {renderCell(lead, false)}
-      {swapWrap}
-      {renderCell(trail, !vertical)}
+      {centre}
+      {renderCell(trail, true)}
     </div>
   );
 }

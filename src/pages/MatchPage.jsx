@@ -64,7 +64,7 @@ const PENALTIES = ['', '141', '241', '341'];
 // Landscape immersive scout rail width — wide enough for the consolidated rail
 // (matchup card + phase axis + 2-col klocek V3 roster + Save). The field stays
 // the priority and full-height to the right of it.
-const IMMERSIVE_RAIL_W = 312;
+const IMMERSIVE_RAIL_W = 330;
 // VS-intro per-device pref (localStorage). 'on' (default) | 'off'.
 const VS_INTRO_KEY = 'pbscoutpro-vsintro';
 
@@ -2883,18 +2883,15 @@ export default function MatchPage() {
             }}>{isClosed ? t('match_final') : t('match_live')}</span>
           </div>
 
-          {/* matchup card — score eyebrow + SideSwapStrip (vertical variant, teams + ⇄) */}
+          {/* matchup flip-card — ONE card: team flip-strip (gradients + crest bleed +
+              Scout/Rywal tags + centre Punkt N · score · ⇄) on top, the segmented
+              phase timeline as its bottom strip (design handoff "Scout point"). The
+              ⇄ + stage clicks reuse handleManualSwapSides / switchStage verbatim. */}
           <div style={{
-            flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8,
-            padding: 10, borderRadius: 14,
+            flexShrink: 0, display: 'flex', flexDirection: 'column',
+            borderRadius: 16, overflow: 'hidden',
             background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.innerTop,
           }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: COLORS.accent }}>
-                {t('scout_point_eyebrow', ptIdx + 1)}
-              </span>
-              <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: COLORS.text, letterSpacing: '-.5px', ...TNUM }}>{scoreStr}</span>
-            </div>
             <SideSwapStrip
               scouted={lScouted}
               opponent={lOpponent}
@@ -2903,12 +2900,13 @@ export default function MatchPage() {
               fieldSide={fieldSide}
               onSwap={handleManualSwapSides}
               orientation="vertical"
+              pointLabel={t('scout_point_eyebrow', ptIdx + 1)}
+              score={scoreStr}
             />
-          </div>
-
-          {/* phase axis — Break / Settle / Mid + static time-range hints (same handler) */}
-          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
-            <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} ranges={phaseRanges} />
+            {/* phase axis — segmented timeline (Break / Settle / Mid + time hints) */}
+            <div style={{ padding: 8, background: ELEV.bg, borderTop: `1px solid ${ELEV.hairline}` }}>
+              <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} ranges={phaseRanges} variant="segmented" />
+            </div>
           </div>
 
           {/* roster — klocek V3 grid; the ONLY scroll in the rail (flex:1) */}
@@ -2954,9 +2952,20 @@ export default function MatchPage() {
           {!immersive && (() => {
             const fScouted = scoutingSide === 'away' ? teamB : teamA;
             const fOpponent = scoutingSide === 'away' ? teamA : teamB;
+            const fScoreStr = score ? `${score.a}:${score.b}` : '0:0';
+            const fPtIdx = editingId ? points.findIndex(p => p.id === editingId) : points.length;
             return (
               <div style={{ position: 'absolute', top: 6, left: 8, right: 60, zIndex: 25, pointerEvents: 'none' }}>
-                <div style={{ pointerEvents: 'auto' }}>
+                {/* glass backing now lives on the host (the strip is just the band) so
+                    the field reads underneath; the band stays fully interactive. */}
+                <div style={{
+                  pointerEvents: 'auto',
+                  borderRadius: 12, overflow: 'hidden',
+                  border: `1px solid ${ELEV.hairlineStrong}`,
+                  background: 'linear-gradient(180deg, rgba(8,11,18,.82), rgba(8,11,18,.46))',
+                  backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                  boxShadow: '0 6px 18px rgba(0,0,0,.5)',
+                }}>
                   <SideSwapStrip
                     scouted={fScouted}
                     opponent={fOpponent}
@@ -2966,6 +2975,8 @@ export default function MatchPage() {
                     onSwap={handleManualSwapSides}
                     orientation="horizontal"
                     floating
+                    pointLabel={t('scout_point_eyebrow', fPtIdx + 1)}
+                    score={fScoreStr}
                   />
                 </div>
               </div>

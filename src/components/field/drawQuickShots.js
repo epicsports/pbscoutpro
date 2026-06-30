@@ -25,6 +25,16 @@ export function drawQuickShots(ctx, w, h, {
   doritoSide = 'top',
   fieldSide = 'left',
   team = 'A',
+  // NIGHT BUILD (cones in TEAM colour) — brand colour of the team whose shots
+  // these are (same value threaded into drawPlayers' markerColor). When a valid
+  // hex AND visually distinct from the opponent (RGB distance ≥ 60, only when the
+  // opponent overlay is shown) the cones + break-dashes read in the brand colour
+  // so they MATCH the disc; otherwise fall back to the role palette (A=red, B=blue)
+  // so the two teams stay distinguishable and tactic/non-scout surfaces (no
+  // brandColor passed) are byte-identical to before. Never amber (§ 27 — identity).
+  brandColor = null,
+  opponentColor = null,
+  showOpponentLayer = false,
   // NIGHT BUILD item #3 — animated dash offset (px) for zone/direction lane
   // flow, or null when animation is OFF (reduced-motion / large set / not
   // visible). null ⇒ static cones + dashes (the prior look).
@@ -34,7 +44,22 @@ export function drawQuickShots(ctx, w, h, {
   const anyObstacle = obstacleShots && obstacleShots.some(zs => zs && zs.length);
   if (!anyBreak && !anyObstacle) return;
 
-  const teamColor = team === 'B' ? TEAM_COLORS.B : TEAM_COLORS.A;
+  // ── Team-colour resolution (mirrors drawPlayers' markerColor guard) ──
+  const isHex = (c) => typeof c === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c);
+  const hexToRgb = (hex) => {
+    let hStr = hex.replace('#', '');
+    if (hStr.length === 3) hStr = hStr.split('').map(c => c + c).join('');
+    const n = parseInt(hStr, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  };
+  const colorDist = (a, b) => {
+    const x = hexToRgb(a), y = hexToRgb(b);
+    return Math.sqrt((x.r - y.r) ** 2 + (x.g - y.g) ** 2 + (x.b - y.b) ** 2);
+  };
+  const roleColor = team === 'B' ? TEAM_COLORS.B : TEAM_COLORS.A;
+  const brandOk = isHex(brandColor) &&
+    !(showOpponentLayer && isHex(opponentColor) && colorDist(brandColor, opponentColor) < 60);
+  const teamColor = brandOk ? brandColor : roleColor;
   // Cone radius is proportional to canvas size. 0.20 (~ 1/5 of min dim)
   // balances "clearly visible direction" against player-density crowding
   // in tight breakout configurations. Tune by feel after first paint.
