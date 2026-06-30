@@ -97,6 +97,14 @@ export default function InteractiveCanvas({
   onToolbarAction,
   heroPlayerIds = [],
   team = 'A',
+  // NIGHT BUILD — brand identity of the team whose markers are in `players`.
+  // `teamColor` (hex) recolors the marker discs / lanes (with role-color
+  // fallback inside drawPlayers); `teamName` is tiled as the no-avatar
+  // watermark. Both default null ⇒ prior per-slot role-color behavior, so
+  // surfaces without a team (Tactic / LayoutDetail / BunkerEditor) are
+  // unchanged.
+  teamColor = null,
+  teamName = null,
   // § 77 — Draw arbiter pass-through. InteractiveCanvas itself doesn't render
   // anything draw-related; consumers (Match) supply state + callbacks + the
   // DrawingOverlay via `children`. We forward to BaseCanvas which owns the
@@ -165,6 +173,23 @@ export default function InteractiveCanvas({
     });
   }, [rosterPlayers, opponentRosterPlayers]);
 
+  // ── NIGHT BUILD item #3 — perf gate for animated lane flow. ──
+  // Count the lanes this canvas would flow (precise shots + bump shots +
+  // zone/obstacle band shots). InteractiveCanvas always renders ONE point's
+  // data (capture draft / a single reviewed point / a tactic config), so the
+  // count is inherently small; the aggregate opponent heatmap is a different
+  // component (HeatmapCanvas) and is never animated here. We still cap at
+  // FLOW_LANE_LIMIT so a pathological set falls back to static. FLAGGED
+  // threshold = 40 lanes (≈ 5 players × a handful of shots each).
+  const FLOW_LANE_LIMIT = 40;
+  const flowLaneCount = useMemo(() => {
+    let n = 0;
+    const add = (arr) => { if (Array.isArray(arr)) for (const z of arr) if (Array.isArray(z)) n += z.length; };
+    add(shots); add(bumpShots); add(quickShots); add(obstacleShots);
+    return n;
+  }, [shots, bumpShots, quickShots, obstacleShots]);
+  const animateFlow = flowLaneCount > 0 && flowLaneCount <= FLOW_LANE_LIMIT;
+
   // ── Mode-dependent cursor (FieldCanvas:383). ──
   const cursor = layoutEditMode
     ? 'crosshair'
@@ -204,7 +229,7 @@ export default function InteractiveCanvas({
   // photoVersion read here to ensure the draw re-runs when photos finish loading.
   const drawFn = (ctx, w, h, state) => {
     void photoVersion; // dep — see useEffect above; closes-over to trigger redraw on photo load
-    const { canvas, zoom, activeTouchPos, loupeSourceRef, imgObj } = state;
+    const { canvas, zoom, activeTouchPos, loupeSourceRef, imgObj, flowOffset } = state;
 
     drawField(ctx, w, h, canvas, { imgObj, activeTouchPos, loupeSourceRef });
     drawZones(ctx, w, h, { discoLine, zeekerLine, discoColor, zeekerColor, discoName, zeekerName,
@@ -277,8 +302,10 @@ export default function InteractiveCanvas({
       // zones (Tactic / LayoutDetail tactic-preview / BunkerEditor) →
       // pill rendering is skipped.
       zones,
+      // NIGHT BUILD — team identity + animated lane offset (render-only).
+      teamColor, teamName, flowOffset,
     });
-    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left', team });
+    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left', team, flowOffset });
     drawBunkers(ctx, w, h, { bunkers: correctedBunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
@@ -336,6 +363,7 @@ export default function InteractiveCanvas({
       viewportSide={viewportSide}
       pinchZoom pan loupe
       cursor={cursor}
+      animateFlow={animateFlow}
       onPlacePlayer={onPlacePlayer}
       onMovePlayer={onMovePlayer}
       onPlaceShot={onPlaceShot}

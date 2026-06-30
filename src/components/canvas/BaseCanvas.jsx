@@ -125,6 +125,18 @@ export default function BaseCanvas({
   //    placement modes, pointer for select, default otherwise). ──
   cursor = 'default',
 
+  // ── NIGHT BUILD item #3 — animated shot-lane flow. When `animateFlow` is
+  //    true AND prefers-reduced-motion is OFF, a throttled (~30fps) rAF loop
+  //    advances a dash offset and re-fires the draw effect; the offset is
+  //    passed into `draw(...)` state as `flowOffset` (px) for the draw helpers
+  //    to flow their lanes. When false / reduced-motion / unmounted, the loop
+  //    never runs (or is torn down) and `flowOffset` is null ⇒ static lanes
+  //    (the prior look). The consumer (InteractiveCanvas) owns the perf gate:
+  //    it only sets `animateFlow` for small single-point shot sets, so the
+  //    aggregate heatmap (HeatmapCanvas, a different component) is never
+  //    animated here. ──
+  animateFlow = false,
+
   // ── Draw layer — render-prop `(ctx, w, h, state) => void`.
   //    `state` includes `imgObj` (loaded from `fieldImage`) so specialized
   //    children's `drawField(...)` call has the bg image. ──
@@ -196,6 +208,48 @@ export default function BaseCanvas({
     obs.observe(node);
     return () => obs.disconnect();
   }, [imgObj, maxCanvasHeight, sizingStrategy]);
+
+  // ── NIGHT BUILD item #3 — flow animation driver ──
+  // `prefers-reduced-motion` as state (so the loop effect re-evaluates if the
+  // OS setting flips mid-session). `flowTick` is a throttled rAF counter that
+  // forces the draw effect to re-fire; the actual `flowOffset` is derived from
+  // the wall clock inside the draw effect (framerate-independent).
+  const [reducedMotion, setReducedMotion] = useState(
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = () => setReducedMotion(mq.matches);
+    onChange();
+    if (mq.addEventListener) mq.addEventListener('change', onChange);
+    else mq.addListener(onChange);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener('change', onChange);
+      else mq.removeListener(onChange);
+    };
+  }, []);
+  const [flowTick, setFlowTick] = useState(0);
+  const flowRafRef = useRef(null);
+  const flowActive = animateFlow && !reducedMotion;
+  useEffect(() => {
+    if (!flowActive) {
+      if (flowRafRef.current) { cancelAnimationFrame(flowRafRef.current); flowRafRef.current = null; }
+      return undefined;
+    }
+    let last = 0;
+    const FRAME_MS = 1000 / 30;   // throttle ~30fps (gate (d))
+    const loop = (ts) => {
+      if (ts - last >= FRAME_MS) { last = ts; setFlowTick(t => (t + 1) % 1e9); }
+      flowRafRef.current = requestAnimationFrame(loop);
+    };
+    flowRafRef.current = requestAnimationFrame(loop);
+    return () => {
+      if (flowRafRef.current) { cancelAnimationFrame(flowRafRef.current); flowRafRef.current = null; }
+    };
+  }, [flowActive]);
 
   // ── Gesture state ──
   const [zoom, setZoom] = useState(1);
@@ -333,13 +387,19 @@ export default function BaseCanvas({
     ctx.translate(panState.x, panState.y);
     ctx.scale(zoom, zoom);
     if (draw) {
+      // Derive the dash offset from the wall clock so flow speed is
+      // framerate-independent (period 22px over ~1.1s, matching the prototype
+      // spcFlow/sppFlow keyframe). null when not animating ⇒ static lanes.
+      const flowOffset = flowActive
+        ? (((typeof performance !== 'undefined' ? performance.now() : 0) / 1100) * 22) % 22
+        : null;
       draw(ctx, canvasSize.w, canvasSize.h, {
         canvas, canvasSize, zoom, pan: panState,
-        activeTouchPos, loupeSourceRef, imgObj,
+        activeTouchPos, loupeSourceRef, imgObj, flowOffset,
       });
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-  }, [canvasSize.w, canvasSize.h, zoom, panState.x, panState.y, activeTouchPos, draw]);
+  }, [canvasSize.w, canvasSize.h, zoom, panState.x, panState.y, activeTouchPos, draw, flowActive, flowTick]);
 
   const ctxValue = {
     canvasRef, containerRef, canvasSize,
