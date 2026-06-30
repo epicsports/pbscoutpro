@@ -61,6 +61,10 @@ import PointSummary from '../components/PointSummary';
 
 // E5/E5A/E5B + emptyTeam now live in useCaptureDraft (imported above).
 const PENALTIES = ['', '141', '241', '341'];
+// Landscape immersive scout rail width — wide enough for the consolidated rail
+// (matchup card + phase axis + 2-col klocek V3 roster + Save). The field stays
+// the priority and full-height to the right of it.
+const IMMERSIVE_RAIL_W = 312;
 // VS-intro per-device pref (localStorage). 'on' (default) | 'off'.
 const VS_INTRO_KEY = 'pbscoutpro-vsintro';
 
@@ -2830,90 +2834,110 @@ export default function MatchPage() {
           previous floating Back/Save controls were overlays. Save trigger reuses
           the existing onClick verbatim; Back reuses the existing exit handler. */}
       {immersive && (() => {
+        // ═══ CONSOLIDATED IMMERSIVE RAIL (design handoff "Scout point — consolidated") ═══
+        // railHead (back + LIVE) → matchup card (SideSwapStrip) → phase axis
+        // (StageSwitcher) → roster (klocek V3, the only scroll, flex:1) → Save (pinned).
+        // CHROME ONLY — every handler/prop below is reused verbatim from the previous
+        // rail + bottom strip; the canvas/capture/save path is untouched.
         const scoreStr = score ? `${score.a}:${score.b}` : '0:0';
-        const initials = (nm) => (nm || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 3).toUpperCase() || '?';
-        const ScoreSide = ({ team, color }) => (
-          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: `${color}22`, border: `1px solid ${color}55`, boxShadow: ELEV.innerTop,
-              fontFamily: FONT, fontSize: 12, fontWeight: 800, color,
-            }}>{initials(team?.name)}</div>
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textDim, textAlign: 'center', lineHeight: 1.1, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team?.name || '—'}</span>
-          </div>
-        );
+        const lScouted = scoutingSide === 'away' ? teamB : teamA;
+        const lOpponent = scoutingSide === 'away' ? teamA : teamB;
+        // Point number: editing → its index, else the next point to capture.
+        const ptIdx = editingId ? points.findIndex(p => p.id === editingId) : points.length;
+        // Static phase time-range hints (render-only — phases carry no timestamps).
+        const phaseRanges = {
+          break: t('scout_phase_range_break'),
+          settle: t('scout_phase_range_settle'),
+          mid: t('scout_phase_range_mid'),
+        };
+        const isClosed = match?.status === 'closed';
         return (
         <div style={{
-          position: 'fixed', top: 0, left: 0, bottom: 0, width: 176, zIndex: 50,
-          display: 'flex', flexDirection: 'column',
+          position: 'fixed', top: 0, left: 0, bottom: 0, width: IMMERSIVE_RAIL_W, zIndex: 50,
+          display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0,
           background: ELEV.sunken, borderRight: `1px solid ${ELEV.hairlineStrong}`,
           boxShadow: ELEV.shadow2,
-          paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
+          padding: '12px 12px 0',
+          paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))',
           paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))',
         }}>
-          {/* header — back + LIVE pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px 10px' }}>
+          {/* railHead — back (44×44) + LIVE pill */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
             <div onClick={() => {
               // B1 / § 82 — see paired comment on the portrait Back handler above.
               exitEditMode();
               navigate(reviewUrl);
             }} style={{
-              width: 36, height: 36, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, color: COLORS.accent, cursor: 'pointer',
-              WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: ELEV.raised, border: `1px solid ${ELEV.hairlineStrong}`, color: COLORS.accent, cursor: 'pointer',
+              boxShadow: ELEV.innerTop, WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation',
             }}>
               <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <span style={{
-              fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: '.5px', padding: '4px 8px', borderRadius: RADIUS.sm,
-              background: match?.status === 'closed' ? COLORS.success + '18' : COLORS.accent,
-              color: match?.status === 'closed' ? COLORS.success : COLORS.black,
-              boxShadow: match?.status === 'closed' ? 'none' : COLORS.accentGlow,
-            }}>{match?.status === 'closed' ? 'FINAL' : 'LIVE'}</span>
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              fontFamily: FONT, fontSize: 12, fontWeight: 800, letterSpacing: '1px', padding: '8px 12px', borderRadius: RADIUS.sm,
+              background: isClosed ? COLORS.success + '18' : COLORS.accent,
+              color: isClosed ? COLORS.success : COLORS.black,
+              boxShadow: isClosed ? 'none' : COLORS.accentGlow,
+            }}>{isClosed ? t('match_final') : t('match_live')}</span>
           </div>
-          {/* mini scoreboard */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 12px 12px', borderBottom: `1px solid ${ELEV.hairline}` }}>
-            <ScoreSide team={teamA} color={TEAM_COLORS.A} />
-            <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: COLORS.text, flexShrink: 0, letterSpacing: '-.5px', ...TNUM }}>{scoreStr}</span>
-            <ScoreSide team={teamB} color={TEAM_COLORS.B} />
+
+          {/* matchup card — score eyebrow + SideSwapStrip (vertical variant, teams + ⇄) */}
+          <div style={{
+            flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8,
+            padding: 10, borderRadius: 14,
+            background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, boxShadow: ELEV.innerTop,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ fontFamily: FONT, fontSize: 9, fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', color: COLORS.accent }}>
+                {t('scout_point_eyebrow', ptIdx + 1)}
+              </span>
+              <span style={{ fontFamily: FONT, fontSize: 18, fontWeight: 800, color: COLORS.text, letterSpacing: '-.5px', ...TNUM }}>{scoreStr}</span>
+            </div>
+            <SideSwapStrip
+              scouted={lScouted}
+              opponent={lOpponent}
+              scoutedColor={lScouted?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
+              opponentColor={lOpponent?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
+              fieldSide={fieldSide}
+              onSwap={handleManualSwapSides}
+              orientation="vertical"
+            />
           </div>
-          {/* Side-swap strip (vertical adaptation of the design `.pstrip`, which is
-              portrait-only — FLAGGED). Landscape previously had no manual swap; this
-              surfaces the SAME handler as the portrait strip, byte-stable capture. */}
-          {(() => {
-            const lScouted = scoutingSide === 'away' ? teamB : teamA;
-            const lOpponent = scoutingSide === 'away' ? teamA : teamB;
-            return (
-              <div style={{ padding: '12px 12px 0' }}>
-                <SideSwapStrip
-                  scouted={lScouted}
-                  opponent={lOpponent}
-                  scoutedColor={lScouted?.color || TEAM_COLORS[scoutingSide === 'away' ? 'B' : 'A']}
-                  opponentColor={lOpponent?.color || TEAM_COLORS[scoutingSide === 'away' ? 'A' : 'B']}
-                  fieldSide={fieldSide}
-                  onSwap={handleManualSwapSides}
-                  orientation="vertical"
-                />
-              </div>
-            );
-          })()}
-          {/* spacer — field carries the live capture; rail stays minimal chrome */}
-          <div style={{ flex: 1, minHeight: 0 }} />
-          {/* Save CTA — pinned bottom */}
-          <div style={{ padding: '0 12px' }}>
+
+          {/* phase axis — Break / Settle / Mid + static time-range hints (same handler) */}
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+            <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} ranges={phaseRanges} />
+          </div>
+
+          {/* roster — klocek V3 grid; the ONLY scroll in the rail (flex:1) */}
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+            <RosterGrid
+              variant="grid"
+              roster={roster}
+              selected={onFieldRoster}
+              onToggle={toggleRosterPlayer}
+              heroPlayerIds={heroPlayerIds}
+              teamName={lScouted?.name}
+            />
+          </div>
+
+          {/* Save CTA — pinned bottom (same onClick as before) */}
+          <div style={{ flexShrink: 0, paddingBottom: 12 }}>
             <Btn variant="accent" onClick={() => setSaveSheetOpen(true)}
               style={{
                 width: '100%', justifyContent: 'center', minHeight: 48, fontSize: FONT_SIZE.base, fontWeight: 800,
                 borderRadius: RADIUS.lg, background: COLORS.accentGradient, color: COLORS.black, border: 'none',
                 boxShadow: `${ELEV.innerTop}, ${COLORS.accentGlow}`,
               }}>
-              ✓ Save point
+              ✓ {t('quicklog_save_point')}
             </Btn>
           </div>
         </div>
         );
       })()}
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingLeft: immersive ? 176 : 0, paddingBottom: immersive ? 124 : 0 }}>
+      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingLeft: immersive ? IMMERSIVE_RAIL_W : 0 }}>
 
         {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
         <div style={{ position: 'relative' }}>
@@ -3138,30 +3162,11 @@ export default function MatchPage() {
 
       </div>
 
-      {/* ═══ IMMERSIVE CAPTURE STRIP ═══ (Option B — Jacek-approved)
-          Landscape/tablet editor: the !immersive RosterGrid + StageSwitcher are
-          hidden (left rail stays minimal chrome), so a scout had no way to select
-          players or switch phases. This fixed bottom strip — mirroring the
-          opponent-analysis landscape pattern (controls attached below the field) —
-          surfaces those SAME components. Display + gating only; capture/save logic,
-          handlers and props are reused VERBATIM from the !immersive paths above. */}
-      {immersive && (
-        <div style={{
-          position: 'fixed', left: 176, right: 0, bottom: 0, zIndex: 45,
-          display: 'flex', flexDirection: 'column', gap: 8,
-          padding: '10px 12px',
-          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
-          background: ELEV.surface, borderTop: `1px solid ${ELEV.hairlineStrong}`,
-          boxShadow: ELEV.shadow2,
-        }}>
-          {rosterGridVisible && (
-            <RosterGrid roster={roster} selected={onFieldRoster} onToggle={toggleRosterPlayer} heroPlayerIds={heroPlayerIds} />
-          )}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
-          </div>
-        </div>
-      )}
+      {/* ═══ IMMERSIVE CAPTURE — rail-consolidated ═══
+          The landscape/tablet roster + phase-axis now live INSIDE the left rail
+          (matchup card → phase axis → klocek V3 roster → Save), so the old fixed
+          bottom strip is gone and the field stays full-height to the right. The
+          !immersive (portrait) RosterGrid + bottom bar below are UNCHANGED. */}
 
       {/* ═══ ROSTER GRID ═══ */}
       {!immersive && rosterGridVisible && (
