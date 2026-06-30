@@ -25,6 +25,10 @@ export function drawQuickShots(ctx, w, h, {
   doritoSide = 'top',
   fieldSide = 'left',
   team = 'A',
+  // NIGHT BUILD item #3 — animated dash offset (px) for zone/direction lane
+  // flow, or null when animation is OFF (reduced-motion / large set / not
+  // visible). null ⇒ static cones + dashes (the prior look).
+  flowOffset = null,
 }) {
   const anyBreak = quickShots && quickShots.some(zs => zs && zs.length);
   const anyObstacle = obstacleShots && obstacleShots.some(zs => zs && zs.length);
@@ -57,6 +61,17 @@ export function drawQuickShots(ctx, w, h, {
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.globalAlpha = 1;
+        // Flow along the cone bisector (item #3) — white moving dash.
+        if (flowOffset != null) {
+          const rad = dir * Math.PI / 180;
+          const ex = cx + Math.cos(rad) * radius * 0.8, ey = cy + Math.sin(rad) * radius * 0.8;
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+          ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+          ctx.setLineDash([2, 9]); ctx.lineDashOffset = -flowOffset;
+          ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ex, ey); ctx.stroke();
+          ctx.restore();
+        }
       });
     });
   }
@@ -83,6 +98,20 @@ export function drawQuickShots(ctx, w, h, {
           ctx.moveTo(line.x1, line.y1);
           ctx.lineTo(line.x2, line.y2);
           ctx.stroke();
+          // White flow over each break radius (item #3).
+          if (flowOffset != null) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 1.3; ctx.lineCap = 'round';
+            ctx.setLineDash([2, 9]); ctx.lineDashOffset = -flowOffset;
+            ctx.beginPath(); ctx.moveTo(line.x1, line.y1); ctx.lineTo(line.x2, line.y2); ctx.stroke();
+            ctx.restore();
+            // restore the colored break-dash stroke state for the next radius
+            ctx.setLineDash([6, 3]);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = teamColor;
+            ctx.globalAlpha = 0.9;
+          }
         });
       });
     });

@@ -2998,6 +2998,11 @@ export default function MatchPage() {
             // scouting pill (drawPlayers + drawZones consume the same array).
             zones={resolveZones(field?.layout)}
             team={activeTeam}
+            // NIGHT BUILD (render-only) — brand identity of the scouted team
+            // for the marker discs / lane color + the no-avatar watermark.
+            // Falls back to role colors inside drawPlayers when no brand color.
+            teamColor={(scoutingSide === 'away' ? teamB : teamA)?.color || null}
+            teamName={(scoutingSide === 'away' ? teamB : teamA)?.name || null}
             onPlacePlayer={handlePlacePlayer} onMovePlayer={handleMovePlayer}
             onPlaceShot={handlePlaceShot} onDeleteShot={handleDeleteShot}
             onBumpStop={handleBumpStop} onSelectPlayer={handleSelectPlayer}

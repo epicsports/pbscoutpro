@@ -1,4 +1,4 @@
-import { COLORS, FONT } from '../../utils/theme';
+import { COLORS, FONT, FONT_COND } from '../../utils/theme';
 import { pointInPolygon } from '../../utils/helpers';
 import { drawLineFromTo } from './drawLineFromTo';
 
@@ -25,6 +25,22 @@ export function drawPlayers(ctx, w, h, {
   // (v1 simplification). Pass null (or omit) on surfaces where pills aren't
   // wanted (Tactic / LayoutDetail tactic-preview / BunkerEditor).
   zones = null,
+  // ── NIGHT BUILD (canvas marker + shots) — RENDER ONLY ──
+  // `teamColor`  = the brand color (hex) of the team whose markers live in
+  //   `players`. When valid AND visually distinct from `opponentColor` (when
+  //   the opponent overlay is shown) the whole team's marks read in the brand
+  //   color; otherwise we fall back to the per-slot role palette
+  //   (`COLORS.playerColors[i]`) so the two teams stay DISTINGUISHABLE and
+  //   surfaces without a team (Tactic / LayoutDetail / BunkerEditor) are
+  //   byte-identical to before. Never the amber accent (§27 — accent is
+  //   interactive-only; team color is identity).
+  // `teamName`   = the team's name (data), tiled as the no-avatar watermark.
+  // `flowOffset` = current animated dash offset (px) for shot-lane flow, or
+  //   null when animation is OFF (reduced-motion / large set / not visible) —
+  //   null ⇒ static lanes (the prior look, no white flow / no crosshair pulse).
+  teamColor = null,
+  teamName = null,
+  flowOffset = null,
 }) {
   // HERO check for a given player slot — matches assigned player id.
   const isHeroSlot = (assignments, idx) => {
@@ -36,14 +52,99 @@ export function drawPlayers(ctx, w, h, {
   const s = 1 / zoom;
 
   // ── Visual helpers ──
-  // Stable hash color for an avatar fallback (matches PlayerAvatar palette).
-  const AVATAR_PALETTE = ['#1e40af', '#7c3aed', '#be185d', '#b45309', '#15803d', '#0f766e', '#9f1239', '#5b21b6'];
-  const avatarColor = (id) => {
-    let hash = 0;
-    const idStr = String(id || '');
-    for (let k = 0; k < idStr.length; k++) { hash = ((hash << 5) - hash) + idStr.charCodeAt(k); hash |= 0; }
-    return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+  // ── Team-color resolution (NIGHT BUILD item #1) ──
+  const isHex = (c) => typeof c === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(c);
+  const hexToRgb = (hex) => {
+    let hStr = hex.replace('#', '');
+    if (hStr.length === 3) hStr = hStr.split('').map(c => c + c).join('');
+    const n = parseInt(hStr, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
   };
+  const mixTo = (hex, target, t) => {
+    const { r, g, b } = hexToRgb(hex);
+    const m = (a) => Math.round(a + (target - a) * t);
+    return `rgb(${m(r)},${m(g)},${m(b)})`;
+  };
+  const lighten = (hex, t) => mixTo(hex, 255, t);
+  const darken = (hex, t) => mixTo(hex, 0, t);
+  const colorDist = (a, b) => {
+    const x = hexToRgb(a), y = hexToRgb(b);
+    return Math.sqrt((x.r - y.r) ** 2 + (x.g - y.g) ** 2 + (x.b - y.b) ** 2);
+  };
+  // Distinction guard: only adopt the brand color when it's a real hex AND —
+  // if the opponent overlay is on — it reads apart from the opponent color
+  // (RGB distance ≥ 60). On collision/missing we keep the role palette so both
+  // teams remain readable. Computed once (team-level, not per-slot).
+  const teamColorOk = isHex(teamColor) &&
+    !(showOpponentLayer && isHex(opponentColor) && colorDist(teamColor, opponentColor) < 60);
+  const markerColor = (i) => (teamColorOk ? teamColor : COLORS.playerColors[i]);
+
+  // ── No-avatar watermark (NIGHT BUILD item #2) ──
+  // Team-color radial gradient + the team name tiled at ~−28° + the number on
+  // top (Oswald). `name` omitted ⇒ clean watermark (gradient + center text).
+  // `shapePath()` defines the clip (circle or runner triangle). Never an empty
+  // disc — this is the identity fallback (design law).
+  const drawWatermark = (cx, cy, r, baseColor, name, centerText, shapePath, isSel) => {
+    const base = isHex(baseColor) ? baseColor : '#475569';
+    ctx.save();
+    shapePath();
+    ctx.clip();
+    const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.15, cx, cy, r);
+    grad.addColorStop(0, lighten(base, 0.18));
+    grad.addColorStop(1, darken(base, 0.45));
+    ctx.fillStyle = grad;
+    ctx.fillRect(cx - r * 1.5, cy - r * 1.5, r * 3, r * 3);
+    if (name) {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(-28 * Math.PI / 180);
+      ctx.font = `800 ${Math.max(6, r * 0.5)}px ${FONT}`;
+      ctx.fillStyle = 'rgba(255,255,255,0.22)';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const tile = (name + '  ').toUpperCase();
+      const tileW = ctx.measureText(tile).width || r;
+      const step = Math.max(5, r * 0.6);
+      for (let y = -r * 1.5; y < r * 1.5; y += step) {
+        const off = (Math.round(y / step) % 2) ? -tileW / 2 : 0;
+        for (let x = -r * 1.8 + off; x < r * 1.8; x += tileW) ctx.fillText(tile, x, y);
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+    // White identity ring (à la prototype), selection keeps the brighter ring.
+    shapePath();
+    ctx.strokeStyle = isSel ? '#fff' : 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = (isSel ? 3 : 2) * s;
+    ctx.stroke();
+    // Number / label on top — Oswald, white with shadow for legibility.
+    if (centerText) {
+      ctx.save();
+      ctx.fillStyle = '#fff';
+      ctx.font = `700 ${Math.round(r * 0.95)}px ${FONT_COND}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 2 * s; ctx.shadowOffsetY = 1 * s;
+      ctx.fillText(String(centerText).slice(0, 3), cx, cy + 0.5 * s);
+      ctx.restore();
+    }
+  };
+
+  // ── Shot-lane flow overlay (NIGHT BUILD item #3) ──
+  // A thin white dashed line over a lane, its dash offset advanced by the rAF
+  // driver (BaseCanvas). No-op when `flowOffset` is null (static look).
+  const drawFlow = (x1, y1, x2, y2) => {
+    if (flowOffset == null) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+    ctx.lineWidth = 1.3;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([2, 9]);
+    ctx.lineDashOffset = -flowOffset;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.restore();
+  };
+  // Crosshair pulse scale for precise shot markers — gentle breathe while the
+  // flow runs; 1 (no pulse) when animation is off.
+  const crossPulse = flowOffset == null ? 1 : (1 + 0.18 * Math.sin((flowOffset / 22) * Math.PI * 2));
 
   // Draw the small number pill badge attached to a marker (bottom-right by default).
   const drawNumberBadge = (cx, cy, num, fillColor, opts = {}) => {
@@ -123,13 +224,14 @@ export function drawPlayers(ctx, w, h, {
     // player) / Shot 2nd (from bump)" dual-lane semantic.
     players.forEach((p, i) => {
       if (!p || !shots[i]?.length) return;
-      const color = COLORS.playerColors[i];
+      const color = markerColor(i);
       const bumpStart = bumpShotOriginAtStart && bumpStops?.[i] ? bumpStops[i] : null;
       const originX = (bumpStart ? bumpStart.x : p.x) * w;
       const originY = (bumpStart ? bumpStart.y : p.y) * h;
       shots[i].forEach(s => {
         drawLineFromTo(ctx, originX, originY, s.x * w, s.y * h, { stroke: color + '50', width: 5, dash: [4, 3] });
         const sx = s.x * w, sy = s.y * h;
+        drawFlow(originX, originY, sx, sy);   // precise lane flow (item #3)
         if (s.isKill) {
           ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -142,13 +244,15 @@ export function drawPlayers(ctx, w, h, {
           // occluded the canvas → dead affordance by construction).
           // Delete is now tap-on-shot-center inside the ShotDrawer (§ 75
           // grammar), wired via touchHandler.findShot's center hit-test.
+          // NIGHT BUILD: radius/tick breathe with `crossPulse` (1 = static).
+          const cp = crossPulse;
           ctx.strokeStyle = color; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(sx, sy, 6 * cp, 0, Math.PI * 2); ctx.stroke();
           ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
-          ctx.beginPath(); ctx.moveTo(sx - 10, sy); ctx.lineTo(sx - 7, sy); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(sx + 7, sy); ctx.lineTo(sx + 10, sy); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(sx, sy - 10); ctx.lineTo(sx, sy - 7); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(sx, sy + 7); ctx.lineTo(sx, sy + 10); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx - 10 * cp, sy); ctx.lineTo(sx - 7 * cp, sy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx + 7 * cp, sy); ctx.lineTo(sx + 10 * cp, sy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx, sy - 10 * cp); ctx.lineTo(sx, sy - 7 * cp); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx, sy + 7 * cp); ctx.lineTo(sx, sy + 10 * cp); ctx.stroke();
         }
       });
     });
@@ -157,11 +261,12 @@ export function drawPlayers(ctx, w, h, {
       players.forEach((p, i) => {
         const bs = bumpStops?.[i];
         if (!bs || !bumpShots[i]?.length) return;
-        const color = COLORS.playerColors[i];
+        const color = markerColor(i);
         const originX = bs.x * w, originY = bs.y * h;
         bumpShots[i].forEach(s => {
           drawLineFromTo(ctx, originX, originY, s.x * w, s.y * h, { stroke: color + '40', width: 2.5, dash: [3, 4] });
           const sx = s.x * w, sy = s.y * h;
+          drawFlow(originX, originY, sx, sy);
           if (s.isKill) {
             ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
             ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -185,23 +290,25 @@ export function drawPlayers(ctx, w, h, {
   if (bumpShots) {
     bumpStops?.forEach((bs, i) => {
       if (!bs || !bumpShots[i]?.length) return;
-      const color = COLORS.playerColors[i];
+      const color = markerColor(i);
       const originX = bs.x * w, originY = bs.y * h;
       bumpShots[i].forEach(s => {
         drawLineFromTo(ctx, originX, originY, s.x * w, s.y * h, { stroke: color + '50', width: 5, dash: [4, 3] });
         const sx = s.x * w, sy = s.y * h;
+        drawFlow(originX, originY, sx, sy);
         if (s.isKill) {
           ctx.fillStyle = COLORS.skull; ctx.font = 'bold 14px serif';
           ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
           ctx.fillText('💀', sx, sy);
         } else {
+          const cp = crossPulse;
           ctx.strokeStyle = color; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(sx, sy, 6, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(sx, sy, 6 * cp, 0, Math.PI * 2); ctx.stroke();
           ctx.beginPath(); ctx.arc(sx, sy, 2.5, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
-          ctx.beginPath(); ctx.moveTo(sx - 10, sy); ctx.lineTo(sx - 7, sy); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(sx + 7, sy); ctx.lineTo(sx + 10, sy); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(sx, sy - 10); ctx.lineTo(sx, sy - 7); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(sx, sy + 7); ctx.lineTo(sx, sy + 10); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx - 10 * cp, sy); ctx.lineTo(sx - 7 * cp, sy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx + 7 * cp, sy); ctx.lineTo(sx + 10 * cp, sy); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx, sy - 10 * cp); ctx.lineTo(sx, sy - 7 * cp); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(sx, sy + 7 * cp); ctx.lineTo(sx, sy + 10 * cp); ctx.stroke();
         }
       });
     });
@@ -275,7 +382,7 @@ export function drawPlayers(ctx, w, h, {
   players.forEach((p, i) => {
     if (!p) return;
     const px = p.x * w, py = p.y * h;
-    const color = COLORS.playerColors[i];
+    const color = markerColor(i);
     drawLineFromTo(ctx, baseX, baseY, px, py, { stroke: color + '30', width: 2, dash: [6, 4] });
   });
 
@@ -283,7 +390,7 @@ export function drawPlayers(ctx, w, h, {
   players.forEach((p, i) => {
     if (!p) return;
     const px = p.x * w, py = p.y * h, r = 18 * s;
-    const color = COLORS.playerColors[i];
+    const color = markerColor(i);
     const isSel = selectedPlayer === i;
     const isElim = eliminations[i];
     const isRunner = runners[i];
@@ -407,26 +514,17 @@ export function drawPlayers(ctx, w, h, {
         trianglePath();
         ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
       } else if (playerObj) {
-        trianglePath();
-        const bg = avatarColor(playerObj.id);
-        ctx.fillStyle = bg; ctx.fill();
-        ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
+        // No-avatar watermark (item #2) — team gradient + tiled name + number.
         const initial = (playerObj.nickname || playerObj.name || '?').charAt(0).toUpperCase();
-        ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(r * 0.85)}px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(initial, px, py + 2 * s);
+        const centerText = playerObj.number ? String(playerObj.number) : initial;
+        drawWatermark(px, py + tr * 0.1, tr, color, teamName, centerText, trianglePath, isSel);
       } else {
-        trianglePath();
-        const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
-        grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
-        ctx.fillStyle = grad; ctx.fill();
-        ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
-        ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3), px, py + 2*s);
+        // Unassigned — clean watermark (gradient + label, no tiled name).
+        drawWatermark(px, py + tr * 0.1, tr, color, teamName,
+          getPlayerLabel(playerAssignments, rosterPlayers, i).slice(0, 3), trianglePath, isSel);
       }
-      // Number badge (only when there's a real player)
-      const num = playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
+      // Number badge — photo path only (watermark already centers the number).
+      const num = photo && playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
       if (num) drawNumberBadge(px + tr - 9 * s, py + tr * 0.7 - 7 * s + 2 * s, num, color);
     } else {
       // Gun-up: circle (standard) — photo / initial / label
@@ -442,26 +540,18 @@ export function drawPlayers(ctx, w, h, {
         ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
         ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
       } else if (playerObj) {
-        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-        ctx.fillStyle = avatarColor(playerObj.id); ctx.fill();
-        ctx.strokeStyle = isSel ? '#fff' : color; ctx.lineWidth = isSel ? 3 * s : 2.5 * s; ctx.stroke();
+        // No-avatar watermark (item #2) — team gradient + tiled name + number.
+        const circlePath = () => { ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); };
         const initial = (playerObj.nickname || playerObj.name || '?').charAt(0).toUpperCase();
-        ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.round(r * 0.9)}px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(initial, px, py);
+        const centerText = playerObj.number ? String(playerObj.number) : initial;
+        drawWatermark(px, py, r, color, teamName, centerText, circlePath, isSel);
       } else {
-        // Unassigned (P1/P2/etc) — single solid circle with label in center
-        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
-        const grad = ctx.createRadialGradient(px - 3 * s, py - 3 * s, 2 * s, px, py, r);
-        grad.addColorStop(0, color); grad.addColorStop(1, color + 'bb');
-        ctx.fillStyle = grad; ctx.fill();
-        ctx.strokeStyle = isSel ? '#fff' : 'rgba(0,0,0,0.3)'; ctx.lineWidth = isSel ? 2.5 * s : 1.5 * s; ctx.stroke();
-        ctx.fillStyle = '#fff'; ctx.font = `bold ${11 * s}px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(label.slice(0, 3), px, py);
+        // Unassigned (P1/P2/etc) — clean watermark (gradient + label center).
+        const circlePath = () => { ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); };
+        drawWatermark(px, py, r, color, teamName, label.slice(0, 3), circlePath, isSel);
       }
-      // Number badge bottom-right (only when there's a real player number)
-      const num = playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
+      // Number badge — photo path only (watermark already centers the number).
+      const num = photo && playerObj?.number ? String(playerObj.number).slice(0, 3) : null;
       if (num) drawNumberBadge(px + r - 9 * s, py + r - 7 * s + 2 * s, num, color);
     }
   });
