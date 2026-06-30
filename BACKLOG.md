@@ -76,9 +76,9 @@ Wciągnięte z `_archive/{NEXT_TASKS,DEPLOY_LOG,_LANDSCAPE_BACKLOG}.md` + `NIGHT
 |---|---|---|---|
 | CC-1 | Wide-shell e2e coverage = ZERO ⭐ | infra | Playwright wide-viewport project + un-gate; tablet bugi docierały do usera bez gate'a. Najwyższa wartość. |
 | CC-2 | ~~`updatePlayer` catalogVersion bump~~ ✅ already-fixed | bug | reality-pass 2026-07-01: oba bumpują (`updatePlayer` dataService.js:302, `updateTeam`:562). Nie-bug, stale w miningu. |
-| CC-3 | `divisionAliases` rok z daty turnieju | data | `divisionAliases.js:69` TODO — derive year from tournament date |
+| CC-3 | ✅ `divisionAliases` rok z daty turnieju | data | DONE: CSV import bierze rok z `tournament.date` → else `.year` → else current. merge fix/i18n-csv-strings-year |
 | CC-4 | i18n precommit guard | infra | wepnij `find-missing-i18n.cjs` do precommit (zweryfikuj czy już nie wpięte) |
-| CC-5 | i18n — resztki hardcoded-PL | bug | ~5: `PlayerStatsPage` CAUSE_META + `ScheduleCSVImport` |
+| CC-5 | ✅ i18n — resztki hardcoded-PL | bug | DONE: `ScheduleCSVImport` ×3 + `MemberCard` → t() (PL+EN, func-key `csv_missing_columns`). merge fix/i18n-csv-strings-year. (Uwaga: `PlayerStatsPage` CAUSE_META nie tknięte — sprawdzić osobno jeśli realne) |
 | CC-6 | `NetworkErrorState` → wepnij w 5 paneli | refactor | komponent gotowy, 5 load-timeout EmptyStates do podmiany |
 | CC-7 | ScheduleList grouping component | refactor | Live/Scheduled/Completed + stage; ScoutTab/CoachTab/wide (matchClassify gotowe) |
 | CC-8 | Preloader true per-stage stepping | perf | heatmap/stats/ranking: fetch-done→compute-done zamiast 1 boolean |
