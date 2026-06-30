@@ -67,3 +67,52 @@ npx playwright test --config playwright.emulator.config.js \
   --grep-invert "pixel-diff|model C|render-verify" --list | grep _render-scout
 # → no output = excluded from the gate
 ```
+
+---
+
+# Current-state screenshots — `/screenshots/` (committed)
+
+`_screenshots.spec.js` GENERALIZES the harness above into a multi-screen capture
+tool. It authenticates (seeded, emulator) and walks a SET of key screens —
+scout point editor · match review · live scoring · opponent analysis
+(ScoutedTeam) · player stats · coach tab · scout tab · team detail · admin teams
+· layouts · profile — writing one PNG per screen × width to the **repo-root
+`/screenshots/`** folder. Unlike `data-export/render/` (gitignored), these PNGs
+are **committed artifacts** — a visual snapshot of *what prod looks like now*.
+
+## How to run
+
+```bash
+export JAVA_HOME="$LOCALAPPDATA/jre-temurin"
+export PATH="$JAVA_HOME/bin:$PATH"
+npm run screenshots
+#  = playwright test --config playwright.emulator.config.js _screenshots
+```
+
+**Refresh `/screenshots/` after any visual change**, then **commit the PNGs** in
+the same change. They are the human-readable "current UI" reference.
+
+## Widths
+
+390 (phone) · 834 (tablet portrait) · 1280 (desktop) · 1000×720 (tablet-landscape
+→ immersive scout rail / live-scoring sidebar). Each screen captures the widths
+relevant to it (the field/immersive screens add 1000; the live-scoring layout
+only renders landscape, so it captures 1280 + 1000). Files: `<screen>-<width>.png`.
+
+## VS-intro
+
+The scout editor's VS-intro splash would cover the field chrome, so the harness
+disables it before capture via `addInitScript(localStorage['pbscoutpro-vsintro']='off')`
+(pure test setup, no src change) — so the base labels + side-swap strip are visible.
+
+## Gate exclusion
+
+Same mechanism as `_render-scout`: the `test.describe` title contains
+**`render-verify`**, so `npm run test:e2e` (`--grep-invert "pixel-diff|model C|render-verify"`)
+skips it. Confirm:
+
+```bash
+npx playwright test --config playwright.emulator.config.js \
+  --grep-invert "pixel-diff|model C|render-verify" --list | grep _screenshots
+# → no output = excluded from the gate
+```
