@@ -8,6 +8,12 @@ export async function login(page, { email = process.env.PBSCOUT_EMAIL, password 
     throw new Error('login(): provide { email, password } or set PBSCOUT_EMAIL / PBSCOUT_PASSWORD');
   }
 
+  // Pin the suite to ENGLISH before first mount. LanguageProvider reads
+  // localStorage['pbscoutpro_lang'] ONCE at mount (app default = Polish), so this
+  // MUST run before any page script → addInitScript, not evaluate. Keeps text-based
+  // assertions language-stable: localizing a previously-hardcoded English string can
+  // no longer silently break a spec. (See CC_AUTOPILOT_ENVELOPE Verification.)
+  await page.addInitScript(() => { try { localStorage.setItem('pbscoutpro_lang', 'en'); } catch { /* ignore */ } });
   await page.goto('./');
   // Pre-set handedness so the first-run overlay never blocks the suite.
   await page.evaluate(() => localStorage.setItem('pbscoutpro-handedness', 'right'));
