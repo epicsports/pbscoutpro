@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Btn, SectionTitle, SectionLabel, EmptyState, Modal, Select } from './ui';
+import { Btn, SectionTitle, EmptyState, Modal, Select } from './ui';
 import ScheduleImport from './ScheduleImport';
 import ScheduleCSVImport from './ScheduleCSVImport';
-import MatchCard from './MatchCard';
+import ScheduleList from './match/ScheduleList';
 import Preloader from './Preloader';
 import { useScreenLoader } from '../hooks/useScreenLoader';
 import { useActiveTeams, useScoutedTeams, useMatches, usePlayers } from '../hooks/useFirestore';
@@ -16,26 +16,11 @@ import TeamBadge from './TeamBadge';
 import { matchEntity, teamInDivision } from '../utils/entityFilters';
 import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
 import * as ds from '../services/dataService';
-import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV, TRACKING } from '../utils/theme';
+import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV } from '../utils/theme';
 import RdIcon from './RdIcon';
-
-// Module-level so the component identity is STABLE across renders. Defining this
-// inside the render body (as `const Grid = …`) gives it a new function identity
-// every render → React remounts the whole match list on each liveScores poll
-// (flicker + lost scroll). `wide` drives the grid reflow; phone = transparent.
-const GRID_STYLE = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-  gap: SPACE.sm,
-  alignItems: 'start',
-};
-function Grid({ wide, children }) {
-  return wide ? <div style={GRID_STYLE}>{children}</div> : <>{children}</>;
-}
 import DivisionTabs from './tabs/DivisionTabs';
 import { playerOnTeam } from '../utils/playerTeams';
 import { STATIC_FLAGS } from '../utils/featureFlags';
-import { groupMatchesByStage } from '../utils/divisionAliases';
 import { classifyMatch } from '../utils/matchClassify';
 import { useLanguage } from '../hooks/useLanguage';
 
@@ -310,12 +295,11 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
   const scheduled = searched.filter(m => classify(m) === 'scheduled');
   const completed = searched.filter(m => classify(m) === 'completed');
 
-  // wide reflow — scheduled/completed cards flow into a 2–3 col responsive grid;
-  // live stays full-width hero rows above the grid. On phone (wide=false) `Grid`
-  // is a transparent Fragment so the markup stays byte-identical to before — no
-  // extra wrapper div, no style change. auto-fill + minmax(340px) yields 2 cols
-  // ~720–1080, 3 cols above, gracefully 1 col when narrow.
-  // Grid is module-level (stable identity) — see top of file. Pass `wide` to it.
+  // wide reflow + stage/group sub-headers live in <ScheduleList> (dup-audit #2):
+  // scheduled/completed cards flow into a 2–3 col responsive grid (live stays
+  // full-width hero rows). On phone (wide=false) the grid is a transparent
+  // Fragment so the markup stays byte-identical to before — no extra wrapper,
+  // no style change. We pass `wide` + `groupScheduledByStage` to drive both.
 
   return (
     <div style={{
@@ -387,80 +371,14 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
           </div>
         )}
 
-        {live.length > 0 && (
-          <div style={{ marginBottom: SPACE.sm }}>
-            <SectionLabel color={COLORS.accent}>Live ({live.length})</SectionLabel>
-            {live.map(m => (
-              <MatchCard key={m.id} m={m} status="live" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
-            ))}
-          </div>
-        )}
-
-        {scheduled.length > 0 && (
-          <div style={{ marginBottom: SPACE.sm }}>
-            {(live.length > 0 || completed.length > 0) && <SectionLabel>Scheduled ({scheduled.length})</SectionLabel>}
-            {/* Stage + group sub-headers (Brief follow-up 2026-05-13).
-                groupMatchesByStage returns stages in tournament progression
-                order (prelims → ocho → quarter → semi → final). Each stage
-                is sub-grouped by Grupa; the empty-group bucket renders
-                without a group sub-header so older matches (no group field)
-                stay tidy. When the whole Scheduled section has only one
-                stage AND one group, headers are skipped to avoid clutter.
-                On wide, each group's cards flow into the responsive grid. */}
-            {(() => {
-              const stages = groupMatchesByStage(scheduled);
-              const flatten = stages.length === 1 && stages[0].groups.length === 1 && !stages[0].groups[0].groupName;
-              if (flatten) {
-                return (
-                  <Grid wide={wide}>
-                    {stages[0].groups[0].matches.map(m => (
-                      <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
-                    ))}
-                  </Grid>
-                );
-              }
-              return stages.map(stage => (
-                <div key={stage.rank} style={{ marginTop: SPACE.sm }}>
-                  <div style={{
-                    fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
-                    color: COLORS.textDim, letterSpacing: TRACKING.label, textTransform: 'uppercase',
-                    margin: `${SPACE.sm}px 0 ${SPACE.xs}px`,
-                  }}>
-                    {stage.label} <span style={{ color: COLORS.textMuted, fontWeight: 500 }}>· {stage.totalCount}</span>
-                  </div>
-                  {stage.groups.map(g => (
-                    <React.Fragment key={`${stage.rank}-${g.groupName || '_'}`}>
-                      {g.groupName && (
-                        <div style={{
-                          fontFamily: FONT, fontSize: 10, fontWeight: 600,
-                          color: COLORS.textMuted, marginBottom: 2, marginLeft: 2,
-                        }}>
-                          Grupa {g.groupName}
-                        </div>
-                      )}
-                      <Grid wide={wide}>
-                        {g.matches.map(m => (
-                          <MatchCard key={m.id} m={m} status="scheduled" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} liveScore={liveScores[m.id]?.score || null} />
-                        ))}
-                      </Grid>
-                    </React.Fragment>
-                  ))}
-                </div>
-              ));
-            })()}
-          </div>
-        )}
-
-        {completed.length > 0 && (
-          <div style={{ marginBottom: SPACE.sm }}>
-            <SectionLabel>Completed ({completed.length})</SectionLabel>
-            <Grid wide={wide}>
-              {completed.map(m => (
-                <MatchCard key={m.id} m={m} status="completed" tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam} navigate={navigate} readOnly={isClosed} />
-              ))}
-            </Grid>
-          </div>
-        )}
+        {/* Shared Live / Scheduled / Completed grouping (dup-audit #2). Scout
+            variant: `wide` grid reflow + stage/group sub-headers in Scheduled →
+            byte-identical to the old inlined sections. */}
+        <ScheduleList
+          live={live} scheduled={scheduled} completed={completed}
+          tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam}
+          navigate={navigate} readOnly={isClosed} liveScores={liveScores}
+          wide={wide} groupScheduledByStage />
       </div>
 
       {/* Add match + Add team — primary actions. Gated on scouted.length >= 1
