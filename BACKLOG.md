@@ -71,6 +71,7 @@ Reality-pass 2026-06-30: 90% było shipnięte, gate-fix `AdminTeamsPage`→super
 Wciągnięte z `_archive/{NEXT_TASKS,DEPLOY_LOG,_LANDSCAPE_BACKLOG}.md` + `NIGHT_*.md` + `docs/{ops/HANDOVER,DESIGN_DECISIONS,product/*}.md` + grep TODO/FIXME w `src/`. Deduplikowane. Status build = ⚪ jeśli nie inaczej.
 
 ### owner=CC — buildable teraz (kod/bug/dane/infra/refactor/perf, zakres jasny)
+> **Triage 2026-07-01 (reality-pass):** ✅ ZAMKNIĘTE (już zrobione/stale): CC-2 · CC-4 (i18n guard wpięty `precommit.js:51-62`) · CC-7 (`ScheduleList` współdzielony) · CC-20 (presence celowo brak) · CC-21 (chunk-limit/isFreePlay zrobione). · **READY do buildu (spec gotowy):** CC-5 (i18n PL: `ScheduleCSVImport` :219/:228/:237 + `MemberCard`:85) · CC-3 (rok z `selectedTournament.date` → `parseScheduleDateTime`). · **Większe/scoped:** CC-1 (wide e2e — projekt+spec) · CC-6 (audyt 24 stron) · CC-8 (per-stage, multi-page, high-risk) · CC-14 (testids). · **→ ARCH:** CC-16 (externalId dedup = Phase 2.3.c admin UI, brief Opusa). · **→ needs-decision:** CC-13 (guardy `/teams`,`/players`,`/my-issues` zmieniają politykę dostępu — którą bramką + kto ma widzieć).
 | # | Item | bucket | Notes |
 |---|---|---|---|
 | CC-1 | Wide-shell e2e coverage = ZERO ⭐ | infra | Playwright wide-viewport project + un-gate; tablet bugi docierały do usera bez gate'a. Najwyższa wartość. |
