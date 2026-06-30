@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useViewAs } from '../../hooks/useViewAs';
+import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { useTeams, usePlayers } from '../../hooks/useFirestore';
 import { useLeagues } from '../../hooks/useLeagues';
 import PageHeader from '../../components/PageHeader';
@@ -35,7 +35,7 @@ const tsMs = (t) => {
 
 export default function AdminTeamsPage() {
   const { t } = useLanguage();
-  const { effectiveIsAdmin } = useViewAs();
+  const isSuperAdmin = useIsSuperAdmin();
   const navigate = useNavigate();
   const { teams, loading } = useTeams();
   const { players } = usePlayers();
@@ -47,7 +47,10 @@ export default function AdminTeamsPage() {
   const [pending, setPending] = useState(false);
   const [retireError, setRetireError] = useState(null);
 
-  if (!effectiveIsAdmin) return null;
+  // Mirror the SuperAdminGuard on the route (brief §2 — team CRUD = super-admin
+  // only). The old workspace-admin gate (effectiveIsAdmin) could wrongly blank
+  // the page for a super-admin who isn't a workspace-admin in the active ws.
+  if (!isSuperAdmin) return null;
 
   const search = searchParams.get('search') || '';
   const filter = searchParams.get('filter') || 'all';
