@@ -65,9 +65,9 @@ export function normalizeScheduleDivision(raw) {
 // ─── Schedule date/time parser ─────────────────────────────────────────────
 //
 // PBLeagues schedule rows carry Dzien like "Thursday, 14th May" and Godzina
-// like "12:00". Year is not present in the export — hardcoded 2026 per
-// brief 2026-05-13. TODO: derive year from the selected tournament's date
-// once tournament context is available at parse time.
+// like "12:00". Year is not present in the export. Callers (ScheduleCSVImport)
+// pass `year` derived from selectedTournament.date so imports in any calendar
+// year land on the correct date; falls back to current year when undefined.
 
 const MONTH_TO_INDEX = {
   january: 0, february: 1, march: 2, april: 3, may: 4, june: 5,

@@ -216,7 +216,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
     const file = e.target.files?.[0];
     if (!file) return;
     if (!tournamentId) {
-      setParseError('Najpierw wybierz turniej.');
+      setParseError(t('csv_select_tournament_first'));
       return;
     }
     const reader = new FileReader();
@@ -225,7 +225,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
       if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
       // Mixed line endings tolerated per brief.
       const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { setParseError('Plik pusty lub bez nagłówka.'); return; }
+      if (lines.length < 2) { setParseError(t('csv_empty_or_no_header')); return; }
 
       const sep = (lines[0].match(/;/g) || []).length > (lines[0].match(/,/g) || []).length ? ';' : ',';
       const headers = parseRowCells(lines[0], sep);
@@ -234,7 +234,7 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
       // Required columns
       const missing = ['dzien', 'godzina', 'dywizja', 'home', 'away'].filter(k => colMap[k] == null);
       if (missing.length) {
-        setParseError(`Brak wymaganych kolumn: ${missing.join(', ')}. Wykryto nagłówki: ${headers.join(' | ')}`);
+        setParseError(t('csv_missing_columns', missing.join(', '), headers.join(' | ')));
         return;
       }
 
@@ -243,6 +243,14 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         if (idx == null) return '';
         return (row[idx] || '').trim();
       };
+
+      // Derive year so imports in any calendar year land correctly: prefer the
+      // tournament's explicit date, else its `year` field (always set on create),
+      // else let parseScheduleDateTime fall back to the current calendar year.
+      // (`date` is optional/often null; `year` is the reliable source — don't drop it.)
+      const year = selectedTournament?.date
+        ? new Date(selectedTournament.date).getFullYear()
+        : (selectedTournament?.year || undefined);
 
       // First pass — parse + validate every row. STOP on the first unknown
       // division per brief ("If file contains a division value NOT in this
@@ -269,16 +277,10 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
           setParseError(`Nieznana dywizja w wierszu ${i + 2}: "${dywizja}". Dozwolone dla ligi ${league || '?'}: ${valid}. Popraw plik lub dodaj tę dywizję do ligi.`);
           return;
         }
-        // Inherit year from the selected tournament so post-deploy
-        // imports in any year land on the correct calendar. Falls back
-        // to current calendar year if tournament.year is missing (legacy
-        // tournament docs without that field).
-        const tournamentYear = (leagueTournaments.find(t => t.id === tournamentId)?.year)
-          || new Date().getFullYear();
         // Date is OPTIONAL + multi-format. Missing / unparseable → undated; the
         // match then orders by sequence (the #/index/lp column if present, else
         // row order). No abort.
-        const scheduledAt = parseScheduleDateTime(dzien, godzina, tournamentYear);
+        const scheduledAt = parseScheduleDateTime(dzien, godzina, year);
         seq += 1;
         const lpNum = parseInt(lp, 10);
         const order = Number.isFinite(lpNum) ? lpNum : seq;
