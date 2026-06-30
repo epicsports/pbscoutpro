@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-30 — [REFACTOR/GREEN] Shared `<ScheduleList>` — de-dup match grouping in coach + scout (dup-audit #2)
+**App (auto-deploy, e2e-gated). Autonomous ship.** The Live/Scheduled/Completed grouping + per-status `MatchCard` render was inlined in both `CoachTabContent.jsx` and `MatchListPremium.jsx` (both already share `classifyMatch`). Extracted **`src/components/match/ScheduleList.jsx`**; migrated both consumers (CoachTab −42, MatchListPremium −114, +153 shared). Each consumer reproduces its prior output (split-tap nav contract, readOnly/isClosed, liveScore, sort, section labels, testids preserved). The original fork hit the session limit mid-edit; I committed its trailing comment polish, then verified.
+- **Display-only (§6.6):** no `classifyMatch`/`useLiveMatchScores`/`MatchCard`/data/write/routing changes.
+- **Verified:** build · precommit · e2e **116/116 (7.0m)**.
+- **Revert:** `git revert -m 1 <merge sha>`.
+- **Flag:** render-verify was NOT run (fork hit limit before it) — covered by e2e (scout/coach-tab specs) + structure-preserving extraction, but worth a glance @390 coach tab + scout match list on smoke.
+
 ## 2026-06-30 — [REFACTOR/GREEN] Shared `ReportTable` primitive — de-dup 5 opponent-analysis tables (dup-audit #1)
 **App (auto-deploy, e2e-gated). Autonomous ship.** `ScoutedTeamPage` had 5 near-identical hand-rolled report tables. Extracted **`src/components/scout/ReportTable.jsx`** (column-config-driven: `columns/rows/render/cellStyle/show/testids/onRowClick/belowRow`) and migrated all 5 (Rozbiegi · Strzały · Elim-reasons · Callout-zones · Key-players). **Byte-identical rendered output** (9/9 render captures md5-identical @390/834/1280 × Break/Settle/Mid). The Rozbiegi @390 clip-fix is now the primitive's DEFAULT (flex name col + `flexShrink:0` fixed cols + header ellipsis) → no table can clip a column on phone.
 - **Display-only (§6.6):** zero compute call-site changes (`git diff` clean of `compute*`), no data/heatmap/scope/write edits; every `data-testid` preserved.
