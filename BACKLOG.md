@@ -98,8 +98,8 @@ Wciągnięte z `_archive/{NEXT_TASKS,DEPLOY_LOG,_LANDSCAPE_BACKLOG}.md` + `NIGHT
 ### owner=CC — ❄️ PARKED (dotyka live scout / field-cluster — do GO po Birmingham)
 | # | Item | bucket | Notes |
 |---|---|---|---|
-| CC-P1 | **Side-swap home/away korupcja danych** (FEEDBACK PP2) | bug 🔴 | „apka miesza stronami" → korupcja Firestore. **Zweryfikować czy wciąż otwarte** (sporo scout-point shipnięte od feedbacku). Dotyka MatchPage → park; potencjalne P0 = patrz raport do Jacka. |
-| CC-P2 | **Concurrent dual-coach sync** (FEEDBACK PP1) | bug 🔴 | „jeden tworzy punkt, drugi czeka". Zweryfikować vs „concurrent scouting side-safe" (ALREADY SHIPPED). |
+| CC-P1 | ✅ **Side-swap home/away korupcja — FIXED** (FEEDBACK PP2) | bug | Forensic 2026-07-01: strukturalnie naprawione. fieldSide (viewport) odsprzężone od homeData/awayData (stała mapa draftA→home/draftB→away); shared-signal leak `currentHomeSide` usunięty `f7a23ad6`. Commits 59ee02df·cba60fa1·17cd6e55·0ba285a7·f7a23ad6·13837e47 (kwi 2026). Reszt-ryzyko: zły `?scout=` link (user, nie korupcja). **Nie ruszać MatchPage.** |
+| CC-P2 | ✅ **Concurrent dual-coach sync — FIXED** (FEEDBACK PP1) | bug | Lock (match-claim Brief F) wycofany `3caf9c3c`; każdy punkt = własny `addDoc` (zero array-clobber); per-coach streams + `onSnapshot`; same-UID overwrite hotfix `2f696f58` (NXL Czechy 2026-05-15). Merge per-side w `endMatchAndMerge`. Uwaga (nie bug): coachе widzą swoje punkty live dopiero po End-match (chyba że ten sam login) — confirm z teamem. |
 | CC-P3 | Point immutability (freeze side po save) | refactor | prewencja re-korupcji po CC-P1 |
 | CC-P4 | Hardcoded canvas labels i18n (`drawZones.js` DISCO/ZEEKER…) | bug | stringi na żywym polu |
 | CC-P5 | B8 Strzela% denominator (data-trust) | bug | parked w data-validation workstream |
