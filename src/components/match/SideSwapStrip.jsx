@@ -127,11 +127,14 @@ export default function SideSwapStrip({
               top: '50%',
               transform: 'translateY(-50%)',
               [fromRight ? 'right' : 'left']: -24,
-              height: vertical ? 100 : 92,
+              height: vertical ? 138 : 128,
               width: 'auto',
               objectFit: 'contain',
-              opacity: 0.4,
-              mixBlendMode: 'screen',
+              opacity: 0.45,
+              // multiply (not screen): white logo backgrounds blend INTO the team
+              // gradient (the white box disappears) instead of staying white; the
+              // mark tints into the team colour. Bigger + no white box (Jacek).
+              mixBlendMode: 'multiply',
               pointerEvents: 'none',
               WebkitMaskImage: fromRight ? MASK_R : MASK_L,
               maskImage: fromRight ? MASK_R : MASK_L,
