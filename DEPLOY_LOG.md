@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-30 — [FEATURE/AMBER] Canvas: team-color markers + no-avatar watermark + animated shot lanes (Jacek clarifications)
+**App (auto-deploy, e2e-gated). Autonomous ship. RENDER-ONLY — captured data untouched.** Three field-canvas rendering features Jacek asked for (app-wide via `drawPlayers`/`drawQuickShots`).
+- **Marker disc in TEAM color** — `markerColor()` uses the team's brand `color` (disc/run-line/lane/badge/selection-ring) when it's valid hex AND ≥60 RGB-distance from the opponent overlay color; else falls back to the existing role palette (red/blue per slot) so two teams never merge. Threaded only from MatchPage's scouted team → Tactic/Layout/BunkerEditor/Ballistics callers pass nothing → **byte-identical** there.
+- **No-avatar watermark fallback** — no photo → `drawWatermark`: team-color radial gradient + team name tiled at −28° + white ring + number in Oswald (clean watermark if no name). Avatar path + eliminated/skull unchanged. Replaces the old initial-in-disc on every InteractiveCanvas surface.
+- **Animated shot lanes (NEW)** — `BaseCanvas` ~30fps rAF loop flows a dash on precise lanes (+ crosshair pulse) and zone cones/break-dashes (offset from `performance.now()`, framerate-independent). **Gated:** `prefers-reduced-motion` → static; perf threshold **≤40 lanes** (single point) — the aggregate opponent heatmap is a different component (`HeatmapCanvas`), structurally excluded; rAF cancelled on unmount/empty.
+- **§6.6 data byte-stable:** 5 render files only; no `useCaptureDraft`/`scoutDraft`/`pointFactory`/`savePoint`/data-shape edits.
+- **Verified:** build · precommit · e2e **116/116** (matchpage-modes + capture-parity golden byte-identical + tactic goldens) · render-verify across scout/review/opponent/tactic (team discs distinct, watermark fallback, flow + reduced-motion static).
+- **Revert:** `git revert -m 1 <merge sha>`.
+- **Flag:** only the marker DISC adopts brand color; shot **cones/break-dashes keep team-side red/blue** (a brand-green team shows green discs + red cones). Per "marker disc in team color" scope — easy follow-up to thread cones too if you want.
+
 ## 2026-06-30 — [FEATURE/AMBER] Scout-point landscape rail consolidation + roster klocek V3 (handoff `design_handoff_scout_point`)
 **App (auto-deploy, e2e-gated). Autonomous ship.** Re-skin of the scouting capture screen's immersive-landscape chrome (the field/canvas capture engine is UNTOUCHED). Per the handoff brief, RE-WIRE only.
 - **Landscape rail consolidated** (`MatchPage.jsx` immersive branch): old 176px rail + bottom strip → one **312px rail** = railHead (back + LIVE) · matchup card (Point N eyebrow + score + the shipped `SideSwapStrip`/⇄) · **phase axis with static time-hints** (Breakout 0–5s · Settle 5–20s · Mid-game +20s — UI hints telling the scout what to collect, NOT data) · roster (klocek V3, only-scroll) · Save pinned. Field now full-height on the right.
