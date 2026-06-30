@@ -82,7 +82,7 @@ export default function MemberCard({
   } else if (roles.includes('admin') && adminCount <= 1) {
     disabledRole = 'admin';
     disabledReason = t('members_admin_last_protect')
-      || 'Nie można usunąć ostatniego admina workspace';
+      || t('member_cannot_delete_last_admin');
   }
 
   // RoleChips readOnly when viewer is not admin. Admins edit inline; no
