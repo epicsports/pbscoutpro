@@ -3075,7 +3075,7 @@ export default function MatchPage() {
                 cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
               }}
             >
-              <Pencil size={16} strokeWidth={2.25} /> Rysuj
+              <Pencil size={16} strokeWidth={2.25} /> {t('coach_draw_label')}
             </div>
           )}
           {/* § 77 — toolbar visible only in drawMode. Door out is the Done
@@ -3204,7 +3204,7 @@ export default function MatchPage() {
               boxShadow: `${ELEV.innerTop}, ${COLORS.accentGlow}`,
             }}
               onClick={quickShotPlayer != null ? () => setQuickShotPlayer(null) : () => setSaveSheetOpen(true)}>
-              {quickShotPlayer != null ? '✓ Done' : '✓ Save point'}
+              {quickShotPlayer != null ? `✓ ${t('done')}` : `✓ ${t('quicklog_save_point')}`}
             </Btn>
           </div>
       )}
@@ -3348,7 +3348,7 @@ export default function MatchPage() {
             boxShadow: outcome ? COLORS.accentGlow : 'none',
             border: 'none',
           }}>
-          {saving ? 'Saving...' : outcome ? 'Save point' : 'Select winner to save'}
+          {saving ? t('saving') : outcome ? t('quicklog_save_point') : t('match_select_winner')}
         </Btn>
 
         {/* More options — hidden by default */}
