@@ -1,5 +1,48 @@
 {
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(find *)",
+      "Bash(ls *)",
+      "Bash(grep *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(npm run app-map)",
+      "Bash(npm run app-map:*)",
+      "Bash(npm run build)",
+      "Bash(npm run build:*)",
+      "Bash(npm run precommit)",
+      "Bash(npm run test:e2e*)",
+      "Bash(npm run test*)",
+      "Bash(npm run screenshots)",
+      "Bash(JAVA_HOME=* npm run test:e2e*)",
+      "Bash(JAVA_HOME=* npm run screenshots)",
+      "Bash(npx vite build*)",
+      "Write(screenshots/**)",
+      "Edit(screenshots/**)",
+      "Write(briefs/**)",
+      "Edit(briefs/**)",
+      "Write(docs/briefs/**)",
+      "Edit(docs/briefs/**)",
+      "Read(//c/Users/JacekPARCZEWSKI/Downloads/**)"
+    ],
+    "ask": [
+      "Bash(rm *)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard*)",
+      "Bash(git clean *)"
+    ]
   }
 }
