@@ -244,12 +244,13 @@ export default function ScheduleCSVImport({ open, onClose, tournaments, teams, s
         return (row[idx] || '').trim();
       };
 
-      // Derive year from the selected tournament's date so imports in any
-      // calendar year land on the correct date. Falls back to current year
-      // when tournament.date is missing (legacy docs without that field).
+      // Derive year so imports in any calendar year land correctly: prefer the
+      // tournament's explicit date, else its `year` field (always set on create),
+      // else let parseScheduleDateTime fall back to the current calendar year.
+      // (`date` is optional/often null; `year` is the reliable source — don't drop it.)
       const year = selectedTournament?.date
         ? new Date(selectedTournament.date).getFullYear()
-        : undefined;
+        : (selectedTournament?.year || undefined);
 
       // First pass — parse + validate every row. STOP on the first unknown
       // division per brief ("If file contains a division value NOT in this
