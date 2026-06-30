@@ -226,6 +226,14 @@ export default function MatchPage() {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const scoutTeamId = searchParams.get('scout');
   const pointParamId = searchParams.get('point');
+  // VS-intro replay key = the SCOUT-OPEN identity (team + point/mode from the URL).
+  // Stable across save→resetDraft (the URL doesn't change when saving a new point),
+  // so the intro plays on OPENING a point, NOT on every save. Changes on navigation
+  // (a different point / team / mode) → the intro replays. (`ptNum` grows with
+  // `points.length` on each save, which mis-fired the intro a second time.)
+  const scoutOpenKey = scoutTeamId
+    ? `${scoutTeamId}:${pointParamId || searchParams.get('mode') || 'attach'}`
+    : 'none';
   const { tournaments, loading: tournamentsLoading } = useTournaments();
   const { trainings, loading: trainingsLoading } = useTrainings();
   const { teams } = useActiveTeams();
@@ -3165,7 +3173,7 @@ export default function MatchPage() {
             return (
               <VsIntro
                 enabled={vsIntroEnabled}
-                playKey={ptNum}
+                playKey={scoutOpenKey}
                 pointNumber={ptNum}
                 scouted={scoutedTeam}
                 opponent={opponentTeam}
