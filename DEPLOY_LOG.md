@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-30 — [FEATURE/AMBER] Scout-point landscape rail consolidation + roster klocek V3 (handoff `design_handoff_scout_point`)
+**App (auto-deploy, e2e-gated). Autonomous ship.** Re-skin of the scouting capture screen's immersive-landscape chrome (the field/canvas capture engine is UNTOUCHED). Per the handoff brief, RE-WIRE only.
+- **Landscape rail consolidated** (`MatchPage.jsx` immersive branch): old 176px rail + bottom strip → one **312px rail** = railHead (back + LIVE) · matchup card (Point N eyebrow + score + the shipped `SideSwapStrip`/⇄) · **phase axis with static time-hints** (Breakout 0–5s · Settle 5–20s · Mid-game +20s — UI hints telling the scout what to collect, NOT data) · roster (klocek V3, only-scroll) · Save pinned. Field now full-height on the right.
+- **Roster klocek V3** (`RosterGrid` `variant="grid"`): 2-col, PII-aware avatar (initials/pixel fallback), SURNAME+`#N` / first-name rows, on/off highlight. 2-state = who-plays-this-point (the alive/eliminated states live on the canvas markers, separate).
+- `StageSwitcher` gained an optional `ranges` prop (portrait/tactic callers unchanged).
+- **§6.6 capture byte-stable:** `git diff` touches NONE of `useCaptureDraft`/`InteractiveCanvas`/`drawPlayers`/`drawQuickShots`/`savePoint`/`scoutDraft`/`pointFactory`/`changeFieldSide`. Chrome only.
+- **Verified:** build · precommit · e2e **116/116** (matchpage-modes + capture-parity golden + tactic golden) · render-verify tablet-landscape immersive. §27 PASS. i18n PL+EN.
+- **Revert:** `git revert -m 1 <merge sha>`.
+- **Next (separate canvas pass, app-wide drawPlayers):** marker watermark fallback (no avatar) · markers in team color · animated shot lanes (zone+precision, reduced-motion gate) — per Jacek's clarifications.
+
 ## 2026-06-30 — [REFACTOR/GREEN] Shared `<ScheduleList>` — de-dup match grouping in coach + scout (dup-audit #2)
 **App (auto-deploy, e2e-gated). Autonomous ship.** The Live/Scheduled/Completed grouping + per-status `MatchCard` render was inlined in both `CoachTabContent.jsx` and `MatchListPremium.jsx` (both already share `classifyMatch`). Extracted **`src/components/match/ScheduleList.jsx`**; migrated both consumers (CoachTab −42, MatchListPremium −114, +153 shared). Each consumer reproduces its prior output (split-tap nav contract, readOnly/isClosed, liveScore, sort, section labels, testids preserved). The original fork hit the session limit mid-edit; I committed its trailing comment polish, then verified.
 - **Display-only (§6.6):** no `classifyMatch`/`useLiveMatchScores`/`MatchCard`/data/write/routing changes.
