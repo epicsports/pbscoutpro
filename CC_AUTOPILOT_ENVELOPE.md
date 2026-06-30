@@ -79,6 +79,15 @@ Autopilot lowers the approval gate, not the quality bar. These hold in GREEN too
   **deploy gate's** job (runs on main-push); locally, the minimal change-relevant set gives
   the same signal far cheaper. Running the whole suite every iteration burns tokens/time for
   zero added signal. (`npm run test:e2e -- &lt;spec-glob&gt;` / `--grep`.)
+- **Gate on the TEST RESULT, never a masked exit code.** A pipe's exit status is its LAST
+  command's — so `npm run test:e2e ... | tail` (or `| grep`) returns `tail`'s 0 even when specs
+  FAILED. NEVER chain `&& git commit && git push` after a piped test command — you'll ship red.
+  Read the actual `N passed / N failed` line first, THEN commit. (This footgun once pushed a
+  failing spec to main; the CI gate caught it, but don't rely on that.)
+- **e2e suite runs in ENGLISH** (pinned in `tests/helpers/auth.js` `login()` via
+  `addInitScript(localStorage['pbscoutpro_lang']='en')` — app default is Polish). So localizing a
+  previously-hardcoded English UI string is SAFE for text assertions. If a spec must assert
+  Polish, set lang per-test; prefer `data-testid` over text matches for stability.
 - **Never claim a verification you did not actually perform.** The emulator render-harness can
   stall on the LOGIN screen (auth seed / stale service-worker / wrong port) → it screenshots
   login, not the screen — so "render-verified the visual" is then HOLLOW. If a render check
