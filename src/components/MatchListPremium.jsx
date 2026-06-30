@@ -295,12 +295,11 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
   const scheduled = searched.filter(m => classify(m) === 'scheduled');
   const completed = searched.filter(m => classify(m) === 'completed');
 
-  // wide reflow — scheduled/completed cards flow into a 2–3 col responsive grid;
-  // live stays full-width hero rows above the grid. On phone (wide=false) `Grid`
-  // is a transparent Fragment so the markup stays byte-identical to before — no
-  // extra wrapper div, no style change. auto-fill + minmax(340px) yields 2 cols
-  // ~720–1080, 3 cols above, gracefully 1 col when narrow.
-  // Grid is module-level (stable identity) — see top of file. Pass `wide` to it.
+  // wide reflow + stage/group sub-headers live in <ScheduleList> (dup-audit #2):
+  // scheduled/completed cards flow into a 2–3 col responsive grid (live stays
+  // full-width hero rows). On phone (wide=false) the grid is a transparent
+  // Fragment so the markup stays byte-identical to before — no extra wrapper,
+  // no style change. We pass `wide` + `groupScheduledByStage` to drive both.
 
   return (
     <div style={{
