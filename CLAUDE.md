@@ -224,6 +224,13 @@ Paintball xball scouting app. React 18 + Vite + Firebase Firestore. Deployed to 
 - Debug artifacts (console.log, debugger)
 Fix all errors before committing.
 
+**e2e SCOPING (cost discipline):** run ONLY the specs that exercise what you changed + the
+relevant golden/parity spec — NOT the full ~116 suite per iteration (that's the CI deploy
+gate's job on main-push). e.g. a `MatchPage`/scout chrome/canvas change = `matchpage-modes` +
+`capture-parity` golden via `npm run test:e2e -- --grep "matchpage-modes|capture-parity"`.
+And never report "render-verified" if the render harness only reached the login screen — see
+`CC_AUTOPILOT_ENVELOPE.md` Verification. Full rule = the envelope (canonical).
+
 ## Architecture
 - **One FieldCanvas component** renders field everywhere
 - **Inline JSX styles** — no CSS modules, no Tailwind. Use COLORS/FONT/TOUCH from `src/utils/theme.js`

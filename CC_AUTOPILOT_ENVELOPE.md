@@ -72,6 +72,20 @@ Autopilot lowers the approval gate, not the quality bar. These hold in GREEN too
   A green e2e that does not exercise the real path is NOT a done-signal.
 - After one failed fix, instrument before the second attempt.
   No chained speculative fixes.
+- **Scope tests to the change — do NOT run the full suite per iteration.** Run only the
+  specs that exercise the touched surface PLUS the relevant golden/parity spec. e.g. a
+  scout/`MatchPage` chrome or canvas-render change = `matchpage-modes` + the `capture-parity`
+  golden (+ tactic golden if drawing touched) — NOT all ~116. The full suite is the CI
+  **deploy gate's** job (runs on main-push); locally, the minimal change-relevant set gives
+  the same signal far cheaper. Running the whole suite every iteration burns tokens/time for
+  zero added signal. (`npm run test:e2e -- &lt;spec-glob&gt;` / `--grep`.)
+- **Never claim a verification you did not actually perform.** The emulator render-harness can
+  stall on the LOGIN screen (auth seed / stale service-worker / wrong port) → it screenshots
+  login, not the screen — so "render-verified the visual" is then HOLLOW. If a render check
+  didn't reach the real screen, say so; **visual fidelity falls to Jacek's prod eyes**, never a
+  fabricated "render-verified". Data correctness (capture-parity golden) stays reliable
+  regardless. (This is why a visual mismatch can ship under a green gate — see
+  [[feedback_render_verify_catches_gate_misses]] in memory.)
 
 ## Channel
 Design ↔ CC is the repo. A locked prototype is the contract; CC implements
