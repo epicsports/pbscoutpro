@@ -2820,8 +2820,8 @@ export default function MatchPage() {
               canvas wrapper below), giving the field more height. Only the phase
               StageSwitcher stays here, in its own row. The swap still fires the SAME
               handleManualSwapSides — byte-stable capture. */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} />
+          <div style={{ width: '100%' }}>
+            <StageSwitcher stage={captureStage} onChange={switchStage} done={stageDone} variant="segmented" ranges={{ break: t('scout_phase_range_break'), settle: t('scout_phase_range_settle'), mid: t('scout_phase_range_mid') }} />
           </div>
         </div>
       </PageHeader>
