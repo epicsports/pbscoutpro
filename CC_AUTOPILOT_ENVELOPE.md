@@ -84,10 +84,11 @@ Autopilot lowers the approval gate, not the quality bar. These hold in GREEN too
   FAILED. NEVER chain `&& git commit && git push` after a piped test command — you'll ship red.
   Read the actual `N passed / N failed` line first, THEN commit. (This footgun once pushed a
   failing spec to main; the CI gate caught it, but don't rely on that.)
-- **e2e suite runs in ENGLISH** (pinned in `tests/helpers/auth.js` `login()` via
-  `addInitScript(localStorage['pbscoutpro_lang']='en')` — app default is Polish). So localizing a
-  previously-hardcoded English UI string is SAFE for text assertions. If a spec must assert
-  Polish, set lang per-test; prefer `data-testid` over text matches for stability.
+- **e2e suite runs in the app DEFAULT language (Polish).** So a UI text assertion must match the
+  RENDERED language: when you localize a previously-hardcoded English string, update its spec
+  assertions to the Polish text (or, better, a `data-testid`). Do NOT globally pin the suite to
+  English — it was tried and reverted (it broke specs that assert Polish, e.g. `scoutedteam-rail`'s
+  `getByLabel('Rysuj plan coacha')`). Prefer `data-testid` over text matches for new assertions.
 - **Never claim a verification you did not actually perform.** The emulator render-harness can
   stall on the LOGIN screen (auth seed / stale service-worker / wrong port) → it screenshots
   login, not the screen — so "render-verified the visual" is then HOLLOW. If a render check
