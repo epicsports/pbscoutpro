@@ -74,7 +74,7 @@ Wciągnięte z `_archive/{NEXT_TASKS,DEPLOY_LOG,_LANDSCAPE_BACKLOG}.md` + `NIGHT
 | # | Item | bucket | Notes |
 |---|---|---|---|
 | CC-1 | Wide-shell e2e coverage = ZERO ⭐ | infra | Playwright wide-viewport project + un-gate; tablet bugi docierały do usera bez gate'a. Najwyższa wartość. |
-| CC-2 | `updatePlayer` catalogVersion bump | bug | twin naprawionego `updateTeam` — edity gracza niewidoczne 30d. 1-liner. |
+| CC-2 | ~~`updatePlayer` catalogVersion bump~~ ✅ already-fixed | bug | reality-pass 2026-07-01: oba bumpują (`updatePlayer` dataService.js:302, `updateTeam`:562). Nie-bug, stale w miningu. |
 | CC-3 | `divisionAliases` rok z daty turnieju | data | `divisionAliases.js:69` TODO — derive year from tournament date |
 | CC-4 | i18n precommit guard | infra | wepnij `find-missing-i18n.cjs` do precommit (zweryfikuj czy już nie wpięte) |
 | CC-5 | i18n — resztki hardcoded-PL | bug | ~5: `PlayerStatsPage` CAUSE_META + `ScheduleCSVImport` |
