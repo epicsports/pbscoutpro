@@ -12,6 +12,7 @@
     "test:e2e": "playwright test --config playwright.emulator.config.js --grep-invert \"pixel-diff|model C|render-verify\"",
     "test:e2e:diff": "playwright test --config playwright.emulator.config.js --grep \"pixel-diff\"",
     "render:scout": "playwright test --config playwright.emulator.config.js _render-scout",
+    "screenshots": "playwright test --config playwright.emulator.config.js _screenshots",
     "seed:emulator": "node scripts/test/seed-emulator.cjs",
     "test:screenshots": "playwright test responsive-audit",
     "lint:ui": "node scripts/lint-ui.js",
