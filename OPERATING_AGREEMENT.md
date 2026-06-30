@@ -47,6 +47,17 @@ Reguła anty-rework: **data-contract powstaje PRZED prototypem.** Design nigdy n
 - Do Jacka idzie tylko: 🔴 blok albo realne widełko projektowe — w ≤3 liniach, z rekomendacją.
 - Rutynowy ship 🟠→🟢 nie wymaga pytania. CC robi go sam po render-proof.
 
+## 8. CD handoff bez Jacka (od 2026-06-30)
+Jacek wychodzi z pętli przekazywania roboty do CD. **CC sam zasila CD.**
+- Ekran ⚪ w **aktywnym** epiku, który czeka na design → CC wypełnia `Notes` w `BACKLOG.md`
+  wszystkim, czego CD potrzebuje: **realne komponenty z `APP_MAP.md`** (nazwy, propsy),
+  **data-contract** (realne pola modelu — zero wymyślonych), **ścieżka do aktualnego
+  zrzutu** w `/screenshots/`. CD projektuje wyłącznie z tego.
+- CD kończy → ustawia ekran na 🔵. CC: 🔵 → build → render-proof @390/834/1280 → 🟢.
+- CC **trzyma się aktywnego epiku**; nie briefuje epików zamrożonych (np. field-cluster ❄️).
+- Gdy **cały** aktywny epik = 🟢 → CC nie startuje nowego epiku samowolnie; raportuje
+  „done, <następny> czeka na GO". Tylko 🔴/realne widełko idzie do Jacka.
+
 ## 7. Czego NIE robimy
 - Nie tworzymy drugiej tabeli stanu (jeden `BACKLOG.md`, jeden właściciel kolumny).
 - Nie przekazujemy niczego „przez Jacka", co może być plikiem w repo.

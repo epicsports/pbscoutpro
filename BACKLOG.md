@@ -31,15 +31,15 @@
 | Tactic page (rysowanie po layoutach) | ⚪ | ⚪ | — | flagi z handoffu: redundancja „Gotowe/Save", i18n; loupe LEFT (praworęczny) |
 | Layout detail page | ⚪ | ⚪ | — | — |
 
-## EPIC: team-consolidation (konsolidacja drużyn)
+## EPIC: team-consolidation (konsolidacja drużyn) — ✅ DONE
+
+Brief `docs/briefs/TEAM_CONSOLIDATION_BRIEF.md`. Reality-pass 2026-06-30 (agent): **90% już shipnięte**, jedyny realny delta = gate-bug na liście (naprawiony). TeamFormModal już usunięty, CREATE-mode żyje, pełny field-inventory §6 + list §7 obecne. Zero pozycji czekających na design CD.
 
 | Screen | Design | Build | Verified | Notes |
 |---|---|---|---|---|
-| Home page | ⚪ | ⚪ | — | — |
-| Team detail page | ⚪ | ⚪ | — | model: Ranger Warsaw → Ring/Rage/Rebel/Rush |
-| Confirm modals | ⚪ | ⚪ | — | ConfirmModal z ui.jsx |
-| Empty states | ⚪ | ⚪ | — | EmptyState z ui.jsx |
-| Input / select fields | ⚪ | ⚪ | — | Input z ui.jsx, tokeny z theme.js |
+| Team screen VIEW/EDIT/CREATE (`/team/:id`, `/team/new`) | 🟢 | 🟢 | `/screenshots/team-detail-{390,834,1280}.png` | super-admin gate (`useIsSuperAdmin`) na edit/roster/audit/danger; 3-tier crest; sister cards; CREATE folduje dawny TeamFormModal. `TeamDetailPage.jsx:35` |
+| Super-admin list (`/admin/teams`) | 🟢 | 🟢 | `/screenshots/admin-teams-{390,834,1280}.png` | search + Liga/Dywizja + status-pille + sort + pagination + ⋮ ops-only + dup-banner. **Gate-fix** `effectiveIsAdmin`→`useIsSuperAdmin` (brief §2) shipnięty — `AdminTeamsPage.jsx:53` |
+| TeamFormModal removal | n/d | 🟢 | — | plik nie istnieje, zero importów (reality-pass §7) |
 
 ## EPIC: bugfix-red (twarde błędy — priorytet)
 
@@ -83,4 +83,13 @@ Reality-pass wyłapał te NIE-istniejące w kodzie (`new`). RED = drogie/archite
 - **DROP/CONFLICT (nie budować):** point-logging 5-step wizard (`wizard.jsx`) ↔ shipnięty kiosk · team-row warianty A–F (eksploracja) · pole „age" (FICTION, brak w schemacie) · `useTx()` (scaffolding).
 - **⚠ PINNĄĆ przed buildem scout-point-resztki:** roster on/off (CONFLICT: `assignments[i]` vs nowy `onField[i]` vs UI-only) · shot `kind` (FICTION — brak pola).
 
-## Stan epików: **bugfix-red** ✅ (3 bugi 🟢, merged ffacc468). **field-cluster** ❄️ ZAMROŻONE do po Birmingham (2–5.07). Brak aktywnego epiku — czeka na GO Jacka po evencie.
+## CD handoff (Jacek poza pętlą — od 2026-06-30)
+CC sam podaje robotę do CD. Gdy ekran w **aktywnym** epiku jest ⚪ i czeka na design,
+CC wypełnia jego `Notes` wszystkim, czego CD potrzebuje, by projektować bez Jacka:
+realne komponenty z `APP_MAP.md`, data-contract (realne pola), ścieżka do aktualnego
+zrzutu w `/screenshots/`. CD projektuje z tego → ustawia 🔵. CC: 🔵 → build →
+render-proof @390/834/1280 → 🟢. Trzymamy się **team-consolidation**; **NIE** briefujemy
+field-cluster (❄️ do po Birmingham). Gdy cały aktywny epik = 🟢 → CC **nie** zaczyna
+nowego epiku, raportuje tylko „done, field-cluster czeka na GO". 🔴 → Jacek.
+
+## Stan epików: **bugfix-red** ✅ (3 bugi 🟢, ffacc468). **team-consolidation** ✅ DONE (reality-pass: 90% było shipnięte; gate-fix `AdminTeamsPage`→super-admin domknął epik; zero pozycji dla CD). **field-cluster** ❄️ ZAMROŻONE do po Birmingham (2–5.07). **Brak aktywnego epiku — czeka na GO Jacka po evencie.**
