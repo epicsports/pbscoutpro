@@ -40,6 +40,11 @@ run('Build compiles', 'npx vite build --logLevel error 2>&1 | tail -3');
 // 2. UI lint
 run('UI consistency lint', 'node scripts/lint-ui.js');
 
+// 2-app-map. APP_MAP.md freshness — the §2/§3/§5 AUTOGEN blocks must match the
+// code (routes / ui.jsx / theme.js). Blocks commits with a stale map.
+// Regenerate with `npm run app-map`.
+run('APP_MAP.md up to date (routes / ui / tokens)', 'node scripts/gen-app-map.cjs --check');
+
 // 2b. i18n call-shape lint — a key called with args (t('k', …) or t('k')(…))
 // MUST be a function in both pl+en. Closes the shape-mismatch crash/render class
 // (sibling to the t()-without-scope discipline) that pixel-diff cannot see.

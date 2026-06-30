@@ -16,6 +16,8 @@
     "seed:emulator": "node scripts/test/seed-emulator.cjs",
     "test:screenshots": "playwright test responsive-audit",
     "lint:ui": "node scripts/lint-ui.js",
+    "app-map": "node scripts/gen-app-map.cjs",
+    "app-map:check": "node scripts/gen-app-map.cjs --check",
     "precommit": "node scripts/precommit.js",
     "review": "node scripts/reviewers/run-all.js",
     "review:ux": "node scripts/reviewers/run-all.js --ux",
