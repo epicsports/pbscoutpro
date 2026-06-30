@@ -1,5 +1,13 @@
 # Deploy Log
 
+## 2026-06-30 — [FIX/AMBER] Scout point: laptop/desktop gets the LANDSCAPE rail + remove the portrait fullscreen button (Jacek)
+**App (auto-deploy, e2e-gated). Render-verified (real harness).** Two MatchPage scout-layout fixes.
+- **Laptop/desktop bug:** opening a scouting point on a laptop showed the PORTRAIT layout. Root: `useLandscapeMode`'s `isLandscape = device.isLandscape && !device.isDesktop` forced `immersive` false on desktop → portrait branch. Fix (scoped to MatchPage, shared hook untouched): shadow `immersive = device.isLandscape` (a landscape-shaped viewport gets the rail, ANY device class). `maxCanvasHeight` now fed an explicit offset off the local `immersive` (`canvasMaxHeight(0,0)` vs `(180,180)`) so the field fills correctly on desktop too. Other field pages (Tactic/LayoutDetail) unaffected.
+- **Removed the portrait fullscreen toggle** (`FullscreenToggle` + its `fsActive`/`setFullscreen` wiring) — to go landscape, rotate the phone; no separate maximize button.
+- **§6.6:** capture path untouched (immersive flag + canvas sizing + a removed button only). 
+- **Verified:** build · precommit · scoped e2e `matchpage-modes` + capture-parity goldens (3/3) · **render harness**: desktop@1280 now shows the rail (was portrait), portrait@390 has no FS button, tablet-landscape@1000 rail intact.
+- **Revert:** `git revert -m 1 <merge sha>` (single commit).
+
 ## 2026-06-30 — [FIX/AMBER] Scout-point design fidelity — matchup flip-card + segmented timeline + 330px rail + team-color cones (Jacek screenshots)
 **App (auto-deploy, e2e-gated). Autonomous ship. Chrome + render only.** The first rail pass reused plain components; Jacek's screenshots showed the team bars + phase axis + rail width didn't match the prototype. This makes them faithful.
 - **Matchup flip-card** (`SideSwapStrip` rewritten, shared rail + portrait float): each team half = 2-stop gradient from `team.color` (role red/blue fallback) + large crest bleed (`crestSrc` 3-tier, opacity .4, mix-blend screen, gradient mask) + amber "◀ Scout" / dimmed "Rywal ▶" tags + centre "Punkt N" + score (Oswald) + ⇄ (→ existing `handleManualSwapSides`).

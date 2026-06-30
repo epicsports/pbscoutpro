@@ -9,7 +9,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import InteractiveCanvas from '../components/canvas/InteractiveCanvas';
 import { useLandscapeMode } from '../hooks/useLandscapeMode';
 import { useFeatureFlag } from '../hooks/useFeatureFlag';
-import FullscreenToggle from '../components/canvas/FullscreenToggle';
 import DrawingOverlay, { STROKE_COLORS, STROKE_SIZES } from '../components/canvas/DrawingOverlay';
 import DrawToolbar from '../components/canvas/DrawToolbar';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
@@ -202,11 +201,14 @@ export default function MatchPage() {
     : roles.includes('player') ? 'player'
     : 'coach';
   const R = responsive(device.type);
-  const isLandscape = device.isLandscape && !device.isDesktop;
-  // § 76 — `immersive` is the unified chrome-hide / fit flag (landscape OR
-  // portrait-FS); `fsActive` + `setFullscreen` drive the portrait toggle.
-  // `isLandscape` retained for FullscreenToggle visibility gate only.
-  const { canvasMaxHeight, fsActive, immersive, setFullscreen } = useLandscapeMode();
+  // § laptop-landscape fix — `isLandscape`/`immersive` now INCLUDE desktop, so a
+  // laptop scouting a point gets the landscape RAIL (not the portrait layout). The
+  // portrait fullscreen toggle was removed (rotate the phone to go landscape) → no
+  // `fsActive`. `immersive` = the unified chrome-hide / fit flag (landscape-shaped
+  // viewport, any device). canvasMaxHeight is fed an explicit offset off `immersive`.
+  const isLandscape = device.isLandscape;
+  const immersive = isLandscape;
+  const { canvasMaxHeight } = useLandscapeMode();
     const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -2947,7 +2949,8 @@ export default function MatchPage() {
 
         {/* Canvas + base indicators (BUG-1 fix: visual orientation cue) */}
         <div style={{ position: 'relative' }}>
-          <FullscreenToggle fsActive={fsActive} onToggle={() => setFullscreen(!fsActive)} isLandscape={isLandscape} />
+          {/* Portrait fullscreen toggle removed (Jacek) — rotate the phone to go
+              landscape; no separate maximize button. */}
           {/* ═══ FLOATING SIDE-SWAP STRIP ═══ (portrait only) — the strip used to
               sit in the context bar ABOVE the field, stealing height. It now floats
               as an absolute overlay on the TOP of THIS field card (same relative
@@ -2991,7 +2994,7 @@ export default function MatchPage() {
             );
           })()}
           <InteractiveCanvas fieldImage={field.fieldImage} viewportSide={fieldSide}
-            maxCanvasHeight={canvasMaxHeight(0, 180)}
+            maxCanvasHeight={immersive ? canvasMaxHeight(0, 0) : canvasMaxHeight(180, 180)}
             // § 79 — scout flow has NO "Shot 2nd" toolbar; only `shots[]` is
             // written. When a bump exists, scout shots semantically came
             // from the pre-bump (= bumpStops) position. Opt in so
