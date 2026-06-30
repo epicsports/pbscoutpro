@@ -1,5 +1,15 @@
 # Deploy Log
 
+## 2026-06-30 — [FIX/AMBER] Scout-point design fidelity — matchup flip-card + segmented timeline + 330px rail + team-color cones (Jacek screenshots)
+**App (auto-deploy, e2e-gated). Autonomous ship. Chrome + render only.** The first rail pass reused plain components; Jacek's screenshots showed the team bars + phase axis + rail width didn't match the prototype. This makes them faithful.
+- **Matchup flip-card** (`SideSwapStrip` rewritten, shared rail + portrait float): each team half = 2-stop gradient from `team.color` (role red/blue fallback) + large crest bleed (`crestSrc` 3-tier, opacity .4, mix-blend screen, gradient mask) + amber "◀ Scout" / dimmed "Rywal ▶" tags + centre "Punkt N" + score (Oswald) + ⇄ (→ existing `handleManualSwapSides`).
+- **Segmented phase timeline** (`StageSwitcher variant="segmented"`): connected segments + time hints, 3 states active / passed=recorded (mapped to existing `stageDone`) / default; integrated as the bottom strip of the rail matchup card. Default 'dots' variant untouched (tactic editor + portrait header).
+- **Rail 312→330px** (prototype). **Shot cones in team color** (`drawQuickShots`, same brand-color + opponent-distinction + role fallback as the disc).
+- **§6.6 capture byte-stable:** no `useCaptureDraft`/`savePoint`/`scoutDraft`/`pointFactory`/data edits; **capture-parity + tactic goldens green**, e2e 116/116.
+- **⚠ Visual verification = Jacek's eyes on prod** — the automated render harness was found to stall on the login screen (auth/service-worker), so "render-verified" claims this session are unreliable for VISUALS; the data goldens (capture-parity) ARE reliable. Eyeball the rail flip-card + timeline + cones.
+- **Revert:** `git revert -m 1 <merge sha>`.
+- **Follow-up:** portrait header phase axis still 'dots' (one-line `variant="segmented"` if wanted).
+
 ## 2026-06-30 — [FEATURE/AMBER] Canvas: team-color markers + no-avatar watermark + animated shot lanes (Jacek clarifications)
 **App (auto-deploy, e2e-gated). Autonomous ship. RENDER-ONLY — captured data untouched.** Three field-canvas rendering features Jacek asked for (app-wide via `drawPlayers`/`drawQuickShots`).
 - **Marker disc in TEAM color** — `markerColor()` uses the team's brand `color` (disc/run-line/lane/badge/selection-ring) when it's valid hex AND ≥60 RGB-distance from the opponent overlay color; else falls back to the existing role palette (red/blue per slot) so two teams never merge. Threaded only from MatchPage's scouted team → Tactic/Layout/BunkerEditor/Ballistics callers pass nothing → **byte-identical** there.
