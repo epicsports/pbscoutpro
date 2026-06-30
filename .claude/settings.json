@@ -5,7 +5,11 @@
   "permissions": {
     "allow": [
       "Bash(find *)",
+      "Bash(find:*)",
       "Bash(ls *)",
+      "Bash(ls:*)",
+      "Bash(unzip *)",
+      "Bash(unzip:*)",
       "Bash(grep *)",
       "Bash(cat *)",
       "Bash(head *)",
