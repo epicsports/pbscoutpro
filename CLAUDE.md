@@ -89,6 +89,31 @@ Only commit if verdict is READY TO COMMIT.
 
 # PbScoutPro — Project Context for Claude Code
 
+## 🧮 MODEL ROUTING (repo-committed — cheap routine / Opus for heavy)
+
+Cost discipline by model, configured in the repo (not chosen by hand). Authoritative
+Claude Code mechanism: `model` in `.claude/settings.json` (main session) + `model`
+frontmatter in `.claude/agents/*.md` (subagents). There is **no built-in
+complexity auto-router** — routing = these rules + delegation.
+
+- **Main session = Opus 4.8** (`.claude/settings.json` → `"model": "opus"`). The main loop
+  is the architect/intake: reality-pass, briefs, task-breakdown, `owner=ARCH`, `🔴`,
+  non-trivial debugging — all run here on Opus. Keep them in-session (or via Opus agents).
+- **Routine → cheap subagents** (committed in `.claude/agents/`):
+  - **`routine-runner`** (`haiku`) — run build / lint / precommit / tests / e2e / app-map /
+    screenshots and report pass-fail; simple grep/read sweeps. Pure "execute & report".
+  - **`refactor-hand`** (`sonnet`) — scoped, pre-decided code edits: mechanical refactor,
+    wiring an existing component, i18n string moves, small clear bugfixes, dead-code removal.
+- **Routing rule:** when work is "run a known command / find X" → delegate to `routine-runner`;
+  when it's "execute this precise change spec" → delegate to `refactor-hand`; when it needs
+  judgement/design/architecture/root-cause → keep it on Opus (this session) or an Opus agent.
+  Tie between cheap and Opus → **Opus** (a wrong cheap build costs more than the Opus tokens).
+- Subagents omitting `model` inherit the parent (Opus). Explore/general reality-pass agents
+  therefore already run Opus by inheritance — good; only *routine* is pinned down.
+- **Optional (not enabled):** a Haiku "triage-on-input" that classifies each task simple/hard
+  and escalates only hard ones to Opus is possible but adds a hop + latency and isn't a native
+  feature; we default to these explicit rules. Revisit if routine volume justifies it.
+
 ## 🤝 MULTI-AGENT WORKFLOW
 
 **Three roles, repo + Jacek as the comms layer.**
