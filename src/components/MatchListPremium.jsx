@@ -111,11 +111,25 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
   // appear at the end. Mirrors the old TournamentPage (a4912dc2) behavior.
   const sortedAvailable = useMemo(() => {
     const scoutedIds = new Set(scouted.map(s => s.teamId));
+    const teamById = new Map((teams || []).map(tm => [tm.id, tm]));
+    // leagues[] is a CLUB-level attribute set on the parent. A child /
+    // 2nd-roster team (parentTeamId set) often carries no leagues of its own,
+    // so the bare `leagues.includes(...)` check below would drop it before the
+    // parent→children grouping even runs — children vanished from the picker.
+    // Treat a child as in-league when EITHER it or its parent club is.
+    const inLeague = (tm) => {
+      if (!tournament?.league) return true;
+      const leagues = Array.isArray(tm?.leagues) ? tm.leagues : [];
+      return leagues.includes(tournament.league);
+    };
     const available = (teams || []).filter(tm => {
       if (scoutedIds.has(tm.id)) return false;
-      if (!tournament?.league) return true;
-      const leagues = Array.isArray(tm.leagues) ? tm.leagues : [];
-      return leagues.includes(tournament.league);
+      if (inLeague(tm)) return true;
+      if (tm.parentTeamId) {
+        const parent = teamById.get(tm.parentTeamId);
+        if (parent && inLeague(parent)) return true;
+      }
+      return false;
     });
     const parents = available.filter(tm => !tm.parentTeamId);
     const children = available.filter(tm => !!tm.parentTeamId);
@@ -224,7 +238,16 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
     const team = teams.find(tm => tm.id === teamId);
     const childIds = teams.filter(tm => tm.parentTeamId === teamId).map(tm => tm.id);
     const allIds = [teamId, ...childIds];
-    const teamDivision = team?.divisions?.[tournament.league] || null;
+    // Division enforcement: the team's own per-league division wins; a child /
+    // 2nd-roster team inherits its PARENT club's division (division is a
+    // club-level attribute carried on the parent — a child carries no
+    // divisions[league] of its own and would otherwise land with no division).
+    const parent = team?.parentTeamId
+      ? teams.find(tm => tm.id === team.parentTeamId)
+      : null;
+    const teamDivision = team?.divisions?.[tournament.league]
+      || parent?.divisions?.[tournament.league]
+      || null;
     const finalDivision = teamDivision
       || (resolvedDivision !== 'all' ? resolvedDivision : null);
     // B3 / § 83 — narrow parent+children union to teams whose
