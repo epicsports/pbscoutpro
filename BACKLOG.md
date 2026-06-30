@@ -41,9 +41,9 @@
 
 | Screen | Design | Build | Verified | Notes |
 |---|---|---|---|---|
-| Tournament team picker | n/d | 🔴 | — | child teams nie pojawiają się w pickerze |
-| Add-to-tournament | n/d | 🔴 | — | division nie jest egzekwowane przy dodawaniu |
-| Profile-claim (Safari) | n/d | 🔴 | — | `ReferenceError: Can't find variable: update` — scope w zminifikowanym bundle |
+| Tournament team picker | n/d | 🟢 | logic-only (brak render-diff) | FIX `MatchListPremium.jsx`: child dziedziczy ligę rodzica (`inLeague(parent)`). e2e 7/7. merge bdad66f2 |
+| Add-to-tournament | n/d | 🟢 | logic-only | FIX: child dziedziczy `divisions[league]` rodzica. roster-division pass. merge bdad66f2 |
+| Profile-claim (Safari) | n/d | 🟢 | — | NIE-obecny w bieżącym kodzie (naprawiony przy „relax onboarding" rewrite). Zero `update` poza-scope w `src/`. Owed: jednorazowy Safari smoke live-bundla (prod może być starszy) |
 
 ---
 
