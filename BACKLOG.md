@@ -21,6 +21,10 @@
 
 ## EPIC: field-cluster (klaster pola)
 
+> ❄️ **ZAMROŻONE do po Birmingham (2–5.07.2026)** — decyzja Jacka 2026-06-30. To jest
+> żywy ekran live-scout, używany NA evencie. Zero zmian w `MatchPage`/field-cluster
+> (FieldWorkspace shell, tactic-on-layout, N5/N6) do zakończenia turnieju. Wracamy po.
+
 | Screen | Design | Build | Verified | Notes |
 |---|---|---|---|---|
 | Match scout / Live Point Tracker | ⚪ | ⚪ | — | snapshot 2026-06-30, faza Breakout; i18n mismatch: „Rysuj" PL vs „Save point/Breakout/Settle/Mid-game" EN |
@@ -79,4 +83,4 @@ Reality-pass wyłapał te NIE-istniejące w kodzie (`new`). RED = drogie/archite
 - **DROP/CONFLICT (nie budować):** point-logging 5-step wizard (`wizard.jsx`) ↔ shipnięty kiosk · team-row warianty A–F (eksploracja) · pole „age" (FICTION, brak w schemacie) · `useTx()` (scaffolding).
 - **⚠ PINNĄĆ przed buildem scout-point-resztki:** roster on/off (CONFLICT: `assignments[i]` vs nowy `onField[i]` vs UI-only) · shot `kind` (FICTION — brak pola).
 
-## Kolejny epik: **bugfix-red** (3 RED bugi wyżej) → potem **field-cluster** (RED, staged briefy: N7→N8→N5/N6).
+## Stan epików: **bugfix-red** ✅ (3 bugi 🟢, merged ffacc468). **field-cluster** ❄️ ZAMROŻONE do po Birmingham (2–5.07). Brak aktywnego epiku — czeka na GO Jacka po evencie.
