@@ -35,6 +35,7 @@ import DrawToolbar from '../components/canvas/DrawToolbar';
 import { strokesToFirestore, strokesFromFirestore, eraseAcrossStrokes } from '../components/canvas/drawStrokes';
 import SearchFilterPanel from '../components/SearchFilterPanel';
 import { matchEntity, playerInDivision, playerDivisionSet } from '../utils/entityFilters';
+import ReportTable from '../components/scout/ReportTable';
 
 // ── Inline helpers (§ 28) ──────────────────────────────────────────────
 
@@ -1560,44 +1561,53 @@ export default function ScoutedTeamPage() {
           const hasRoster = rows.some(b => b.people > 0);
           const survColor = (pct) =>
             pct >= 70 ? COLORS.success : pct >= 50 ? COLORS.accent : COLORS.danger;
-          // Header cells clip-guard (overflow+ellipsis) so a long localized label
-          // can NEVER spill into the neighbouring column — the @390 collision class.
-          const HEAD = { fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.3, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
           const NUM = { textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT, fontVariantNumeric: 'tabular-nums' };
+          // Columns — # · Rozbieg (SideTag + bunker + type) · Zagrań · Przeżycie%
+          // (semantic survColor) · Udział (share-bar) · Osobopozycje (roster-only).
+          const cols = [
+            { key: 'rank', label: '#', width: 14,
+              cellStyle: { whiteSpace: 'nowrap', fontFamily: FONT, fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 700, color: COLORS.textMuted },
+              render: (b, i) => i + 1 },
+            { key: 'name', label: t('breakout_runs_col_target'), flex: true,
+              cellStyle: { display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' },
+              render: (b) => (<>
+                <SideTag side={b.side || 'center'} />
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{b.name}</span>
+                {b.type && (
+                  <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
+                )}
+              </>) },
+            { key: 'played', label: t('col_played'), width: 40, align: 'right',
+              cellStyle: { ...NUM, fontSize: 12, fontWeight: 800, color: COLORS.text },
+              render: (b) => `${b.timesPlayed}×` },
+            { key: 'surv', label: t('col_przezycie_abbr'), width: 50, align: 'right', headTestId: 'breakouts-col-surv',
+              cellStyle: (b) => ({ ...NUM, fontSize: 12, fontWeight: 800, color: survColor(b.survivalPct) }),
+              render: (b) => `${b.survivalPct}%` },
+            { key: 'share', label: t('breakout_runs_col_share'), width: 66, align: 'right',
+              cellStyle: { display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' },
+              render: (b) => (<>
+                <div style={{ flex: 1, height: 6, borderRadius: 3, background: COLORS.surface, overflow: 'hidden' }}>
+                  <div style={{ width: `${b.pct}%`, height: '100%', borderRadius: 3, background: COLORS.textDim }} />
+                </div>
+                <span style={{ width: 30, flexShrink: 0, ...NUM, fontSize: 11, fontWeight: 700, color: COLORS.textDim }}>{b.pct}%</span>
+              </>) },
+            { key: 'people', label: t('col_osobopozycje_abbr'), width: 40, align: 'right', show: hasRoster,
+              headTestId: 'breakouts-col-people', cellTestId: 'breakouts-cell-people',
+              cellStyle: (b) => ({ ...NUM, fontSize: 12, fontWeight: 700, color: b.people > 0 ? COLORS.text : COLORS.textMuted }),
+              render: (b) => (b.people > 0 ? b.people : '—') },
+          ];
           return (
             <CollapsibleSection icon={Footprints} title={t('section_breakouts')} defaultOpen testId="sec-breakouts">
-              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
-                {/* Column headers — # · Rozbieg · Zagrań · Przeżycie% · Udział · (Osoby) */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.surfaceLight}` }}>
-                  <div style={{ width: 14, flexShrink: 0, ...HEAD }}>#</div>
-                  <div style={{ flex: 1, minWidth: 0, ...HEAD }}>{t('breakout_runs_col_target')}</div>
-                  <div style={{ width: 40, flexShrink: 0, textAlign: 'right', ...HEAD }}>{t('col_played')}</div>
-                  <div data-testid="breakouts-col-surv" style={{ width: 50, flexShrink: 0, textAlign: 'right', ...HEAD }}>{t('col_przezycie_abbr')}</div>
-                  <div style={{ width: 66, flexShrink: 0, textAlign: 'right', ...HEAD }}>{t('breakout_runs_col_share')}</div>
-                  {hasRoster && <div data-testid="breakouts-col-people" style={{ width: 40, flexShrink: 0, textAlign: 'right', ...HEAD }}>{t('col_osobopozycje_abbr')}</div>}
-                </div>
-                {rows.map((b, i) => (
-                  <div key={b.name} data-testid={`breakout-run-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.surface}` : 'none' }}>
-                    <div style={{ width: 14, flexShrink: 0, whiteSpace: 'nowrap', fontFamily: FONT, fontVariantNumeric: 'tabular-nums', fontSize: 12, fontWeight: 700, color: COLORS.textMuted }}>{i + 1}</div>
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-                      <SideTag side={b.side || 'center'} />
-                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{b.name}</span>
-                      {b.type && (
-                        <span style={{ flexShrink: 0, fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, fontWeight: 500 }}>{b.type}</span>
-                      )}
-                    </div>
-                    <div style={{ width: 40, flexShrink: 0, ...NUM, fontSize: 12, fontWeight: 800, color: COLORS.text }}>{b.timesPlayed}×</div>
-                    <div style={{ width: 50, flexShrink: 0, ...NUM, fontSize: 12, fontWeight: 800, color: survColor(b.survivalPct) }}>{b.survivalPct}%</div>
-                    <div style={{ width: 66, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                      <div style={{ flex: 1, height: 6, borderRadius: 3, background: COLORS.surface, overflow: 'hidden' }}>
-                        <div style={{ width: `${b.pct}%`, height: '100%', borderRadius: 3, background: COLORS.textDim }} />
-                      </div>
-                      <span style={{ width: 30, flexShrink: 0, ...NUM, fontSize: 11, fontWeight: 700, color: COLORS.textDim }}>{b.pct}%</span>
-                    </div>
-                    {hasRoster && <div data-testid="breakouts-cell-people" style={{ width: 40, flexShrink: 0, ...NUM, fontSize: 12, fontWeight: 700, color: b.people > 0 ? COLORS.text : COLORS.textMuted }}>{b.people > 0 ? b.people : '—'}</div>}
-                  </div>
-                ))}
-              </div>
+              <ReportTable
+                showHeader
+                gap={8}
+                headStyle={{ letterSpacing: 0.3 }}
+                containerStyle={{ margin: '0 16px 8px' }}
+                columns={cols}
+                rows={rows}
+                rowKey={(b) => b.name}
+                rowTestId={(b, i) => `breakout-run-${i}`}
+              />
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('breakout_survival_overall', overallSurvival)}
               </div>
@@ -1654,36 +1664,27 @@ export default function ScoutedTeamPage() {
                   </span>
                 </div>
               )}
-              <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
-                {/* Column headers */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '8px 14px', background: COLORS.surface,
-                  borderBottom: `1px solid ${COLORS.surfaceLight}`,
-                }}>
-                  <div style={{ flex: 1 }} />
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_strzela')}</div>
-                  <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{t('col_celnosc')}</div>
-                </div>
-                {rows.map((r, i) => {
-                  const freqColor = qualityColor(r.z.shotPct, [40, 25]);
-                  const accColor = qualityColor(r.z.accuracyPct, [30, 20]);
-                  return (
-                    <div key={r.key} style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 14px',
-                      borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <SideTag side={r.side} />
-                        <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{r.label}</span>
-                      </div>
-                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: freqColor }}>{r.z.shotPct}%</div>
-                      <div style={{ width: 56, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: accColor }}>{r.z.accuracyPct}%</div>
-                    </div>
-                  );
-                })}
-              </div>
+              <ReportTable
+                showHeader
+                gap={12}
+                containerStyle={{ margin: '0 16px 8px' }}
+                rows={rows}
+                rowKey={(r) => r.key}
+                columns={[
+                  { key: 'zone', flex: true,
+                    cellStyle: { display: 'flex', alignItems: 'center', gap: 8 },
+                    render: (r) => (<>
+                      <SideTag side={r.side} />
+                      <span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{r.label}</span>
+                    </>) },
+                  { key: 'freq', label: t('col_strzela'), width: 56, align: 'right',
+                    cellStyle: (r) => ({ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: qualityColor(r.z.shotPct, [40, 25]) }),
+                    render: (r) => `${r.z.shotPct}%` },
+                  { key: 'acc', label: t('col_celnosc'), width: 56, align: 'right',
+                    cellStyle: (r) => ({ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: qualityColor(r.z.accuracyPct, [30, 20]) }),
+                    render: (r) => `${r.z.accuracyPct}%` },
+                ]}
+              />
               <div style={{ margin: '0 16px 12px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('shot_accuracy_overall', overallAcc)}
               </div>
@@ -1706,21 +1707,25 @@ export default function ScoutedTeamPage() {
           const total = elimReasons.total;
           return (
             <CollapsibleSection icon={Skull} title={t('section_elim_reasons')} testId="sec-elim-reasons">
-              <div data-testid="elim-reasons" style={{ margin: '0 16px 12px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
-                {rows.map((r, i) => {
-                  const pct = total > 0 ? Math.round((r.count / total) * 100) : 0;
-                  return (
-                    <div key={r.code} data-testid={`elim-reason-${r.code}`} style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-                      borderBottom: i < rows.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
-                    }}>
-                      <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text }}>{r.label}</span>
-                      <span style={{ width: 48, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim }}>{pct}%</span>
-                      <span style={{ width: 28, textAlign: 'right', fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.text }}>{r.count}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              <ReportTable
+                gap={12}
+                containerTestId="elim-reasons"
+                containerStyle={{ margin: '0 16px 12px' }}
+                rows={rows}
+                rowKey={(r) => r.code}
+                rowTestId={(r) => `elim-reason-${r.code}`}
+                columns={[
+                  { key: 'label', flex: true,
+                    cellStyle: { fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+                    render: (r) => r.label },
+                  { key: 'pct', width: 48, align: 'right',
+                    cellStyle: { fontFamily: FONT, fontSize: 12, fontWeight: 700, color: COLORS.textDim },
+                    render: (r) => `${total > 0 ? Math.round((r.count / total) * 100) : 0}%` },
+                  { key: 'count', width: 28, align: 'right',
+                    cellStyle: { fontFamily: FONT, fontSize: 12, fontWeight: 800, color: COLORS.text },
+                    render: (r) => r.count },
+                ]}
+              />
             </CollapsibleSection>
           );
         })()}
@@ -1784,37 +1789,41 @@ export default function ScoutedTeamPage() {
           const COL = 50;
           const qualityColor = (pct) =>
             pct >= 40 ? COLORS.success : pct >= 25 ? COLORS.accent : COLORS.danger;
-          const colHeader = (label) => (
-            <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{label}</div>
-          );
-          const headerRow = (phaseLabel) => (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 14px', background: COLORS.surface, borderBottom: `1px solid ${COLORS.surfaceLight}` }}>
-              <div style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 9, fontWeight: 700, color: COLORS.textMuted, letterSpacing: 0.6, textTransform: 'uppercase' }}>{phaseLabel}</div>
-              {colHeader(t('col_strzela'))}
-              {colHeader(t('col_callout_players'))}
-              {colHeader(t('col_callout_inpts'))}
-            </div>
-          );
-          const zoneRow = (r, chips, isLast) => (
-            <div key={r.zone.id} style={{ padding: '10px 14px', borderBottom: isLast ? 'none' : `1px solid ${COLORS.surface}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: chips.length ? 6 : 0 }}>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: r.zone.color, flexShrink: 0 }} />
-                  <span style={{ minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.zone.name}</span>
-                </div>
-                <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: qualityColor(r.shotPct) }}>{r.shotPct}%</div>
-                <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: r.distinctPlayers > 0 ? COLORS.text : COLORS.textMuted }}>{r.distinctPlayers > 0 ? r.distinctPlayers : '—'}</div>
-                <div style={{ width: COL, textAlign: 'right', fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text }}>{r.pointsWithShot}</div>
-              </div>
-              {chips.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</div>}
-            </div>
-          );
-
+          // Columns shared by the 3 phase sub-tables; the leading column's header
+          // is the phase label (Break/Settle/Mid), its body the zone swatch + name.
+          const calloutCols = (phaseLabel) => [
+            { key: 'zone', label: phaseLabel, flex: true,
+              cellStyle: { display: 'flex', alignItems: 'center', gap: 8 },
+              render: (r) => (<>
+                <span style={{ width: 10, height: 10, borderRadius: 3, background: r.zone.color, flexShrink: 0 }} />
+                <span style={{ minWidth: 0, fontFamily: FONT, fontSize: 13, fontWeight: 600, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.zone.name}</span>
+              </>) },
+            { key: 'shotPct', label: t('col_strzela'), width: COL, align: 'right',
+              cellStyle: (r) => ({ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: qualityColor(r.shotPct) }),
+              render: (r) => `${r.shotPct}%` },
+            { key: 'players', label: t('col_callout_players'), width: COL, align: 'right',
+              cellStyle: (r) => ({ fontFamily: FONT, fontSize: 13, fontWeight: 800, color: r.distinctPlayers > 0 ? COLORS.text : COLORS.textMuted }),
+              render: (r) => (r.distinctPlayers > 0 ? r.distinctPlayers : '—') },
+            { key: 'inpts', label: t('col_callout_inpts'), width: COL, align: 'right',
+              cellStyle: { fontFamily: FONT, fontSize: 13, fontWeight: 800, color: COLORS.text },
+              render: (r) => r.pointsWithShot },
+          ];
+          // Player chips ride below each zone row (wrap); omitted when no assigned
+          // identity (the count-only read, like the band "Shooting" section).
+          const calloutChips = (r) => {
+            const chips = r.chipPairs.map(p => playerChip(p.player, p.count));
+            return chips.length > 0 ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{chips}</div> : null;
+          };
           const phaseTable = (phaseLabel, rows) => rows.length > 0 ? (
-            <div style={{ margin: '0 16px 8px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
-              {headerRow(phaseLabel)}
-              {rows.map((r, i) => zoneRow(r, r.chipPairs.map(p => playerChip(p.player, p.count)), i === rows.length - 1))}
-            </div>
+            <ReportTable
+              showHeader
+              gap={12}
+              containerStyle={{ margin: '0 16px 8px' }}
+              columns={calloutCols(phaseLabel)}
+              rows={rows}
+              rowKey={(r) => r.zone.id}
+              belowRow={calloutChips}
+            />
           ) : null;
 
           return (
@@ -1860,46 +1869,40 @@ export default function ScoutedTeamPage() {
                   {t('key_players_weak_data')}
                 </div>
               )}
-              <div style={{ margin: '0 16px 6px', background: COLORS.surfaceDark, border: `1px solid ${COLORS.surfaceLight}`, borderRadius: 12, overflow: 'hidden' }}>
-                {topHeroes.map((h, i) => {
-                  const dc = diffColor(h.diff);
-                  const wc = wrColor(h.winRate);
-                  return (
-                    <div
-                      key={h.playerId}
-                      onClick={() => navigate(`/player/${h.playerId}/stats?scope=tournament&tid=${tournamentId}`)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        padding: '12px 14px', cursor: 'pointer',
-                        borderBottom: i < topHeroes.length - 1 ? `1px solid ${COLORS.surface}` : 'none',
-                        minHeight: TOUCH.minTarget,
-                      }}
-                    >
-                      <div style={{ width: 20, textAlign: 'center', fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted }}>
-                        #{i + 1}
+              <ReportTable
+                gap={12}
+                containerStyle={{ margin: '0 16px 6px' }}
+                rowPadding="12px 14px"
+                rows={topHeroes}
+                rowKey={(h) => h.playerId}
+                rowStyle={() => ({ minHeight: TOUCH.minTarget })}
+                onRowClick={(h) => navigate(`/player/${h.playerId}/stats?scope=tournament&tid=${tournamentId}`)}
+                columns={[
+                  { key: 'rank', width: 20, align: 'center',
+                    cellStyle: { fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted },
+                    render: (h, i) => `#${i + 1}` },
+                  { key: 'name', flex: true,
+                    render: (h) => (<>
+                      <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, overflowWrap: 'normal', wordBreak: 'normal', textWrap: 'balance' }}>
+                        {h.number ? `#${h.number} ` : ''}{dn(playersById[h.playerId] || { name: h.fullName, nickname: h.name !== h.fullName ? h.name : undefined })}
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: FONT, fontSize: 14, fontWeight: 700, color: COLORS.text, overflowWrap: 'normal', wordBreak: 'normal', textWrap: 'balance' }}>
-                          {h.number ? `#${h.number} ` : ''}{dn(playersById[h.playerId] || { name: h.fullName, nickname: h.name !== h.fullName ? h.name : undefined })}
-                        </div>
-                        <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                          <span>{h.wins}–{h.losses}</span>
-                          <span style={{ color: COLORS.borderLight }}>·</span>
-                          <span style={{ color: wc, fontWeight: 700 }}>{h.winRate != null ? `${h.winRate}%` : '—'}</span>
-                          <span style={{ color: COLORS.borderLight }}>·</span>
-                          <span>{h.ptsPlayed} pts</span>
-                        </div>
+                      <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 2, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                        <span>{h.wins}–{h.losses}</span>
+                        <span style={{ color: COLORS.borderLight }}>·</span>
+                        <span style={{ color: wrColor(h.winRate), fontWeight: 700 }}>{h.winRate != null ? `${h.winRate}%` : '—'}</span>
+                        <span style={{ color: COLORS.borderLight }}>·</span>
+                        <span>{h.ptsPlayed} pts</span>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: dc, lineHeight: 1 }}>
-                          {h.diff > 0 ? '+' : ''}{h.diff}
-                        </div>
-                        <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2, letterSpacing: 0.4, textTransform: 'uppercase', fontWeight: 600 }}>{t('col_diff')}</div>
+                    </>) },
+                  { key: 'diff', align: 'right',
+                    render: (h) => (<>
+                      <div style={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color: diffColor(h.diff), lineHeight: 1 }}>
+                        {h.diff > 0 ? '+' : ''}{h.diff}
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      <div style={{ fontFamily: FONT, fontSize: 9, color: COLORS.textMuted, marginTop: 2, letterSpacing: 0.4, textTransform: 'uppercase', fontWeight: 600 }}>{t('col_diff')}</div>
+                    </>) },
+                ]}
+              />
               <div style={{ margin: '0 16px 14px', fontFamily: FONT, fontSize: 10, fontStyle: 'italic', color: COLORS.textMuted }}>
                 {t('sorted_by_diff')}
               </div>
