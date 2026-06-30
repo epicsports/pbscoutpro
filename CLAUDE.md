@@ -1,12 +1,28 @@
 ## Opus session protocol
 
 On open:
-1. Read `docs/ops/HANDOVER.md` + `NEXT_TASKS.md`.
+1. Read `BACKLOG.md` (single source of truth) + `docs/ops/HANDOVER.md`.
 2. `git log -10` (verify main HEAD). If the GitHub connector is unavailable this session
    (e.g. non-desktop), authoritative HEAD = **CC's git-log report** — do NOT assert HEAD
    from memory, do NOT skip the check.
-3. `recent_chats n=5` for session continuity; `conversation_search <keywords>` when a
+3. **Scan `_inbox/` for CD/Jacek drafts** (`ls _inbox/`, ignore `README.md` + `_processed/`).
+   Process each WITHOUT asking (see §CD-DRAFT below), then absorb it so it isn't taken twice.
+4. `recent_chats n=5` for session continuity; `conversation_search <keywords>` when a
    specific past topic is referenced.
+
+### §CD-DRAFT — processing the `_inbox/` handoff (CD has no repo write-access)
+CD/Jacek leave drafts as files in `_inbox/` (gitignored box). **One naming convention:**
+- `_inbox/BACKLOG__*.md` → rows to merge into `BACKLOG.md`. Action: append the rows
+  (tag `owner` if missing), commit to `BACKLOG.md`. Design rows enter as 🔵 / awaiting-Jacek
+  unless told otherwise (no-🔵-no-build still holds).
+- `_inbox/BRIEF__*.md` → a design/feature brief. Action: reality-pass it (exists/extends/new),
+  accept into the queue by `owner`/status, then build the buildable slice per the usual loop.
+- other files (zips, `*.png`, `*.json`) → raw drops; process ad hoc.
+
+**Absorb after processing** (so a draft is never taken twice): `mkdir -p _inbox/_processed` then
+`mv _inbox/<file> _inbox/_processed/`. Never re-scan `_processed/`. The COMMITTED output
+(BACKLOG rows / accepted brief in `docs/briefs/`) is the record — the draft itself stays
+gitignored.
 
 On close: patch `docs/DESIGN_DECISIONS.md` / `docs/PROJECT_GUIDELINES.md` /
 `docs/ops/HANDOVER.md` before chat ends (§37).

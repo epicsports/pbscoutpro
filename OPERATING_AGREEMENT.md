@@ -64,6 +64,13 @@ Wymiana plików (zrzuty, zipy design-systemu CD, drafty briefów, dane Jacka) id
 gitignored (tylko `_inbox/README.md` trackowany); katalog jest w repo → operacje na plikach
 zaufane bez promptów (dlatego `Read(Downloads/**)` usunięte z whitelisty).
 
+**CD nie ma write-accessu** → zostawia drafty jako pliki w `_inbox/` wg konwencji:
+`BACKLOG__*.md` (wiersze → commit do BACKLOG, design = 🔵/awaiting-Jacek) ·
+`BRIEF__*.md` (brief → reality-pass → kolejka wg owner → build). **CC skanuje `_inbox/` na
+starcie każdej sesji** (CLAUDE.md §CD-DRAFT), przetwarza bez pytania Jacka, po czym **wchłania**
+draft (`mv _inbox/<plik> _inbox/_processed/`), żeby nie wziąć go dwa razy. Trwały zapis =
+commit (wiersze BACKLOG / brief w `docs/briefs/`), nie draft.
+
 ## 9. CC = jedyna sortownia + pętla domknięta z obu stron (od 2026-06-30)
 - **CC jest jedynym wlotem zadań.** Każdy request (feature/bug/pomysł/poprawka) **najpierw**
   ląduje w `BACKLOG.md` jako wiersz z `owner`, **potem** klasyfikacja:
