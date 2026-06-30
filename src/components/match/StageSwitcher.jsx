@@ -3,6 +3,14 @@ import { COLORS, FONT } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
 import { capturePhases, toPersistedLiteral, label } from '../../utils/pointPhases';
 
+// Lighter amber (amber-400) for the "passed/recorded" segment label — still inside
+// the accent family (§ 27 identity-amber), reads brighter than the active dark text.
+const ACCENT_LIGHT = '#fbbf24';
+// Dark ink used on top of the active amber-gradient segment (prototype #1a1205 /
+// #5a4208) — high-contrast text on amber, NOT a new palette colour.
+const ON_AMBER = '#1a1205';
+const ON_AMBER_DIM = '#5a4208';
+
 /**
  * StageSwitcher — the "E": a mini-timeline + playhead for the SCOUT capture
  * stages of a single point (Point as Timeline, Stage 2a). Three nodes left→right:
@@ -23,13 +31,80 @@ import { capturePhases, toPersistedLiteral, label } from '../../utils/pointPhase
  *              collect per phase; NOT data (phases carry no timestamps). When
  *              omitted the switcher renders exactly as before (portrait paths).
  *   device-agnostic: each node is a ≥44px tap target; scales by flex.
+ *   variant  — 'dots' (default, the playhead+connector look — tactic editor +
+ *              portrait context bar) | 'segmented' (the design-handoff connected
+ *              timeline: full-width name+time segments with active/passed/default
+ *              states — the immersive-rail matchup-card bottom strip). Capture
+ *              wiring is identical in both: click → onChange(key); a stage with
+ *              data (`done[key]`) reads as "recorded/passed".
  */
-export default function StageSwitcher({ stage = 'break', onChange, done = {}, stages = null, wrap = false, ranges = null }) {
+export default function StageSwitcher({ stage = 'break', onChange, done = {}, stages = null, wrap = false, ranges = null, variant = 'dots' }) {
   const { t } = useLanguage();
   // PaT D4 — default capture nodes from the canonical module (single source); keys
   // are the persisted literals (break/settle/mid + endgame). The TACTIC editor
   // passes its own 5 positional stages [{key,label}] (Stage 2.2) via `stages`.
   const STAGES = stages || capturePhases().map(p => ({ key: toPersistedLiteral(p.key), label: label(p.key, t) }));
+
+  // ── Segmented timeline variant (design handoff "Scout point" `.timeline .seg2`) ──
+  // Connected full-width segments, each carrying the phase name + a static time-range
+  // hint. Three visual states: active (amber gradient, dark ink), passed = recorded
+  // (accent outline + tint, mapped to the existing `done`/stageDone), default.
+  if (variant === 'segmented') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: 5, width: '100%' }} role="tablist" aria-label={t('b13_capture_stage')}>
+        {STAGES.map((s) => {
+          const active = stage === s.key;
+          const passed = !active && !!done[s.key];
+          return (
+            <button
+              key={s.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onChange && onChange(s.key)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                minHeight: 44,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1,
+                padding: '6px 5px',
+                borderRadius: 9,
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                userSelect: 'none',
+                background: active
+                  ? `linear-gradient(150deg, ${COLORS.accent}, ${COLORS.accentDim})`
+                  : passed
+                    ? `${COLORS.accent}17`
+                    : COLORS.surface,
+                border: `1px solid ${active ? 'transparent' : passed ? `${COLORS.accent}61` : COLORS.border}`,
+                boxShadow: active ? COLORS.accentGlow : 'none',
+                transition: 'background .14s, border-color .14s',
+              }}
+            >
+              <span style={{
+                fontFamily: FONT, fontSize: 11, lineHeight: 1.1,
+                fontWeight: active ? 800 : 700,
+                color: active ? ON_AMBER : passed ? ACCENT_LIGHT : COLORS.text,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%',
+              }}>{s.label}</span>
+              {ranges && ranges[s.key] ? (
+                <span style={{
+                  fontFamily: FONT, fontSize: 8.5, fontWeight: 600,
+                  color: active ? ON_AMBER_DIM : COLORS.textMuted,
+                }}>{ranges[s.key]}</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0, flexWrap: wrap ? 'wrap' : 'nowrap', rowGap: wrap ? 8 : 0 }} role="tablist" aria-label={t('b13_capture_stage')}>
       {STAGES.map((s, i) => {

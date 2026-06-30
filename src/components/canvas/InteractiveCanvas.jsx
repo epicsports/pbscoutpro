@@ -305,7 +305,10 @@ export default function InteractiveCanvas({
       // NIGHT BUILD — team identity + animated lane offset (render-only).
       teamColor, teamName, flowOffset,
     });
-    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left', team, flowOffset });
+    drawQuickShots(ctx, w, h, { players, quickShots, obstacleShots, doritoSide, fieldSide: viewportSide || 'left', team,
+      // NIGHT BUILD (cones in team colour) — same brand colour the disc uses, with
+      // the same opponent-distinction guard + role fallback inside drawQuickShots.
+      brandColor: teamColor, opponentColor, showOpponentLayer, flowOffset });
     drawBunkers(ctx, w, h, { bunkers: correctedBunkers, showBunkers, showHalfLabels, layoutEditMode, selectedBunkerId,
       showCounter, counterData, selectedCounterBunkerId });
 
