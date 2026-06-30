@@ -1,5 +1,12 @@
 # Deploy Log
 
+## 2026-06-30 — [REFACTOR/GREEN] Shared `ReportTable` primitive — de-dup 5 opponent-analysis tables (dup-audit #1)
+**App (auto-deploy, e2e-gated). Autonomous ship.** `ScoutedTeamPage` had 5 near-identical hand-rolled report tables. Extracted **`src/components/scout/ReportTable.jsx`** (column-config-driven: `columns/rows/render/cellStyle/show/testids/onRowClick/belowRow`) and migrated all 5 (Rozbiegi · Strzały · Elim-reasons · Callout-zones · Key-players). **Byte-identical rendered output** (9/9 render captures md5-identical @390/834/1280 × Break/Settle/Mid). The Rozbiegi @390 clip-fix is now the primitive's DEFAULT (flex name col + `flexShrink:0` fixed cols + header ellipsis) → no table can clip a column on phone.
+- **Display-only (§6.6):** zero compute call-site changes (`git diff` clean of `compute*`), no data/heatmap/scope/write edits; every `data-testid` preserved.
+- **Verified:** build · precommit · e2e **116/0** (incl. `scoutedteam-rail` 4/4, `pat-stage25-report` 2/2) · render byte-identical.
+- **Revert:** `git revert -m 1 <merge sha>`.
+- Flags: numeric font left per-cell (no universal TNUM) to stay byte-identical; Callout-zones + Key-players covered by md5/e2e but not visually screenshot (fixture data-gates).
+
 ## 2026-06-30 — [FIX/AMBER] Portrait scout view — float side-swap strip ON the field + VS intro self-fits the cell (Jacek 2 screenshots)
 **App (auto-deploy, e2e-gated). Autonomous ship.** Two portrait refinements to the just-shipped VS intro + SideSwapStrip (Jacek: strip stole field height; intro clipped at the bottom).
 - **FIX 1 — side-swap strip floats ON the field (portrait):** removed the full-width `SideSwapStrip` row from the portrait context bar (only the phase StageSwitcher stays → field taller). It now renders as a compact 46px absolute overlay (dark gradient + `backdrop-filter:blur`) at the TOP of the same canvas wrapper that hosts VsIntro. **Field stays tappable:** wrapper `pointer-events:none` (thin top band only) + strip `pointer-events:auto`; capture-parity golden green = taps still register. zIndex 25 (under VsIntro 60, FS toggle cleared via `right:60`). Landscape rail vertical strip untouched (`floatBand = floating && !vertical`).
