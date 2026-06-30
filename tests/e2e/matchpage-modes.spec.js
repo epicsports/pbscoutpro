@@ -35,7 +35,8 @@ test.describe('MatchPage — one screen, three modes share the shell', () => {
     // render — same screen, mode swapped.
     await page.goto('/' + matchModesScoutUrl);
     await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText(/Select winner to save|Save point/i).first()).toBeVisible();
+    // Suite runs in the app default (Polish); save CTA = `match_select_winner` / `quicklog_save_point`.
+    await expect(page.getByText(/Wybierz zwycięzcę|Zapisz punkt/i).first()).toBeVisible();
 
     // The scout-side WRITE — through the real dataService path (bridge), same code MatchPage runs.
     const written = await page.evaluate(

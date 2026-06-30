@@ -24,7 +24,8 @@ test.describe('#2 Log a point', () => {
   test('seeded match opens in scout mode and the field editor renders', async ({ page }) => {
     await page.goto('/' + matchScoutUrl);
     await expect(page.locator('canvas').first()).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText(/Select winner to save|Save point/i).first()).toBeVisible();
+    // Suite runs in the app default (Polish); save CTA = `match_select_winner` / `quicklog_save_point`.
+    await expect(page.getByText(/Wybierz zwycięzcę|Zapisz punkt/i).first()).toBeVisible();
   });
 
   test('log a point → persists to emulator → reads back', async ({ page }) => {
