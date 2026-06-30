@@ -70,6 +70,10 @@ export default function VsIntro({
   const { t } = useLanguage();
   const hostRef = useRef(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
+  // Portrait only: the host height is pinned to the VISIBLE scroll viewport (see
+  // the measure() comment) so the intro never spills below the scroll fold. Null
+  // in landscape → the host stays inset:0 (full wrapper box, unchanged).
+  const [hostH, setHostH] = useState(null);
   const [token, setToken] = useState(0);
   const [done, setDone] = useState(false);
   const [reduce] = useState(prefersReducedMotion);
@@ -82,21 +86,53 @@ export default function VsIntro({
     setToken((x) => x + 1);
   }, [playKey]);
 
-  // Measure THIS overlay's own box (aspect ratio drives portrait vs landscape).
+  // Measure the overlay's box (aspect ratio drives portrait vs landscape).
   // useLayoutEffect seeds the box before first paint so the very first frame
   // already lands in the correct split (no flash of the wrong orientation).
+  //
+  // PORTRAIT bottom-clip fix: the field canvas (= the wrapper this overlay fills)
+  // is sized by `maxCanvasHeight` and can be TALLER than the scroll viewport it
+  // lives in (header + roster + save bar eat the rest), so a full-wrapper overlay
+  // would push its bottom lockup below the scroll fold (clipped). Canvas sizing is
+  // locked (§6.6), so instead we PIN the portrait overlay to the visible scroll
+  // viewport: effH = min(wrapperH, nearest-scroll-ancestor clientHeight). Every
+  // downstream % / `ps` size then derives from this fit-to-cell height → the three
+  // stacked blocks always fit. LANDSCAPE keeps the full wrapper box (unchanged):
+  // hostH stays null and box = the wrapper rect exactly as before.
   useLayoutEffect(() => {
     const el = hostRef.current;
     if (!el) return undefined;
-    const apply = (w, h) => setBox((p) => (p.w === w && p.h === h ? p : { w, h }));
-    const r = el.getBoundingClientRect();
-    apply(r.width, r.height);
+    const wrap = el.parentElement || el;
+    const measure = () => {
+      const wr = wrap.getBoundingClientRect();
+      const wrapW = wr.width;
+      const wrapH = wr.height;
+      let h = wrapH;
+      const portraitBox = wrapW > 0 && wrapH > 0 && wrapW < wrapH;
+      if (portraitBox) {
+        let p = wrap.parentElement;
+        let vis = 0;
+        while (p) {
+          const ov = window.getComputedStyle(p).overflowY;
+          if (ov === 'auto' || ov === 'scroll') { vis = p.clientHeight; break; }
+          p = p.parentElement;
+        }
+        if (vis > 0) h = Math.min(wrapH, vis);
+      }
+      setHostH(portraitBox ? h : null);
+      setBox((prev) => (prev.w === wrapW && prev.h === h ? prev : { w: wrapW, h }));
+    };
+    measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
-    const ro = new ResizeObserver((entries) => {
-      const cr = entries[0]?.contentRect;
-      if (cr) apply(cr.width, cr.height);
-    });
-    ro.observe(el);
+    const ro = new ResizeObserver(measure);
+    ro.observe(wrap);
+    // also observe the scroll ancestor so rotation / chrome-height changes refit.
+    let sp = wrap.parentElement;
+    while (sp) {
+      const ov = window.getComputedStyle(sp).overflowY;
+      if (ov === 'auto' || ov === 'scroll') { ro.observe(sp); break; }
+      sp = sp.parentElement;
+    }
     return () => ro.disconnect();
   }, [token]);
 
@@ -113,18 +149,26 @@ export default function VsIntro({
 
   // ── derived sizes (replace the design's cqw/cqh container units with px
   //    computed from the measured box) ──
-  const nickFont = landscape ? clampPx(44, 0.066 * box.w, 88) : 37;
-  const cityFont = landscape ? 15 : 12.5;
+  // Landscape is already box-derived (scales with box.w). PORTRAIT was fixed px
+  // (nick 37, coin 60, …) and clipped the bottom lockup on short field cells.
+  // `ps` scales the whole portrait composition by the MEASURED box height so the
+  // three stacked blocks (top lockup · centre coin · bottom lockup) always fit:
+  // ps = 1 on tall cells (current look, no regression) and shrinks proportionally
+  // on short cells (no clip). H_REF ≈ a comfortable portrait cell height; floor
+  // 0.85 keeps the smallest scaled label (badge 9.5px → 8.1px) ≥ 8px per § 27.
+  const ps = landscape ? 1 : clampPx(0.85, box.h / 520, 1);
+  const nickFont = landscape ? clampPx(44, 0.066 * box.w, 88) : 37 * ps;
+  const cityFont = landscape ? 15 : 12.5 * ps;
   const cityTrack = landscape ? '3.6px' : '3px';
-  const badgeFont = landscape ? 10.5 : 9.5;
-  const badgeMb = landscape ? 11 : 7;
+  const badgeFont = landscape ? 10.5 : 9.5 * ps;
+  const badgeMb = landscape ? 11 : 7 * ps;
   const crestH = (landscape ? 0.54 : 0.5) * box.h;
-  const pnFont = landscape ? clampPx(64, 0.07 * box.w, 96) : 60;
-  const plFont = landscape ? 12 : 11;
+  const pnFont = landscape ? clampPx(64, 0.07 * box.w, 96) : 60 * ps;
+  const plFont = landscape ? 12 : 11 * ps;
   const plTrack = landscape ? '5px' : '4px';
-  const vsFont = landscape ? clampPx(20, 0.024 * box.w, 30) : 17;
-  const chipPad = landscape ? '14px 40px' : '10px 30px';
-  const chipRadius = landscape ? 22 : 18;
+  const vsFont = landscape ? clampPx(20, 0.024 * box.w, 30) : 17 * ps;
+  const chipPad = landscape ? '14px 40px' : `${10 * ps}px ${30 * ps}px`;
+  const chipRadius = landscape ? 22 : 18 * ps;
 
   const scoutedCrest = crestSrc(scouted);
   const opponentCrest = crestSrc(opponent);
@@ -265,7 +309,17 @@ export default function VsIntro({
       ref={hostRef}
       aria-hidden="true"
       onPointerDown={dismiss}
-      style={{ position: 'absolute', inset: 0, zIndex: 60, overflow: 'hidden', cursor: 'pointer' }}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        // portrait → pinned to the visible scroll viewport; landscape → inset:0.
+        ...(hostH != null ? { height: hostH } : { bottom: 0 }),
+        zIndex: 60,
+        overflow: 'hidden',
+        cursor: 'pointer',
+      }}
     >
       {measured && (
         <div

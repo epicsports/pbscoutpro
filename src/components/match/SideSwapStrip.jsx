@@ -54,9 +54,17 @@ export default function SideSwapStrip({
   fieldSide,
   onSwap,
   orientation = 'horizontal',
+  floating = false,
 }) {
   const { t } = useLanguage();
   const vertical = orientation === 'vertical';
+  // `floating` (portrait-only) — the strip is overlaid on the TOP of the field
+  // card instead of sitting in normal flow above it (Jacek: the field is the
+  // priority). Its backing becomes a compact semi-transparent dark gradient +
+  // blur so the field reads underneath; the cells/⇄ stay fully interactive (the
+  // host wrapper in MatchPage sets pointer-events:none, this strip :auto, so the
+  // field play area below the thin top band keeps every tap/capture).
+  const floatBand = floating && !vertical;
 
   // The scouted (active) team starts from `fieldSide`; the opponent is opposite.
   // The strip mirrors the FIELD, so the field-left team is the LEAD half.
@@ -90,7 +98,7 @@ export default function SideSwapStrip({
           background: fromRight
             ? `linear-gradient(270deg, ${mix(color, 52)}, transparent 80%)`
             : `linear-gradient(90deg, ${mix(color, 52)}, transparent 80%)`,
-          minHeight: 52,
+          minHeight: floatBand ? 46 : 52,
         }}
       >
         {src ? (
@@ -194,7 +202,7 @@ export default function SideSwapStrip({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: ELEV.sunken,
+        background: floatBand ? 'transparent' : ELEV.sunken,
         ...(vertical ? { width: '100%', height: 48 } : { width: 52, alignSelf: 'stretch' }),
       }}
     >
@@ -235,9 +243,13 @@ export default function SideSwapStrip({
         width: '100%',
         borderRadius: 10,
         overflow: 'hidden',
-        border: `1px solid ${ELEV.hairline}`,
-        background: ELEV.surface,
-        boxShadow: ELEV.innerTop,
+        border: floatBand ? `1px solid ${ELEV.hairlineStrong}` : `1px solid ${ELEV.hairline}`,
+        background: floatBand
+          ? 'linear-gradient(180deg, rgba(8,11,18,.82), rgba(8,11,18,.46))'
+          : ELEV.surface,
+        ...(floatBand
+          ? { backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', boxShadow: '0 6px 18px rgba(0,0,0,.5)' }
+          : { boxShadow: ELEV.innerTop }),
       }}
     >
       {renderCell(lead, false)}
