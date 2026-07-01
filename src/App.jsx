@@ -40,6 +40,8 @@ const LayoutWizardPage = lazy(() => import('./pages/LayoutWizardPage'));
 const TacticPage = lazy(() => import('./pages/TacticPage'));
 const LayoutTacticsBoardPage = lazy(() => import('./pages/LayoutTacticsBoardPage'));
 const TacticEditorPage = lazy(() => import('./pages/TacticEditorPage'));
+const TacticalHarness = lazy(() => import('./pages/TacticalHarness'));
+const TacticsCanvasPage = lazy(() => import('./pages/TacticsCanvasPage'));
 const TestCaptureHarness = lazy(() => import('./pages/TestCaptureHarness'));
 const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
 const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
@@ -189,8 +191,12 @@ function AppRoutes() {
             <Route path="/layout/:layoutId/tactic/:tacticId" element={<RouteGuard><TacticPage /></RouteGuard>} />
             <Route path="/layout/:layoutId/tactics" element={<RouteGuard><LayoutTacticsBoardPage /></RouteGuard>} />
             <Route path="/layout/:layoutId/tactic-edit/:tacticId" element={<RouteGuard><TacticEditorPage /></RouteGuard>} />
+            {/* STAGE 2 — Coach Tactics on the new DrawingCanvas engine (additive; legacy /tactics untouched) */}
+            <Route path="/layout/:layoutId/tactics-canvas" element={<RouteGuard><TacticsCanvasPage /></RouteGuard>} />
             {/* EMULATOR-ONLY capture-engine test rig (Stage 2.0 tactic golden) — dead in prod */}
             {import.meta.env.VITE_USE_EMULATOR === 'true' && <Route path="/test/capture" element={<TestCaptureHarness />} />}
+            {/* Tactical DrawingCanvas render rig (STAGE 1) — emulator + preview only, dead in prod */}
+            {(import.meta.env.VITE_USE_EMULATOR === 'true' || import.meta.env.VITE_PREVIEW === '1') && <Route path="/test/tactical" element={<TacticalHarness />} />}
             <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
             <Route path="/player/checklist" element={<PackingChecklistPage />} />
             <Route path="/break" element={<TakeABreakPage />} />

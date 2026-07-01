@@ -25,13 +25,17 @@ export default function OpenTacticsAction({
   size = 'md',
   style,
   testId = 'open-tactics-action',
+  // STAGE 2/3 — point the door at the new DrawingCanvas tactics editor. Default
+  // false keeps the legacy board; flip to true (per-callsite now, globally at the
+  // STAGE 3 supersede) to route into /tactics-canvas.
+  newEngine = false,
 }) {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { layouts } = useLayouts();
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const go = (id) => navigate(`/layout/${id}/tactics`);
+  const go = (id) => navigate(`/layout/${id}/${newEngine ? 'tactics-canvas' : 'tactics'}`);
 
   const onClick = () => {
     if (layoutId) { go(layoutId); return; }

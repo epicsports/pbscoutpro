@@ -44,7 +44,7 @@ AdminGuard / SuperAdminGuard) or `none`. `lazy` = component loaded via
 `React.lazy(() => import(...))`.
 
 <!-- AUTOGEN:routes START -->
-_48 routes parsed from `src/App.jsx`. `⚑cond` = route mounted behind a build-time condition (e.g. emulator-only)._
+_50 routes parsed from `src/App.jsx`. `⚑cond` = route mounted behind a build-time condition (e.g. emulator-only)._
 
 | path | component | guard | lazy |
 |---|---|---|---|
@@ -64,7 +64,9 @@ _48 routes parsed from `src/App.jsx`. `⚑cond` = route mounted behind a build-t
 | `/layout/:layoutId/tactic/:tacticId` | TacticPage | RouteGuard | yes |
 | `/layout/:layoutId/tactics` | LayoutTacticsBoardPage | RouteGuard | yes |
 | `/layout/:layoutId/tactic-edit/:tacticId` | TacticEditorPage | RouteGuard | yes |
+| `/layout/:layoutId/tactics-canvas` | TacticsCanvasPage | RouteGuard | yes |
 | `/test/capture` | TestCaptureHarness ⚑cond | none | yes |
+| `/test/tactical` | TacticalHarness ⚑cond | none | yes |
 | `/player/:playerId/stats` | PlayerStatsPage | none | yes |
 | `/player/checklist` | PackingChecklistPage | none | yes |
 | `/break` | TakeABreakPage | none | yes |
