@@ -4,7 +4,8 @@ import { COLORS, ELEV, FONT, TRACKING, TNUM } from '../utils/theme';
 import { useLanguage } from '../hooks/useLanguage';
 import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
-import { useMatches, useActiveTeams, useScoutedTeams } from '../hooks/useFirestore';
+import { useMatches, useActiveTeams, useScoutedTeams, useTournaments } from '../hooks/useFirestore';
+import DivisionTabs from './tabs/DivisionTabs';
 import { computeTeamRecords } from '../utils/teamStats';
 import StandingsTable from './tabs/StandingsTable';
 import MatchListPremium from './MatchListPremium';
@@ -143,6 +144,15 @@ function CoachWide({ tournamentId }) {
   const { scouted } = useScoutedTeams(tournamentId);
   const { matches } = useMatches(tournamentId);
   const { teams } = useActiveTeams();
+  const { tournaments } = useTournaments();
+  const tournament = tournaments.find(tr => tr.id === tournamentId);
+  const [activeDivision, setActiveDivision] = useState(null);
+  // Division split — same as the scout screen (Jacek: coach scouted-teams was
+  // missing it on the wide shell). Lenient filter: a team whose division is null
+  // or not one of THIS tournament's divisions shows under every tab (never lost).
+  const resolvedDivision = activeDivision || tournament?.divisions?.[0] || 'all';
+  const inDivision = (st) => resolvedDivision === 'all' || st.division === resolvedDivision
+    || !st.division || !(tournament?.divisions || []).includes(st.division);
   const [q, setQ] = useState('');
   const [sel, setSel] = useState(null);
   const [showHidden, setShowHidden] = useState(false);
@@ -169,7 +179,7 @@ function CoachWide({ tournamentId }) {
   const nameOf = (st) => teamOf(st)?.name || '?';
   const colorOf = (st) => teamOf(st)?.color || COLORS.borderLight;
   const qMatch = (st) => nameOf(st).toLowerCase().includes(q.toLowerCase());
-  const visible = scouted.filter(st => qMatch(st) && !hidden.includes(st.id));
+  const visible = scouted.filter(st => qMatch(st) && !hidden.includes(st.id) && inDivision(st));
   const hiddenList = scouted.filter(st => hidden.includes(st.id) && qMatch(st));
   const selSt = visible.find(st => st.id === sel) || visible[0] || null;
 
@@ -205,6 +215,10 @@ function CoachWide({ tournamentId }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '9px 12px', background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: 11, marginBottom: 14 }}>
             <span style={{ color: COLORS.textMuted, display: 'flex' }}><RdIcon name="eye" size={15} /></span>
             <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('search_team') || 'Szukaj drużyny…'} style={{ flex: 1, background: 'none', border: 'none', outline: 'none', color: COLORS.text, fontFamily: FONT, fontSize: 14, fontWeight: 500 }} />
+          </div>
+          {/* Division split — same as scout (Jacek 2026-07-02) */}
+          <div style={{ marginBottom: 12 }}>
+            <DivisionTabs divisions={tournament?.divisions} active={resolvedDivision} onChange={setActiveDivision} />
           </div>
           {visible.map(st => <TeamRow key={st.id} st={st} />)}
           {visible.length === 0 && (
