@@ -95,6 +95,7 @@ Wciągnięte z `_archive/{NEXT_TASKS,DEPLOY_LOG,_LANDSCAPE_BACKLOG}.md` + `NIGHT
 | CC-19 | Pixel-diff baselines -linux/-mac | infra | regen poza -win32 (Oswald shift); zweryfikuj czy gate dziś zielony |
 | CC-20 | B20 cross-device same-UID presence | bug | passive-presence; low, edge-case |
 | CC-21 | Low-prio code-residuals batch | refactor | vite chunk limit · isFreePlay hide · invite resend · PPT retry · hmVisibility persist · composite indexes |
+| CC-22 | ✅ EU Pro team logos backfill | data | STAGE 1+2 DONE (branch `feat/eu-pro-team-logos`): 14 AVIF `public/team-logos/` + `logoUrl` względne wpisane `--live` na 13 kanonicznych docs (ext-preferred) + catalogVersion bump. **Czeka na merge GO** → deploy uwidoczni logo. **Open/escalate:** (a) not-in-DB: Paris Camp Carnage + Section Annecy (avif w zapasie, doca NIE tworzę); (b) **Cloudflare fix-list:** 23 istniejące `logoUrl` są ABSOLUTNE → migracja na względne przed cutoverem (osobny --live); (c) refresh-candidate: TonTon Arsenal (== Toulouse Tonton, już ma logo). Pipeline: `scripts/logos/*`, §107.3. |
 
 ### owner=CC — ❄️ PARKED (dotyka live scout / field-cluster — do GO po Birmingham)
 | # | Item | bucket | Notes |
