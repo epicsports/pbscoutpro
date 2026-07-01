@@ -3074,13 +3074,17 @@ export default function MatchPage() {
               role="button" aria-label={t('draw_aria')}
               onClick={enterDrawMode}
               style={{
-                // Sits BELOW the top-right base-side team label (top:8 row) so
-                // the "✏ Rysuj" chip no longer overlaps it (CD re-position brief;
-                // pure position change — zero data/behavior change).
-                position: 'absolute', top: 48, right: 8, zIndex: 35,
+                // CD brief (scout-point draw-button fix): the top corners are the
+                // reserved side-identity zone (the sideChip L/R pills below), so the
+                // draw tool moves OUT of them to the field's bottom-right corner —
+                // the identity strip is never occluded. Pure re-position — zero
+                // data/behavior change. Single tool only: the brief's "Pełny ekran"
+                // stack-mate was removed from MatchPage (a5c3f7b6, Jacek) and is
+                // deliberately NOT reintroduced. 44px hit target per § 27 + brief.
+                position: 'absolute', bottom: 12, right: 8, zIndex: 35,
                 display: 'inline-flex', alignItems: 'center', gap: 6,
-                minHeight: 36, padding: '0 12px',
-                borderRadius: 18,
+                minHeight: 44, padding: '0 14px',
+                borderRadius: 22,
                 background: 'rgba(15, 23, 42, 0.85)',
                 border: `1px solid ${COLORS.border}`,
                 color: COLORS.text,
