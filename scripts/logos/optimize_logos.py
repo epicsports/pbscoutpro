@@ -107,7 +107,7 @@ def trim(rgba):
 # logos have no frame, so without a margin scale(1.5) over-zooms them (Jacek:
 # "logosy drużyn w NXL EUROPE za duże"). Padding art to ~66% makes scale(1.5)
 # land the art at ~100% — same visual size as the framed legacy set.
-ART_FRAC = 0.66
+ART_FRAC = 0.79  # 0.66 × 1.2 — Jacek asked for +20% (2026-07-02)
 
 
 def process(src, out_path):
