@@ -31,7 +31,8 @@ const TYPES = {
   stroke: { pl: 'Rysunek', en: 'Draw',   color: '#f59e0b' },
   pin:    { pl: 'Notatka', en: 'Note',   color: '#22c55e' },
 };
-const SHOTS = [['toward', 'W stronę', 'Toward'], ['zone', 'W strefę', 'Into zone'], ['point', 'W punkt', 'Into point'], ['bounce', 'Bounce', 'Bounce']];
+// Shot menu: one generic shot + bounce (Jacek 2026-07-01 — zone/point removed).
+const SHOTS = [['toward', 'Strzał', 'Shot'], ['bounce', 'Bounce', 'Bounce']];
 const PHASES = [['breakout', 'Breakout'], ['mid', 'Mid'], ['endgame', 'Endgame']];
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
