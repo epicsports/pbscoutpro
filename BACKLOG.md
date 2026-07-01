@@ -44,6 +44,7 @@ Każdy request (feature / bug / pomysł / poprawka) **najpierw** ląduje tu jako
 | Screen | Design | Build | owner | Notes |
 |---|---|---|---|---|
 | Match scout / Live Point Tracker | ⚪ | ⚪❄️ | CD | i18n mismatch „Rysuj" PL vs EN; MatchPage #4 wide re-skin CD-gated (≥720 sign-off) |
+| Scout point landscape — „Rysuj" zasłania nazwy drużyn | 🔵 | 🟠❄️ | CD | Live-bug (Jacek 2026-07-01). Brief CD `briefs/scout-point-draw-button-fix.md` (proj. reads ⊖ Design System): górne rogi=chipy tożsamości L/R, narzędzia→prawy-dolny stack. **Interim SHIPPED `35b6a1bd`** (sam chip Rysuj `top:8→48`, GO'd freeze exception) — render-proof @1280 owed. **Pełny brief CD = szerszy reposition, NIE zbudowany** — czeka na decyzję: wyjątek GO przed Birmingham vs park. |
 | Tactic page (rysowanie po layoutach) | ⚪ | ⚪❄️ | CD | redundancja „Gotowe/Save", i18n, loupe LEFT; tactic-creation redesign (oś faz + Warstwy) |
 | Layout detail page | ⚪ | ⚪❄️ | CD | Lines+Zones panele → explicit fields; field-config + **obstacle UI „DUŻY BRAK"** + re-entry bug |
 | N7 FieldWorkspace shell + mode-wizard | ⚪ | ⚪❄️ | ARCH | strukturalny refaktor (stan LayoutDetailPage → wspólny hook) |
