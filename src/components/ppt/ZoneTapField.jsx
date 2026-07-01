@@ -57,8 +57,14 @@ export default function ZoneTapField({
       const cw = node.clientWidth;
       const fullAspect = img && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 2;
       const aspect = fullAspect / (isRight ? 2 : 1);
-      const w = cw;
-      const h = w / Math.max(0.2, aspect);
+      let w = cw;
+      let h = w / Math.max(0.2, aspect);
+      // Cap height like the app's other field views (height-constrained via
+      // maxCanvasHeight). Width-first alone let the zone-picker field balloon on
+      // wide / desktop containers — "layout strasznie duży" (Jacek 2026-07-02).
+      // The canvas is margin:0 auto, so a narrower w just centers.
+      const maxH = (typeof window !== 'undefined' ? window.innerHeight : 800) * 0.42;
+      if (h > maxH) { h = maxH; w = h * Math.max(0.2, aspect); }
       setSize({ w, h });
     };
     compute();
