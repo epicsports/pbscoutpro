@@ -65,21 +65,17 @@ function PointAxis({ phase, setPhase }) {
   }, [playing, idx]); // eslint-disable-line react-hooks/exhaustive-deps
   const pos = (idx / (PHASES.length - 1)) * 100;
   return (
-    <div style={{ flexShrink: 0, padding: '10px 18px 12px', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.sunken }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontFamily: FONT, fontSize: 9.5, fontWeight: 800, letterSpacing: '1.3px', color: COLORS.textMuted }}>{tx('OŚ PUNKTU', 'POINT TIMELINE')}</span>
-        <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, color: COLORS.textMuted }}>{PHASES[idx][1]}</span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+    <div style={{ flexShrink: 0, padding: '5px 14px 6px', borderTop: `1px solid ${ELEV.hairline}`, background: ELEV.sunken }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
         <div onClick={() => (idx >= PHASES.length - 1 ? (setPhase(PHASES[0][0]), setPlaying(true)) : setPlaying((p) => !p))}
-          style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: COLORS.accent, color: '#0a0e17', fontSize: 13 }}>{playing ? '❚❚' : '▶'}</div>
-        <div style={{ flex: 1, minWidth: 0, position: 'relative', height: 20, display: 'flex', alignItems: 'center' }}>
-          <div style={{ height: 5, width: '100%', borderRadius: 999, background: 'rgba(255,255,255,.08)', border: `1px solid ${ELEV.hairline}`, overflow: 'hidden' }}><div style={{ width: pos + '%', height: '100%', background: COLORS.accent }} /></div>
-          {PHASES.map((p, i) => { const pp = (i / (PHASES.length - 1)) * 100; const on = i === idx; return <div key={p[0]} onClick={() => setPhase(p[0])} style={{ position: 'absolute', left: pp + '%', top: '50%', transform: 'translate(-50%,-50%)', width: on ? 14 : 11, height: on ? 14 : 11, borderRadius: '50%', background: i <= idx ? COLORS.accent : ELEV.surface, border: `2px solid ${on ? '#fff' : (i <= idx ? COLORS.accent : ELEV.hairlineStrong)}`, cursor: 'pointer' }} />; })}
+          style={{ width: 26, height: 26, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: COLORS.accent, color: '#0a0e17', fontSize: 11 }}>{playing ? '❚❚' : '▶'}</div>
+        <div style={{ flex: 1, minWidth: 0, position: 'relative', height: 14, display: 'flex', alignItems: 'center' }}>
+          <div style={{ height: 4, width: '100%', borderRadius: 999, background: 'rgba(255,255,255,.08)', border: `1px solid ${ELEV.hairline}`, overflow: 'hidden' }}><div style={{ width: pos + '%', height: '100%', background: COLORS.accent }} /></div>
+          {PHASES.map((p, i) => { const pp = (i / (PHASES.length - 1)) * 100; const on = i === idx; return <div key={p[0]} onClick={() => setPhase(p[0])} style={{ position: 'absolute', left: pp + '%', top: '50%', transform: 'translate(-50%,-50%)', width: on ? 12 : 9, height: on ? 12 : 9, borderRadius: '50%', background: i <= idx ? COLORS.accent : ELEV.surface, border: `2px solid ${on ? '#fff' : (i <= idx ? COLORS.accent : ELEV.hairlineStrong)}`, cursor: 'pointer' }} />; })}
         </div>
       </div>
-      <div style={{ position: 'relative', height: 14, marginTop: 4 }}>
-        {PHASES.map((p, i) => { const pp = (i / (PHASES.length - 1)) * 100; return <span key={p[0]} onClick={() => setPhase(p[0])} style={{ position: 'absolute', left: pp + '%', transform: i === 0 ? 'none' : i === PHASES.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)', fontFamily: FONT, fontSize: 10.5, fontWeight: i === idx ? 800 : 700, color: i === idx ? COLORS.accent : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer' }}>{p[1]}</span>; })}
+      <div style={{ position: 'relative', height: 11, marginTop: 1 }}>
+        {PHASES.map((p, i) => { const pp = (i / (PHASES.length - 1)) * 100; return <span key={p[0]} onClick={() => setPhase(p[0])} style={{ position: 'absolute', left: pp + '%', transform: i === 0 ? 'none' : i === PHASES.length - 1 ? 'translateX(-100%)' : 'translateX(-50%)', fontFamily: FONT, fontSize: 9.5, fontWeight: i === idx ? 800 : 700, color: i === idx ? COLORS.accent : COLORS.textMuted, whiteSpace: 'nowrap', cursor: 'pointer' }}>{p[1]}</span>; })}
       </div>
     </div>
   );
