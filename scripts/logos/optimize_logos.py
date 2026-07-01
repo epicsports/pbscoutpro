@@ -101,17 +101,30 @@ def trim(rgba):
     return rgba.crop(bbox) if bbox else rgba
 
 
+# Art occupies this fraction of the square canvas — the rest is transparent
+# margin. TeamBadge renders logos at `transform: scale(1.5)` to crop the white
+# frame + padding that the LEGACY logo files ship with. Our trimmed transparent
+# logos have no frame, so without a margin scale(1.5) over-zooms them (Jacek:
+# "logosy drużyn w NXL EUROPE za duże"). Padding art to ~66% makes scale(1.5)
+# land the art at ~100% — same visual size as the framed legacy set.
+ART_FRAC = 0.66
+
+
 def process(src, out_path):
     img = load(src)
     rgba, mode = prepare(img)
     if mode != "OPAQUE-needs-mask":
         rgba = trim(rgba)
+    # fit the art into ART_FRAC of the canvas, centered, on transparent margin
+    art_edge = int(EDGE * ART_FRAC)
     w, h = rgba.size
-    scale = EDGE / max(w, h)
-    if scale < 1:
-        rgba = rgba.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
-    rgba.save(out_path, "AVIF", quality=AVIF_Q)
-    return mode, rgba.size
+    s = art_edge / max(w, h)
+    aw, ah = max(1, round(w * s)), max(1, round(h * s))
+    art = rgba.resize((aw, ah), Image.LANCZOS)
+    canvas = Image.new("RGBA", (EDGE, EDGE), (0, 0, 0, 0))
+    canvas.paste(art, ((EDGE - aw) // 2, (EDGE - ah) // 2), art)
+    canvas.save(out_path, "AVIF", quality=AVIF_Q)
+    return mode, canvas.size
 
 
 def main():
