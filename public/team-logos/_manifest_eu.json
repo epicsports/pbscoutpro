@@ -1,0 +1,184 @@
+[
+  {
+    "team": "Austin FSU",
+    "social": "https://www.instagram.com/austin.fsu/",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_4a6f97a8b17d42f286fa4dca5ea88001~mv2.png",
+    "file": "AustinFSU.avif",
+    "logoUrl": "team-logos/AustinFSU.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      171
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Ballistics Goettingen",
+    "social": "https://www.facebook.com/BallisticsGoettingen",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_048502886a744311aa429b15aa131a45~mv2.png",
+    "file": "BallisticsGoettingen.avif",
+    "logoUrl": "team-logos/BallisticsGoettingen.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      117
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Droogs Frankfurt",
+    "social": "https://www.instagram.com/droogspaintball?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_ce77b04afa0141ebb53048dd428592d1~mv2.png",
+    "file": "DroogsFrankfurt.avif",
+    "logoUrl": "team-logos/DroogsFrankfurt.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      282,
+      384
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Fivestar",
+    "social": "https://www.facebook.com/FiveStar.Paintball",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_08ca4e0c3e8e47f9bba29076ab0a240f~mv2.png",
+    "file": "FiveStar.avif",
+    "logoUrl": "team-logos/FiveStar.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      322
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Joy Division",
+    "social": "https://www.instagram.com/joydivisionstockholm/",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_9bf5ab7380434aefa2e5e7edbccef7d2~mv2.png",
+    "file": "JoyDivisionStockholm.avif",
+    "logoUrl": "team-logos/JoyDivisionStockholm.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      182
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "London Attrition",
+    "social": "https://www.facebook.com/londonattrition",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_364d7b036bf343389618a9d6e1f08a4c~mv2.png",
+    "file": "LondonAttrition.avif",
+    "logoUrl": "team-logos/LondonAttrition.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      73
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Manchester Firm",
+    "social": "https://www.facebook.com/Manchesterfirm",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_47fc5231dd3546f6bd551a65245ae600~mv2.png",
+    "file": "ManchesterFirm.avif",
+    "logoUrl": "team-logos/ManchesterFirm.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      224
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Comin At Ya",
+    "social": "https://www.facebook.com/CominAtYa",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_40cea5e03eb84b76bfd14d79f0823f69~mv2.png",
+    "file": "CominAtYa.avif",
+    "logoUrl": "team-logos/CominAtYa.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      219,
+      384
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Outrage Valence",
+    "social": "https://www.facebook.com/OutrageValence",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_ae20ee628ee7484eb38dfd5974387c0b~mv2.png",
+    "file": "Outrage.avif",
+    "logoUrl": "team-logos/Outrage.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      253
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Ranger Warsaw",
+    "social": "https://www.instagram.com/section_annecy/",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_bec04599827441b8b6b004f3b56cf909~mv2.png",
+    "file": "RangerWarsaw.avif",
+    "logoUrl": "team-logos/RangerWarsaw.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      75
+    ],
+    "status": "net-new-mispaired"
+  },
+  {
+    "team": "Ronholt Dynamite",
+    "social": "https://www.facebook.com/ronholtdynamite",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_88399c702dc94fc38ff1266e7f700b5c~mv2.png",
+    "file": "RonholtDynamite.avif",
+    "logoUrl": "team-logos/RonholtDynamite.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      289
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "Paris Camp Carnage",
+    "social": "https://www.instagram.com/paris_camp_carnage/",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_712a51d3d1cc41b38a01987aaf6fa1f4~mv2.png",
+    "file": "ParisCampCarnage.avif",
+    "logoUrl": "team-logos/ParisCampCarnage.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      373
+    ],
+    "status": "escalate-not-in-db"
+  },
+  {
+    "team": "Breakout Spa",
+    "social": "https://www.facebook.com/profile.php?id=100039888685453",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_7b1cc7da594f4e0ea19e0d384468613a~mv2.png",
+    "file": "Breakout.avif",
+    "logoUrl": "team-logos/Breakout.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      384,
+      281
+    ],
+    "status": "net-new"
+  },
+  {
+    "team": "SCALP",
+    "social": "https://www.facebook.com/profile.php?id=100048667162659",
+    "srcUrl": "https://static.wixstatic.com/media/63c306_532a620717564b3cb1547a7169ef3ae7~mv2.png",
+    "file": "Scalp.avif",
+    "logoUrl": "team-logos/Scalp.avif",
+    "mode": "preserved-alpha",
+    "size": [
+      339,
+      384
+    ],
+    "status": "net-new"
+  }
+]
