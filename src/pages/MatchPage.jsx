@@ -3074,7 +3074,10 @@ export default function MatchPage() {
               role="button" aria-label={t('draw_aria')}
               onClick={enterDrawMode}
               style={{
-                position: 'absolute', top: 8, right: 8, zIndex: 35,
+                // Sits BELOW the top-right base-side team label (top:8 row) so
+                // the "✏ Rysuj" chip no longer overlaps it (CD re-position brief;
+                // pure position change — zero data/behavior change).
+                position: 'absolute', top: 48, right: 8, zIndex: 35,
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 minHeight: 36, padding: '0 12px',
                 borderRadius: 18,
