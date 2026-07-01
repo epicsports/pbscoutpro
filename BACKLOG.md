@@ -106,6 +106,7 @@ Wciągnięte z `_archive/{NEXT_TASKS,DEPLOY_LOG,_LANDSCAPE_BACKLOG}.md` + `NIGHT
 | CC-P5 | B8 Strzela% denominator (data-trust) | bug | parked w data-validation workstream |
 | CC-P6 | Loupe pan-lag perf | perf | `loupeSourceRef` nigdy nie wypełniony; offscreen/throttle |
 | CC-P7 | `scoutShortName` dead-code cleanup (MatchPage) | refactor | martwy po collapsed-line redesign |
+| CC-P8 | Portrait expand/FS button na live-scout — ukryć w portrait | bug ❄️🔴 | **Już usunięty z MatchPage + zdeployowany (`a5c3f7b6`)** — jeśli Jacek widzi go na „Scouting…/SCOUT\|RYWAL", to najpewniej **stale PWA cache** (update appki). `FullscreenToggle` (Maximize2, dark rounded, top-right) żyje jeszcze tylko na `LayoutDetailPage:540` + `TacticPage:447` (frozen), gdzie `if(isLandscape)return null` = pokazuje się w PORTRAIT **celowo** (landscape sam immersuje). Prośba „tylko landscape" = odwrotność logiki komponentu. **Potrzebny zrzut + GO** (frozen). |
 
 ### owner=CD — design-needed (briefuję CD: APP_MAP komponenty + data-contract + zrzut)
 | # | Item | bucket | Notes |
