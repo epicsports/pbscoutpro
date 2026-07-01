@@ -192,8 +192,8 @@ function AppRoutes() {
             <Route path="/layout/:layoutId/tactic-edit/:tacticId" element={<RouteGuard><TacticEditorPage /></RouteGuard>} />
             {/* EMULATOR-ONLY capture-engine test rig (Stage 2.0 tactic golden) — dead in prod */}
             {import.meta.env.VITE_USE_EMULATOR === 'true' && <Route path="/test/capture" element={<TestCaptureHarness />} />}
-            {/* EMULATOR-ONLY tactical DrawingCanvas render rig (STAGE 1) — dead in prod */}
-            {import.meta.env.VITE_USE_EMULATOR === 'true' && <Route path="/test/tactical" element={<TacticalHarness />} />}
+            {/* Tactical DrawingCanvas render rig (STAGE 1) — emulator + preview only, dead in prod */}
+            {(import.meta.env.VITE_USE_EMULATOR === 'true' || import.meta.env.VITE_PREVIEW === '1') && <Route path="/test/tactical" element={<TacticalHarness />} />}
             <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
             <Route path="/player/checklist" element={<PackingChecklistPage />} />
             <Route path="/break" element={<TakeABreakPage />} />
