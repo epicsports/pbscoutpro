@@ -34,7 +34,8 @@ const TYPES = {
   stroke: { pl: 'Rysunek', en: 'Draw',   color: '#f59e0b' },
   pin:    { pl: 'Notatka', en: 'Note',   color: '#22c55e' },
 };
-const PHASES = [['breakout', 'Breakout'], ['mid', 'Mid'], ['endgame', 'Endgame']];
+// Phases like scouting (A7) — Breakout → Settle → Mid (pointPhases.js capture subset).
+const PHASES = [['breakout', 'Breakout'], ['settle', 'Settle'], ['mid', 'Mid']];
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
 // glass floating control (replaces prototype FIELD3F.FieldFloatTool)
@@ -117,7 +118,36 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
   const nid = () => 'e' + Date.now() + Math.round(Math.random() * 999);
   const upd = (id, patch) => setEls((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   const del = (id) => { setEls((es) => es.filter((e) => e.id !== id && e.playerId !== id)); setSel(null); };
-  const playerColor = (pl) => { const i = els.filter((e) => e.type === 'player').indexOf(pl); return PLAYER_COLORS[i % PLAYER_COLORS.length] || COLORS.accent; };
+  const playerColor = (pl) => PLAYER_COLORS[(((pl?.slot || 1) - 1) % PLAYER_COLORS.length + PLAYER_COLORS.length) % PLAYER_COLORS.length] || COLORS.accent;
+
+  // #7/A7 — phase carry-forward (scouting seedStageDraft): switching to a phase
+  // with no players yet SEEDS it by copying players + their entry lines from the
+  // nearest prior phase (same slot + position). Shots/bounce/pins/strokes do NOT
+  // carry — they are per-phase. `slot` is stable so player #N stays the same
+  // (number + colour) across phases even as positions diverge.
+  const seedPhase = (target) => {
+    setEls((es) => {
+      if (es.some((e) => e.type === 'player' && e.phase === target)) return es;
+      const order = PHASES.map((p) => p[0]);
+      const ti = order.indexOf(target);
+      for (let i = ti - 1; i >= 0; i--) {
+        const srcPlayers = es.filter((e) => e.type === 'player' && e.phase === order[i]);
+        if (srcPlayers.length) {
+          const stamp = Date.now();
+          const add = [];
+          srcPlayers.forEach((pl, k) => {
+            const newId = `p${stamp}_${k}`;
+            add.push({ ...pl, id: newId, phase: target });
+            const en = es.find((e) => e.type === 'entry' && e.playerId === pl.id && e.phase === order[i]);
+            if (en) add.push({ ...en, id: `en${stamp}_${k}`, playerId: newId, phase: target });
+          });
+          return [...es, ...add];
+        }
+      }
+      return es;
+    });
+  };
+  const switchPhase = (target) => { seedPhase(target); setPhase(target); };
 
   const placeTap = (p) => {
     if (shotMode) { // precision shot or bounce — tap the target
@@ -130,7 +160,7 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
       }
       setShotMode(null); return;
     }
-    if (tool === 'player') { setEls((es) => { if (es.filter((e) => e.type === 'player').length >= 5) return es; const id = nid(); return [...es, { id, type: 'player', x: p.x, y: p.y, phase }, { id: nid(), type: 'entry', playerId: id, base: { ...BASE }, mid: { x: (BASE.x + p.x) / 2, y: (BASE.y + p.y) / 2 }, to: { x: p.x, y: p.y }, color: TYPES.entry.color, phase }]; }); return; }
+    if (tool === 'player') { setEls((es) => { const used = es.filter((e) => e.type === 'player' && e.phase === phase).map((e) => e.slot); const slot = [1, 2, 3, 4, 5].find((s) => !used.includes(s)); if (!slot) return es; const id = nid(); return [...es, { id, type: 'player', slot, x: p.x, y: p.y, phase }, { id: nid() + 'e', type: 'entry', playerId: id, base: { ...BASE }, mid: { x: (BASE.x + p.x) / 2, y: (BASE.y + p.y) / 2 }, to: { x: p.x, y: p.y }, color: TYPES.entry.color, phase }]; }); return; }
     if (tool === 'pin') { setEls((es) => [...es, { id: nid(), type: 'pin', x: p.x, y: p.y, color: TYPES.pin.color, name: '', phase }]); return; }
   };
 
@@ -165,7 +195,6 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
 
   const inPhase = (e) => e.phase == null || e.phase === phase;
   const V = els.filter((e) => vis[e.type] && inPhase(e));
-  const players = els.filter((e) => e.type === 'player');
   const selEl = els.find((e) => e.id === sel);
   const spread = (via, to) => { const dx = to.x - via.x, dy = to.y - via.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L, r = 2.4; return [-1, 0, 1].map((k) => ({ x: to.x + nx * r * k, y: to.y + ny * r * k })); };
   const stop = { onPointerDown: (e) => e.stopPropagation(), onPointerUp: (e) => e.stopPropagation() };
@@ -202,7 +231,7 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
           ))}
           {V.filter((e) => e.type === 'bounce').map((e) => <React.Fragment key={e.id}>{spread(e.via, e.to).map((tp, i) => <Arrow key={i} from={e.via} to={tp} c={e.color} />)}{editing && <div onPointerDown={(ev) => startDrag(ev, e.id, 'via')} style={{ position: 'absolute', ...pt(e.via), width: 24, height: 24, marginLeft: -12, marginTop: -12, transform: 'rotate(45deg)', background: '#0b0e14', border: `3px solid ${e.color}`, boxShadow: sel === e.id ? `0 0 0 3px ${e.color}66` : `0 2px 8px rgba(0,0,0,.5)`, cursor: 'grab', zIndex: 6 }} />}{editing && <Handle p={e.to} id={e.id} ptKey="to" c={e.color} />}</React.Fragment>)}
           {V.filter((e) => e.type === 'pin').map((e) => <div key={e.id} onPointerDown={(ev) => startDrag(ev, e.id, null)} style={{ position: 'absolute', ...pt(e), transform: 'translate(-50%,-100%)', zIndex: 5, cursor: editing ? 'grab' : 'default' }}><svg width="30" height="26" viewBox="0 0 28 24" fill={e.color} stroke="#0b0e14" strokeWidth="1.5"><path d="M4 2h20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-7l-3 4-3-4H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" /><g fill="#0b0e14" stroke="none"><circle cx="10" cy="9.5" r="1.4" /><circle cx="14" cy="9.5" r="1.4" /><circle cx="18" cy="9.5" r="1.4" /></g></svg></div>)}
-          {V.filter((e) => e.type === 'player').map((e) => { const n = players.indexOf(e) + 1; const c = playerColor(e); return <div key={e.id} onPointerDown={(ev) => startDrag(ev, e.id, null)} onClick={(ev) => { if (!editing) return; ev.stopPropagation(); setSel(e.id); setShotMode(null); }} style={{ position: 'absolute', ...pt(e), transform: 'translate(-50%,-50%)', width: 30, height: 30, borderRadius: '50%', background: c, border: '2px solid #0a0e17', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 14, fontWeight: 900, cursor: editing ? 'grab' : 'default', boxShadow: sel === e.id ? `0 0 0 3px ${c}66` : ELEV.shadow1, zIndex: 7 }}>{n}</div>; })}
+          {V.filter((e) => e.type === 'player').map((e) => { const n = e.slot; const c = playerColor(e); return <div key={e.id} onPointerDown={(ev) => startDrag(ev, e.id, null)} onClick={(ev) => { if (!editing) return; ev.stopPropagation(); setSel(e.id); setShotMode(null); }} style={{ position: 'absolute', ...pt(e), transform: 'translate(-50%,-50%)', width: 30, height: 30, borderRadius: '50%', background: c, border: '2px solid #0a0e17', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 14, fontWeight: 900, cursor: editing ? 'grab' : 'default', boxShadow: sel === e.id ? `0 0 0 3px ${c}66` : ELEV.shadow1, zIndex: 7 }}>{n}</div>; })}
 
           {/* floating: layers (top-left) */}
           <div {...stop} style={{ position: 'absolute', top: 12, left: 12, zIndex: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -238,7 +267,7 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
           {/* PLAYER shot menu */}
           {editing && selEl && selEl.type === 'player' && (
             <div {...stop} style={{ position: 'absolute', left: `min(${selEl.x}%, calc(100% - 200px))`, top: `min(calc(${selEl.y}% + 12px), calc(100% - 210px))`, width: 190, background: ELEV.raised, border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: 12, boxShadow: ELEV.shadow2, padding: 10, zIndex: 25 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}><span style={{ width: 20, height: 20, borderRadius: '50%', background: TYPES.player.color, color: '#0a0e17', fontFamily: FONT, fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{players.indexOf(selEl) + 1}</span><span style={{ flex: 1, fontFamily: FONT, fontSize: 12.5, fontWeight: 800, color: COLORS.text }}>{tx('Strzał', 'Shot')}</span><span onClick={() => del(selEl.id)} style={{ fontSize: 15, color: COLORS.danger, cursor: 'pointer' }}>🗑</span></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}><span style={{ width: 20, height: 20, borderRadius: '50%', background: playerColor(selEl), color: '#fff', fontFamily: FONT, fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{selEl.slot}</span><span style={{ flex: 1, fontFamily: FONT, fontSize: 12.5, fontWeight: 800, color: COLORS.text }}>{tx('Strzał', 'Shot')}</span><span onClick={() => del(selEl.id)} style={{ fontSize: 15, color: COLORS.danger, cursor: 'pointer' }}>🗑</span></div>
               {/* B8 — [Strzał (precyzyjny, tap w cel)] + [Bounce] */}
               <div onClick={() => { setShotMode({ playerId: selEl.id, kind: 'precision' }); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px', borderRadius: 8, cursor: 'pointer', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, marginBottom: 5 }}>
                 <ToolIcon k="shot" c={TYPES.shot.color} size={15} /><span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{tx('Strzał', 'Shot')}</span>
@@ -267,7 +296,7 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
           {editing && <div {...stop} onClick={save} style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 23, background: COLORS.accent, color: '#0a0e17', borderRadius: 11, padding: '9px 16px', cursor: 'pointer', fontFamily: FONT, fontSize: 13.5, fontWeight: 800 }}>✓ {tx('Zapisz', 'Save')}</div>}
         </div>
       </div>
-      <PointAxis phase={phase} setPhase={setPhase} />
+      <PointAxis phase={phase} setPhase={switchPhase} />
     </div>
   );
   if (full) return <div style={{ position: 'fixed', inset: 0, zIndex: 120, background: '#05080f' }}>{inner}</div>;

@@ -7,9 +7,9 @@ import DrawingCanvas from '../components/tactical/DrawingCanvas';
 import { COLORS, FONT } from '../utils/theme';
 
 const SEED = [
-  { id: 'p1', type: 'player', x: 32, y: 30, phase: 'breakout' },
+  { id: 'p1', type: 'player', slot: 1, x: 32, y: 30, phase: 'breakout' },
   { id: 'en1', type: 'entry', playerId: 'p1', base: { x: 5, y: 50 }, mid: { x: 18, y: 40 }, to: { x: 32, y: 30 }, color: '#38bdf8', phase: 'breakout' },
-  { id: 'p2', type: 'player', x: 60, y: 62, phase: 'breakout' },
+  { id: 'p2', type: 'player', slot: 2, x: 60, y: 62, phase: 'breakout' },
   { id: 'en2', type: 'entry', playerId: 'p2', base: { x: 5, y: 50 }, mid: { x: 32, y: 56 }, to: { x: 60, y: 62 }, color: '#38bdf8', phase: 'breakout' },
   { id: 's1', type: 'shot', kind: 'precision', playerId: 'p1', from: { x: 32, y: 30 }, to: { x: 80, y: 20 }, color: '#ef4444', phase: 'breakout', time: null },
   { id: 'b1', type: 'bounce', playerId: 'p2', from: { x: 60, y: 62 }, via: { x: 74, y: 48 }, to: { x: 88, y: 66 }, color: '#a855f7', phase: 'breakout', time: null },
