@@ -8,7 +8,6 @@ import { useIsSuperAdmin } from '../../hooks/useIsSuperAdmin';
 import { leagueDisplayName } from '../../hooks/useLeagues';
 import { hasAnyRole, getRolesForUser, ADMIN_EMAILS, canEditTactics } from '../../utils/roleUtils';
 import ViewAsPill from '../ViewAsPill';
-import OpenTacticsAction from '../OpenTacticsAction';
 import { MoreShell, MoreSection, MoreItem } from './MoreShell';
 import TakeABreakSection from './TakeABreakSection';
 import { ConfirmModal } from '../ui';
@@ -98,11 +97,9 @@ export default function MoreTabContent({
       {canEditTactics(effectiveRoles) && (
         <MoreSection title={t('playbooks_label')}>
           <MoreItem iconName="book" testId="playbooks-entry" label={t('playbooks_subtitle')} onClick={() => navigate('/layouts')} />
-          {/* Coach Tactics board — same affordance as Konfig / tournament / training.
-              No layoutId → resolves the field itself (1 → go, N → picker). */}
-          <div style={{ padding: '8px 12px' }}>
-            <OpenTacticsAction variant="default" size="md" style={{ width: '100%', justifyContent: 'center' }} />
-          </div>
+          {/* Tactics door removed from the More menu (Jacek 2026-07-01) — it now
+              lives only on the coach's tournament screen (CoachTabContent), opening
+              the new DrawingCanvas module. */}
         </MoreSection>
       )}
 

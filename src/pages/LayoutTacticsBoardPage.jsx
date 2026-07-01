@@ -182,16 +182,6 @@ export default function LayoutTacticsBoardPage() {
 
   const artifactEl = (
     <div style={{ position: 'relative', flex: 1, minWidth: 0, minHeight: 0, display: 'flex' }}>
-      {/* STAGE 2 — door into the new DrawingCanvas tactics editor (additive; the
-          legacy board here stays until the STAGE 3 supersede). */}
-      <div role="button" aria-label={t('tactics_new_editor')} data-testid="open-tactics-canvas"
-        onClick={() => navigate(`/layout/${layoutId}/tactics-canvas`)}
-        style={{ position: 'absolute', top: 12, left: 12, zIndex: 30, display: 'inline-flex', alignItems: 'center', gap: 6,
-          minHeight: 36, padding: '0 12px', borderRadius: 18, cursor: 'pointer',
-          background: 'rgba(15,23,42,.85)', border: `1px solid ${COLORS.accent}`, color: COLORS.accent,
-          fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 800, backdropFilter: 'blur(8px)', WebkitTapHighlightColor: 'transparent' }}>
-        ✨ {t('tactics_new_editor')}
-      </div>
       {selectedTactic ? (
         <InteractiveCanvas
           fieldImage={field.fieldImage}

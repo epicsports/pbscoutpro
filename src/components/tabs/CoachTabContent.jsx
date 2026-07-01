@@ -304,10 +304,11 @@ export default function CoachTabContent({ tournamentId }) {
         )}
       </div>
 
-      {/* Coach Tactics board — contextual door (tournament's layout). */}
+      {/* Coach Tactics — the ONE tactics door (Jacek 2026-07-01): lives here on the
+          coach's tournament screen, opens the new DrawingCanvas module. */}
       {tournament?.layoutId && (
         <div style={{ marginBottom: SPACE.lg }}>
-          <OpenTacticsAction layoutId={tournament.layoutId} variant="default" size="md"
+          <OpenTacticsAction layoutId={tournament.layoutId} newEngine variant="default" size="md"
             style={{ width: '100%', justifyContent: 'center' }} />
         </div>
       )}

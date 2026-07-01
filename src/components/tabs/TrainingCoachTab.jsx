@@ -163,7 +163,7 @@ export default function TrainingCoachTab({ trainingId, training, layoutId }) {
       {/* Coach Tactics board — same contextual door (this training's layout). */}
       {layoutId && (
         <div style={{ marginBottom: SPACE.lg }}>
-          <OpenTacticsAction layoutId={layoutId} variant="default" size="md"
+          <OpenTacticsAction layoutId={layoutId} newEngine variant="default" size="md"
             style={{ width: '100%', justifyContent: 'center' }} />
         </div>
       )}
