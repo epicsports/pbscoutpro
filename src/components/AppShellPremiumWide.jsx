@@ -6,6 +6,7 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { leagueDisplayName } from '../hooks/useLeagues';
 import { useMatches, useActiveTeams, useScoutedTeams, useTournaments } from '../hooks/useFirestore';
 import DivisionTabs from './tabs/DivisionTabs';
+import OpenTacticsAction from './OpenTacticsAction';
 import { computeTeamRecords } from '../utils/teamStats';
 import StandingsTable from './tabs/StandingsTable';
 import MatchListPremium from './MatchListPremium';
@@ -295,6 +296,12 @@ function CoachWide({ tournamentId }) {
                     <div style={{ fontFamily: FONT, fontSize: 13, fontWeight: 500, color: COLORS.textDim, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t('analyze_opponent_sub', nameOf(selSt))}</div>
                   </div>
                   <span style={{ color: COLORS.accent, display: 'flex', flexShrink: 0 }}><RdIcon name="chevron" size={18} /></span>
+                </div>
+                {/* Tactics — right under Analyze opponent (Jacek 2026-07-02); opens the
+                    new DrawingCanvas module for this tournament's layout. */}
+                <div style={{ marginTop: 12 }}>
+                  <OpenTacticsAction layoutId={tournament?.layoutId} newEngine variant="default" size="md"
+                    style={{ width: '100%', justifyContent: 'center' }} />
                 </div>
                 {standingsRanked.length > 0 && (
                   <div style={{ marginTop: 24 }}>
