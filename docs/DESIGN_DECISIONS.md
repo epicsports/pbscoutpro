@@ -9021,6 +9021,33 @@ tenant-isolation + upload util + `getDownloadURL`) — only if URL-paste proves 
 The SW `images` runtime-cache `maxEntries` bump is moot under external URL-paste
 (cross-origin); only relevant if logos are ever served same-origin (Storage phase).
 **Team branding charter (§107) COMPLETE** for the URL-paste model.
+_(2026-07-01 correction: logos are now ALSO served **same-origin** — the curated
+NXL/EU set is self-hosted, see §107.3 — so the "only at Storage phase" caveat is
+superseded; same-origin logo serving exists today without Firebase Storage.)_
+
+### 107.3 Self-hosted logo set + acquisition pipeline (2026-07-01)
+The recognised NXL / NXL-EU teams don't rely on URL-paste — their logos are
+**self-hosted, transparent AVIF** in `public/team-logos/<Name>.avif` (Vite copies
+`public/` to the deploy root → served same-origin at `<base>team-logos/…`).
+- **`logoUrl` stores the RELATIVE path** `team-logos/<Name>.avif` (not absolute).
+  The app is a **HashRouter** SPA, so the document path is always `<base>` and a
+  relative img src resolves against it on **both** hosts — GitHub Pages (`/pbscoutpro/`)
+  and the future Cloudflare cutover (`/`). `TeamBadge`/`CrestBand` consume `logoUrl`
+  as-is (no BASE_URL prefixing needed). **New logos MUST be relative.**
+  - ⚠ **Cloudflare fix-list:** the ~23 pre-existing `logoUrl` values are **absolute**
+    (`https://epicsports.github.io/pbscoutpro/team-logos/…`) and will 404 after the
+    base changes to `/`. Migrate them to relative before/at the Cloudflare cutover
+    (separate `--live` batch; not done here).
+- **Naming convention:** `PascalCase`, spaces removed, ASCII-folded (precedent:
+  `NewYorkExtreme`, `TonTonArsenal`, `JungleCats`; diacritics → ASCII, e.g.
+  `Göttingen` → `BallisticsGoettingen`).
+- **Acquisition pipeline** (`scripts/logos/`): `collect_nxl_eu.mjs` (Playwright renders
+  the JS-driven Wix gallery → team tiles only, sponsors/league excluded) →
+  `optimize_logos.py` (Pillow: preserve existing alpha, else key a clean white bg,
+  else flag `OPAQUE-needs-mask`; trim → longest-edge 384 → AVIF q72) →
+  `_manifest_eu.json`. Source = the team's real logo (Wix) with CD's `crests-eu/`
+  set as fallback. `wire_eu_logos.cjs` sets `logoUrl` on the externalId-canonical
+  team doc (drift-guarded, idempotent, `catalogVersion`-bumped).
 
 ## 108. Self-log live visibility on PlayerStatsPage — read-side fold (shipped 2026-06-06)
 
