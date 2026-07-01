@@ -20,8 +20,22 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, Layers, Pencil, Maximize2, Minimize2 } from 'lucide-react';
 import { COLORS, FONT, ELEV } from '../../utils/theme';
 import { useLanguage } from '../../hooks/useLanguage';
+import { shotDirectionDeg } from '../../utils/shotGeometry';
 
 const DRAW_COLORS = ['#f59e0b', '#ef4444', '#22c55e', '#38bdf8', '#a855f7', '#ffffff', '#f472b6'];
+
+// A5 — directional shot zones (scouting vocabulary). Colors = scouting zone tokens
+// (theme.js): snake=cyan, center=slate, dorito=orange. Direction comes from the SAME
+// shotGeometry.shotDirectionDeg the live scout canvas uses → semantically identical.
+const ZONE_DIRS = [
+  ['snake', 'Snake', 'Snake', '#22d3ee'],
+  ['center', 'Środek', 'Center', '#94a3b8'],
+  ['dorito', 'Dorito', 'Dorito', '#fb923c'],
+];
+const ZONE_COLOR = { snake: '#22d3ee', center: '#94a3b8', dorito: '#fb923c' };
+// Real field aspect (matches the scout canvas + drawQuickShots radius basis).
+const FIELD_AR = { w: 1340, h: 900 };
+const CONE_R = 180; // 0.20 * min(1340,900) — same 20%-of-field radius as scouting
 
 const TYPES = {
   player: { pl: 'Gracz',   en: 'Player', color: COLORS.accent },
@@ -31,8 +45,6 @@ const TYPES = {
   stroke: { pl: 'Rysunek', en: 'Draw',   color: '#f59e0b' },
   pin:    { pl: 'Notatka', en: 'Note',   color: '#22c55e' },
 };
-// Shot menu: one generic shot + bounce (Jacek 2026-07-01 — zone/point removed).
-const SHOTS = [['toward', 'Strzał', 'Shot'], ['bounce', 'Bounce', 'Bounce']];
 const PHASES = [['breakout', 'Breakout'], ['mid', 'Mid'], ['endgame', 'Endgame']];
 const clamp = (v) => Math.max(0, Math.min(100, v));
 
@@ -95,7 +107,7 @@ function ToolIcon({ k, c, size = 18 }) {
   return null;
 }
 
-export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, seed = [], onSave }) {
+export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, seed = [], onSave, fieldSide = 'left', doritoSide = 'top' }) {
   const { lang } = useLanguage();
   const tx = (pl, en) => (lang === 'en' ? en : pl);
   const BASE = { x: base.x * 100, y: base.y * 100 }; // engine works in %-space (0..100)
@@ -104,7 +116,8 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
   const [tool, setTool] = useState('player');
   const [drawOpen, setDrawOpen] = useState(false);
   const [sel, setSel] = useState(null);
-  const [shotMode, setShotMode] = useState(null); // {playerId, kind}
+  const [shotMode, setShotMode] = useState(null); // {playerId, kind} — bounce (tap target)
+  const [dirExpand, setDirExpand] = useState(false); // player menu: directional sub-choice open
   const [color, setColor] = useState('#f59e0b');
   const [vis, setVis] = useState(() => Object.fromEntries(Object.keys(TYPES).map((k) => [k, true])));
   const [layersOpen, setLayersOpen] = useState(false);
@@ -121,12 +134,20 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
   const upd = (id, patch) => setEls((es) => es.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   const del = (id) => { setEls((es) => es.filter((e) => e.id !== id && e.playerId !== id)); setSel(null); };
 
+  // A5 — directional shot: no target tap, the zone (snake/center/dorito) defines
+  // the cone direction (same model as scouting quickShots). One cone per zone/player.
+  const addDir = (playerId, zone) => {
+    setEls((es) => {
+      if (es.some((e) => e.type === 'shot' && e.playerId === playerId && e.zone === zone && e.phase === phase)) return es;
+      return [...es, { id: nid(), type: 'shot', kind: 'directional', playerId, zone, color: ZONE_COLOR[zone], phase }];
+    });
+  };
+
   const placeTap = (p) => {
-    if (shotMode) {
+    if (shotMode) { // bounce only — tap the target
       const pl = els.find((e) => e.id === shotMode.playerId); if (!pl) { setShotMode(null); return; }
       const from = { x: pl.x, y: pl.y };
-      if (shotMode.kind === 'bounce') setEls((es) => [...es, { id: nid(), type: 'bounce', playerId: pl.id, from, via: { x: (from.x + p.x) / 2, y: (from.y + p.y) / 2 }, to: p, color: TYPES.bounce.color, phase, time: null }]);
-      else setEls((es) => [...es, { id: nid(), type: 'shot', playerId: pl.id, kind: shotMode.kind, from, to: p, color: TYPES.shot.color, phase, time: null }]);
+      setEls((es) => [...es, { id: nid(), type: 'bounce', playerId: pl.id, from, via: { x: (from.x + p.x) / 2, y: (from.y + p.y) / 2 }, to: p, color: TYPES.bounce.color, phase, time: null }]);
       setShotMode(null); return;
     }
     if (tool === 'player') { setEls((es) => { if (es.filter((e) => e.type === 'player').length >= 5) return es; const id = nid(); return [...es, { id, type: 'player', x: p.x, y: p.y, phase }, { id: nid(), type: 'entry', playerId: id, base: { ...BASE }, mid: { x: (BASE.x + p.x) / 2, y: (BASE.y + p.y) / 2 }, to: { x: p.x, y: p.y }, color: TYPES.entry.color, phase }]; }); return; }
@@ -181,12 +202,29 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
             {V.filter((e) => e.type === 'stroke').map((e) => <path key={e.id} d={e.d} fill="none" stroke={e.color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity={sel && sel !== e.id ? 0.55 : 1} />)}
             {stroke && <path d={stroke.d} fill="none" stroke={stroke.color} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
             {V.filter((e) => e.type === 'entry').map((e) => { const pts = e.mid ? [e.base, e.mid, e.to] : [e.base, e.to]; const d = pts.map((q, i) => (i ? 'L' : 'M') + q.x + ' ' + q.y).join(' '); return <path key={e.id} className="tac-entry" d={d} fill="none" stroke={e.color} strokeWidth={sel === e.id ? 3.6 : 3} strokeDasharray="0.4 3.6" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity={sel && sel !== e.id ? 0.55 : 1} />; })}
-            {V.filter((e) => e.type === 'shot').map((e) => <line key={e.id} className="tac-shot" x1={e.from.x} y1={e.from.y} x2={e.to.x} y2={e.to.y} stroke={e.color} strokeWidth={sel === e.id ? 3 : 2.2} strokeDasharray="4 3" strokeLinecap="round" vectorEffect="non-scaling-stroke" opacity={sel && sel !== e.id ? 0.55 : 1} />)}
+            {/* A5 directional shots (cones) render in the aspect-true SVG layer below,
+                not here — a cone needs real 1340×900 geometry for a correct angle. */}
             {V.filter((e) => e.type === 'bounce').map((e) => <g key={e.id} opacity={sel && sel !== e.id ? 0.55 : 1}><line className="tac-shot" x1={e.from.x} y1={e.from.y} x2={e.via.x} y2={e.via.y} stroke={e.color} strokeWidth="2.2" strokeDasharray="4 3" strokeLinecap="round" vectorEffect="non-scaling-stroke" />{spread(e.via, e.to).map((tp, i) => <line key={i} className="tac-shot" x1={e.via.x} y1={e.via.y} x2={tp.x} y2={tp.y} stroke={e.color} strokeWidth="1.8" strokeDasharray="3 2.5" strokeLinecap="round" vectorEffect="non-scaling-stroke" />)}</g>)}
+          </svg>
+          {/* A5 — directional shot cones. Drawn in aspect-true 1340×900 space so the
+              angle is correct, using the SAME shotDirectionDeg as the scout canvas.
+              The cone follows the player (reads live pl.x/pl.y). */}
+          <svg viewBox="0 0 1340 900" preserveAspectRatio="none" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+            {V.filter((e) => e.type === 'shot' && e.kind === 'directional').map((e) => {
+              const pl = players.find((x) => x.id === e.playerId); if (!pl) return null;
+              const cx = (pl.x / 100) * FIELD_AR.w, cy = (pl.y / 100) * FIELD_AR.h;
+              const dir = shotDirectionDeg(e.zone, fieldSide, doritoSide);
+              const a1 = ((dir - 7.5) * Math.PI) / 180, a2 = ((dir + 7.5) * Math.PI) / 180;
+              const x1 = cx + CONE_R * Math.cos(a1), y1 = cy + CONE_R * Math.sin(a1);
+              const x2 = cx + CONE_R * Math.cos(a2), y2 = cy + CONE_R * Math.sin(a2);
+              const d = `M${cx} ${cy} L${x1} ${y1} A${CONE_R} ${CONE_R} 0 0 1 ${x2} ${y2} Z`;
+              return <path key={e.id} d={d} fill={`${e.color}2e`} stroke={e.color} strokeWidth={sel === e.id ? 3 : 2} strokeLinejoin="round" vectorEffect="non-scaling-stroke" opacity={sel && sel !== e.id ? 0.5 : 1} />;
+            })}
           </svg>
           {/* arrowheads + handles + nodes (html) */}
           {V.filter((e) => e.type === 'entry').map((e) => <React.Fragment key={e.id}><Arrow from={e.mid || e.base} to={e.to} c={e.color} />{editing && <Handle p={e.base} id={e.id} ptKey="base" c={e.color} />}{editing && e.mid && <Handle p={e.mid} id={e.id} ptKey="mid" c={e.color} />}</React.Fragment>)}
-          {V.filter((e) => e.type === 'shot').map((e) => <React.Fragment key={e.id}><Arrow from={e.from} to={e.to} c={e.color} />{editing && <Handle p={e.to} id={e.id} ptKey="to" c={e.color} />}{e.time ? <div style={{ position: 'absolute', ...pt(midp(e.from, e.to)), transform: 'translate(-50%,-50%)', background: '#0b0e14cc', border: `1px solid ${e.color}`, color: e.color, borderRadius: 999, padding: '1px 6px', fontFamily: FONT, fontSize: 10, fontWeight: 800, zIndex: 5 }}>{e.time}s</div> : null}</React.Fragment>)}
+          {/* directional shots have no from/to handles — the cone (above) is the whole
+              affordance; selecting a shot = tapping its player's shot in the layers/menu. */}
           {V.filter((e) => e.type === 'bounce').map((e) => <React.Fragment key={e.id}>{spread(e.via, e.to).map((tp, i) => <Arrow key={i} from={e.via} to={tp} c={e.color} />)}{editing && <div onPointerDown={(ev) => startDrag(ev, e.id, 'via')} style={{ position: 'absolute', ...pt(e.via), width: 13, height: 13, marginLeft: -6.5, marginTop: -6.5, transform: 'rotate(45deg)', background: '#0b0e14', border: `2.5px solid ${e.color}`, cursor: 'grab', zIndex: 6 }} />}{editing && <Handle p={e.to} id={e.id} ptKey="to" c={e.color} />}</React.Fragment>)}
           {V.filter((e) => e.type === 'pin').map((e) => <div key={e.id} onPointerDown={(ev) => startDrag(ev, e.id, null)} style={{ position: 'absolute', ...pt(e), transform: 'translate(-50%,-100%)', zIndex: 5, cursor: editing ? 'grab' : 'default' }}><svg width="26" height="30" viewBox="0 0 24 28" fill={e.color} stroke="#0b0e14" strokeWidth="1.5"><path d="M12 1a8 8 0 0 0-8 8c0 6 8 17 8 17s8-11 8-17a8 8 0 0 0-8-8z" /><circle cx="12" cy="9" r="3.2" fill="#0b0e14" stroke="none" /></svg></div>)}
           {V.filter((e) => e.type === 'player').map((e) => { const n = players.indexOf(e) + 1; return <div key={e.id} onPointerDown={(ev) => startDrag(ev, e.id, null)} onClick={(ev) => { if (!editing) return; ev.stopPropagation(); setSel(e.id); setShotMode(null); }} style={{ position: 'absolute', ...pt(e), transform: 'translate(-50%,-50%)', width: 30, height: 30, borderRadius: '50%', background: TYPES.player.color, border: '2px solid #0a0e17', color: '#0a0e17', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT, fontSize: 14, fontWeight: 900, cursor: editing ? 'grab' : 'default', boxShadow: sel === e.id ? `0 0 0 3px ${TYPES.player.color}66` : ELEV.shadow1, zIndex: 7 }}>{n}</div>; })}
@@ -226,7 +264,26 @@ export default function DrawingCanvas({ fieldImage, base = { x: 0.05, y: 0.5 }, 
           {editing && selEl && selEl.type === 'player' && (
             <div {...stop} style={{ position: 'absolute', left: `min(${selEl.x}%, calc(100% - 200px))`, top: `min(calc(${selEl.y}% + 12px), calc(100% - 210px))`, width: 190, background: ELEV.raised, border: `1px solid ${ELEV.hairlineStrong}`, borderRadius: 12, boxShadow: ELEV.shadow2, padding: 10, zIndex: 25 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}><span style={{ width: 20, height: 20, borderRadius: '50%', background: TYPES.player.color, color: '#0a0e17', fontFamily: FONT, fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{players.indexOf(selEl) + 1}</span><span style={{ flex: 1, fontFamily: FONT, fontSize: 12.5, fontWeight: 800, color: COLORS.text }}>{tx('Strzał', 'Shot')}</span><span onClick={() => del(selEl.id)} style={{ fontSize: 15, color: COLORS.danger, cursor: 'pointer' }}>🗑</span></div>
-              {SHOTS.map((s) => <div key={s[0]} onClick={() => { setShotMode({ playerId: selEl.id, kind: s[0] }); setSel(null); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px', borderRadius: 8, cursor: 'pointer', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, marginBottom: 5 }}><ToolIcon k={s[0] === 'bounce' ? 'bounce' : 'shot'} c={s[0] === 'bounce' ? TYPES.bounce.color : TYPES.shot.color} size={15} /><span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{tx(s[1], s[2])}</span></div>)}
+              {/* A5/B8 — [Kierunkowy → snake/środek/dorito] + [Bounce] */}
+              {!dirExpand && (
+                <div onClick={() => setDirExpand(true)} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px', borderRadius: 8, cursor: 'pointer', background: ELEV.surface, border: `1px solid ${ELEV.hairline}`, marginBottom: 5 }}>
+                  <ToolIcon k="shot" c={TYPES.shot.color} size={15} /><span style={{ flex: 1, fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>{tx('Kierunkowy', 'Directional')}</span><span style={{ color: COLORS.textMuted, fontWeight: 800 }}>›</span>
+                </div>
+              )}
+              {dirExpand && (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 5 }}>
+                  {ZONE_DIRS.map(([z, plLbl, en, c]) => (
+                    <div key={z} onClick={() => { addDir(selEl.id, z); setSel(null); setDirExpand(false); }}
+                      style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '8px 4px', borderRadius: 8, cursor: 'pointer', background: ELEV.surface, border: `1px solid ${c}66` }}>
+                      <span style={{ width: 10, height: 10, borderRadius: '50%', background: c }} />
+                      <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.text }}>{tx(plLbl, en)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div onClick={() => { setShotMode({ playerId: selEl.id, kind: 'bounce' }); setSel(null); setDirExpand(false); }} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px', borderRadius: 8, cursor: 'pointer', background: ELEV.surface, border: `1px solid ${ELEV.hairline}` }}>
+                <ToolIcon k="bounce" c={TYPES.bounce.color} size={15} /><span style={{ fontFamily: FONT, fontSize: 13, fontWeight: 700, color: COLORS.text }}>Bounce</span>
+              </div>
             </div>
           )}
           {/* element inspector (shot/entry/bounce/pin) */}

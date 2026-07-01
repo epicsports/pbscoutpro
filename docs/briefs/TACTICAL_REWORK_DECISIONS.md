@@ -11,7 +11,7 @@ Silnik: `src/components/tactical/DrawingCanvas.jsx` (branch `feat/tactical-drawi
 | A2 | Runners (`runners[5]`) | **Zostawiamy jak prod** |
 | A3 | Bumpy (`bumps[5]`) | **Zostawiamy jak prod** |
 | A4 | Bump shots (`bumpShots[5]`) | Zostawiamy jak prod, ale **stylujemy jako nowe strzały** |
-| A5 | Strzały gracza | **Wszystkie 3 sposoby:** (a) **stożek** = strzał w ogólny kierunek (snake / środek / dorito); (b) **animowana linia** = strzał w strefę; (c) **punktowy** = strzał w punkt |
+| A5 | Strzały gracza | **UPROSZCZONE (Jacek, 2026-07-01):** w taktyce + analizie pola gracza **tylko strzał KIERUNKOWY** (stożek snake/środek/dorito, model `quickShots` + `shotGeometry.shotDirectionDeg`). Tryby „w strefę" i „w punkt" **NIE** tu. Menu = [Strzał] → [Podstawowy=kierunkowy \| Bounce]. |
 | A6 | Freehand (`freehandStrokes`) | **Modyfikujemy o cały nowy silnik rysowania + funkcje** |
 | A7 | Fazy | **Fazy jak wszędzie** (Breakout>Settle>Mid), przedstawione **tak jak wszędzie** (spójny StageSwitcher) |
 | A8 | Run lines (baza→gracz) | **Animujemy** (dziś statyczne) |
