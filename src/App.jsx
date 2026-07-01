@@ -40,6 +40,7 @@ const LayoutWizardPage = lazy(() => import('./pages/LayoutWizardPage'));
 const TacticPage = lazy(() => import('./pages/TacticPage'));
 const LayoutTacticsBoardPage = lazy(() => import('./pages/LayoutTacticsBoardPage'));
 const TacticEditorPage = lazy(() => import('./pages/TacticEditorPage'));
+const TacticalHarness = lazy(() => import('./pages/TacticalHarness'));
 const TestCaptureHarness = lazy(() => import('./pages/TestCaptureHarness'));
 const BunkerEditorPage = lazy(() => import('./pages/BunkerEditorPage'));
 const BallisticsPage = lazy(() => import('./pages/BallisticsPage'));
@@ -191,6 +192,8 @@ function AppRoutes() {
             <Route path="/layout/:layoutId/tactic-edit/:tacticId" element={<RouteGuard><TacticEditorPage /></RouteGuard>} />
             {/* EMULATOR-ONLY capture-engine test rig (Stage 2.0 tactic golden) — dead in prod */}
             {import.meta.env.VITE_USE_EMULATOR === 'true' && <Route path="/test/capture" element={<TestCaptureHarness />} />}
+            {/* EMULATOR-ONLY tactical DrawingCanvas render rig (STAGE 1) — dead in prod */}
+            {import.meta.env.VITE_USE_EMULATOR === 'true' && <Route path="/test/tactical" element={<TacticalHarness />} />}
             <Route path="/player/:playerId/stats" element={<PlayerStatsPage />} />
             <Route path="/player/checklist" element={<PackingChecklistPage />} />
             <Route path="/break" element={<TakeABreakPage />} />
