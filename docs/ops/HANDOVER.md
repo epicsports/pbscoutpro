@@ -2,6 +2,15 @@
 
 > **Purpose:** Living state-of-the-project for Opus chats (architect / strategy sessions). Read this before drafting any CC brief or making decisions about direction.
 
+> **⏸ RESUME AFTER PC RESET — 2026-07-01 (main HEAD `35b6a1bd`).** Jacek reset the PC mid-autonomous-run. On restart do the CLAUDE.md "On open" protocol (read BACKLOG, git log, **scan `_inbox/`**), then:
+> 1. **RE-ARM the hourly `_inbox` check** — the cron (`ecc3317a`, hourly at :17) was **session-only** and died with the reset. Recreate it (CronCreate, prompt = scan+process `_inbox/` per §CD-DRAFT, silent if nothing new). Note the 7-day recurring auto-expiry.
+> 2. **CD connection** — Jacek says a direct CD channel may now exist. Check available tools/MCP for a CD connector on startup; if present, use it. Until then the `_inbox/` file convention (`BACKLOG__*.md` / `BRIEF__*.md`) stands.
+> 3. **CC-1 wide-shell e2e — NOT merged.** Branch `test/wide-shell-e2e` (`58bb415b`, worktree survives reset). 4/4 green via `npm run test:e2e:wide`. ⚠ Has one flagged **app-line** change (prod-inert `VITE_WIDE_E2E` opt-in in `AppShell.jsx` — needed because `VITE_USE_EMULATOR` double-duty disabled the wide shell for e2e). Review + decide merge; folding into the CI gate + blessing the flag is an ARCH follow-up.
+> 4. **Draw-chip re-position (35b6a1bd) — render-proof OWED.** Shipped 🟠 (GO'd freeze exception): Rysuj chip moved `top:8→48` to clear the base label. Landscape-only → capture @1280 (or Jacek prod smoke) then mark 🟢. Verify it doesn't now collide with anything below.
+> 5. **Missing CD drops** — `scout-point-draw-button-fix.md`, `_backlog-scout-point-fix.md`, `_BACKLOG_backfill.md` (design-orphans) were referenced but never landed in `_inbox/`. If they appear, process per §CD-DRAFT.
+> 6. **Open for Jacek:** CC-13 (route-guard access policy — which bracket for `/teams`,`/players`,`/my-issues`), CC-16 (ARCH: externalId team-dedup brief), CC-P8 (portrait FS button — likely stale PWA cache; needs screenshot). Field-cluster stays ❄️ frozen (only GO'd exception = the draw-chip re-position above).
+> Full backlog + owner triage: `BACKLOG.md`. Both P0 scout-point bugs verified FIXED (side-swap + concurrent). team-consolidation ✅, bugfix-red ✅.
+
 > **🧵 ACTIVE WORKSTREAM — "Point as Timeline" (Punkt jako Oś czasu).** Charter: `docs/POINT_AS_TIMELINE.md` (D1–D3 LOCKED 2026-06-02). Current stage = **Stage 2** (phase-spine + end-state, scout-side, additive). Opus writes the Stage 2 build brief next.
 
 > **🔚 SESSION WRAP — 2026-06-26→27 (CC, marathon day + night autonomy; Jacek "go as far as you can"). Main HEAD = `3b82500c`.** Render-first design-sync marathon, then the crest package overnight.
