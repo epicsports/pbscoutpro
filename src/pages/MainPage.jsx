@@ -88,13 +88,16 @@ export default function MainPage({ onSignOut, workspaceName }) {
 
   const isTrainingMode = !!trainingId;
 
-  // If saved id no longer exists, drop it.
+  // If saved id no longer exists, drop it. Gate on `!tournamentsLoading` (NOT on
+  // `tournaments.length`): a workspace with ZERO tournaments (e.g. a fresh second
+  // workspace) still has a stale persisted id to clear — the old `tournaments.length`
+  // guard could never fire there, stranding the wide shell on an infinite loader.
   useEffect(() => {
-    if (tournamentId && tournaments.length && !tournament) {
+    if (tournamentId && !tournamentsLoading && !tournament) {
       setTournamentId(null);
       try { localStorage.removeItem(TOURN_KEY); } catch {}
     }
-  }, [tournamentId, tournament, tournaments.length]);
+  }, [tournamentId, tournament, tournamentsLoading]);
 
   useEffect(() => {
     if (trainingId && trainings.length && !training) {

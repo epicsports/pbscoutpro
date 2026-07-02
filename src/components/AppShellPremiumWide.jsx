@@ -405,7 +405,13 @@ export default function AppShellPremiumWide({ children, activeTab, onTabChange, 
   const [playerView, setPlayerView] = useState(false);
   const onSelectTab = (key) => { if (key === 'ppt') { setPlayerView(true); } else { setPlayerView(false); onTabChange(key); } };
   const activeKey = playerView ? 'ppt' : activeTab;
-  const realTournament = tournamentId && !tournament?._isTraining;
+  // Gate the wide-shell bodies (MatchListPremium/CoachWide) on a RESOLVED tournament
+  // object, not the raw `tournamentId`. A stale `tournamentId` (persisted in
+  // localStorage from another workspace) that no longer resolves used to still pass
+  // here — routing into MatchListPremium/CoachTabContent whose `if (!tournament)`
+  // returned an INFINITE <Preloader loop/> (the wide-shell wedge). Requiring the
+  // resolved `tournament` falls through to `children` (the normal empty-state) instead.
+  const realTournament = tournamentId && tournament && !tournament._isTraining;
   const scoutWide = !playerView && activeTab === 'scout' && realTournament;
   const coachWide = !playerView && activeTab === 'coach' && realTournament;
   return (
