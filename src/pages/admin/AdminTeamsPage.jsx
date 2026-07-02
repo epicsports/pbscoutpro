@@ -173,7 +173,7 @@ export default function AdminTeamsPage() {
     { key: 'children', label: t('admin_teams_filter_children') },
     { key: 'with-extid', label: t('admin_teams_filter_with_extid') },
     { key: 'no-extid', label: t('admin_teams_filter_no_extid') },
-    ...(dupGroupCount > 0 ? [{ key: 'duplicates', label: `⚠ Duplicates (${dupTeamIds.size})`, danger: true }] : []),
+    ...(dupGroupCount > 0 ? [{ key: 'duplicates', label: t('admin_teams_filter_duplicates', dupTeamIds.size), danger: true }] : []),
     { key: 'retired', label: t('admin_teams_filter_retired') },
   ];
 
@@ -202,7 +202,7 @@ export default function AdminTeamsPage() {
           }}>
             <span style={{ fontSize: 16 }}>⚠</span>
             <span style={{ flex: 1 }}>
-              {dupGroupCount} externalId {dupGroupCount === 1 ? 'duplicate' : 'duplicates'} detected.
+              {t('admin_teams_duplicate_banner', dupGroupCount)}
             </span>
             <Btn variant="default" size="sm" onClick={() => updateParams({ filter: 'duplicates', page: 0 })}>
               {t('admin_teams_review_duplicates')}
@@ -252,7 +252,7 @@ export default function AdminTeamsPage() {
             ? t('loading_default')
             : total === 0
               ? t('admin_teams_no_match_filter')
-              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} of ${total}${teams.length !== total ? ` (filtered from ${teams.length})` : ''}`}
+              : t('admin_teams_result_count', pageStart + 1, Math.min(pageStart + PAGE_SIZE, total), total, teams.length !== total, teams.length)}
         </div>
 
         {/* List */}
@@ -260,34 +260,34 @@ export default function AdminTeamsPage() {
           <EmptyState icon="🛡" text={t('b13_admin_no_teams')} subtitle={search || filter !== 'all' || liga ? t('admin_teams_try_change_filters') : t('admin_teams_bootstrap_missing')} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
-            {paged.map(t => {
-              const isDup = dupTeamIds.has(t.id);
-              const isRetired = !!t.retiredAt;
-              const childCount = (childrenByParent[t.id] || []).length;
+            {paged.map(team => {
+              const isDup = dupTeamIds.has(team.id);
+              const isRetired = !!team.retiredAt;
+              const childCount = (childrenByParent[team.id] || []).length;
               const parts = [];
-              if (t.parentTeamId) {
-                const parent = teams.find(x => x.id === t.parentTeamId);
-                parts.push(`child of ${parent?.name || '—'}`);
+              if (team.parentTeamId) {
+                const parent = teams.find(x => x.id === team.parentTeamId);
+                parts.push(t('admin_teams_child_of', parent?.name || '—'));
               } else if (childCount > 0) {
-                parts.push(`parent · ${childCount} ${childCount === 1 ? 'child' : 'children'}`);
+                parts.push(t('admin_teams_parent_with_count', childCount));
               }
-              if (t.leagues?.length) parts.push(t.leagues.join('/'));
-              if (t.externalId) parts.push(`extId ${t.externalId.slice(0, 8)}…`);
+              if (team.leagues?.length) parts.push(team.leagues.join('/'));
+              if (team.externalId) parts.push(t('admin_teams_extid_truncated', team.externalId.slice(0, 8)));
               if (isRetired) parts.push('🗄 retired');
 
               const titlePrefix = isDup ? '⚠ ' : '';
               return (
                 <Card
-                  key={t.id}
-                  iconLeft={<TeamBadge team={t} size={36} />}
-                  title={`${titlePrefix}${t.name || '—'}`}
+                  key={team.id}
+                  iconLeft={<TeamBadge team={team} size={36} />}
+                  title={`${titlePrefix}${team.name || '—'}`}
                   subtitle={parts.join(' · ') || ' '}
                   /* § team-edit unification — body-tap AND ⋮→Edit both open the
                      SHARED team-detail page (roster + branding + country +
                      sister teams + audit, admin-gated). ⋮ keeps only the admin
                      OPERATIONS (resolve-duplicate / retire / restore). */
-                  onClick={() => navigate(`/team/${t.id}?from=admin`)}
-                  actions={<MoreBtn onClick={() => setActionFor(t)} />}
+                  onClick={() => navigate(`/team/${team.id}?from=admin`)}
+                  actions={<MoreBtn onClick={() => setActionFor(team)} />}
                 />
               );
             })}
@@ -344,8 +344,8 @@ export default function AdminTeamsPage() {
         open={!!retireFor}
         onClose={() => { if (!pending) { setRetireFor(null); setRetireError(null); } }}
         title={retireFor && (childrenByParent[retireFor.id]?.length > 0)
-          ? `⚠ Retire ${retireFor.name} with ${childrenByParent[retireFor.id].length} children?`
-          : `Retire ${retireFor?.name}?`}
+          ? t('admin_teams_retire_with_children_title', retireFor.name, childrenByParent[retireFor.id].length)
+          : t('admin_teams_retire_title', retireFor?.name)}
         footer={null}
       >
         {retireFor && (

@@ -229,7 +229,7 @@ export default function TrainingMoreTab({
               {t('training_name') || 'Nazwa (opcjonalnie)'}
             </div>
             <Input value={editName} onChange={setEditName}
-              placeholder={trainingTeam?.name ? `np. ${trainingTeam.name} — pre-NXL` : t('training_name_input_placeholder')} />
+              placeholder={trainingTeam?.name ? t('training_name_placeholder_example', trainingTeam.name) : t('training_name_input_placeholder')} />
           </div>
           <div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>

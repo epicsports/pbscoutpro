@@ -52,7 +52,7 @@ export default function LeagueFormModal({ open, onClose, league }) {
     else if (!/^[A-Z0-9]{2,10}$/.test(sn)) e.shortName = t('league_form_shortname_error_format');
     else {
       const taken = allLeagues.find(L => L.shortName && L.shortName.toLowerCase() === sn.toLowerCase() && L.id !== league?.id);
-      if (taken) e.shortName = `already in use (${taken.id})`;
+      if (taken) e.shortName = t('league_form_shortname_error_duplicate', taken.id);
     }
     if (!name.trim()) e.name = t('form_field_required');
     else if (name.trim().length > 50) e.name = t('league_form_name_error_max_chars');
@@ -63,7 +63,7 @@ export default function LeagueFormModal({ open, onClose, league }) {
       const seen = new Set();
       for (const d of cleaned) {
         const key = d.name.trim().toLowerCase();
-        if (seen.has(key)) { e.divisions = `duplicate division name "${d.name}"`; break; }
+        if (seen.has(key)) { e.divisions = t('league_form_divisions_error_duplicate_name', d.name); break; }
         seen.add(key);
       }
     }
