@@ -67,6 +67,11 @@ Reality-pass 2026-06-30: 90% było shipnięte, gate-fix `AdminTeamsPage`→super
 | Tournament team picker · Add-to-tournament | 🟢 | child dziedziczy ligę+dywizję rodzica (`MatchListPremium.jsx`) |
 | Profile-claim (Safari) | 🟢 | nie-obecny w bieżącym kodzie; owed: 1× Safari smoke live-bundla |
 
+## EPIC: hotfix — wide-shell stale-tournament wedge — ✅ SHIPPED (96353fda, 2026-07-02)
+| Screen | Build | owner | Notes |
+|---|---|---|---|
+| Tablet/desktop wide shell — infinite loader on 2nd workspace | 🟢 | CC | Jacek GO (event, „fix today"). Stale `pbscoutpro_activeTournament` z innego workspace + workspace z 0 turniejami → `AppShellPremiumWide` gejtowało `realTournament` na surowym `tournamentId` → `MatchListPremium`/`CoachTabContent` `if(!tournament)` → nieskończony `<Preloader loop/>`. Fix: gate na **resolved** `tournament` (`AppShellPremiumWide.jsx:408`) + cleanup stale-id na `!tournamentsLoading` zamiast `tournaments.length` (`MainPage.jsx:93`). Phone nietknięty. **⭐ dokładnie klasa CC-1 (wide-shell 0 e2e) — bug dotarł do usera bez gate'a.** |
+
 ---
 
 ## 📋 PEŁNY BACKLOG FUNKCJONALNOŚCI — backfill 2026-06-30
