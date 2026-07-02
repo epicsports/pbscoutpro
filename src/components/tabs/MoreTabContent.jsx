@@ -52,7 +52,7 @@ export default function MoreTabContent({
   const tournamentSubtitle = [
     leagueDisplayName(tournament?.league),
     tournament?.year,
-    tournament?.matchCount && `${tournament.matchCount} meczy`,
+    tournament?.matchCount && t('matches_count', tournament.matchCount),
   ].filter(Boolean).join(' · ');
 
   return (
@@ -461,10 +461,10 @@ function InlineLanguageRow({ t: _t }) {
 }
 
 function LanguageRowBody() {
-  const { lang, setLang } = useLanguage();
+  const { lang, setLang, t } = useLanguage();
   const next = lang === 'pl' ? 'en' : 'pl';
   const flag = lang === 'pl' ? '🇵🇱' : '🇬🇧';
-  const langName = lang === 'pl' ? 'Polski' : 'English';
+  const langName = lang === 'pl' ? t('language_pl') : t('language_en');
   return (
     <MoreItem
       iconName="globe"

@@ -596,7 +596,7 @@ function EditTournamentModal({ open, onClose, tournament, tournamentId }) {
           <div>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('layout_assigned_label')}</div>
             <Select value={layoutId} onChange={setLayoutId} style={{ width: '100%', minHeight: TOUCH.minTarget }}>
-              <option value="">— no layout —</option>
+              <option value="">{t('no_layout_option')}</option>
               {layouts.map(l => (
                 <option key={l.id} value={l.id}>{l.name} ({leagueDisplayName(l.league)} {l.year})</option>
               ))}

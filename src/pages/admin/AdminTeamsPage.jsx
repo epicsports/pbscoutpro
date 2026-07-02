@@ -167,14 +167,14 @@ export default function AdminTeamsPage() {
   };
 
   const filterPills = [
-    { key: 'all', label: 'All' },
-    { key: 'active', label: 'Active' },
-    { key: 'parents', label: 'Parents' },
-    { key: 'children', label: 'Children' },
-    { key: 'with-extid', label: 'With extId' },
-    { key: 'no-extid', label: 'No extId' },
+    { key: 'all', label: t('admin_leagues_filter_all') },
+    { key: 'active', label: t('admin_leagues_filter_active') },
+    { key: 'parents', label: t('admin_teams_filter_parents') },
+    { key: 'children', label: t('admin_teams_filter_children') },
+    { key: 'with-extid', label: t('admin_teams_filter_with_extid') },
+    { key: 'no-extid', label: t('admin_teams_filter_no_extid') },
     ...(dupGroupCount > 0 ? [{ key: 'duplicates', label: `⚠ Duplicates (${dupTeamIds.size})`, danger: true }] : []),
-    { key: 'retired', label: '🗄 Retired' },
+    { key: 'retired', label: t('admin_teams_filter_retired') },
   ];
 
   // Liga → Dywizja kit filters (canonical order). Dywizja options come from the
@@ -182,8 +182,8 @@ export default function AdminTeamsPage() {
   const divisionOptions = (leaguesList.find(L => L.shortName === liga)?.divisions || [])
     .map(d => ({ value: d.name, label: d.name }));
   const searchFilters = [
-    { key: 'liga', label: 'Liga', value: liga, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
-    { key: 'dyw', label: 'Dywizja', value: dyw, onChange: (v) => updateParams({ dyw: v, page: 0 }), allLabel: 'wszystkie', options: divisionOptions },
+    { key: 'liga', label: t('league_label'), value: liga, onChange: setLiga, allLabel: t('all_label'), options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+    { key: 'dyw', label: t('division_label'), value: dyw, onChange: (v) => updateParams({ dyw: v, page: 0 }), allLabel: t('all_label'), options: divisionOptions },
   ];
 
   return (
@@ -205,7 +205,7 @@ export default function AdminTeamsPage() {
               {dupGroupCount} externalId {dupGroupCount === 1 ? 'duplicate' : 'duplicates'} detected.
             </span>
             <Btn variant="default" size="sm" onClick={() => updateParams({ filter: 'duplicates', page: 0 })}>
-              Review duplicates →
+              {t('admin_teams_review_duplicates')}
             </Btn>
           </div>
         )}
@@ -214,7 +214,7 @@ export default function AdminTeamsPage() {
         <SearchFilterPanel
           search={search}
           onSearchChange={(v) => updateParams({ search: v, page: 0 })}
-          searchPlaceholder="🔍 Search team name or extId…"
+          searchPlaceholder={t('admin_teams_search_placeholder')}
           filters={searchFilters}
           style={{ marginBottom: SPACE.sm }}
         />
@@ -229,7 +229,7 @@ export default function AdminTeamsPage() {
             <option value="name">{t('admin_players_sort_name')}</option>
             <option value="updatedAt">{t('b13_admin_sort_updated_desc')}</option>
           </Select>
-          <Btn variant="accent" onClick={() => navigate('/team/new?from=admin')}>+ New team</Btn>
+          <Btn variant="accent" onClick={() => navigate('/team/new?from=admin')}>{t('admin_teams_add_team_button')}</Btn>
         </div>
 
         {/* Filter pills */}
@@ -249,15 +249,15 @@ export default function AdminTeamsPage() {
           marginBottom: SPACE.sm,
         }}>
           {loading
-            ? 'Loading…'
+            ? t('loading_default')
             : total === 0
-              ? 'No teams match the current filter.'
+              ? t('admin_teams_no_match_filter')
               : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} of ${total}${teams.length !== total ? ` (filtered from ${teams.length})` : ''}`}
         </div>
 
         {/* List */}
         {!loading && total === 0 ? (
-          <EmptyState icon="🛡" text={t('b13_admin_no_teams')} subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.3.a bootstrap missing?'} />
+          <EmptyState icon="🛡" text={t('b13_admin_no_teams')} subtitle={search || filter !== 'all' || liga ? t('admin_teams_try_change_filters') : t('admin_teams_bootstrap_missing')} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {paged.map(t => {

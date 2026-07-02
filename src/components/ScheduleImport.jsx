@@ -81,10 +81,10 @@ export default function ScheduleImport({ open, onClose, tournament, teams, scout
     // To re-enable: requires server-side Cloud Function migration (Phase 3+).
     // Client-side Claude API key bundling violates production security model.
     if (!STATIC_FLAGS.ENABLE_VISION_API) {
-      setError('AI Vision OCR is disabled — use CSV schedule import instead.');
+      setError(t('schedule_import_vision_disabled'));
       return;
     }
-    if (!imageData || !apiKey) { setError('No image or API key'); return; }
+    if (!imageData || !apiKey) { setError(t('schedule_import_no_image_or_key')); return; }
     setApiKeyStorage(apiKey);
     setStep('processing');
     setError('');
@@ -162,7 +162,7 @@ Rules:
           try { parsed = JSON.parse(attempt + '"}]}'); break; } catch {}
           attempt = attempt.slice(0, -1);
         }
-        if (!parsed) throw new Error(`OCR failed: ${e1.message}. Try with a smaller image or clearer schedule.`);
+        if (!parsed) throw new Error(t('schedule_import_ocr_failed_retry').replace('{{message}}', e1.message));
       }
 
       setOcrResult(parsed);
@@ -243,7 +243,7 @@ Rules:
         if (meta.event && !tournament.name) updates.name = meta.event;
         if (Object.keys(updates).length) {
           await ds.updateTournament(tournamentId, updates);
-          log.push(`✅ Updated tournament data`);
+          log.push(t('schedule_import_log_updated_tournament'));
         }
       }
 
@@ -260,7 +260,7 @@ Rules:
           const divisions = ocrDiv ? { [tournament.league]: ocrDiv } : {};
           const ref = await ds.addTeam({ name, leagues: [tournament.league], divisions });
           teamIdMap[name] = ref.id;
-          log.push(`➕ Created team: ${name}${ocrDiv ? ` (${ocrDiv})` : ''}`);
+          log.push(t('schedule_import_log_created_team').replace('{{name}}', name).replace('{{division}}', ocrDiv ? ` (${ocrDiv})` : ''));
         } else {
           teamIdMap[name] = mapping;
         }
@@ -279,7 +279,7 @@ Rules:
           const teamRoster = players.filter(p => playerOnTeam(p, teamId)).map(p => p.id);
           const ref = await ds.addScoutedTeam(tournamentId, { teamId, division, roster: teamRoster });
           scoutedIdMap[teamId] = ref.id;
-          log.push(`➕ Added to tournament: ${name}${division ? ` (${division})` : ''}`);
+          log.push(t('schedule_import_log_added_to_tournament').replace('{{name}}', name).replace('{{division}}', division ? ` (${division})` : ''));
         } else {
           scoutedIdMap[teamId] = scoutedEntry.id;
         }
@@ -309,12 +309,12 @@ Rules:
         created++;
       }
 
-      log.push(`✅ Created ${created} matches (${skipped} skipped)`);
+      log.push(t('schedule_import_log_created_matches').replace('{{created}}', created).replace('{{skipped}}', skipped));
       setImportLog(log);
       setStep('done');
     } catch (e) {
       console.error('Import failed:', e);
-      log.push(`❌ Error: ${e.message}`);
+      log.push(t('schedule_import_log_error').replace('{{message}}', e.message));
       setImportLog(log);
       setStep('done');
     }
@@ -338,7 +338,7 @@ Rules:
             <div style={{ display: 'flex', gap: 6 }}>
               <Input value={apiKey} onChange={setApiKey} placeholder="sk-ant-..." style={{ flex: 1, fontSize: TOUCH.fontSm }} />
               <Btn variant="accent" size="sm" onClick={() => { setApiKeyStorage(apiKey); setShowKeyInput(false); }}>
-                <Icons.Check /> Save
+                <Icons.Check /> {t('save')}
               </Btn>
             </div>
           </div>
@@ -355,11 +355,11 @@ Rules:
         {step === 'upload' && (
           <>
             <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.textDim }}>
-              Take a photo of the tournament schedule and upload it. Claude will read the table and extract matches.
+              {t('schedule_import_instruction_upload')}
             </div>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImageSelect} style={{ display: 'none' }} />
             <Btn variant="default" onClick={() => fileRef.current?.click()} style={{ minHeight: 48 }}>
-              📷 {imagePreview ? 'Change image' : 'Select schedule image'}
+              📷 {imagePreview ? t('schedule_import_change_image') : t('schedule_import_select_image')}
             </Btn>
             {imagePreview && (
               <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
@@ -369,7 +369,7 @@ Rules:
             {error && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.danger }}>{error}</div>}
             <Btn variant="accent" onClick={handleOCR} disabled={!imageData || !apiKey}
               style={{ minHeight: 48, justifyContent: 'center' }}>
-              🔍 Read schedule (Claude Vision)
+              🔍 {t('schedule_import_read_schedule_btn')}
             </Btn>
           </>
         )}
@@ -391,7 +391,7 @@ Rules:
               <div style={{ padding: 10, background: COLORS.surfaceLight, borderRadius: 8, border: `1px solid ${COLORS.border}` }}>
                 <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, fontWeight: 700, color: COLORS.textDim, textTransform: 'uppercase', marginBottom: 4 }}>{t('schedule_import_tournament_data')}</div>
                 {ocrResult.meta.event && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontSm, color: COLORS.text }}>{ocrResult.meta.event}</div>}
-                {ocrResult.meta.division && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>Division: {ocrResult.meta.division}</div>}
+                {ocrResult.meta.division && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>{t('label_division')}{ocrResult.meta.division}</div>}
                 {ocrResult.meta.location && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📍 {ocrResult.meta.location}</div>}
                 {ocrResult.meta.date && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📅 {ocrResult.meta.date}</div>}
                 {ocrResult.meta.rules && <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim }}>📋 {ocrResult.meta.rules}</div>}
@@ -421,9 +421,9 @@ Rules:
                       border: `1px solid ${currentMapping ? COLORS.success + '60' : COLORS.border}`,
                       minHeight: 44,
                     }}>
-                    <option value="">— match —</option>
+                    <option value="">{t('schedule_import_match_placeholder')}</option>
                     {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                    <option value="__new__">➕ Create new: "{name}"</option>
+                    <option value="__new__">{t('schedule_import_create_new_team').replace('{{name}}', name)}</option>
                   </select>
                   {bestMatch && bestMatch.score >= 0.7 && (
                     <span style={{ fontSize: 10, color: COLORS.success, whiteSpace: 'nowrap' }}>{t('b13_schedule_auto_match')}</span>

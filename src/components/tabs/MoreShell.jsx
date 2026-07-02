@@ -182,7 +182,7 @@ export function LanguageSection() {
   const { lang, setLang, t } = useLanguage();
   const next = lang === 'pl' ? 'en' : 'pl';
   const flag = lang === 'pl' ? '🇵🇱' : '🇬🇧';
-  const langName = lang === 'pl' ? 'Polski' : 'English';
+  const langName = lang === 'pl' ? t('language_pl') : t('language_en');
   return (
     <MoreSection title={t('language_section') || 'Język'}>
       <MoreItem

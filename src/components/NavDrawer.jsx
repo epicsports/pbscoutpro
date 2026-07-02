@@ -35,7 +35,7 @@ export default function NavDrawer({ open, onClose, children }) {
   if (!open) return null;
 
   const roleLine = [
-    isAdmin ? (t('role_admin') || 'Admin') : null,
+    isAdmin ? t('role_admin') : null,
     ...(roles || []).filter(r => r !== 'admin').map(r => t(`role_${r}`) || r),
   ].filter(Boolean).join(' · ');
 
@@ -94,7 +94,7 @@ export default function NavDrawer({ open, onClose, children }) {
           </div>
           <div
             role="button"
-            aria-label={t('close') || 'Close'}
+            aria-label={t('close')}
             data-testid="nav-drawer-close"
             onClick={onClose}
             style={{
@@ -127,9 +127,9 @@ export default function NavDrawer({ open, onClose, children }) {
           borderTop: `1px solid ${ELEV.hairline}`,
           flexShrink: 0,
         }}>
-          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '.5px' }}>{`reads · v${APP_VERSION}`}</span>
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, color: COLORS.textMuted, letterSpacing: '.5px' }}>{`${t('app_name')} · v${APP_VERSION}`}</span>
           <span style={{ width: 3, height: 3, borderRadius: '50%', background: COLORS.textMuted }} />
-          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '1px' }}>PAINTBALL INTELLIGENCE</span>
+          <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: COLORS.textMuted, letterSpacing: '1px' }}>{t('brand_tagline')}</span>
         </div>
       </div>
     </>
@@ -148,7 +148,7 @@ export function ReadsBallButton({ onClick }) {
   return (
     <div
       role="button"
-      aria-label={t('nav_menu_label') || 'Menu'}
+      aria-label={t('nav_menu_label')}
       data-testid="nav-ball"
       onClick={onClick}
       style={{

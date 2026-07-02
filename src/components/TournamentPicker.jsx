@@ -3,6 +3,7 @@ import BottomSheet from './BottomSheet';
 import { useTournaments, useTrainings, useActiveTeams } from '../hooks/useFirestore';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE } from '../utils/theme';
 import { leagueDisplayName } from '../hooks/useLeagues';
+import { useLanguage } from '../hooks/useLanguage';
 
 /**
  * TournamentPicker — bottom sheet listing tournaments AND trainings
@@ -15,6 +16,7 @@ import { leagueDisplayName } from '../hooks/useLeagues';
  * Closed items collapsed by default — tap header to expand.
  */
 export default function TournamentPicker({ open, onClose, onSelect, onNew, activeTournamentId, activeTrainingId }) {
+  const { t } = useLanguage();
   const { tournaments } = useTournaments();
   const { trainings } = useTrainings();
   const { teams } = useActiveTeams();
@@ -41,7 +43,7 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
     };
   }, [tournaments, trainings, activeTournamentId, activeTrainingId]);
 
-  const teamName = (teamId) => teams.find(t => t.id === teamId)?.name || 'Training';
+  const teamName = (teamId) => teams.find(team => team.id === teamId)?.name || t('training');
 
   const handleNew = () => {
     onClose?.();
@@ -59,7 +61,7 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
         letterSpacing: '.5px',
         padding: `0 ${SPACE.xs}px ${SPACE.md}px`,
       }}>
-        Tournaments & trainings
+        {t('tournament_picker_title')}
       </div>
 
       {activeRows.length === 0 && closedRows.length === 0 && (
@@ -70,7 +72,7 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
           textAlign: 'center',
           padding: SPACE.xl,
         }}>
-          No tournaments or trainings yet
+          {t('tournament_picker_empty_all')}
         </div>
       )}
 
@@ -98,7 +100,7 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
           textAlign: 'center',
           padding: `${SPACE.lg}px ${SPACE.md}px`,
         }}>
-          No active tournaments or trainings.
+          {t('tournament_picker_empty_closed_only')}
         </div>
       )}
 
@@ -124,7 +126,7 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
               textTransform: 'uppercase', color: COLORS.textDim,
               letterSpacing: '.5px',
             }}>
-              Closed ({closedRows.length})
+              {t('tournament_picker_closed_section_header', closedRows.length)}
             </span>
           </div>
           {showClosed && closedRows.map(row => (
@@ -159,21 +161,22 @@ export default function TournamentPicker({ open, onClose, onSelect, onNew, activ
           gap: 6,
           WebkitTapHighlightColor: 'transparent',
         }}>
-        + New tournament or training
+        {t('main_new_event_btn')}
       </div>
     </BottomSheet>
   );
 }
 
 function Row({ row, active, teamName, onClick }) {
+  const { t } = useLanguage();
   const isClosed = row.status === 'closed';
   const isTraining = row.kind === 'training';
   const dotColor = active ? COLORS.success : isClosed ? COLORS.textMuted : COLORS.borderLight;
   const label = isTraining
-    ? (row.name || `${teamName(row.teamId)} — ${row.date || 'Practice'}`)
+    ? (row.name || `${teamName(row.teamId)} — ${row.date || t('training_practice_fallback')}`)
     : row.name;
   const subtitle = isTraining
-    ? [row.name ? teamName(row.teamId) : null, row.date, `${(row.attendees || []).length} players`].filter(Boolean).join(' · ')
+    ? [row.name ? teamName(row.teamId) : null, row.date, t('squads_players_subtitle', (row.attendees || []).length)].filter(Boolean).join(' · ')
     : (row.year ? String(row.year) : '');
 
   return (
@@ -228,10 +231,10 @@ function Row({ row, active, teamName, onClick }) {
           (Training / league), side by side on the same surface. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
         {isClosed && (
-          <Badge label="CLOSED" bg={`${COLORS.textMuted}20`} color={COLORS.textMuted} />
+          <Badge label={t('tournament_picker_closed_badge')} bg={`${COLORS.textMuted}20`} color={COLORS.textMuted} />
         )}
         {isTraining ? (
-          <Badge label="Training" bg="#22d3ee18" color="#22d3ee" />
+          <Badge label={t('training')} bg="#22d3ee18" color="#22d3ee" />
         ) : row.league ? (
           <Badge label={leagueDisplayName(row.league)} bg={`${COLORS.accent}15`} color={COLORS.accent} />
         ) : null}
@@ -241,6 +244,7 @@ function Row({ row, active, teamName, onClick }) {
 }
 
 export function TestBadge() {
+  const { t } = useLanguage();
   return (
     <span style={{
       fontFamily: FONT, fontSize: 10, fontWeight: 700,
@@ -248,7 +252,7 @@ export function TestBadge() {
       border: `1px solid ${COLORS.borderLight}`, borderRadius: 3,
       padding: '1px 4px', marginLeft: 4,
       verticalAlign: 'middle',
-    }}>TEST</span>
+    }}>{t('test_tag')}</span>
   );
 }
 

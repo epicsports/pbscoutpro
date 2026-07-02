@@ -161,16 +161,16 @@ export default function AppShell({
 
               {/* Type badge — grayed out when ended, otherwise cyan (training) / amber (league) */}
               {tournament._isTraining ? (
-                <HeaderBadge label="TRENING" color={isEnded ? COLORS.textMuted : '#22d3ee'} />
+                <HeaderBadge label={t('tournament_badge_training')} color={isEnded ? COLORS.textMuted : '#22d3ee'} />
               ) : tournament.league ? (
                 <HeaderBadge label={leagueDisplayName(tournament.league)} color={isEnded ? COLORS.textMuted : COLORS.accent} />
               ) : null}
 
               {/* LIVE badge — only when actually live and not ended */}
-              {!isEnded && tournament.status === 'live' && <HeaderBadge label="LIVE" color={COLORS.success} />}
+              {!isEnded && tournament.status === 'live' && <HeaderBadge label={t('match_live_label')} color={COLORS.success} />}
 
               {tournament.isTest && (
-                <HeaderBadge label="TEST" color={COLORS.textMuted} />
+                <HeaderBadge label={t('test_tag')} color={COLORS.textMuted} />
               )}
             </div>
             {(tournamentSubtitle || isEnded) && (

@@ -95,7 +95,7 @@ export default function InviteSection({ slug, roles }) {
       {/* Primary: email-keyed invite (durable). */}
       <input
         type="email" autoComplete="off" inputMode="email"
-        placeholder={t('invite_email_ph') || 'E-mail zawodnika'}
+        placeholder={t('invite_email_ph')}
         value={email} onChange={(e) => setEmail(e.target.value)}
         style={{
           width: '100%', boxSizing: 'border-box', minHeight: TOUCH.minTarget,
@@ -105,18 +105,18 @@ export default function InviteSection({ slug, roles }) {
         }}
       />
       <Btn variant="accent" size="lg" onClick={sendEmail} disabled={emailBusy || !email.trim()} style={{ width: '100%' }}>
-        {emailBusy ? (t('loading') || 'Loading…') : (t('invite_send_email') || 'Wyślij zaproszenie e-mailem')}
+        {emailBusy ? t('loading') : t('invite_send_email')}
       </Btn>
 
       {emailSentTo && (
         <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.success }}>
-          {(t('invite_email_sent') || 'Zaproszenie wysłane na')} {emailSentTo}
+          {t('invite_email_sent')} {emailSentTo}
         </div>
       )}
 
       {/* Fallback: anonymous open-link (token) — for when no email is known. */}
       <Btn variant="default" size="md" onClick={generate} disabled={busy} style={{ width: '100%' }}>
-        {busy ? (t('loading') || 'Loading…') : (t('invite_generate') || 'Generate invite link')}
+        {busy ? t('loading') : t('invite_generate')}
       </Btn>
 
       {error && (
@@ -132,10 +132,10 @@ export default function InviteSection({ slug, roles }) {
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.text, wordBreak: 'break-all' }}>{link}</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: SPACE.sm }}>
             <span style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, fontWeight: 600, color: COLORS.textMuted }}>
-              {(t('invite_expires') || 'Expires')} {expiresAt ? new Date(expiresAt).toLocaleDateString(langToLocale(lang)) : ''} · {t(`role_${role}`) || role}
+              {t('invite_expires')} {expiresAt ? new Date(expiresAt).toLocaleDateString(langToLocale(lang)) : ''} · {t(`role_${role}`) || role}
             </span>
             <Btn variant="default" size="md" onClick={copy}>
-              {copied ? (t('invite_copied') || 'Copied!') : (t('invite_copy') || 'Copy')}
+              {copied ? t('invite_copied') : t('invite_copy')}
             </Btn>
           </div>
         </div>

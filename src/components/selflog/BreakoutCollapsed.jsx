@@ -41,7 +41,7 @@ export default function BreakoutCollapsed({ bunker, doritoSide = 'top', onChange
       <span style={{
         fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 700,
         color: COLORS.black, opacity: 0.7,
-      }}>{t('selflog_breakout_change') || 'Zmień'} ⌄</span>
+      }}>{t('selflog_breakout_change')} ⌄</span>
     </button>
   );
 }

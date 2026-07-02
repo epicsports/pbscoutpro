@@ -473,7 +473,7 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
               <div
                 onClick={handleTrainingPillTap}
                 role="button"
-                aria-label={t('ppt_pill_change_aria') || 'Zmień trening'}
+                aria-label={t('ppt_pill_change_aria')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   marginTop: 12, padding: '11px 12px', minHeight: 44,
@@ -626,13 +626,13 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
                   flex: 1, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
                   color: COLORS.text, lineHeight: 1.4,
                 }}>
-                  {t('ppt_unlinked_banner') || 'Logujesz bez profilu — punkty trafią do gracza po połączeniu.'}
+                  {t('ppt_unlinked_banner')}
                 </span>
                 <span style={{
                   color: COLORS.accent, fontSize: 11, fontWeight: 800,
                   letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
                 }}>
-                  {t('ppt_unlinked_banner_cta') || 'Połącz'}
+                  {t('ppt_unlinked_banner_cta')}
                 </span>
               </div>
             )}
@@ -767,7 +767,7 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
       <div
         onClick={handleTrainingPillTap}
         role="button"
-        aria-label={t('ppt_pill_change_aria') || 'Zmień trening'}
+        aria-label={t('ppt_pill_change_aria')}
         style={{
           margin: wide ? '14px auto 2px' : `14px ${SPACE.lg}px 2px`,
           maxWidth: wide ? 700 : undefined,
@@ -810,7 +810,7 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
           letterSpacing: 0.3, textTransform: 'uppercase',
           flexShrink: 0,
         }}>
-          {t('ppt_pill_change') || 'Zmień'}
+          {t('ppt_pill_change')}
         </span>
       </div>
 
@@ -841,13 +841,13 @@ export default function WizardShell({ training, layout, playerId, uid, todaysPoi
             fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
             color: COLORS.text, lineHeight: 1.4,
           }}>
-            {t('ppt_unlinked_banner') || 'Logujesz bez profilu — punkty trafią do gracza po połączeniu.'}
+            {t('ppt_unlinked_banner')}
           </span>
           <span style={{
             color: COLORS.accent, fontSize: 11, fontWeight: 800,
             letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
           }}>
-            {t('ppt_unlinked_banner_cta') || 'Połącz'}
+            {t('ppt_unlinked_banner_cta')}
           </span>
         </div>
       )}

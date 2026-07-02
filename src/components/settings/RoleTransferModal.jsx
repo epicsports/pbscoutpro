@@ -6,8 +6,6 @@ import { useWorkspace } from '../../hooks/useWorkspace';
 import { getRolesForUser, ROLES } from '../../utils/roleUtils';
 import * as ds from '../../services/dataService';
 
-const CONFIRM_TOKEN = 'TRANSFER';
-
 /**
  * Admin transfer modal — § 38.3 atomic transfer semantics.
  *
@@ -22,6 +20,7 @@ const CONFIRM_TOKEN = 'TRANSFER';
  */
 export default function RoleTransferModal({ open, target, onClose, onSuccess }) {
   const { t } = useLanguage();
+  const CONFIRM_TOKEN = t('members_transfer_confirm_token');
   const { workspace, user } = useWorkspace();
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
@@ -69,7 +68,7 @@ export default function RoleTransferModal({ open, target, onClose, onSuccess }) 
     <Modal
       open={open}
       onClose={onClose}
-      title={t('members_transfer_title') || 'Transfer admina'}
+      title={t('members_transfer_title')}
       footer={
         <div style={{ display: 'flex', gap: SPACE.sm, width: '100%' }}>
           <Btn variant="ghost" onClick={onClose} style={{ flex: 1 }}>
@@ -80,7 +79,7 @@ export default function RoleTransferModal({ open, target, onClose, onSuccess }) 
             onClick={handleTransfer}
             disabled={!canConfirm}
             style={{ flex: 2 }}
-          >{t('members_transfer_confirm') || 'Transferuj admina'}</Btn>
+          >{t('members_transfer_confirm')}</Btn>
         </div>
       }
     >

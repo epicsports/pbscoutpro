@@ -70,8 +70,8 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
 
   const validate = () => {
     const e = {};
-    if (!fName.trim()) e.name = 'required';
-    if (fPhotoURL.trim() && !/^https?:\/\//.test(fPhotoURL.trim())) e.photoURL = 'must start with http(s)://';
+    if (!fName.trim()) e.name = t('form_field_required');
+    if (fPhotoURL.trim() && !/^https?:\/\//.test(fPhotoURL.trim())) e.photoURL = t('validation_error_url_format');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -131,7 +131,7 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
       onClose();
     } catch (err) {
       console.error('Player save failed:', err);
-      setSubmitError(err?.message || 'Save failed — see console');
+      setSubmitError(err?.message || t('save_error_with_console_hint'));
     } finally {
       setSaving(false);
     }
@@ -218,13 +218,13 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
             <FieldRow label={t('player_form_class_label')}>
               <Select value={fPlayerClass} onChange={setFPlayerClass} style={{ width: '100%' }}>
                 <option value="">{t('player_form_none_option')}</option>
-                <option value="Pro">Pro</option>
-                <option value="Semi-Pro">Semi-Pro</option>
-                <option value="D1">D1</option>
-                <option value="D2">D2</option>
-                <option value="D3">D3</option>
-                <option value="D4">D4</option>
-                <option value="D5">D5</option>
+                <option value="Pro">{t('player_class_pro')}</option>
+                <option value="Semi-Pro">{t('player_class_semi_pro')}</option>
+                <option value="D1">{t('player_class_d1')}</option>
+                <option value="D2">{t('player_class_d2')}</option>
+                <option value="D3">{t('player_class_d3')}</option>
+                <option value="D4">{t('player_class_d4')}</option>
+                <option value="D5">{t('player_class_d5')}</option>
               </Select>
             </FieldRow>
           </div>
@@ -255,7 +255,7 @@ export default function PlayerFormModal({ open, onClose, player, onRequestDelete
             </button>
             {showAudit && (
               <div style={{ padding: SPACE.sm, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceDark, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <AuditRow label="ID" value={<code style={{ color: COLORS.text }}>{player.id}</code>} />
+                <AuditRow label={t('player_form_audit_id')} value={<code style={{ color: COLORS.text }}>{player.id}</code>} />
                 <AuditRow label={t('player_form_audit_origin')} value={player.originWorkspace || '—'} />
                 <AuditRow label={t('player_form_audit_created')} value={formatTs(player.createdAt)} />
                 <AuditRow label={t('player_form_audit_updated')} value={formatTs(player.updatedAt)} />

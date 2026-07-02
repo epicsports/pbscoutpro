@@ -237,7 +237,7 @@ export default function MemberCard({
                 marginTop: 2,
                 overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
               }}>
-                {pbliId ? `PBLI ${pbliId}` : ''}
+                {pbliId ? `${t('member_pbli_prefix')}${pbliId}` : ''}
                 {pbliId && email ? ' · ' : ''}
                 {email || ''}
               </div>

@@ -132,7 +132,7 @@ export default function AdminPlayersPage() {
       if (editing && editing !== 'new' && editing.id === deleteFor.id) setEditing(null);
     } catch (err) {
       console.error('Delete player failed:', err);
-      setDeleteError(err?.message || 'Delete failed — see console');
+      setDeleteError(err?.message || t('admin_players_delete_error'));
     } finally {
       setPending(false);
     }
@@ -194,10 +194,10 @@ export default function AdminPlayersPage() {
         <SearchFilterPanel
           search={search}
           onSearchChange={(v) => updateParams({ search: v, page: 0 })}
-          searchPlaceholder="🔍 Search name, nickname, number…"
+          searchPlaceholder={t('admin_players_search_placeholder')}
           filters={[
-            { key: 'liga', label: 'Liga', value: liga, onChange: setLiga, allLabel: 'wszystkie', options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
-            { key: 'dyw', label: 'Dywizja', value: dyw, onChange: (v) => updateParams({ dyw: v, page: 0 }), allLabel: 'wszystkie', options: (leaguesList.find(L => L.shortName === liga)?.divisions || []).map(d => ({ value: d.name, label: d.name })) },
+            { key: 'liga', label: 'Liga', value: liga, onChange: setLiga, allLabel: t('admin_leagues_filter_all'), options: leaguesList.map(L => ({ value: L.shortName, label: L.shortName })) },
+            { key: 'dyw', label: 'Dywizja', value: dyw, onChange: (v) => updateParams({ dyw: v, page: 0 }), allLabel: t('admin_leagues_filter_all'), options: (leaguesList.find(L => L.shortName === liga)?.divisions || []).map(d => ({ value: d.name, label: d.name })) },
           ]}
           style={{ marginBottom: SPACE.sm }}
         />
@@ -213,8 +213,8 @@ export default function AdminPlayersPage() {
             <option value="updatedAt">{t('b13_admin_sort_updated_desc')}</option>
             <option value="originWorkspace">{t('b13_admin_sort_workspace')}</option>
           </Select>
-          <Btn variant="default" onClick={() => setCsvOpen(true)}>📋 CSV import</Btn>
-          <Btn variant="accent" onClick={() => setEditing('new')}>+ New player</Btn>
+          <Btn variant="default" onClick={() => setCsvOpen(true)}>{t('admin_players_csv_import_btn')}</Btn>
+          <Btn variant="accent" onClick={() => setEditing('new')}>{t('admin_players_new_btn')}</Btn>
         </div>
 
         {/* Filter pills */}
@@ -223,7 +223,7 @@ export default function AdminPlayersPage() {
             { key: 'all', label: t('admin_leagues_filter_all') },
             { key: 'linked', label: t('admin_players_filter_linked') },
             { key: 'unlinked', label: t('admin_players_filter_unlinked') },
-            { key: 'hero', label: 'HERO' },
+            { key: 'hero', label: t('hero_label') },
           ].map(p => (
             <Btn key={p.key}
               variant={filter === p.key ? 'accent' : 'default'}
@@ -239,25 +239,25 @@ export default function AdminPlayersPage() {
           marginBottom: SPACE.sm,
         }}>
           {loading
-            ? 'Loading…'
+            ? t('loading')
             : total === 0
-              ? 'No players match the current filter.'
-              : `Showing ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} of ${total}${players.length !== total ? ` (filtered from ${players.length})` : ''}`}
+              ? t('admin_players_no_match')
+              : `${t('admin_players_result_showing')} ${pageStart + 1}–${Math.min(pageStart + PAGE_SIZE, total)} ${t('csv_import_of')} ${total}${players.length !== total ? ` (${t('admin_players_result_filtered_from')} ${players.length})` : ''}`}
         </div>
 
         {/* List */}
         {!loading && total === 0 ? (
-          <EmptyState icon="👤" text={t('b13_admin_no_players')} subtitle={search || filter !== 'all' || liga ? 'Try changing the search or filter' : 'Phase 2.2.a bootstrap missing?'} />
+          <EmptyState icon="👤" text={t('b13_admin_no_players')} subtitle={search || filter !== 'all' || liga ? t('admin_teams_try_change_filters') : t('admin_players_bootstrap_hint')} />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs }}>
             {paged.map(p => {
               const aliasCount = Array.isArray(p.aliasIds) ? p.aliasIds.filter(Boolean).length : 0;
               const subtitleParts = [];
               if (p.pbliId) subtitleParts.push(`PBLI ${p.pbliId}`);
-              else subtitleParts.push('No PBLI');
+              else subtitleParts.push(t('admin_players_no_pbli'));
               if (p.originWorkspace) subtitleParts.push(p.originWorkspace);
-              if (p.hero) subtitleParts.push('HERO');
-              if (aliasCount > 0) subtitleParts.push(`${aliasCount} alias${aliasCount === 1 ? '' : 'es'}`);
+              if (p.hero) subtitleParts.push(t('hero_label'));
+              if (aliasCount > 0) subtitleParts.push(`${aliasCount} ${aliasCount === 1 ? t('admin_players_alias_singular') : t('admin_players_alias_plural')}`);
               // PII-aware display. dn(p) returns the nickname unchanged or the
               // truncated real name; the parenthetical full name is ALSO routed
               // through dn (as a name-only player) so short mode doesn't leak the
@@ -318,18 +318,18 @@ export default function AdminPlayersPage() {
       <Modal
         open={!!deleteFor}
         onClose={() => { if (!pending) { setDeleteFor(null); setDeleteError(null); } }}
-        title={hasAliases ? `⚠ Delete ${deleteFor ? dn(deleteFor) : ''}?` : `Delete ${deleteFor ? dn(deleteFor) : ''}?`}
+        title={hasAliases ? `${t('admin_players_delete_with_aliases_title_prefix')} ${deleteFor ? dn(deleteFor) : ''}?` : `Delete ${deleteFor ? dn(deleteFor) : ''}?`}
         footer={<>
           <Btn variant="default" onClick={() => { setDeleteFor(null); setDeleteError(null); }} disabled={pending}>{t('cancel')}</Btn>
           <Btn variant="danger" onClick={handleDelete} disabled={pending}>
-            {pending ? 'Deleting…' : (hasAliases ? 'Delete anyway' : 'Delete')}
+            {pending ? t('players_bulk_deleting') : (hasAliases ? t('admin_players_delete_anyway_btn') : t('delete'))}
           </Btn>
         </>}
       >
         {hasAliases ? (
           <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
             <p style={{ margin: '0 0 8px' }}>
-              This player is the canonical record for <strong style={{ color: COLORS.text }}>{deleteAliasIds.length} dedup {deleteAliasIds.length === 1 ? 'alias' : 'aliases'}</strong>:
+              {t('admin_players_delete_canonical_msg')} <strong style={{ color: COLORS.text }}>{deleteAliasIds.length} {t('admin_players_dedup_label')} {deleteAliasIds.length === 1 ? t('admin_players_alias_singular') : t('admin_players_alias_plural')}</strong>:
             </p>
             <div style={{ padding: SPACE.sm, borderRadius: RADIUS.sm, backgroundColor: COLORS.surfaceDark, maxHeight: 120, overflowY: 'auto', marginBottom: SPACE.sm }}>
               {deleteAliasIds.map((a) => (
@@ -339,19 +339,19 @@ export default function AdminPlayersPage() {
               ))}
             </div>
             <p style={{ margin: '0 0 8px', color: COLORS.danger, fontWeight: 600 }}>
-              Deletion will orphan legacy <code>point.assignments[]</code> entries referencing these alias IDs. They will render as "Unknown" in old matches.
+              {t('admin_players_delete_orphan_warning')}
             </p>
             <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 12 }}>
-              Workspace copy preserved (cleanup in Phase 2.2.d). Continue?
+              {t('admin_players_delete_with_aliases_continue')}
             </p>
           </div>
         ) : (
           <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
             <p style={{ margin: '0 0 8px' }}>
-              This action cannot be undone. The player will be removed from <code style={{ color: COLORS.text }}>/players/</code>.
+              {t('admin_players_delete_irreversible_msg')}
             </p>
             <p style={{ margin: 0, color: COLORS.textMuted, fontSize: 12 }}>
-              Workspace copy preserved (cleanup in Phase 2.2.d).
+              {t('admin_players_delete_workspace_preserved_msg')}
             </p>
           </div>
         )}
@@ -386,17 +386,17 @@ export default function AdminPlayersPage() {
         footer={<>
           <Btn variant="default" onClick={() => { setBulkDeleteOpen(false); setBulkError(null); }} disabled={bulkPending}>{t('cancel')}</Btn>
           <Btn variant="danger" onClick={handleBulkDelete} disabled={bulkPending}>
-            {bulkPending ? 'Deleting…' : `Delete ${selectedIds.size}`}
+            {bulkPending ? t('players_bulk_deleting') : `Delete ${selectedIds.size}`}
           </Btn>
         </>}
       >
         <div style={{ fontFamily: FONT, fontSize: 13, color: COLORS.textDim, lineHeight: 1.5 }}>
           <p style={{ margin: '0 0 8px' }}>
-            Hard delete from global <code style={{ color: COLORS.text }}>/players/</code>. Workspace copies preserved until Phase 2.2.d cleanup.
+            {t('admin_players_bulk_delete_warn')}
           </p>
           {selectedAliasCount > 0 && (
             <p style={{ margin: '0 0 8px', color: COLORS.danger, fontWeight: 600 }}>
-              ⚠ {selectedAliasCount} of the selected {selectedAliasCount === 1 ? 'doc is' : 'docs are'} canonical with non-empty <code>aliasIds[]</code>. Deletion will orphan legacy <code>point.assignments[]</code> references → they will render as "Unknown" in old matches.
+              ⚠ {selectedAliasCount} {t('csv_import_of')} the selected {selectedAliasCount === 1 ? t('admin_players_bulk_delete_doc_is') : t('admin_players_bulk_delete_docs_are')} {t('admin_players_bulk_delete_aliases_warning')}
             </p>
           )}
           {bulkError && (

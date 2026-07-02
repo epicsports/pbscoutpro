@@ -157,7 +157,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <PlayerAvatar player={{ ...player, nickname: fNick, name: fName, photoURL: fPhotoURL }} size={56} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <Input value={fPhotoURL} onChange={setFPhotoURL} placeholder="https://..." />
+            <Input value={fPhotoURL} onChange={setFPhotoURL} placeholder={t('player_form_photo_url_ph')} />
             <div style={{ display: 'flex', gap: 14, marginTop: 5 }}>
               {fPbliId.trim() && (
                 <a href={`https://pbleagues.com/player/${fPbliId.trim()}`} target="_blank" rel="noopener noreferrer"
@@ -178,15 +178,15 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       {/* Name + Number */}
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ flex: 1 }}>
-          <Field label={t('b13_input_full_name_star')} required><Input value={fName} onChange={setFName} placeholder="Jan Kowalski" autoFocus /></Field>
+          <Field label={t('b13_input_full_name_star')} required><Input value={fName} onChange={setFName} placeholder={t('player_form_full_name_ph_2')} autoFocus /></Field>
         </div>
         <div style={{ width: 96, flexShrink: 0 }}>
-          <Field label="Nr" required><Input value={fNumber} onChange={setFNumber} placeholder="00" /></Field>
+          <Field label={t('player_form_jersey_label')} required><Input value={fNumber} onChange={setFNumber} placeholder="00" /></Field>
         </div>
       </div>
 
       {/* Nickname */}
-      <Field label="Nickname"><Input value={fNick} onChange={setFNick} placeholder="np. Koe" /></Field>
+      <Field label={t('player_form_nickname_label')}><Input value={fNick} onChange={setFNick} placeholder={t('player_form_nickname_ph_2')} /></Field>
     </div>
   );
 
@@ -207,7 +207,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
                 <span role="button" title={t('b13_set_primary')} onClick={() => setFTeamId(tid)}
                   style={{ width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: isPrimary ? COLORS.accent : COLORS.textMuted }}><RdIcon name="star" size={16} /></span>
                 <span style={{ flex: 1, minWidth: 0, fontFamily: FONT, fontSize: 14, color: COLORS.text }}>{getTeamName(tid)}</span>
-                <span role="button" title="Remove" onClick={() => removeTeam(tid)}
+                <span role="button" title={t('remove')} onClick={() => removeTeam(tid)}
                   style={{ width: 44, height: 44, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', WebkitTapHighlightColor: 'transparent', color: COLORS.textMuted }}>
                   <RdIcon name="close" size={15} />
                 </span>
@@ -237,14 +237,14 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         <div style={{ flex: 1 }}>
           <Field label={t('player_form_class_label')}>
             <Select value={fClass} onChange={setFClass}>
-              <option value="">— none —</option>
-              <option value="Pro">Pro</option>
-              <option value="Semi-Pro">Semi-Pro</option>
-              <option value="D1">D1</option>
-              <option value="D2">D2</option>
-              <option value="D3">D3</option>
-              <option value="D4">D4</option>
-              <option value="D5">D5</option>
+              <option value="">{t('player_form_none_option')}</option>
+              <option value="Pro">{t('player_class_pro')}</option>
+              <option value="Semi-Pro">{t('player_class_semi_pro')}</option>
+              <option value="D1">{t('player_class_d1')}</option>
+              <option value="D2">{t('player_class_d2')}</option>
+              <option value="D3">{t('player_class_d3')}</option>
+              <option value="D4">{t('player_class_d4')}</option>
+              <option value="D5">{t('player_class_d5')}</option>
             </Select>
           </Field>
         </div>
@@ -255,7 +255,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
         <div style={{ flex: 1 }}>
           <Field label={t('player_form_nationality_label')}>
             <Select value={fNation} onChange={setFNation}>
-              <option value="">— none —</option>
+              <option value="">{t('player_form_none_option')}</option>
               {NATIONALITIES.map(n => <option key={n.code} value={n.code}>{n.flag} {n.name}</option>)}
             </Select>
           </Field>
@@ -268,7 +268,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
       {/* Fav bunker */}
       <Field label={t('player_form_fav_bunker_label')}>
         <Select value={fFavBunker} onChange={setFFavBunker}>
-          <option value="">— none —</option>
+          <option value="">{t('player_form_none_option')}</option>
           {BUNKER_TYPES.map(b => <option key={b.abbr} value={b.abbr}>{b.abbr} — {b.name}</option>)}
         </Select>
       </Field>
@@ -285,7 +285,7 @@ export default function PlayerEditModal({ player, defaultTeamId = '', teams = []
             {player.teamHistory.map((h, i) => (
               <div key={i} style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.text, padding: '3px 0', display: 'flex', gap: 6, alignItems: 'center' }}>
                 <span style={{ color: COLORS.accent, fontWeight: 700 }}>{getTeamName(h.teamId)}</span>
-                <span style={{ color: COLORS.textMuted }}>{formatDate(h.from)} → {h.to ? formatDate(h.to) : 'now'}</span>
+                <span style={{ color: COLORS.textMuted }}>{formatDate(h.from)} → {h.to ? formatDate(h.to) : t('time_now')}</span>
               </div>
             ))}
           </div>

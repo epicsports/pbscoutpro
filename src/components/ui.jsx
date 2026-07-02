@@ -121,12 +121,13 @@ export function Select({ value, onChange, children, style, error, disabled }) {
 // ─── Field — premium form-field wrapper: eyebrow label (TRACKING.label/textDim)
 // + discreet required-mark + the control + an error message (red, never amber).
 export function Field({ label, required, optional, hint, error, children }) {
+  const { t } = useLanguage();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       {label && (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: error ? COLORS.danger : COLORS.textDim }}>{label}</span>
-          {required && <span style={{ color: COLORS.accent, fontSize: 11, fontWeight: 800 }} title="required">•</span>}
+          {required && <span style={{ color: COLORS.accent, fontSize: 11, fontWeight: 800 }} title={t('form_field_required')}>•</span>}
         </div>
       )}
       {children}
@@ -409,16 +410,17 @@ export function Score({ value, color }) {
 
 // ─── Coaching Stats ───
 export function CoachingStats({ stats }) {
+  const { t } = useLanguage();
   // stats: { dorito, snake, disco, zeeker, center, danger, sajgon, total }
   if (!stats || !stats.total) return null;
   const items = [
-    { label: 'DORITO', value: stats.dorito, color: COLORS.danger },
-    { label: 'SNAKE', value: stats.snake, color: COLORS.info },
-    { label: 'CENTER', value: stats.center, color: COLORS.text },
-    stats.danger !== null && { label: 'DANGER', value: stats.danger, color: COLORS.danger },
-    stats.sajgon !== null && { label: 'SAJGON', value: stats.sajgon, color: COLORS.info },
-    { label: 'DISCO', value: stats.disco, color: COLORS.bump },
-    { label: 'ZEEKER', value: stats.zeeker, color: COLORS.zeeker },
+    { label: t('side_dorito'), value: stats.dorito, color: COLORS.danger },
+    { label: t('side_snake'), value: stats.snake, color: COLORS.info },
+    { label: t('side_center'), value: stats.center, color: COLORS.text },
+    stats.danger !== null && { label: t('zone_label_danger'), value: stats.danger, color: COLORS.danger },
+    stats.sajgon !== null && { label: t('zone_label_sajgon'), value: stats.sajgon, color: COLORS.info },
+    { label: t('zone_label_disco'), value: stats.disco, color: COLORS.bump },
+    { label: t('zone_label_zeeker'), value: stats.zeeker, color: COLORS.zeeker },
   ].filter(Boolean);
   return (
     <div style={{ display: 'flex', gap: 4, padding: `${SPACE.sm}px ${SPACE.lg}px`, flexWrap: 'wrap' }}>

@@ -23,32 +23,32 @@ import { useDevice } from '../hooks/useDevice';
 
 // ─── Column mappings (auto-detect from header names) ───────────
 const MAPPABLE = [
-  { key: 'team',        label: 'Team name *',   required: true,
+  { key: 'team',        labelKey: 'csv_import_column_team_name',   required: true,
     detect: ['team', 'drużyna', 'druzyna', 'team_name', 'teamname', 'nazwa_druzyny', 'nazwa druzyny', 'nazwa drużyny'] },
-  { key: 'teamExtId',   label: 'Team ID',       required: false,
+  { key: 'teamExtId',   labelKey: 'csv_import_column_team_id',       required: false,
     detect: ['team_id', 'teamid', 'druzyna_id', 'drużyna_id', 'pbl_team', 'team id'] },
-  { key: 'player',      label: 'Player name *', required: true,
+  { key: 'player',      labelKey: 'csv_import_column_player_name', required: true,
     detect: ['player', 'name', 'gracz', 'imię', 'imie', 'full_name', 'fullname', 'zawodnik', 'imie_nazwisko', 'imię_nazwisko'] },
-  { key: 'nickname',    label: 'Nickname',       required: false,
+  { key: 'nickname',    labelKey: 'csv_import_column_nickname',       required: false,
     detect: ['nickname', 'nick', 'pseudo', 'pseudonim', 'alias'] },
-  { key: 'number',      label: 'Number',         required: false,
+  { key: 'number',      labelKey: 'csv_import_column_number',         required: false,
     detect: ['number', 'numer', 'nr', '#', 'jersey'] },
-  { key: 'role',        label: 'Role',           required: false,
+  { key: 'role',        labelKey: 'csv_import_column_role',           required: false,
     detect: ['role', 'rola', 'typ'] },
-  { key: 'playerClass', label: 'Class',          required: false,
+  { key: 'playerClass', labelKey: 'csv_import_column_class',          required: false,
     // 'dywizja' / 'division' removed 2026-05-12 — those are TEAM-level in
     // PBLeagues NXL exports and now map to the new teamDivision target
     // below. Klasa stays as the per-player classification field.
     detect: ['class', 'klasa', 'player_class'] },
-  { key: 'teamDivision', label: 'NXL Division',  required: false,
+  { key: 'teamDivision', labelKey: 'csv_import_column_division',  required: false,
     // New mapper target — writes team.divisions.NXL via normalizeDivision.
     // Detect keywords match PBLeagues 'Dywizja' header + common variants.
     detect: ['dywizja', 'division', 'div', 'team_division', 'team_div'] },
-  { key: 'nationality', label: 'Nationality',    required: false,
+  { key: 'nationality', labelKey: 'csv_import_column_nationality',    required: false,
     detect: ['nationality', 'narodowość', 'narodowosc', 'country', 'kraj'] },
-  { key: 'pbliId',      label: 'Player ID',      required: false,
+  { key: 'pbliId',      labelKey: 'csv_import_column_player_id',      required: false,
     detect: ['id_zawodnika', 'pbli_id', 'pbliid', 'pbl_id', 'player_id', 'playerid', 'pbli', 'id'] },
-  { key: 'photoURL',    label: 'Photo URL',      required: false,
+  { key: 'photoURL',    labelKey: 'csv_import_column_photo_url',      required: false,
     detect: ['photo', 'photo_url', 'photourl', 'zdjęcie', 'zdjecie', 'image', 'avatar'] },
   // 'age' column removed (Privacy/PII Phase 1) — age is no longer collected
   // or displayed; CSVs carrying an age column simply ignore it.
@@ -360,13 +360,13 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
               const scalarCount = Object.keys(upd).filter(k => k !== 'teams').length;
               if (teamsChanged && scalarCount > 0) {
                 appended++;
-                importLog.push(`🔗 ${r.player} — dołączony + ${scalarCount} ${scalarCount === 1 ? 'pole' : 'pól'} (pbliId match)`);
+                importLog.push(`🔗 ${r.player} — ${t('csv_import_log_appended')} + ${scalarCount} ${scalarCount === 1 ? t('csv_import_field_singular') : t('csv_import_fields_plural')} (pbliId match)`);
               } else if (teamsChanged) {
                 appended++;
-                importLog.push(`🔗 ${r.player} — dołączony do drużyny (pbliId match)`);
+                importLog.push(`🔗 ${r.player} — ${t('csv_import_log_appended')} ${t('csv_import_log_appended_to_team')}`);
               } else {
                 updated++;
-                importLog.push(`📝 ${r.player} — ${scalarCount} ${scalarCount === 1 ? 'pole' : 'pól'} (pbliId match)`);
+                importLog.push(`📝 ${r.player} — ${scalarCount} ${scalarCount === 1 ? t('csv_import_field_singular') : t('csv_import_fields_plural')} (pbliId match)`);
               }
             } else {
               skipped++;
@@ -393,12 +393,12 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
             await ds.updatePlayer(tgt.id, upd, { bump: false });
             if (upd.teams) liveTeams.set(tgt.id, upd.teams);
             claimed++;
-            importLog.push(`🔗 ${r.player} — pbliId przypisany do istniejącego gracza bez pbliId (claim)`);
+            importLog.push(`🔗 ${r.player} — ${t('csv_import_log_pbli_claimed')}`);
             continue;
           }
           if (dd.action === 'flag') {
             flagged++;
-            importLog.push(`⚠ ${r.player} — możliwy duplikat (${dd.candidateIds.length} pasujących imion); utworzono nowy gracz — super-admin do scalenia (MergePlayersModal)`);
+            importLog.push(`⚠ ${r.player} — ${t('csv_import_log_possible_duplicate')} (${dd.candidateIds.length} pasujących imion); ${t('csv_import_log_created_flagged')}`);
           }
           // 'flag' or 'create' → create a NEW doc here WITH the pbliId, so it's recorded
           // and we never fall into the team-scoped name-path (which would re-create dups).
@@ -447,14 +447,14 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
           created++;
         }
       }
-      importLog.push(`✅ Players: ${created} nowych, ${updated} zaktualizowanych, ${appended} dołączonych, ${claimed} claim (pbliId), ${flagged} do scalenia, ${skipped} bez zmian`);
-      importLog.push(`✅ Teams: ${uniqueTeams.length} total · ${teamsWithDivisionWritten} z dywizją ${league}`);
+      importLog.push(`✅ Players: ${created} ${t('action_new')}, ${updated} zaktualizowanych, ${appended} dołączonych, ${claimed} ${t('csv_import_log_claim_label')}, ${flagged} ${t('csv_import_log_to_merge')}, ${skipped} ${t('csv_import_no_change')}`);
+      importLog.push(`✅ Teams: ${uniqueTeams.length} total · ${teamsWithDivisionWritten} ${t('csv_import_log_with_division')} ${league}`);
       // Catalog changed → bump the version marker once so clients refresh their
       // cached catalog on next load (bulk import bumps once here, not per row).
       try { await ds.bumpCatalogVersion(); } catch (_) { /* non-fatal */ }
       setLog(importLog); setStep('done');
     } catch (e) {
-      importLog.push(`❌ Błąd: ${e.message}`);
+      importLog.push(`❌ ${t('error_label')} ${e.message}`);
       setLog(importLog); setStep('done');
     }
     setImporting(false);
@@ -463,13 +463,13 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={() => { onClose(); reset(); }} title="Import CSV — teams & players" maxWidth={820}>
+    <Modal open={open} onClose={() => { onClose(); reset(); }} title={t('csv_import_modal_title')} maxWidth={820}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '70vh', overflowY: 'auto' }}>
 
         {step === 'upload' && (
           <>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textDim, lineHeight: 1.5 }}>
-              CSV z drużynami i graczami (format PBLeagues lub własny). Istniejące rekordy zostaną zaktualizowane — puste pola nie nadpiszą istniejących danych.
+              {t('csv_import_upload_description')}
             </div>
             <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '8px 10px', lineHeight: 1.5 }}>
               Auto-normalizacja: <strong style={{ color: COLORS.text }}>Division 4→D4</strong>, <strong style={{ color: COLORS.text }}>Poland→PL</strong>, Brak→null, nophoto→null, BOM→strip
@@ -495,10 +495,10 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                 style={{ accentColor: COLORS.accent, width: 18, height: 18 }} />
               <div>
                 <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.text }}>
-                  Dopasuj po nazwie (merge)
+                  {t('csv_import_merge_by_name_label')}
                 </div>
                 <div style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, marginTop: 1, lineHeight: 1.4 }}>
-                  Istniejący gracz o tej samej nazwie zostanie zaktualizowany zamiast tworzenia duplikatu. Numery, statystyki i historia zachowane.
+                  {t('csv_import_merge_by_name_help')}
                 </div>
               </div>
             </label>
@@ -508,8 +508,8 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
               style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 16px', minHeight: 64, borderRadius: RADIUS.md, cursor: 'pointer', background: `${COLORS.accent}14`, border: `1px dashed ${COLORS.accent}55` }}>
               <span style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accent, color: COLORS.black }}><RdIcon name="file" size={21} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.text }}>Wybierz plik CSV</div>
-                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 1 }}>.csv · .txt · .tsv — PBLeagues lub własny</div>
+                <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 800, color: COLORS.text }}>{t('csv_import_file_picker_title')}</div>
+                <div style={{ fontFamily: FONT, fontSize: 11, fontWeight: 600, color: COLORS.textMuted, marginTop: 1 }}>{t('csv_import_file_formats_hint')}</div>
               </div>
               <span style={{ color: COLORS.accent, display: 'flex', flexShrink: 0 }}><RdIcon name="chevron" size={16} /></span>
             </div>
@@ -519,29 +519,29 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
         {step === 'preview' && csvData && (
           <>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.accent, fontWeight: 800 }}>
-              {csvData.rows.length} wierszy · {csvData.headers.length} kolumn · sep: {csvData.sep === ';' ? 'średnik' : 'przecinek'}
+              {csvData.rows.length} {t('csv_import_rows_suffix')} · {csvData.headers.length} {t('csv_import_columns_suffix')} · {t('csv_import_separator_label')} {csvData.sep === ';' ? t('csv_import_separator_semicolon') : t('csv_import_separator_comma')}
             </div>
             <div style={{ display: wide ? 'grid' : 'flex', flexDirection: wide ? undefined : 'column', gridTemplateColumns: wide ? 'minmax(0, 380px) minmax(0, 1fr)' : undefined, gap: wide ? 18 : 12, alignItems: 'start' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim }}>Mapowanie kolumn</span>
-              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: mappedCount >= 2 ? COLORS.success : COLORS.textMuted, ...TNUM }}>{mappedCount} z {MAPPABLE.length} zmapowanych</span>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim }}>{t('csv_import_column_mapping_label')}</span>
+              <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, color: mappedCount >= 2 ? COLORS.success : COLORS.textMuted, ...TNUM }}>{mappedCount} {t('csv_import_of')} {MAPPABLE.length} {t('csv_import_mapped')}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
               {MAPPABLE.map(m => (
                 <div key={m.key}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: m.required ? COLORS.text : COLORS.textDim }}>{m.label}</span>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: m.required ? COLORS.text : COLORS.textDim }}>{t(m.labelKey)}</span>
                     {colMap[m.key] != null && colMap[m.key] !== '' && <span style={{ color: COLORS.success, display: 'flex' }}><RdIcon name="check" size={12} /></span>}
                   </div>
                   <Select value={colMap[m.key] || ''} onChange={v => setColMap(p => ({ ...p, [m.key]: v }))} style={{ width: '100%', fontSize: 12 }}>
-                    <option value="">{m.required ? '— wymagane —' : '— pomiń —'}</option>
+                    <option value="">{m.required ? t('csv_import_column_required') : t('csv_import_column_skip')}</option>
                     {csvData.headers.map((h, i) => <option key={i} value={String(i)}>{h}</option>)}
                   </Select>
                 </div>
               ))}
             </div>
-            <Btn variant="default" onClick={handlePreview} disabled={!colMap.team || !colMap.player}><RdIcon name="eye" size={15} /> Podgląd</Btn>
+            <Btn variant="default" onClick={handlePreview} disabled={!colMap.team || !colMap.player}><RdIcon name="eye" size={15} /> {t('csv_import_preview_button')}</Btn>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, width: '100%' }}>
             <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 800, letterSpacing: TRACKING.label, textTransform: 'uppercase', color: COLORS.textDim }}>Podgląd</span>
@@ -552,15 +552,15 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                   <StatRow label={t('csv_import_stat_players')} create={preview.newPlayers} update={preview.updPlayers} noChange={t('csv_import_no_change')} />
                   {(preview.teamsWithDivision > 0 || preview.collisions > 0) && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
-                      <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>Dywizja {league}</span>
+                      <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>{t('csv_import_division_label')} {league}</span>
                       <span style={{ fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
                         {preview.teamsWithDivision > 0 && (
-                          <span style={{ color: COLORS.accent, fontWeight: 700 }}>{preview.teamsWithDivision} drużyn</span>
+                          <span style={{ color: COLORS.accent, fontWeight: 700 }}>{preview.teamsWithDivision} {t('csv_import_teams_suffix')}</span>
                         )}
                         {preview.collisions > 0 && (
                           <>
                             {preview.teamsWithDivision > 0 && ', '}
-                            <span style={{ color: COLORS.danger, fontWeight: 700 }}>{preview.collisions} kolizji</span>
+                            <span style={{ color: COLORS.danger, fontWeight: 700 }}>{preview.collisions} {t('csv_import_collisions_suffix')}</span>
                           </>
                         )}
                       </span>
@@ -584,14 +584,14 @@ export default function CSVImport({ open, onClose, teams, players, ds }) {
                       </div>
                     );
                   })}
-                  {parsed.length > 15 && <div style={{ color: COLORS.textMuted, marginTop: 4 }}>...i {parsed.length - 15} więcej</div>}
+                  {parsed.length > 15 && <div style={{ color: COLORS.textMuted, marginTop: 4 }}>{t('csv_import_and_more_prefix')} {parsed.length - 15} {t('csv_import_more')}</div>}
                 </div>
                 <Btn variant="accent" onClick={handleImport} style={{ minHeight: 48 }}>
-                  <Icons.Check /> Import: {preview.newPlayers} nowych, {preview.updPlayers} aktualizacji
+                  <Icons.Check /> {t('csv_import_button_label')} {preview.newPlayers} {t('action_new')}, {preview.updPlayers} {t('csv_import_updates_suffix')}
                 </Btn>
               </>
             ) : (
-              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '24px 14px', textAlign: 'center', lineHeight: 1.5 }}>Zmapuj wymagane kolumny i kliknij „Podgląd".</div>
+              <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, background: ELEV.sunken, border: `1px solid ${ELEV.hairline}`, borderRadius: RADIUS.md, padding: '24px 14px', textAlign: 'center', lineHeight: 1.5 }}>{t('csv_import_preview_hint')}</div>
             )}
             </div>
             </div>
@@ -633,14 +633,15 @@ function matchPlayer(name, pbliId, teamId, players, nameOnly = false) {
   return players.find(p => p.name.toLowerCase() === name.toLowerCase() && !p.teamId) || null;
 }
 
-function StatRow({ label, create, update, noChange = 'bez zmian' }) {
+function StatRow({ label, create, update, noChange }) {
+  const { t } = useLanguage();
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: FONT }}>
       <span style={{ fontSize: FONT_SIZE.sm, fontWeight: 600, color: COLORS.text }}>{label}</span>
       <span style={{ fontSize: FONT_SIZE.xs, color: COLORS.textDim }}>
-        {create > 0 && <span style={{ color: COLORS.success, fontWeight: 700 }}>+{create} nowych</span>}
+        {create > 0 && <span style={{ color: COLORS.success, fontWeight: 700 }}>+{create} {t('action_new')}</span>}
         {create > 0 && update > 0 && ', '}
-        {update > 0 && <span style={{ color: COLORS.accent, fontWeight: 700 }}>{update} aktualizacji</span>}
+        {update > 0 && <span style={{ color: COLORS.accent, fontWeight: 700 }}>{update} {t('csv_import_updates_suffix')}</span>}
         {!create && !update && <span style={{ color: COLORS.textMuted }}>{noChange}</span>}
       </span>
     </div>

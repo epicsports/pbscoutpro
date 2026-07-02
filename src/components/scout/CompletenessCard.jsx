@@ -46,7 +46,7 @@ export default function CompletenessCard({ points = [] }) {
   const [pressed, setPressed] = useState(false);
 
   const breakdown = useMemo(() => computeMatchBreakdown(points), [points]);
-  const title = t('completeness_section_title') || 'Scouting completeness';
+  const title = t('completeness_section_title');
 
   return (
     <div style={cardStyle}>
@@ -71,21 +71,21 @@ export default function CompletenessCard({ points = [] }) {
       </button>
       {open && (
         !points.length || !breakdown ? (
-          <div style={emptyStyle}>{t('completeness_empty') || 'No points scouted yet'}</div>
+          <div style={emptyStyle}>{t('completeness_empty')}</div>
         ) : (
           <>
             <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { label: t('completeness_breaks')       || 'Breaks',       pct: breakdown.breakPct },
-                { label: t('completeness_shots')        || 'Shots',        pct: breakdown.shotPct },
-                { label: t('completeness_assignments')  || 'Assignments',  pct: breakdown.assignPct },
-                { label: t('completeness_runners')      || 'Runners',      pct: breakdown.runnerPct },
-                { label: t('completeness_eliminations') || 'Eliminations', pct: breakdown.elimPct },
+                { label: t('completeness_breaks'),       pct: breakdown.breakPct },
+                { label: t('completeness_shots'),        pct: breakdown.shotPct },
+                { label: t('completeness_assignments'),  pct: breakdown.assignPct },
+                { label: t('completeness_runners'),      pct: breakdown.runnerPct },
+                { label: t('completeness_eliminations'), pct: breakdown.elimPct },
               ].map(row => <MetricRow key={row.label} label={row.label} pct={row.pct} />)}
             </div>
             <div style={dividerStyle} />
             <OverallRow
-              label={t('completeness_overall') || 'Overall'}
+              label={t('completeness_overall')}
               pct={breakdown.composite}
             />
           </>

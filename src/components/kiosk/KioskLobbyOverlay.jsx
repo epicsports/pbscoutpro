@@ -314,7 +314,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
             <span style={{
               fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700, color: COLORS.success,
             }}>
-              ✓ {t('kiosk_save_toast_title') || 'Zapisano'}
+              ✓ {t('kiosk_save_toast_title')}
             </span>
             <span style={{
               fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 500, color: COLORS.textMuted,
@@ -331,7 +331,7 @@ function KioskLobbyOverlayInner({ kiosk }) {
               cursor: 'pointer',
               WebkitTapHighlightColor: 'transparent',
             }}>
-            {t('kiosk_save_toast_cta') || 'Zobacz swój dzień'}
+            {t('kiosk_save_toast_cta')}
           </button>
           <div onClick={() => setSavedToast(null)} style={{
             minWidth: 44, minHeight: 44,

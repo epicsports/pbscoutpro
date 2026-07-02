@@ -96,7 +96,7 @@ export default function LoginPage() {
                   {t('reset_intro') || 'Enter your account email — we’ll send a link to set a new password.'}
                 </div>
                 <Field label={t('login_field_email')}>
-                  <TextInput value={email} onChange={setEmail} placeholder="you@example.com" type="email" autoComplete="email" autoFocus />
+                  <TextInput value={email} onChange={setEmail} placeholder={t('email_placeholder_example')} type="email" autoComplete="email" autoFocus />
                 </Field>
                 {resetError && (
                   <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.danger, padding: '8px 12px', background: COLORS.danger + '15', borderRadius: 8 }}>
@@ -183,7 +183,7 @@ export default function LoginPage() {
           )}
 
           <Field label={t('login_field_email')}>
-            <TextInput value={email} onChange={setEmail} placeholder="you@example.com"
+            <TextInput value={email} onChange={setEmail} placeholder={t('email_placeholder_example')}
               type="email" autoComplete="email" autoFocus={isLogin} />
           </Field>
 

@@ -231,7 +231,7 @@ export default function AttendeesEditor({ trainingId, training }) {
         <SubHeader label={t('not_here')} count={notHere.length} color={COLORS.textMuted} />
         {notHere.length === 0 ? (
           <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted, padding: `${SPACE.sm}px 0`, textAlign: 'center' }}>
-            Everyone is here.
+            {t('everyone_here')}
           </div>
         ) : (
           <ChipGrid players={notHere} variant="inactive" onToggle={toggleAttendee} />

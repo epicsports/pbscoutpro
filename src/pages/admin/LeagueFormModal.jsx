@@ -48,17 +48,17 @@ export default function LeagueFormModal({ open, onClose, league }) {
   const validate = () => {
     const e = {};
     const sn = shortName.trim();
-    if (!sn) e.shortName = 'required';
-    else if (!/^[A-Z0-9]{2,10}$/.test(sn)) e.shortName = '2-10 uppercase letters/digits';
+    if (!sn) e.shortName = t('form_field_required');
+    else if (!/^[A-Z0-9]{2,10}$/.test(sn)) e.shortName = t('league_form_shortname_error_format');
     else {
       const taken = allLeagues.find(L => L.shortName && L.shortName.toLowerCase() === sn.toLowerCase() && L.id !== league?.id);
       if (taken) e.shortName = `already in use (${taken.id})`;
     }
-    if (!name.trim()) e.name = 'required';
-    else if (name.trim().length > 50) e.name = 'max 50 chars';
+    if (!name.trim()) e.name = t('form_field_required');
+    else if (name.trim().length > 50) e.name = t('league_form_name_error_max_chars');
 
     const cleaned = divisions.filter(d => d.name.trim());
-    if (cleaned.length === 0) e.divisions = 'at least one division required';
+    if (cleaned.length === 0) e.divisions = t('league_form_divisions_error_min_one');
     else {
       const seen = new Set();
       for (const d of cleaned) {
@@ -98,7 +98,7 @@ export default function LeagueFormModal({ open, onClose, league }) {
       onClose();
     } catch (err) {
       console.error('League save failed:', err);
-      setSubmitError(err?.message || 'Save failed — see console');
+      setSubmitError(err?.message || t('save_error_with_console_hint'));
     } finally {
       setSaving(false);
     }
@@ -142,7 +142,7 @@ export default function LeagueFormModal({ open, onClose, league }) {
               boxSizing: 'border-box', minHeight: 44, display: 'flex', alignItems: 'center',
             }}>{shortName}</div>
           ) : (
-            <Input value={shortName} onChange={v => setShortName(v.toUpperCase())} placeholder="NXL" />
+            <Input value={shortName} onChange={v => setShortName(v.toUpperCase())} placeholder={t('league_form_shortname_placeholder')} />
           )}
         </FieldRow>
 
@@ -171,10 +171,10 @@ export default function LeagueFormModal({ open, onClose, league }) {
                   <Input value={d.name} onChange={v => updateDivision(i, v)} placeholder={t('league_form_division_name_ph')} />
                 </div>
                 <span style={{ fontFamily: FONT, fontSize: 10, color: COLORS.textMuted, minWidth: 60 }}>
-                  {d.name.trim() ? `id: ${generateDivisionId(d.name)}` : ''}
+                  {d.name.trim() ? `${t('league_form_division_id_prefix')}${generateDivisionId(d.name)}` : ''}
                 </span>
                 <Btn variant="default" size="sm" onClick={() => removeDivision(i)} disabled={divisions.length === 1}
-                  style={{ color: COLORS.danger, minWidth: 44 }}>×</Btn>
+                  style={{ color: COLORS.danger, minWidth: 44 }}>{t('league_form_division_remove_button')}</Btn>
               </div>
             ))}
           </div>

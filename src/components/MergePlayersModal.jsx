@@ -135,7 +135,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
       onClose?.();
     } catch (e) {
       console.error('Merge failed:', e);
-      setError(e?.message || 'Merge failed — see console');
+      setError(e?.message || t('merge_error_failed'));
     } finally {
       setPending(false);
     }
@@ -205,12 +205,12 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
                       fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                       background: `${COLORS.success}20`, color: COLORS.success,
                       letterSpacing: 0.5, textTransform: 'uppercase',
-                    }}>rec</span>
+                    }}>{t('merge_recommended_badge')}</span>
                   )}
                 </div>
                 <div style={{ fontSize: 10, color: COLORS.textMuted, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                  {p.hero && <span style={{ color: COLORS.accent, fontWeight: 700 }}>HERO</span>}
-                  {p.pbliId && <span>PBLI {p.pbliId}</span>}
+                  {p.hero && <span style={{ color: COLORS.accent, fontWeight: 700 }}>{t('hero_label')}</span>}
+                  {p.pbliId && <span>{t('profile_player_pbli_label')} {p.pbliId}</span>}
                   {p.photoURL && <span style={{ color: COLORS.success }}>📷</span>}
                 </div>
               </button>
@@ -244,7 +244,7 @@ export default function MergePlayersModal({ open, onClose, players, teams = [], 
                 {values.map(v => {
                   const isPicked = picks[f.key] === v.pid;
                   const player = list.find(p => p.id === v.pid);
-                  const display = isEmpty(v.value) ? '(empty)' : String(v.value);
+                  const display = isEmpty(v.value) ? t('value_empty_placeholder') : String(v.value);
                   return (
                     <label
                       key={v.pid}

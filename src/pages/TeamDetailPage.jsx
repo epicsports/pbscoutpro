@@ -261,7 +261,7 @@ export default function TeamDetailPage() {
           subtitle={t('b13_team_load_error_sub')}
         />
         <div style={{ textAlign: 'center', marginTop: 4 }}>
-          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>Retry</Btn>
+          <Btn variant="accent" onClick={() => { setLoadTimedOut(false); navigate(0); }}>{t('action_retry')}</Btn>
         </div>
       </div>
     );
@@ -526,7 +526,7 @@ export default function TeamDetailPage() {
         {grp === 'player' ? (
           <div
             onClick={canEdit ? () => ds.setPlayerHero(p.id, !p.hero) : undefined}
-            title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
+            title={p.hero ? t('team_detail_hero_remove') : t('team_detail_hero_mark')}
             style={{
               display: 'flex', alignItems: 'center', gap: 4, padding: '6px 8px', borderRadius: RADIUS.sm,
               cursor: 'pointer', flexShrink: 0,
@@ -534,7 +534,7 @@ export default function TeamDetailPage() {
               border: `1px solid ${p.hero ? COLORS.accentA25 : COLORS.surfaceLight}`, minHeight: 44,
             }}>
             <span style={{ display: 'inline-flex', color: p.hero ? COLORS.accent : COLORS.textMuted }}><RdIcon name="star" size={12} /></span>
-            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
+            <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>{t('hero_label')}</span>
           </div>
         ) : (
           <span style={{
@@ -635,7 +635,7 @@ export default function TeamDetailPage() {
             </div>
             {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).length > 0 && (
               <div style={{ marginTop: 12 }}>
-                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
+                <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('divisions_label')}</div>
                 {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
                   <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                     <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 30 }}>{l}:</span>
@@ -661,8 +661,8 @@ export default function TeamDetailPage() {
         <div style={{ ...wcard, padding: 20 }}>
           <SectionTitle right={canEdit ? (
             <div style={{ display: 'flex', gap: 6 }}>
-              <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}><Icons.Plus /> New</Btn>
-              <Btn variant="default" size="sm" onClick={() => modal.open('addExisting')}><Icons.Search /> Find</Btn>
+              <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}><Icons.Plus /> {t('action_new')}</Btn>
+              <Btn variant="default" size="sm" onClick={() => modal.open('addExisting')}><Icons.Search /> {t('action_find')}</Btn>
             </div>
           ) : null}>{t('team_detail_roster_n', teamPlayers.length)}</SectionTitle>
 
@@ -798,7 +798,7 @@ export default function TeamDetailPage() {
           </div>
           {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).length > 0 && (
             <div style={{ marginTop: 8 }}>
-              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>Divisions</div>
+              <div style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: COLORS.textDim, marginBottom: 4 }}>{t('divisions_label')}</div>
               {effLeagues.filter(l => (divisionsByShortName[l] || []).length > 0).map(l => (
                 <div key={l} style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                   <span style={{ fontFamily: FONT, fontSize: TOUCH.fontXs, color: LEAGUE_COLORS[l], fontWeight: 700, width: 30 }}>{l}:</span>
@@ -828,10 +828,10 @@ export default function TeamDetailPage() {
           <SectionTitle right={canEdit ? (
             <div style={{ display: 'flex', gap: 6 }}>
               <Btn variant="accent" size="sm" onClick={() => { setFName(''); setFNick(''); setFNumber(''); modal.open('addNew'); }}>
-                <Icons.Plus /> New
+                <Icons.Plus /> {t('action_new')}
               </Btn>
               <Btn variant="default" size="sm" onClick={() => modal.open('addExisting')}>
-                <Icons.Search /> Find
+                <Icons.Search /> {t('action_find')}
               </Btn>
             </div>
           ) : null}>
@@ -886,7 +886,7 @@ export default function TeamDetailPage() {
                   /* HERO toggle — global (§ 25), players only */
                   <div
                     onClick={canEdit ? () => ds.setPlayerHero(p.id, !p.hero) : undefined}
-                    title={p.hero ? 'Remove HERO rank' : 'Mark as HERO'}
+                    title={p.hero ? t('team_detail_hero_remove') : t('team_detail_hero_mark')}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 4,
                       padding: '6px 8px', borderRadius: RADIUS.sm, cursor: 'pointer',
@@ -895,7 +895,7 @@ export default function TeamDetailPage() {
                       minHeight: 44,
                     }}>
                     <span style={{ display: 'inline-flex', color: p.hero ? COLORS.accent : COLORS.textMuted }}><RdIcon name="star" size={12} /></span>
-                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>HERO</span>
+                    <span style={{ fontFamily: FONT, fontSize: 10, fontWeight: 700, letterSpacing: '.4px', color: p.hero ? COLORS.accent : COLORS.textMuted }}>{t('hero_label')}</span>
                   </div>
                 ) : (
                   /* Role chip — coaches/staff in place of HERO */
@@ -947,12 +947,12 @@ export default function TeamDetailPage() {
       <Modal open={modal.is('addNew')} onClose={() => modal.close()} title={t('team_detail_new_player_title')}
         footer={<>
           <Btn variant="default" onClick={() => modal.close()}>{t('cancel')}</Btn>
-          <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> Add</Btn>
+          <Btn variant="accent" onClick={handleAddNewPlayer} disabled={!fName.trim() || !fNumber.trim()}><Icons.Check /> {t('action_add')}</Btn>
         </>}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <div style={{ flex: 2 }}><Input value={fName} onChange={setFName} placeholder={t('b13_input_full_name_star')} autoFocus /></div>
-            <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder="Nr *" /></div>
+            <div style={{ flex: 1 }}><Input value={fNumber} onChange={setFNumber} placeholder={t('player_number_input_placeholder')} /></div>
           </div>
           <Input value={fNick} onChange={setFNick} placeholder={t('b13_input_nickname')} />
         </div>
@@ -972,7 +972,7 @@ export default function TeamDetailPage() {
         multi
         selectedIds={[]}
         onToggle={handleAssignPlayer}
-        emptyText="No players match. Use “New” to create one."
+        emptyText={t('team_detail_no_players_match')}
         nameMode="player"
       />
 

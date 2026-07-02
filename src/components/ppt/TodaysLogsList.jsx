@@ -701,7 +701,7 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
       <Btn variant="ghost"
         onClick={() => navigate(`/player/${playerId}/stats`)}
         style={{ minHeight: 44, color: COLORS.accent, fontWeight: 700 }}>
-        {t('ppt_logs_view_stats_link') || 'Zobacz statystyki dnia →'}
+        {t('ppt_logs_view_stats_link')}
       </Btn>
     </div>
   ) : null;
@@ -753,13 +753,13 @@ export default function TodaysLogsList({ playerId, uid, onNewPoint }) {
               fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 600,
               color: COLORS.text, lineHeight: 1.4,
             }}>
-              {t('ppt_unlinked_banner') || 'Logujesz bez profilu — punkty trafią do gracza po połączeniu.'}
+              {t('ppt_unlinked_banner')}
             </span>
             <span style={{
               color: COLORS.accent, fontSize: 11, fontWeight: 800,
               letterSpacing: 0.3, textTransform: 'uppercase', flexShrink: 0,
             }}>
-              {t('ppt_unlinked_banner_cta') || 'Połącz'}
+              {t('ppt_unlinked_banner_cta')}
             </span>
           </div>
         )}

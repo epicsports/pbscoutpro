@@ -180,7 +180,7 @@ export default function ProfilePage() {
       } else if (e.code === 'auth/weak-password') {
         setPwError(t('pw_too_short') || 'Hasło jest zbyt słabe.');
       } else {
-        setPwError(e.message || 'Error');
+        setPwError(e.message || t('error_generic'));
       }
     }
     setPwSaving(false);
@@ -328,7 +328,7 @@ export default function ProfilePage() {
                   <PixelAvatar spec={avatarSpec || undefined} seed={avatarSeed} teamColor={avatarTeamColor} size={104} />
                 </div>
                 {/* Edit avatar — pencil affordance (≥44px), opens the builder */}
-                <button type="button" onClick={() => navigate('/profile/avatar')} aria-label={t('avatar_edit') || 'Edit avatar'}
+                <button type="button" onClick={() => navigate('/profile/avatar')} aria-label={t('avatar_edit')}
                   style={{ position: 'absolute', bottom: -6, right: -6, width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accent, color: '#1a1206', border: `2px solid ${ELEV.surface}`, boxShadow: ELEV.shadow1, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
                   <RdIcon name="pencil" size={18} />
                 </button>
@@ -515,7 +515,7 @@ export default function ProfilePage() {
               <PixelAvatar spec={avatarSpec || undefined} seed={avatarSeed} teamColor={avatarTeamColor} size={72} />
             </div>
             {/* Edit avatar — pencil affordance (≥44px), opens the builder */}
-            <button type="button" onClick={() => navigate('/profile/avatar')} aria-label={t('avatar_edit') || 'Edit avatar'}
+            <button type="button" onClick={() => navigate('/profile/avatar')} aria-label={t('avatar_edit')}
               style={{ position: 'absolute', bottom: -8, right: -8, width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: COLORS.accent, color: '#1a1206', border: `2px solid ${COLORS.bg}`, boxShadow: ELEV.shadow1, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
               <RdIcon name="pencil" size={17} />
             </button>

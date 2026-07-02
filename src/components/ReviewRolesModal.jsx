@@ -47,14 +47,14 @@ export default function ReviewRolesModal() {
     <Modal
       open={true}
       onClose={handleDismiss}
-      title={t('review_roles_title') || 'Sprawdź role członków'}
+      title={t('review_roles_title')}
       footer={
         <div style={{ display: 'flex', gap: SPACE.sm, width: '100%' }}>
           <Btn variant="ghost" onClick={handleDismiss} disabled={dismissing} style={{ flex: 1, minHeight: TOUCH.minTarget }}>
-            {t('review_roles_later') || 'Zrobię to później'}
+            {t('review_roles_later')}
           </Btn>
           <Btn variant="accent" onClick={handleGoToSettings} disabled={dismissing} style={{ flex: 2, minHeight: TOUCH.minTarget }}>
-            {t('review_roles_go') || 'Przejdź do ustawień'}
+            {t('review_roles_go')}
           </Btn>
         </div>
       }

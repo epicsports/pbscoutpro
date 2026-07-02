@@ -78,7 +78,7 @@ export default function PbleaguesOnboardingPage() {
     watchdogRef.current = setTimeout(() => {
       watchdogRef.current = null;
       setBusy(false);
-      setError(t('onboarding_link_watchdog') || 'Połączenie trwa za długo. Spróbuj ponownie lub pomiń ten krok.');
+      setError(t('onboarding_link_watchdog'));
     }, WATCHDOG_MS);
     try {
       await ds.selfLinkPlayer(player.id, user.uid);
@@ -97,8 +97,8 @@ export default function PbleaguesOnboardingPage() {
       console.error('Self-link from onboarding failed:', e);
       setError(
         e?.message === 'ALREADY_LINKED'
-          ? (t('onboarding_pbli_error_already_linked') || 'Ten profil gracza jest już podłączony do innego konta.')
-          : (t('profile_claim_failed') || 'Nie udało się połączyć — spróbuj ponownie.')
+          ? t('onboarding_pbli_error_already_linked')
+          : t('profile_claim_failed')
       );
     } finally {
       // § 84 B2-hotfix — ALWAYS clear busy. Previously success-path relied on
@@ -125,7 +125,7 @@ export default function PbleaguesOnboardingPage() {
       // lands in the app.
     } catch (e) {
       console.error('Skip onboarding failed:', e);
-      setError(t('onboarding_skip_failed') || 'Nie udało się pominąć. Spróbuj ponownie.');
+      setError(t('onboarding_skip_failed'));
     } finally {
       setBusy(false);
     }
@@ -174,17 +174,17 @@ export default function PbleaguesOnboardingPage() {
         <div style={{
           fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
           color: COLORS.text,
-        }}>{t('onboarding_pbli_title') || 'Profil gracza'}</div>
+        }}>{t('onboarding_pbli_title')}</div>
         {/* § 84 B2-hotfix — persistent escape pair. Both ALWAYS-enabled
             (no `disabled={busy}`) so they stay reachable during in-flight
             selfLink. Bar's z:110 sits above the LinkProfileModal backdrop
             so taps land on the buttons, not the backdrop. */}
         <div style={{ display: 'flex', gap: SPACE.sm }}>
           <Btn variant="ghost" onClick={handleSkip}>
-            {t('link_profile_nomatch_skip') || 'Pomiń na razie'}
+            {t('link_profile_nomatch_skip')}
           </Btn>
           <Btn variant="ghost" onClick={handleSignOut}>
-            {t('pending_approval_signout') || 'Wyloguj się'}
+            {t('pending_approval_signout')}
           </Btn>
         </div>
       </div>
@@ -201,14 +201,13 @@ export default function PbleaguesOnboardingPage() {
             fontFamily: FONT, fontSize: 18, fontWeight: 700,
             color: COLORS.text, letterSpacing: '-0.2px',
           }}>
-            {t('onboarding_pbli_soft_hero') || 'Podłącz profil gracza'}
+            {t('onboarding_pbli_soft_hero')}
           </div>
           <div style={{
             fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
             color: COLORS.textMuted, lineHeight: 1.5,
           }}>
-            {t('onboarding_pbli_soft_body')
-              || 'Podłącz swój profil z pbleagues.com aby mieć pełne statystyki i ranking. Możesz też pominąć ten krok — zrobisz to później w "Mój profil".'}
+            {t('onboarding_pbli_soft_body')}
           </div>
           <a
             href="https://pbleagues.com"
@@ -228,7 +227,7 @@ export default function PbleaguesOnboardingPage() {
             }}
           >
             <ExternalLink size={14} strokeWidth={2} />
-            {t('onboarding_pbli_open_pbleagues') || 'Otwórz pbleagues.com'}
+            {t('onboarding_pbli_open_pbleagues')}
           </a>
           {error && (
             <div style={{

@@ -180,7 +180,7 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
               amber (informational, not interactive) and never pre-fills answers. */}
           {contextStrip}
           {/* ═══ Field 1: Breakout ═══ */}
-          <SectionLabel text={t('selflog_section_breakout') || 'Gdzie pobiegłem'} />
+          <SectionLabel text={t('selflog_section_breakout')} />
           {breakoutBootstrap && selectedBreakoutBunker ? (
             <BreakoutCollapsed
               bunker={selectedBreakoutBunker}
@@ -190,7 +190,7 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
           ) : (
             <>
               {breakoutBootstrap && (
-                <Hint text={t('selflog_bootstrap_breakout_hint') || 'Pierwsze punkty — wybierz z pełnej listy. Po 5 logach zapamiętamy ulubione.'} />
+                <Hint text={t('selflog_bootstrap_breakout_hint')} />
               )}
               <div style={{
                 display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: SPACE.xs,
@@ -227,7 +227,7 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
                       fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 700,
                       cursor: 'pointer',
                     }}
-                  >{t('selflog_other') || 'Inne…'}</button>
+                  >{t('selflog_other')}</button>
                 )}
               </div>
               {/* "Inne…" full list expansion */}
@@ -265,8 +265,8 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
           {breakout && teamId && (
             <>
               <SectionLabel
-                text={t('selflog_section_variant') || 'Wariant'}
-                subtle={t('selflog_section_variant_optional') || '(opcjonalnie)'}
+                text={t('selflog_section_variant')}
+                subtle={t('selflog_section_variant_optional')}
               />
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: SPACE.xs, marginTop: SPACE.xs }}>
                 {variants.map(v => {
@@ -301,7 +301,7 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
                     cursor: 'pointer',
                     display: 'flex', alignItems: 'center', gap: 4,
                   }}
-                ><Plus size={12} /> {t('variant_new') || '+ Nowy'}</button>
+                ><Plus size={12} /> {t('variant_new')}</button>
               </div>
             </>
           )}
@@ -310,11 +310,11 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
           {breakout && (
             <>
               <SectionLabel
-                text={t('selflog_section_shots') || 'Co strzelałem'}
+                text={t('selflog_section_shots')}
                 subtle={t('selflog_shots_counter', Object.keys(shots).length)}
               />
               {shotsBootstrap && (
-                <Hint text={t('selflog_bootstrap_shots_hint') || 'Nowy layout — wszystkie bunkry dostępne.'} />
+                <Hint text={t('selflog_bootstrap_shots_hint')} />
               )}
               <div style={{
                 display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: SPACE.xs,
@@ -378,34 +378,34 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
           )}
 
           {/* ═══ Field 4: Outcome (2x2) ═══ */}
-          <SectionLabel text={t('selflog_section_outcome') || 'Jak skończyłem'} />
+          <SectionLabel text={t('selflog_section_outcome')} />
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: SPACE.xs,
             marginTop: SPACE.xs,
           }}>
             <OutcomeBtn
-              label={t('outcome_alive') || 'Przeżyłem'}
+              label={t('outcome_alive')}
               icon={<Shield size={16} />}
               color={COLORS.success}
               selected={outcome === 'alive'}
               onClick={() => setOutcome('alive')}
             />
             <OutcomeBtn
-              label={t('outcome_elim_break') || 'Brejk'}
+              label={t('outcome_elim_break')}
               icon={<Skull size={16} />}
               color={COLORS.danger}
               selected={outcome === 'elim_break'}
               onClick={() => setOutcome('elim_break')}
             />
             <OutcomeBtn
-              label={t('outcome_elim_mid') || 'Środek'}
+              label={t('outcome_elim_mid')}
               icon={<Skull size={16} />}
               color={COLORS.danger}
               selected={outcome === 'elim_mid'}
               onClick={() => setOutcome('elim_mid')}
             />
             <OutcomeBtn
-              label={t('outcome_elim_end') || 'Koniec'}
+              label={t('outcome_elim_end')}
               icon={<Skull size={16} />}
               color={COLORS.danger}
               selected={outcome === 'elim_end'}
@@ -425,7 +425,7 @@ export default function HotSheet({ open, onClose, layout, playerId, teamId, poin
               disabled={!canSave}
               style={{ flex: 2, justifyContent: 'center' }}
             >
-              <Check size={18} /> {t('selflog_save') || 'Zapisz'}
+              <Check size={18} /> {t('selflog_save')}
             </Btn>
           </div>
         </div>

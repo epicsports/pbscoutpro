@@ -152,7 +152,7 @@ export default function MembersPage() {
     <Screen archetype="list" style={{ background: COLORS.bg, minHeight: '100dvh' }}>
       <PageHeader
         back={{ to: '/' }}
-        title={t('members_page_title') || 'Członkowie workspace\u2019u'}
+        title={t('members_page_title')}
         subtitle={workspace?.name}
       />
 
@@ -160,7 +160,7 @@ export default function MembersPage() {
 
         {/* ─── Invites (Model B) — workspace admin issues non-admin roles ─── */}
         <section>
-          <SectionHeader label={t('invite_section_title') || 'Invites'} />
+          <SectionHeader label={t('invite_section_title')} />
           <div style={{ marginTop: SPACE.sm }}>
             <InviteSection slug={workspace.slug} roles={['coach', 'scout', 'player']} />
           </div>
@@ -169,7 +169,7 @@ export default function MembersPage() {
         {/* ─── Email invites (Part 3) — sent invites + status + resend ─── */}
         {emailInvites.length > 0 && (
           <section data-testid="email-invites-section">
-            <SectionHeader label={t('invite_pending_header') || 'Zaproszenia e-mail'} count={emailInvites.length} />
+            <SectionHeader label={t('invite_pending_header')} count={emailInvites.length} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.xs, marginTop: SPACE.sm }}>
               {emailInvites.map(inv => {
                 const claimed = inv.status === 'claimed';
@@ -182,12 +182,12 @@ export default function MembersPage() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inv.email}</div>
                       <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted }}>
-                        {t(`role_${inv.role}`) || inv.role} · {claimed ? (t('invite_status_claimed') || 'dołączył') : (t('invite_status_pending') || 'wysłane')}
+                        {t(`role_${inv.role}`) || inv.role} · {claimed ? t('invite_status_claimed') : t('invite_status_pending')}
                       </div>
                     </div>
                     {!claimed && (
                       <Btn variant="default" size="sm" onClick={() => resendInvite(inv.email)}>
-                        {resentTo === inv.email ? (t('invite_resent') || 'Wysłano') : (t('invite_resend') || 'Wyślij ponownie')}
+                        {resentTo === inv.email ? t('invite_resent') : t('invite_resend')}
                       </Btn>
                     )}
                   </div>
@@ -201,7 +201,7 @@ export default function MembersPage() {
         {pendingUids.length > 0 && (
           <section>
             <SectionHeader
-              label={t('members_pending_header') || 'Oczekują zatwierdzenia'}
+              label={t('members_pending_header')}
               count={pendingUids.length}
               accent
             />
@@ -229,7 +229,7 @@ export default function MembersPage() {
         {/* ─── Active members ─── */}
         <section>
           <SectionHeader
-            label={t('members_active_header') || 'Członkowie'}
+            label={t('members_active_header')}
             count={activeUids.length}
             subCount={newThisWeekCount > 0
               ? (t('members_new_this_week', newThisWeekCount) || `${newThisWeekCount} nowych w tym tygodniu`)
@@ -238,7 +238,7 @@ export default function MembersPage() {
           {activeUids.length === 0 ? (
             <EmptyState
               icon="👥"
-              text={t('members_empty') || 'Brak aktywnych członków.'}
+              text={t('members_empty')}
             />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE.sm, marginTop: SPACE.sm }}>

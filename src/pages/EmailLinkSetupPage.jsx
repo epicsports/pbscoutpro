@@ -114,7 +114,7 @@ export default function EmailLinkSetupPage() {
       <div style={outer} data-testid="email-link-setup">
         <form style={card} onSubmit={(e) => { e.preventDefault(); if (email.trim()) complete(email); }}>
           <div style={title}>{t('email_link_confirm_email') || 'Potwierdź swój e-mail'}</div>
-          <input style={input} type="email" autoComplete="email" placeholder="you@example.com"
+          <input style={input} type="email" autoComplete="email" placeholder={t('email_placeholder_example')}
             value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />
           {errBox}
           <button type="submit" style={btn(!!email.trim())} disabled={!email.trim()}>{t('continue_btn') || 'Dalej'}</button>

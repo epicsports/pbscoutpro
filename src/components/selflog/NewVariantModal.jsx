@@ -38,7 +38,7 @@ export default function NewVariantModal({ open, bunkerName, existingVariants = [
     <Modal
       open={open}
       onClose={onClose}
-      title={t('variant_new_title') || 'Nowy wariant'}
+      title={t('variant_new_title')}
       footer={
         <div style={{ display: 'flex', gap: SPACE.sm, width: '100%' }}>
           <Btn variant="ghost" onClick={onClose} style={{ flex: 1 }}>
@@ -50,7 +50,7 @@ export default function NewVariantModal({ open, bunkerName, existingVariants = [
             disabled={!name.trim() || saving}
             style={{ flex: 2 }}
           >
-            {t('variant_add') || 'Dodaj wariant'}
+            {t('variant_add')}
           </Btn>
         </div>
       }
@@ -64,7 +64,7 @@ export default function NewVariantModal({ open, bunkerName, existingVariants = [
       <Input
         value={name}
         onChange={setName}
-        placeholder={t('variant_new_placeholder') || 'np. ze ślizgu, late break, strzelaniem…'}
+        placeholder={t('variant_new_placeholder')}
         autoFocus
       />
       {existingVariants.length > 0 && (
@@ -73,7 +73,7 @@ export default function NewVariantModal({ open, bunkerName, existingVariants = [
             fontFamily: FONT, fontSize: FONT_SIZE.xxs, color: COLORS.textMuted,
             letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: SPACE.xs,
           }}>
-            {t('variant_existing_label') || 'Warianty już w zespole:'}
+            {t('variant_existing_label')}
           </div>
           <div style={{
             fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textDim,

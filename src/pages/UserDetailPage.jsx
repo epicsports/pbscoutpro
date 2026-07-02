@@ -274,7 +274,7 @@ export default function UserDetailPage() {
                 {linkedPlayer.pbliId && (
                   <div style={{
                     fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginTop: 2,
-                  }}>PBLI #{String(linkedPlayer.pbliId).replace(/^#?/, '')}</div>
+                  }}>{t('pbli_id_label')}{String(linkedPlayer.pbliId).replace(/^#?/, '')}</div>
                 )}
               </div>
             </div>

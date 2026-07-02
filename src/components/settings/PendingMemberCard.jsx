@@ -95,7 +95,7 @@ export default function PendingMemberCard({ workspaceSlug, uid, linkedPlayer, te
               marginTop: 2,
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             }}>
-              {pbliId ? `PBLI ${pbliId}` : ''}
+              {pbliId ? `${t('profile_player_pbli_label')} ${pbliId}` : ''}
               {pbliId && email ? ' · ' : ''}
               {email || ''}
             </div>

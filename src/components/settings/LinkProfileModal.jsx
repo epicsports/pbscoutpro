@@ -102,8 +102,8 @@ export default function LinkProfileModal({
   return (
     <Modal open={open} onClose={busy ? undefined : onClose}
       title={confirmTarget
-        ? (t('link_profile_confirm_title') || 'Znaleźliśmy Cię!')
-        : (t('link_profile_title') || 'Wybierz profil gracza')}>
+        ? t('link_profile_confirm_title')
+        : t('link_profile_title')}>
       {confirmTarget ? (
         <ConfirmCard
           player={confirmTarget}
@@ -118,7 +118,7 @@ export default function LinkProfileModal({
           <Input
             value={query}
             onChange={setQuery}
-            placeholder={t('link_profile_search_ph') || 'Szukaj po pseudonimie lub PBLI…'}
+            placeholder={t('link_profile_search_ph')}
           />
 
           {showSkipFallback ? (
@@ -138,7 +138,7 @@ export default function LinkProfileModal({
                 <div style={{
                   fontFamily: FONT, fontSize: FONT_SIZE.sm, color: COLORS.textMuted,
                   textAlign: 'center', padding: SPACE.lg,
-                }}>{t('no_matches') || 'Brak wyników'}</div>
+                }}>{t('no_matches')}</div>
               ) : matched.map(p => {
                 const isCurrent = p.id === currentLinkedPlayer?.id;
                 const conflictEmail = p.linkedUid && p.linkedUid !== currentLinkedPlayer?.linkedUid
@@ -171,10 +171,10 @@ export default function LinkProfileModal({
  */
 function ConfirmCard({ player, teamName, onConfirm, onBack, busy, t }) {
   const dn = useDisplayName();
-  const name = dn(player) || 'Player';
+  const name = dn(player) || t('role_player');
   const number = player.number ? `#${player.number}` : '';
   const pbli = player.pbliIdFull || player.pbliId
-    ? `PBLI: ${String(player.pbliIdFull || player.pbliId).replace(/^#?/, '')}`
+    ? `${t('pbli_label_colon')}${String(player.pbliIdFull || player.pbliId).replace(/^#?/, '')}`
     : null;
 
   return (
@@ -209,17 +209,17 @@ function ConfirmCard({ player, teamName, onConfirm, onBack, busy, t }) {
         fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
         color: COLORS.textMuted, textAlign: 'center',
       }}>
-        {t('link_profile_confirm_question') || 'Czy to Ty?'}
+        {t('link_profile_confirm_question')}
       </div>
 
       <div style={{ display: 'flex', gap: SPACE.sm }}>
         <Btn variant="default" onClick={onBack} disabled={busy} style={{ flex: 1 }}>
-          {t('link_profile_confirm_no') || 'Nie, szukaj dalej'}
+          {t('link_profile_confirm_no')}
         </Btn>
         <Btn variant="accent" onClick={onConfirm} disabled={busy} style={{ flex: 1 }}>
           {busy
             ? (t('saving') || '…')
-            : (t('link_profile_confirm_yes') || 'Tak, to ja')}
+            : t('link_profile_confirm_yes')}
         </Btn>
       </div>
     </div>
@@ -245,20 +245,20 @@ function NoMatchFallback({ onSkip, onRetry, busy, t }) {
         fontFamily: FONT, fontSize: FONT_SIZE.base, fontWeight: 700,
         color: COLORS.text,
       }}>
-        {t('link_profile_nomatch_title') || 'Nie znaleźliśmy Cię w bazie'}
+        {t('link_profile_nomatch_title')}
       </div>
       <div style={{
         fontFamily: FONT, fontSize: FONT_SIZE.sm, fontWeight: 500,
         color: COLORS.textMuted, lineHeight: 1.5,
       }}>
-        {t('link_profile_nomatch_body') || 'Sprawdź swój PBLI ID lub poproś admina o ręczne połączenie. Możesz też pominąć ten krok — wrócisz do tego później.'}
+        {t('link_profile_nomatch_body')}
       </div>
       <div style={{ display: 'flex', gap: SPACE.sm, marginTop: SPACE.xs }}>
         <Btn variant="default" onClick={onRetry} disabled={busy} style={{ flex: 1 }}>
-          {t('link_profile_nomatch_retry') || 'Spróbuj ponownie'}
+          {t('link_profile_nomatch_retry')}
         </Btn>
         <Btn variant="ghost" onClick={onSkip} disabled={busy} style={{ flex: 1 }}>
-          {t('link_profile_nomatch_skip') || 'Pomiń na razie'}
+          {t('link_profile_nomatch_skip')}
         </Btn>
       </div>
     </div>
@@ -267,10 +267,10 @@ function NoMatchFallback({ onSkip, onRetry, busy, t }) {
 
 function PlayerOption({ player, current, conflictLabel, disabled, onSelect, t }) {
   const dn = useDisplayName();
-  const name = dn(player) || 'Player';
+  const name = dn(player) || t('role_player');
   const number = player.number ? `#${player.number}` : '';
-  const pbli = player.pbliId ? `PBLI #${String(player.pbliId).replace(/^#?/, '')}` : '';
-  const subBits = [pbli, conflictLabel ? `${t('link_profile_already_taken') || 'Already linked'}: ${conflictLabel}` : null]
+  const pbli = player.pbliId ? `${t('pbli_id_label')}${String(player.pbliId).replace(/^#?/, '')}` : '';
+  const subBits = [pbli, conflictLabel ? `${t('link_profile_already_taken')}: ${conflictLabel}` : null]
     .filter(Boolean).join(' · ');
   return (
     <div style={{
@@ -299,7 +299,7 @@ function PlayerOption({ player, current, conflictLabel, disabled, onSelect, t })
         variant={current ? 'default' : 'accent'}
         onClick={onSelect}
         disabled={disabled || current}
-      >{current ? '✓' : (t('link_profile_select') || 'Wybierz')}</Btn>
+      >{current ? '✓' : t('link_profile_select')}</Btn>
     </div>
   );
 }

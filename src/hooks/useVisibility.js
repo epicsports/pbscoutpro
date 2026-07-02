@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { makeFieldTransform } from '../utils/helpers';
 import { bunkerByAbbr } from '../utils/theme';
+import { useLanguage } from './useLanguage';
 
 export function useVisibility() {
+  const { t } = useLanguage();
   const workerRef = useRef(null);
   const [isReady, setIsReady] = useState(false);
   const [progress, setProgress] = useState(null);
@@ -27,7 +29,7 @@ export function useVisibility() {
         else if (type === 'ERROR') { setError(payload.message); setProgress(null); }
       };
       workerRef.current.onerror = (err) => { setError(err.message); };
-    } catch (err) { setError('Web Worker not supported'); }
+    } catch (err) { setError(t('web_worker_not_supported')); }
     return () => { workerRef.current?.terminate(); };
   }, []);
 

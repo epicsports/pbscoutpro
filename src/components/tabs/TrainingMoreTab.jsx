@@ -201,7 +201,7 @@ export default function TrainingMoreTab({
               {layouts.map(l => (
                 <LayoutOption
                   key={l.id}
-                  label={l.name || 'Untitled'}
+                  label={l.name || t('layout_untitled')}
                   sub={[leagueDisplayName(l.league), l.year].filter(Boolean).join(' · ') || null}
                   selected={training?.layoutId === l.id}
                   onClick={() => handlePickLayout(l.id)}
@@ -229,7 +229,7 @@ export default function TrainingMoreTab({
               {t('training_name') || 'Nazwa (opcjonalnie)'}
             </div>
             <Input value={editName} onChange={setEditName}
-              placeholder={trainingTeam?.name ? `np. ${trainingTeam.name} — pre-NXL` : 'Nazwa treningu'} />
+              placeholder={trainingTeam?.name ? `np. ${trainingTeam.name} — pre-NXL` : t('training_name_input_placeholder')} />
           </div>
           <div>
             <div style={{ fontFamily: FONT, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, marginBottom: 4 }}>
@@ -392,10 +392,10 @@ function computeIsLastAdminTr(workspace, user, userProfile) {
 }
 
 function TrainingLanguageRow() {
-  const { lang, setLang } = useLanguage();
+  const { lang, setLang, t } = useLanguage();
   const next = lang === 'pl' ? 'en' : 'pl';
   const flag = lang === 'pl' ? '🇵🇱' : '🇬🇧';
-  const langName = lang === 'pl' ? 'Polski' : 'English';
+  const langName = lang === 'pl' ? t('language_pl') : t('language_en');
   return (
     <MoreItem
       iconName="globe"

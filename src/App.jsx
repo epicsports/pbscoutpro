@@ -350,7 +350,7 @@ function AutoEnterErrorScreen({ error, onSignOut }) {
         <div style={{
           fontFamily: FONT, fontSize: 20, fontWeight: 700,
           color: COLORS.danger, marginBottom: 8,
-        }}>{t('workspace_enter_error_title') || 'Nie udało się wejść do workspace\'a'}</div>
+        }}>{t('workspace_enter_error_title')}</div>
         <div style={{
           fontFamily: FONT, fontSize: 13, color: COLORS.textDim, marginBottom: 20,
           lineHeight: 1.5, wordBreak: 'break-word',
@@ -363,7 +363,7 @@ function AutoEnterErrorScreen({ error, onSignOut }) {
             background: COLORS.accent, color: '#000', border: 'none',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
-        >{t('sign_out') || 'Wyloguj się'}</button>
+        >{t('sign_out')}</button>
       </div>
     </div>
   );
@@ -413,7 +413,7 @@ function PermissionErrorScreen({ onSignOut }) {
             background: 'transparent', color: COLORS.textDim, border: `1px solid ${COLORS.border}`,
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
-        >{t('sign_out') || 'Wyloguj się'}</button>
+        >{t('sign_out')}</button>
       </div>
     </div>
   );
@@ -424,10 +424,10 @@ function PermissionErrorScreen({ onSignOut }) {
 function InviteErrorScreen({ code, onSignOut }) {
   const { t } = useLanguage();
   const body =
-    code === 'INVITE_EXPIRED' ? (t('invite_error_expired') || 'This invite link has expired. Ask an admin for a fresh one.')
-    : code === 'INVITE_REDEEMED' ? (t('invite_error_redeemed') || 'This invite link was already used. Ask an admin for a fresh one.')
-    : code === 'INVITE_INVALID' ? (t('invite_error_invalid') || 'This invite link is invalid. Ask an admin for a fresh one.')
-    : (t('invite_error_generic') || 'Couldn’t redeem this invite. Ask an admin for a fresh link.');
+    code === 'INVITE_EXPIRED' ? t('invite_error_expired')
+    : code === 'INVITE_REDEEMED' ? t('invite_error_redeemed')
+    : code === 'INVITE_INVALID' ? t('invite_error_invalid')
+    : t('invite_error_generic');
   return (
     <div style={{
       minHeight: '100dvh', background: COLORS.bg,
@@ -442,7 +442,7 @@ function InviteErrorScreen({ code, onSignOut }) {
         <div style={{
           fontFamily: FONT, fontSize: 20, fontWeight: 700,
           color: COLORS.danger, marginBottom: 8,
-        }}>{t('invite_error_title') || 'Invite link problem'}</div>
+        }}>{t('invite_error_title')}</div>
         <div style={{
           fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginBottom: 24, lineHeight: 1.5,
         }}>{body}</div>
@@ -454,7 +454,7 @@ function InviteErrorScreen({ code, onSignOut }) {
             background: COLORS.accent, color: '#000', border: 'none',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
-        >{t('sign_out') || 'Sign out'}</button>
+        >{t('sign_out')}</button>
       </div>
     </div>
   );
@@ -483,11 +483,11 @@ function NoWorkspaceScreen({ onSignOut }) {
         <div style={{
           fontFamily: FONT, fontSize: 20, fontWeight: 700,
           color: COLORS.text, marginBottom: 8,
-        }}>{t('no_workspace_title') || 'Account created'}</div>
+        }}>{t('no_workspace_title')}</div>
         <div style={{
           fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginBottom: 24,
           lineHeight: 1.5,
-        }}>{t('no_workspace_body') || 'Your account was created successfully. An admin still needs to add you to your team’s workspace and assign your role — you’ll have access once that’s done.'}</div>
+        }}>{t('no_workspace_body')}</div>
         <button
           onClick={onSignOut}
           style={{
@@ -496,7 +496,7 @@ function NoWorkspaceScreen({ onSignOut }) {
             background: COLORS.accent, color: '#000', border: 'none',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
-        >{t('sign_out') || 'Sign out'}</button>
+        >{t('sign_out')}</button>
       </div>
     </div>
   );
@@ -519,11 +519,11 @@ function DisabledAccountScreen({ onSignOut }) {
         <div style={{
           fontFamily: FONT, fontSize: 20, fontWeight: 700,
           color: COLORS.danger, marginBottom: 8,
-        }}>{t('user_disabled_status') || 'Konto wyłączone'}</div>
+        }}>{t('user_disabled_status')}</div>
         <div style={{
           fontFamily: FONT, fontSize: 14, color: COLORS.textDim, marginBottom: 24,
           lineHeight: 1.5,
-        }}>{t('disabled_login_bounce') || 'Konto zostało wyłączone przez administratora.'}</div>
+        }}>{t('disabled_login_bounce')}</div>
         <button
           onClick={onSignOut}
           style={{
@@ -532,7 +532,7 @@ function DisabledAccountScreen({ onSignOut }) {
             background: COLORS.accent, color: '#000', border: 'none',
             cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
           }}
-        >{t('sign_out') || 'Wyloguj się'}</button>
+        >{t('sign_out')}</button>
       </div>
     </div>
   );
@@ -574,7 +574,7 @@ function OfflineBanner() {
   return (
     <div role="status" style={bar}>
       <RdIcon name={online ? 'check' : 'wifioff'} size={15} />
-      <span>{online ? (t('offline_reconnected') || 'Back online — syncing changes…') : (t('offline_banner') || 'Offline — changes save on this device and sync when you reconnect')}</span>
+      <span>{online ? t('offline_reconnected') : t('offline_banner')}</span>
     </div>
   );
 }

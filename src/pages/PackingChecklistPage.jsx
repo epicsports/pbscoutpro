@@ -177,7 +177,7 @@ export default function PackingChecklistPage() {
       {/* ── Header (sticky) ── */}
       <div style={{ position: 'sticky', top: 0, zIndex: 10, background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ maxWidth: 520, margin: '0 auto', padding: `${SPACE.md}px ${SPACE.lg}px`, display: 'flex', alignItems: 'center', gap: SPACE.md }}>
-          <div role="button" aria-label="Back" data-testid="packing-back" onClick={() => navigate('/')}
+          <div role="button" aria-label={t('back')} data-testid="packing-back" onClick={() => navigate('/')}
             style={{ minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', cursor: 'pointer', color: COLORS.accent, marginLeft: -8 }}>
             <ChevronLeft size={24} />
           </div>
@@ -270,7 +270,7 @@ export default function PackingChecklistPage() {
                                 style={{ minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: COLORS.textDim }}><Plus size={16} /></div>
                             </div>
                           ) : it.custom ? (
-                            <div role="button" aria-label="remove" data-testid={`packing-rm-${it.id}`} onClick={() => removeCustom(c.id, it.id)}
+                            <div role="button" aria-label={t('remove')} data-testid={`packing-rm-${it.id}`} onClick={() => removeCustom(c.id, it.id)}
                               style={{ minWidth: TOUCH.minTarget, minHeight: TOUCH.minTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: COLORS.textMuted, flexShrink: 0 }}><X size={16} /></div>
                           ) : null}
                         </div>
@@ -316,7 +316,7 @@ export default function PackingChecklistPage() {
             {t('packing_check_crit')}
             {critMissing.length > 0 && <span data-testid="packing-crit-badge" style={{ minWidth: 22, padding: '0 6px', borderRadius: RADIUS.xl, background: COLORS.bg, color: COLORS.accent, fontFamily: FONT, fontSize: FONT_SIZE.xs, fontWeight: 800, lineHeight: '20px' }}>{critMissing.length}</span>}
           </Btn>
-          <Btn variant="default" ariaLabel="reset" testId="packing-reset-btn" onClick={() => setResetOpen(true)} style={{ flexShrink: 0 }}><RotateCcw size={18} /></Btn>
+          <Btn variant="default" ariaLabel={t('reset')} testId="packing-reset-btn" onClick={() => setResetOpen(true)} style={{ flexShrink: 0 }}><RotateCcw size={18} /></Btn>
         </div>
       </div>
 
