@@ -195,6 +195,27 @@ export function stageLabel(raw) {
 // renders without a Grupa sub-header). Within each group, matches sorted
 // chronologically by scheduledAt (with legacy date+time fallback so
 // pre-import matches sort too).
+// Chronological sort key for a match (millis). Prefers `scheduledAt` (Timestamp /
+// Date / ISO string), falls back to legacy `date`+`time` strings, and finally to
+// the import `gameNumber` sequence for undated schedules (small ints sort before
+// any real date millis). Exported so consumers (scout match list) can order
+// Live/Scheduled/Completed sections by game time without re-deriving this.
+export function matchTimeMillis(m) {
+  if (m?.scheduledAt?.toMillis) return m.scheduledAt.toMillis();
+  if (m?.scheduledAt instanceof Date) return m.scheduledAt.getTime();
+  if (typeof m?.scheduledAt === 'string') {
+    const t = new Date(m.scheduledAt).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  const legacy = `${m?.date || ''} ${m?.time || ''}`.trim();
+  if (legacy) {
+    const t = new Date(legacy).getTime();
+    if (!Number.isNaN(t)) return t;
+  }
+  const seq = parseInt(m?.gameNumber, 10);
+  return Number.isFinite(seq) ? seq : 0;
+}
+
 export function groupMatchesByStage(matches) {
   const byStage = new Map();
   (matches || []).forEach(m => {
@@ -213,24 +234,7 @@ export function groupMatchesByStage(matches) {
     stage.total++;
   });
 
-  const matchTime = (m) => {
-    if (m?.scheduledAt?.toMillis) return m.scheduledAt.toMillis();
-    if (m?.scheduledAt instanceof Date) return m.scheduledAt.getTime();
-    if (typeof m?.scheduledAt === 'string') {
-      const t = new Date(m.scheduledAt).getTime();
-      if (!Number.isNaN(t)) return t;
-    }
-    const legacy = `${m?.date || ''} ${m?.time || ''}`.trim();
-    if (legacy) {
-      const t = new Date(legacy).getTime();
-      if (!Number.isNaN(t)) return t;
-    }
-    // No usable date → order by the import sequence (CSV #/index/lp column or
-    // row order, stored as gameNumber). Small ints sort before any real date
-    // millis — within an all-undated schedule this is the intended order.
-    const seq = parseInt(m?.gameNumber, 10);
-    return Number.isFinite(seq) ? seq : 0;
-  };
+  const matchTime = matchTimeMillis;
 
   return [...byStage.values()]
     .sort((a, b) => a.rank - b.rank)

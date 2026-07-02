@@ -14,6 +14,7 @@ import SearchFilterPanel from './SearchFilterPanel';
 import SearchField from './SearchField';
 import TeamBadge from './TeamBadge';
 import { matchEntity, teamInDivision } from '../utils/entityFilters';
+import { matchTimeMillis } from '../utils/divisionAliases';
 import { useLiveMatchScores } from '../hooks/useLiveMatchScores';
 import * as ds from '../services/dataService';
 import { COLORS, FONT, FONT_SIZE, RADIUS, SPACE, TOUCH, ELEV } from '../utils/theme';
@@ -314,9 +315,16 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
   const searched = matchSearch.trim()
     ? filtered.filter(m => matchEntity(matchSearch, { name: `${getTeamName(m.teamA)} ${getTeamName(m.teamB)}` }, ['name']))
     : filtered;
-  const live = searched.filter(m => classify(m) === 'live');
-  const scheduled = searched.filter(m => classify(m) === 'scheduled');
-  const completed = searched.filter(m => classify(m) === 'completed');
+  // Game-time ordering (Jacek 2026-07-02): each section is one clean list ordered
+  // by scheduledAt (legacy date+time / gameNumber fallback). Live + Scheduled
+  // ascending (follows the day's schedule); Completed descending (just-finished on
+  // top). Stage/group sub-headers are dropped from Scheduled — see the flat
+  // `groupScheduledByStage={false}` on <ScheduleList> below.
+  const byTimeAsc = (a, b) => matchTimeMillis(a) - matchTimeMillis(b);
+  const byTimeDesc = (a, b) => matchTimeMillis(b) - matchTimeMillis(a);
+  const live = searched.filter(m => classify(m) === 'live').sort(byTimeAsc);
+  const scheduled = searched.filter(m => classify(m) === 'scheduled').sort(byTimeAsc);
+  const completed = searched.filter(m => classify(m) === 'completed').sort(byTimeDesc);
 
   // wide reflow + stage/group sub-headers live in <ScheduleList> (dup-audit #2):
   // scheduled/completed cards flow into a 2–3 col responsive grid (live stays
@@ -395,13 +403,13 @@ export default function MatchListPremium({ tournamentId, wide = false }) {
         )}
 
         {/* Shared Live / Scheduled / Completed grouping (dup-audit #2). Scout
-            variant: `wide` grid reflow + stage/group sub-headers in Scheduled →
-            byte-identical to the old inlined sections. */}
+            variant: `wide` grid reflow; each section is a single game-time-ordered
+            list (stage/group sub-headers dropped — Jacek 2026-07-02). */}
         <ScheduleList
           live={live} scheduled={scheduled} completed={completed}
           tournamentId={tournamentId} getTeamName={getTeamName} getTeam={getTeam}
           navigate={navigate} readOnly={isClosed} liveScores={liveScores}
-          wide={wide} groupScheduledByStage />
+          wide={wide} groupScheduledByStage={false} />
       </div>
 
       {/* Add match + Add team — primary actions. Gated on scouted.length >= 1
